@@ -22,8 +22,8 @@ vendored-dependencies:
   path: vendor/winston.zip
   version: "5.0.0-alpha"
   metadata:
-    description: "The winston logger"
-    homepage: "https://winston-logger/homepage"
+    description: "winston archive"
+    homepage: "https://winston-project.com"
 ```
 
 The path to a vendored dependency can either be a path to an archive or a path to a directory.
@@ -74,8 +74,8 @@ We also support json-formatted dependencies:
       "path": "vendor/winston.tar.gz",
       "version": "5.0.0-alpha",
       "metadata": {
-        "description": "The winston logger",
-        "homepage": "https://winston-logger/homepage"
+        "description": "winston archive",
+        "homepage": "https://winston-project.com/homepage"
       }
     }
   ],

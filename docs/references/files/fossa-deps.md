@@ -84,7 +84,7 @@ vendored-dependencies:
   path: vendor/Django-3.4.16.zip
   version: 3.4.16
   metadata:
-    homepage: django.com
+    homepage: https://djangoproject.com
     description: Django
 ```
 > Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
