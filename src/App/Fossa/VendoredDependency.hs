@@ -18,7 +18,6 @@ module App.Fossa.VendoredDependency (
   getMetadata,
 ) where
 
-
 import App.Fossa.DependencyMetadata (DependencyMetadata (..))
 import App.Types (DependencyRebuild (..))
 import Codec.Archive.Tar qualified as Tar

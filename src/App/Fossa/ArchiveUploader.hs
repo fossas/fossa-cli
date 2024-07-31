@@ -9,8 +9,8 @@ import App.Fossa.VendoredDependency (
   arcToLocator,
   compressFile,
   dedupVendoredDeps,
-  hashFile,
   getMetadata,
+  hashFile,
  )
 import App.Types (ComponentUploadFileType (..), DependencyRebuild)
 import Control.Carrier.Diagnostics qualified as Diag

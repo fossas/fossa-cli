@@ -1,11 +1,10 @@
 module App.Fossa.DependencyMetadata (
-  DependencyMetadata (..)
+  DependencyMetadata (..),
 ) where
 
 import Data.Aeson (FromJSON (..), withObject, (.:?))
-import Data.Text (Text)
 import Data.Aeson.Extra (forbidMembers)
-
+import Data.Text (Text)
 
 data DependencyMetadata = DependencyMetadata
   { depDescription :: Maybe Text

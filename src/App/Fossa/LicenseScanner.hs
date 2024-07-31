@@ -23,9 +23,10 @@ import App.Fossa.VendoredDependency (
   compressFile,
   dedupVendoredDeps,
   forceVendoredToArchive,
+  getMetadata,
   hashFile,
   skippedDepsDebugLog,
-  vendoredDependencyScanModeToDependencyRebuild, getMetadata,
+  vendoredDependencyScanModeToDependencyRebuild,
  )
 import App.Types (FileUpload)
 import Control.Carrier.Finally (Finally, runFinally)
