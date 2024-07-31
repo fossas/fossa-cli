@@ -55,6 +55,7 @@ theWorks = ManualDependencies references customs vendors remotes locators
     vendors =
       [ VendoredDependency "vendored" "path" Nothing Nothing
       , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing
+      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored")))
       ]
     locators =
       [ Locator "fetcher-1" "one" Nothing
