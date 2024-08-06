@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- install scripts: Surface curl errors and display http status code correctly. ([#1456](https://github.com/fossas/fossa-cli/pull/1456))
+
 ## 3.9.28
 
 - Container Scanning: Distroless containers will now return results for non-system dependencies. ([#1448](https://github.com/fossas/fossa-cli/pull/1448))
