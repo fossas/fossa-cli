@@ -25,7 +25,12 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Fossa.API.Types (Archive (Archive), ArchiveComponents (..))
+import Fossa.API.Types (
+  Archive (Archive),
+  ArchiveComponents (..),
+  ArchiveDescription (..),
+  ArchiveHomePage (..),
+  )
 import Graphing (directs, edges)
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
@@ -152,7 +157,7 @@ mkArchiveDep name ver loc = Dependency ArchiveType name (Just $ CEq ver) [loc]
 archiveFoo :: Archive
 archiveFoo = mkArchive "foo" "0.0.1" Nothing Nothing
 
-mkArchive :: Text -> Text -> Maybe Text -> Maybe Text -> Archive
+mkArchive :: Text -> Text -> Maybe ArchiveDescription -> Maybe ArchiveHomePage -> Archive
 mkArchive = Archive
 
 -- API Expectations
