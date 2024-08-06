@@ -30,7 +30,7 @@ import Fossa.API.Types (
   ArchiveComponents (..),
   ArchiveDescription (..),
   ArchiveHomePage (..),
-  )
+ )
 import Graphing (directs, edges)
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
