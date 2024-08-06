@@ -19,8 +19,8 @@
 #
 # # referenced-dependencies
 # # --
-# # Denotes listing of dependencies, which are to be analyzed in 
-# # conjunction with the analysis. This is used for packages that 
+# # Denotes listing of dependencies, which are to be analyzed in
+# # conjunction with the analysis. This is used for packages that
 # # originate from a known package manager.
 # #
 # # Possible dependency type include:
@@ -66,13 +66,13 @@
 #
 # # custom-dependencies
 # # --
-# # Denotes listing of dependencies, which can't be automatically discovered 
-# # or identified but are to be stubbed and included in the analysis. This is used 
-# # to add a unique dependency to your dependency graph 
+# # Denotes listing of dependencies, which can't be automatically discovered
+# # or identified but are to be stubbed and included in the analysis. This is used
+# # to add a unique dependency to your dependency graph
 # # and the metadata you wish to associate with it.
 # #
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/manual-dependencies.md#custom-dependencies
-# # 
+# #
 # custom-dependencies:
 # - name: foo-wrapper                                     # Name of the dependency. (Required)
 #   version: 1.2.3                                        # Revision of the dependency. (Required)
@@ -85,8 +85,8 @@
 #
 # # remote-dependencies
 # # --
-# # Denotes listing of dependencies, whose source code is to be downloaded 
-# # from provided URL, and analyzed for license scanning in FOSSA backend. The following archive types 
+# # Denotes listing of dependencies, whose source code is to be downloaded
+# # from provided URL, and analyzed for license scanning in FOSSA backend. The following archive types
 # # are supported: *.zip, *.tar, *.tar.gz, *.tar.bz2, *.tar.xz.
 # #
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md#remote-dependencies
@@ -103,13 +103,16 @@
 #
 # # vendored-dependencies
 # # --
-# # Denotes listing of files or directories, which are to be 
+# # Denotes listing of files or directories, which are to be
 # # either, license scanned by fossa-cli, or and uploaded to FOSSA backend for
 # # license scanning.
 # #
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/features/vendored-dependencies.md
 # #
 # vendored-dependencies:
-# - name: Django                    # Name of the dependency (Required)
-#   path: vendor/Django-3.4.16.zip  # Local path to a archive file, or a directory (Required)
-#   version: 3.4.16                 # Revision of the dependency. If not specified, the md5 hash of the file path will be used.
+# - name: Django                               # Name of the dependency (Required)
+#   path: vendor/Django-3.4.16.zip             # Local path to a archive file, or a directory (Required)
+#   version: 3.4.16                            # Revision of the dependency. If not specified, the md5 hash of the file path will be used.
+#   metadata:                                  # Metadata of the dependency (Optional)
+#     description: Django                      # Description of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#     homepage: https://www.djangoproject.com  # Homepage of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)

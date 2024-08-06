@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.30
+
+- Vendored Dependencies: add support for metadata (description, and homepage) for dependencies. ([#1455](https://github.com/fossas/fossa-cli/pull/1455))
+
 ## 3.9.29
 - install scripts: Surface curl errors and display http status code correctly. ([#1456](https://github.com/fossas/fossa-cli/pull/1456))
 - Update jar-callgraph version to 1.0.2 [#1454](https://github.com/fossas/fossa-cli/pull/1454)

@@ -15,8 +15,10 @@ module App.Fossa.VendoredDependency (
   SkippableDeps (..),
   NeedScanningDeps (..),
   SkippedDepsLogMsg (..),
+  getMetadata,
 ) where
 
+import App.Fossa.DependencyMetadata (DependencyMetadata (..))
 import App.Types (DependencyRebuild (..))
 import Codec.Archive.Tar qualified as Tar
 import Codec.Compression.GZip qualified as GZip
@@ -40,7 +42,11 @@ import Data.String.Conversion (
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
-import Fossa.API.Types (Archive (..))
+import Fossa.API.Types (
+  Archive (..),
+  ArchiveDescription (..),
+  ArchiveHomePage (..),
+ )
 import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), vsep)
 import Srclib.Types (Locator (..))
@@ -50,6 +56,7 @@ data VendoredDependency = VendoredDependency
   { vendoredName :: Text
   , vendoredPath :: Text
   , vendoredVersion :: Maybe Text
+  , vendoredMetadata :: Maybe DependencyMetadata
   }
   deriving (Eq, Ord, Show)
 
@@ -60,6 +67,7 @@ instance FromJSON VendoredDependency where
         <$> (obj `neText` "name")
         <*> (obj `neText` "path")
         <*> (unTextLike <$$> obj .:? "version")
+        <*> (obj .:? "metadata")
         <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
     case vendoredVersion vendorDep of
@@ -151,7 +159,7 @@ duplicateFailureBundle names =
     <> "Please ensure that each vendored dependency entry has a unique name."
 
 forceVendoredToArchive :: VendoredDependency -> Archive
-forceVendoredToArchive dep = Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)
+forceVendoredToArchive dep = uncurry (Archive (vendoredName dep) (fromMaybe "" $ vendoredVersion dep)) (getMetadata dep)
 
 arcToLocator :: Archive -> Locator
 arcToLocator arc =
@@ -200,3 +208,8 @@ skippedDepsDebugLog needScanningDeps skippedDeps scanMode =
       case skippedDeps of
         SkippableDeps [] -> AllDepsNeedScanningMsg
         _ -> SomeDepsNeedScanningMsg skippedDeps
+
+getMetadata :: VendoredDependency -> (Maybe ArchiveDescription, Maybe ArchiveHomePage)
+getMetadata dep = case vendoredMetadata dep of
+  Nothing -> (Nothing, Nothing)
+  Just DependencyMetadata{..} -> (ArchiveDescription <$> depDescription, ArchiveHomePage <$> depHomepage)

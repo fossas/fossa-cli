@@ -442,6 +442,7 @@ firstVendoredDep =
     "first-archive-test"
     "vendored/foo"
     (Just "0.0.1")
+    Nothing
 
 secondVendoredDep :: VendoredDependency
 secondVendoredDep =
@@ -449,6 +450,7 @@ secondVendoredDep =
     "second-archive-test"
     "vendored/bar"
     (Just "0.0.1")
+    Nothing
 
 vendoredDeps :: NonEmpty VendoredDependency
 vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
@@ -475,12 +477,16 @@ firstArchive =
   Archive
     "first-archive-test"
     "0.0.1"
+    Nothing
+    Nothing
 
 secondArchive :: Archive
 secondArchive =
   Archive
     "second-archive-test"
     "0.0.1"
+    Nothing
+    Nothing
 
 archives :: [Archive]
 archives = [firstArchive, secondArchive]

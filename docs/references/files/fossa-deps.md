@@ -1,6 +1,6 @@
 # `fossa-deps`
 
-`fossa-deps` file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies. 
+`fossa-deps` file is a file named `fossa-deps.{yaml, yml, json}` at the root of the project. It can be used to provide manual and vendor dependencies.
 
 By default, the `fossa-deps.{yaml, yml, json}` file at the root of the project is used. However, if the `--fossa-deps-file` flag is present, then the provided `<name-of-file>.{yaml, yaml, json}` file will be used instead.
 
@@ -10,7 +10,7 @@ For more details on specifying a fossa-deps file, please refer to the [subcomman
 
 ### `referenced-dependencies:`
 
-Denotes listing of dependencies, which are to be analyzed in conjunction with the analysis. 
+Denotes listing of dependencies, which are to be analyzed in conjunction with the analysis.
 
 - `type`: Type of dependency. (Required)
 - `name`: Name of the dependency. It should be the same name as listed in dependencies registry. (Required)
@@ -25,11 +25,11 @@ referenced-dependencies:
   version: 2.1.7
 ```
 
-For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
+For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through.
 
 ### `custom-dependencies:`
 
-Denotes listing of dependencies, which can't be automatically discovered or identified but are to be stubbed and included in the analysis. 
+Denotes listing of dependencies, which can't be automatically discovered or identified but are to be stubbed and included in the analysis.
 
 - `name`: Name of the dependency. (Required)
 - `version`: Revision of the dependency. (Required)
@@ -37,8 +37,8 @@ Denotes listing of dependencies, which can't be automatically discovered or iden
 - `metadata.homepage`: Homepage of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 - `metadata.description`: Description of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 
-Example: 
-```yaml 
+Example:
+```yaml
 - name: foo-wrapper
   version: 1.2.3
   license: MIT
@@ -47,7 +47,7 @@ Example:
     description: Provides foo and a helpful interface around foo-like tasks.
 ```
 
-For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
+For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through.
 
 ### `remote-dependencies:`
 
@@ -62,11 +62,11 @@ Denotes listing of dependencies, whose source code is to be downloaded from prov
 > Combined length of url and version has upper bound. It depends on your organization identifier. You can
 find your organization identifier in FOSSA Webapp, by going to any project's "settings" page, and retrieving
 numeric value from project's locator. For example, project locator of `custom+123/some-project-id`, means
-`123` is your organization identifier. 
+`123` is your organization identifier.
 
 > Combined length of `url`, `version`, and your `organizaion id` must be less than `241`.
 
-For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through. 
+For more details, please refer to the [feature](../../features/manual-dependencies.md) walk through.
 
 ### `vendored-dependencies:`
 
@@ -74,17 +74,22 @@ Denotes listing of files or directories, which are to be archived and uploaded t
 
 - `name`: Name of the dependency (Required)
 - `path`: Local path to a file, or a directory (Required)
-- `version`: Revision of the dependency. If not specified, the md5 hash of the file path will be used. 
+- `version`: Revision of the dependency. If not specified, the md5 hash of the file path will be used.
+- `metadata.homepage`: Homepage of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
+- `metadata.description`: Description of the dependency. This metadata is used to enrich reporting provided in FOSSA's web interface.
 
 ```yaml
 vendored-dependencies:
 - name: Django
   path: vendor/Django-3.4.16.zip
   version: 3.4.16
+  metadata:
+    homepage: https://djangoproject.com
+    description: Django
 ```
 > Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
 
-For more details, please refer to the [feature](../../features/vendored-dependencies.md) walk through. 
+For more details, please refer to the [feature](../../features/vendored-dependencies.md) walk through.
 
 ## Errors in the `fossa-deps` file
 

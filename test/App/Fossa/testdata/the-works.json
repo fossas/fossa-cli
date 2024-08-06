@@ -35,6 +35,15 @@
          "name": "versioned",
          "path": "path/to/dep",
          "version": "2.1.0"
+      },
+      {
+         "name": "metadata",
+         "path": "path",
+         "version": "1.1.0",
+         "metadata": {
+            "description": "description for vendored",
+            "homepage": "we don't validate homepages - vendored"
+         }
       }
    ],
    "remote-dependencies": [
