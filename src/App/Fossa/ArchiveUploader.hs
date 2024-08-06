@@ -67,7 +67,7 @@ compressAndUpload arcDir tmpDir dep@VendoredDependency{..} = context "compressin
   res <- uploadArchive signedURL compressedFile
   logDebug . pretty $ (decodeUtf8 @Text res)
 
-  pure $ uncurry (Archive vendoredName depVersion) (getMetadata dep)
+  pure . uncurry (Archive vendoredName depVersion) $ (getMetadata dep)
 
 -- archiveUploadSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it uploads each vendored dependency and queues a build for the dependency.

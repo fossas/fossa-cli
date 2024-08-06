@@ -338,7 +338,7 @@ uploadVendoredDep baseDir dep@VendoredDependency{..} licenseSourceUnit = do
   logSticky $ "Uploading license results for '" <> vendoredName <> "' to secure S3 bucket"
   uploadLicenseScanResult signedURL licenseSourceUnit
 
-  pure $ Just $ uncurry (Archive vendoredName depVersion) (getMetadata dep)
+  pure . Just . uncurry (Archive vendoredName depVersion) $ (getMetadata dep)
 
 -- | licenseScanSourceUnit receives a list of vendored dependencies, a root path, and API settings.
 -- Using this information, it license scans each vendored dependency, uploads the license scan results and then queues a build for the dependency.

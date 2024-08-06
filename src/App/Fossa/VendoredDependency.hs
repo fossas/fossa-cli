@@ -42,7 +42,11 @@ import Data.String.Conversion (
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Data.UUID.V4 (nextRandom)
-import Fossa.API.Types (Archive (..))
+import Fossa.API.Types (
+  Archive (..),
+  ArchiveDescription (..),
+  ArchiveHomePage (..),
+ )
 import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), vsep)
 import Srclib.Types (Locator (..))
@@ -205,7 +209,7 @@ skippedDepsDebugLog needScanningDeps skippedDeps scanMode =
         SkippableDeps [] -> AllDepsNeedScanningMsg
         _ -> SomeDepsNeedScanningMsg skippedDeps
 
-getMetadata :: VendoredDependency -> (Maybe Text, Maybe Text)
+getMetadata :: VendoredDependency -> (Maybe ArchiveDescription, Maybe ArchiveHomePage)
 getMetadata dep = case vendoredMetadata dep of
   Nothing -> (Nothing, Nothing)
-  Just DependencyMetadata{..} -> (depDescription, depHomepage)
+  Just DependencyMetadata{..} -> (ArchiveDescription <$> depDescription, ArchiveHomePage <$> depHomepage)
