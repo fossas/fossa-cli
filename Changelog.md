@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.29
 
 - Vendored Dependencies: add support for metadata (description, and homepage) for dependencies. ([#1455](https://github.com/fossas/fossa-cli/pull/1455))
+- Installation: Surface curl errors and display http status code correctly in install scripts. ([#1456](https://github.com/fossas/fossa-cli/pull/1456))
 
 ## 3.9.28
 
