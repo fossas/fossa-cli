@@ -119,10 +119,10 @@ cat fossa.debug.json | jq '.bundleReachabilityEndpoint'
 }
 ```
 
-FOSSA CLI uses [jar-callgraph-1.0.1.jar](../../scripts/jar-callgraph-1.0.1.jar) to infer call path edges.
-FOSSA CLI uses `java -jar jar-callgraph-1.0.1.jar ./path/to/your/build.jar` command to record edges from
+FOSSA CLI uses [jar-callgraph-1.0.2.jar](../../scripts/jar-callgraph-1.0.2.jar) to infer call path edges.
+FOSSA CLI uses `java -jar jar-callgraph-1.0.2.jar ./path/to/your/build.jar` command to record edges from
 the your target jar. If you are running into issues with reachability, please confirm that you can execute
-`java -jar jar-callgraph-1.0.1.jar ./path/to/your/build.jar` on your environment.
+`java -jar jar-callgraph-1.0.2.jar ./path/to/your/build.jar` on your environment.
 
 <!--
 ## How do I debug reachability from endpoint?

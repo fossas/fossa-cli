@@ -1,8 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-
+## 3.9.29
 - install scripts: Surface curl errors and display http status code correctly. ([#1456](https://github.com/fossas/fossa-cli/pull/1456))
+- Update jar-callgraph version to 1.0.2 [#1454](https://github.com/fossas/fossa-cli/pull/1454)
 
 ## 3.9.28
 
