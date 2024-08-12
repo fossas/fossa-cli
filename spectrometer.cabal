@@ -236,6 +236,7 @@ library
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
+    App.Fossa.DependencyMetadata
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.FirstPartyScan

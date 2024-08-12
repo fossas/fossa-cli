@@ -257,10 +257,10 @@ http_download_curl() {
   source_url=$2
   header=$3
   if [ -n "$header" ]; then
-    HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL -H "$header" -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+    HTTP_CODE=$(curl -w '%{http_code}' -sSL -H "$header" -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   fi
   if [ -z "$header" ]; then
-    HTTP_CODE=$(curl -w '%{HTTP_CODE}' -sL -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
+    HTTP_CODE=$(curl -w '%{http_code}' -sSL -H "Cache-Control: no-cache" -o "$local_file" "$source_url") || (log_debug "curl command failed." && return 1)
   fi
   return 0
 }
