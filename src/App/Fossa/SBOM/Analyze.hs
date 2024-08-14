@@ -52,7 +52,7 @@ analyzeInternal config = do
   let revision = sbomRevision config
   void $ uploadSBOM config
 
-  let archive = Archive (projectName revision) (projectRevision revision)
+  let archive = Archive (projectName revision) (projectRevision revision) Nothing Nothing
   _ <- queueSBOMBuild archive (sbomTeam config) (sbomRebuild config)
 
   -- The locator used in the URL has the organization ID on it, so we

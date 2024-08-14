@@ -1,8 +1,8 @@
 # Custom Integration with Conan Package Manager
 
-Conan is a dependency and package manager for C and C++ languages. It is free and open-source, works on all 
-platforms (Windows, Linux, OSX, FreeBSD, Solaris, etc.), and can be used to develop for all targets, including 
-embedded, mobile (iOS, Android), and bare metal. It also integrates with all build systems like CMake, 
+Conan is a dependency and package manager for C and C++ languages. It is free and open-source, works on all
+platforms (Windows, Linux, OSX, FreeBSD, Solaris, etc.), and can be used to develop for all targets, including
+embedded, mobile (iOS, Android), and bare metal. It also integrates with all build systems like CMake,
 Visual Studio (MSBuild), Makefiles, etc., including proprietary ones.
 
 ## Prerequisite
@@ -12,8 +12,8 @@ Visual Studio (MSBuild), Makefiles, etc., including proprietary ones.
 
 ## Integration
 
-This integration uses the `conan graph info` command to retrieve the dependency graph and source code for all dependencies. From this data, it generates [fossa-deps](./../references/files/fossa-deps.md) file with 
-[vendor-dependencies](./../features/vendored-dependencies.md) and [custom-dependencies](../features/manual-dependencies.md).
+This integration uses the `conan graph info` command to retrieve the dependency graph and source code for all dependencies. From this data, it generates [fossa-deps](./../references/files/fossa-deps.md) file with
+[vendored-dependencies](./../features/vendored-dependencies.md) and [custom-dependencies](../features/manual-dependencies.md).
 
 To use this integration,
 1. Download [make_fossa_deps_conan.py](./make_fossa_deps_conan.py) python script, and place it in the same directory as `conanfile.txt` or `conanfile.py.`
@@ -32,7 +32,7 @@ In this approach, `make_fossa_deps_conan.py` does the followings:
 
 ### Limitations
 
-This integration method uses [vendor-dependencies](./../features/vendored-dependencies.md) and [custom-dependencies](../features/manual-dependencies.md)
+This integration method uses [vendored-dependencies](./../features/vendored-dependencies.md) and [custom-dependencies](../features/manual-dependencies.md)
 functionalities, and as such, it does not provide the following,
 
 - Security functionalities (FOSSA will not be able to identify vulnerabilities, only licensing and copyright issues)
@@ -92,11 +92,11 @@ script is supplied as a potential option if you want to start using FOSSA for Co
 This integration example uses the `conan graph info` command with `--format json` and
 `-c tools.build:download_source=True` option, which are only available in Conan v2 (`v2.0.0+`).
 
-#### 3. I want to use a custom profile or provide additional options. 
+#### 3. I want to use a custom profile or provide additional options.
 
 You can provide any additional [`conan graph info`](https://docs.conan.io/2.0/reference/commands/graph/info.html) options (except `--format` or `-f`)
 
-To do so, provide options to the Python script. For example, 
+To do so, provide options to the Python script. For example,
 
 ```bash
 >> python3 make_fossa_deps_conan.py -s compiler=gcc
@@ -116,4 +116,3 @@ that declared license is always used.
 
 - [Conan Package Manager](https://docs.conan.io)
 - [Conan graph command](https://docs.conan.io/2.0/reference/commands/graph/info.html)
-

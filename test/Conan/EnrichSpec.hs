@@ -25,7 +25,12 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Fossa.API.Types (Archive (Archive), ArchiveComponents (..))
+import Fossa.API.Types (
+  Archive (Archive),
+  ArchiveComponents (..),
+  ArchiveDescription (..),
+  ArchiveHomePage (..),
+ )
 import Graphing (directs, edges)
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
@@ -150,9 +155,9 @@ mkArchiveDep name ver loc = Dependency ArchiveType name (Just $ CEq ver) [loc]
 -- Archives
 
 archiveFoo :: Archive
-archiveFoo = mkArchive "foo" "0.0.1"
+archiveFoo = mkArchive "foo" "0.0.1" Nothing Nothing
 
-mkArchive :: Text -> Text -> Archive
+mkArchive :: Text -> Text -> Maybe ArchiveDescription -> Maybe ArchiveHomePage -> Archive
 mkArchive = Archive
 
 -- API Expectations
@@ -178,7 +183,7 @@ conanToVendoredDepSpec =
   describe "conanToVendoredDep" $ do
     it "should transforms conan to vendor dep, when dep has location" $ do
       let res = conanDepToVendorDep conanDepFoo
-      res `shouldBe` Right (conanDepFoo, VendoredDependency "foo" "vendored/foo" $ Just "0.0.1")
+      res `shouldBe` Right (conanDepFoo, VendoredDependency "foo" "vendored/foo" (Just "0.0.1") Nothing)
 
     it "should not transforms conan to vendor dep, when dep does not have location" $ do
       let dep = conanDepFoo{dependencyLocations = []}

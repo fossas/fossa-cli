@@ -7,6 +7,8 @@ module Fossa.API.Types (
   ApiOpts (..),
   Archive (..),
   ArchiveComponents (..),
+  ArchiveDescription (..),
+  ArchiveHomePage (..),
   Build (..),
   BuildStatus (..),
   BuildTask (..),
@@ -161,9 +163,17 @@ instance ToJSON ArchiveComponents where
             DependencyRebuildInvalidateCache -> True
       ]
 
+newtype ArchiveDescription = ArchiveDescription Text
+  deriving (Eq, Ord, ToJSON, ToText, Show)
+
+newtype ArchiveHomePage = ArchiveHomePage Text
+  deriving (Eq, Ord, ToJSON, ToText, Show)
+
 data Archive = Archive
   { archiveName :: Text
   , archiveVersion :: Text
+  , archiveDescription :: Maybe ArchiveDescription
+  , archiveHomePage :: Maybe ArchiveHomePage
   }
   deriving (Eq, Ord, Show)
 
@@ -175,6 +185,8 @@ instance ToJSON Archive where
     object
       [ "packageSpec" .= archiveName
       , "revision" .= archiveVersion
+      , "description" .= archiveDescription
+      , "projectURL" .= archiveHomePage
       ]
 
 data BuildStatus

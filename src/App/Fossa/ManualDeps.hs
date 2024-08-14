@@ -24,6 +24,7 @@ import App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
  )
 import App.Fossa.Config.Common (validateFile)
+import App.Fossa.DependencyMetadata (DependencyMetadata (..))
 import App.Fossa.LicenseScanner (licenseScanSourceUnit)
 import App.Fossa.VendoredDependency (
   VendoredDependency (..),
@@ -385,12 +386,6 @@ data RemoteDependency = RemoteDependency
   }
   deriving (Eq, Ord, Show)
 
-data DependencyMetadata = DependencyMetadata
-  { depDescription :: Maybe Text
-  , depHomepage :: Maybe Text
-  }
-  deriving (Eq, Ord, Show)
-
 instance FromJSON ManualDependencies where
   parseJSON (Object obj) =
     ManualDependencies
@@ -575,14 +570,6 @@ instance ToDiagnostic RemoteDepLengthIsGtThanAllowed where
       urlRevLength = Text.length $ Text.intercalate "" [remoteUrl r, remoteVersion r]
   renderDiagnostic (RemoteDepLengthIsGtThanAllowedHelp maxLen) =
     createErrataWithHeaderOnly $ "Ensure that the combined length is below: " <> toText maxLen
-
--- Dependency "metadata" section for both Remote and Custom Dependencies
-instance FromJSON DependencyMetadata where
-  parseJSON = withObject "metadata" $ \obj ->
-    DependencyMetadata
-      <$> obj .:? "description"
-      <*> obj .:? "homepage"
-      <* forbidMembers "metadata" ["url"] obj
 
 -- Parse supported dependency types into their respective type or return Nothing.
 depTypeFromText :: Text -> Maybe DepType

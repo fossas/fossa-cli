@@ -17,6 +17,13 @@ vendored-dependencies:
 - name: Django
   path: vendor/Django-3.4.16.zip # path can be either a file or a folder.
   version: "3.4.16" # revision will be set to the MD5 hash of the filepath if left unspecified.
+# You can also provide a description and/or homepage. These values populate metadata fields in reports in the FOSSA web UI.
+- name: Winston
+  path: vendor/winston.zip
+  version: "5.0.0-alpha"
+  metadata:
+    description: "winston archive"
+    homepage: "https://winston-project.com"
 ```
 
 The path to a vendored dependency can either be a path to an archive or a path to a directory.
@@ -26,6 +33,8 @@ If it is a path to an archive, then we recursively unarchive and scan the archiv
 If the version is not specified, FOSSA CLI calculates the version by generating a hash of the contents of the archive or directory. This is often desired, as it means that the version automatically changes when the contents of the vendored dependency change. It also avoids conflicts across an organization when two different projects contain a vendored dependency with the same name and version, as described in [Vendored Dependency Names and Scope](#vendored-dependency-names-and-scope).
 
 Note: When parsed, YAML considers text that could be a decimal number (such as 1.0 or 2.0) to be a number, not a string. This means that we'd parse the version 1.0 as 1. This probably isn't what you want. To avoid this, surround your version with quotes, as in "1.0".
+
+You can also optionally add metadata fields ("description" and "homepage") to populate these fields in the FOSSA web UI (these fields can be displayed when generating reports).
 
 We also support json-formatted dependencies:
 
@@ -63,7 +72,11 @@ We also support json-formatted dependencies:
     }, {
       "name": "winston",
       "path": "vendor/winston.tar.gz",
-      "version": "5.0.0-alpha"
+      "version": "5.0.0-alpha",
+      "metadata": {
+        "description": "winston archive",
+        "homepage": "https://winston-project.com/homepage"
+      }
     }
   ],
   "remote-dependencies": [
