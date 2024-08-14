@@ -221,6 +221,13 @@ experimental:
 
 ## Reference
 
+### Deprecated Configurations
+
+> [!Note]
+> FOSSA CLI excludes any dependencies from analysis found in a deprecated configuration
+
+With newer versions of gradle, some configurations are no longer supported (`compile` for example), before the configurations are removed gradle deprecates the configuration with a warning. These configurations should not declare dependencies and resolution will be incorrect ([see here](https://github.com/gradle/gradle/issues/8585)).
+
 ### Development and Test Configurations
 
 > [!NOTE]
