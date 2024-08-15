@@ -26,6 +26,7 @@ import Network.TLS (EMSMode (AllowEMS), Supported (supportedExtendedMainSecret))
 --  1. crypton-connection
 --  2. http-client-tls
 --  3. data-default-class
+
 -- | A carrier to run FOSSA API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC Manager (ReaderC ApiOpts m))
 
