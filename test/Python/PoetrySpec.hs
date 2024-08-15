@@ -2,8 +2,7 @@
 
 module Python.PoetrySpec (
   spec,
-)
-where
+) where
 
 import Data.Map qualified as Map
 import Data.Set qualified as Set
@@ -29,7 +28,7 @@ import Strategy.Python.Poetry.PoetryLock (
   PoetryLockPackage (..),
   PoetryMetadata (..),
  )
-import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..))
+import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..), PyProjectTool (..))
 import Test.Effect (it')
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Types (DependencyResults (dependencyGraph))
@@ -40,10 +39,15 @@ newPoetryLock pkgs = PoetryLock pkgs $ PoetryMetadata "some-version" "some-hash"
 candidatePyProject :: PyProject
 candidatePyProject =
   PyProject
-    (Just $ PyProjectBuildSystem "poetry.core.masonry.api")
-    (Just $ PyProjectPoetry Nothing Nothing Nothing (Map.fromList ([("flow_pipes", PoetryTextVersion "^1.21")])) mempty mempty mempty)
-    Nothing
-    Nothing
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem "poetry.core.masonry.api"
+    , pyprojectProject = Nothing
+    , pyprojectTool =
+        Just $
+          PyProjectTool
+            { pyprojectPdm = Nothing
+            , pyprojectPoetry = Just $ PyProjectPoetry Nothing Nothing Nothing (Map.fromList ([("flow_pipes", PoetryTextVersion "^1.21")])) mempty Nothing
+            }
+    }
 
 candidatePoetryLock :: PoetryLock
 candidatePoetryLock =

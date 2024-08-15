@@ -1,10 +1,13 @@
 module Strategy.Python.Poetry.PyProject (
   PyProject (..),
   PyProjectMetadata (..),
+  PyProjectTool (..),
+  PyProjectPdm (..),
+  PyProjectPoetryGroup (..),
+  PyProjectPoetryGroupDependencies (..),
   PyProjectPoetry (..),
   PyProjectBuildSystem (..),
   PoetryDependency (..),
-  pyProjectCodec,
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryUrlDependency (..),
@@ -38,7 +41,7 @@ import DepTypes (
     COr
   ),
  )
-import Strategy.Python.Util (Req, reqCodec)
+import Strategy.Python.Util (Req)
 import Text.Megaparsec (
   Parsec,
   empty,
@@ -48,12 +51,11 @@ import Text.Megaparsec (
   parse,
   some,
   takeWhileP,
-  (<|>),
  )
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Toml (TomlCodec, (.=))
 import Toml qualified
+import Toml.Schema qualified
 
 type Parser = Parsec Void Text
 
@@ -65,19 +67,48 @@ newtype PackageName = PackageName {unPackageName :: Text} deriving (Eq, Ord, Sho
 -- when pyproject does not use poetry for build or has no dependencies.
 data PyProject = PyProject
   { pyprojectBuildSystem :: Maybe PyProjectBuildSystem
-  , pyprojectPoetry :: Maybe PyProjectPoetry
   , pyprojectProject :: Maybe PyProjectMetadata
-  , pyprojectPdmDevDependencies :: Maybe (Map Text [Req])
+  , pyprojectTool :: Maybe PyProjectTool
   }
   deriving (Show, Eq, Ord)
 
-pyProjectCodec :: TomlCodec PyProject
-pyProjectCodec =
-  PyProject
-    <$> Toml.dioptional (Toml.table pyProjectBuildSystemCodec "build-system") .= pyprojectBuildSystem
-    <*> Toml.dioptional (Toml.table pyProjectPoetryCodec "tool.poetry") .= pyprojectPoetry
-    <*> Toml.dioptional (Toml.table pyPyProjectMetadataCodec "project") .= pyprojectProject
-    <*> Toml.dioptional (Toml.tableMap Toml._KeyText (Toml.arrayOf reqCodec) "tool.pdm.dev-dependencies") .= pyprojectPdmDevDependencies
+instance Toml.Schema.FromValue PyProject where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProject
+        <$> Toml.Schema.optKey "build-system"
+        <*> Toml.Schema.optKey "project"
+        <*> Toml.Schema.optKey "tool"
+
+data PyProjectTool = PyProjectTool
+  { pyprojectPoetry :: Maybe PyProjectPoetry
+  , pyprojectPdm :: Maybe PyProjectPdm
+  }
+  deriving (Show, Eq, Ord)
+
+instance Toml.Schema.FromValue PyProjectTool where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectTool
+        <$> Toml.Schema.optKey "poetry"
+        <*> Toml.Schema.optKey "pdm"
+
+newtype PyProjectPdm = PyProjectPdm
+  {pdmDevDependencies :: Maybe (Map Text [Req])}
+  deriving (Show, Eq, Ord)
+
+instance Toml.Schema.FromValue PyProjectPdm where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPdm
+        <$> Toml.Schema.optKey "dev-dependencies"
+
+instance Toml.Schema.FromValue PyProjectMetadata where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectMetadata
+        <$> Toml.Schema.optKey "dependencies"
+        <*> Toml.Schema.optKey "optional-dependencies"
 
 -- | Represents [project] block
 -- > [project]
@@ -94,21 +125,16 @@ data PyProjectMetadata = PyProjectMetadata
   }
   deriving (Show, Eq, Ord)
 
-pyPyProjectMetadataCodec :: TomlCodec PyProjectMetadata
-pyPyProjectMetadataCodec =
-  PyProjectMetadata
-    <$> Toml.dioptional (Toml.arrayOf reqCodec "dependencies") .= pyprojectDependencies
-    <*> Toml.dioptional (Toml.tableMap Toml._KeyText (Toml.arrayOf reqCodec) "optional-dependencies") .= pyprojectOptionalDependencies
-
 newtype PyProjectBuildSystem = PyProjectBuildSystem
   { buildBackend :: Text
   }
   deriving (Show, Eq, Ord)
 
-pyProjectBuildSystemCodec :: TomlCodec PyProjectBuildSystem
-pyProjectBuildSystemCodec =
-  PyProjectBuildSystem
-    <$> Toml.diwrap (Toml.text "build-backend") .= buildBackend
+instance Toml.Schema.FromValue PyProjectBuildSystem where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectBuildSystem
+        <$> Toml.Schema.reqKey "build-backend"
 
 data PyProjectPoetry = PyProjectPoetry
   { name :: Maybe Text
@@ -124,27 +150,72 @@ data PyProjectPoetry = PyProjectPoetry
     -- Due to current toml-parsing limitations, we explicitly specify dev, and
     -- test group only. Note that any dependencies from these groups are excluded
     -- by default. refer to: https://github.com/kowainik/tomland/issues/336
-    groupDevDependencies :: Map Text PoetryDependency
-  , groupTestDependencies :: Map Text PoetryDependency
+    pyprojectPoetryGroup :: Maybe PyProjectPoetryGroup
   }
   deriving (Show, Eq, Ord)
 
+instance Toml.Schema.FromValue PyProjectPoetry where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetry
+        <$> Toml.Schema.optKey "name"
+        <*> Toml.Schema.optKey "version"
+        <*> Toml.Schema.optKey "description"
+        <*> Toml.Schema.pickKey [Toml.Schema.Key "dependencies" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+        <*> Toml.Schema.pickKey [Toml.Schema.Key "dev-dependencies" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+        <*> Toml.Schema.optKey "group"
+
+data PyProjectPoetryGroup = PyProjectPoetryGroup
+  { groupDev :: Maybe PyProjectPoetryGroupDependencies
+  , groupTest :: Maybe PyProjectPoetryGroupDependencies
+  }
+  deriving (Show, Eq, Ord)
+
+instance Toml.Schema.FromValue PyProjectPoetryGroup where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetryGroup
+        <$> Toml.Schema.optKey "dev"
+        <*> Toml.Schema.optKey "test"
+
+newtype PyProjectPoetryGroupDependencies = PyProjectPoetryGroupDependencies
+  {groupDependencies :: Map Text PoetryDependency}
+  deriving (Show, Eq, Ord)
+
+instance Toml.Schema.FromValue PyProjectPoetryGroupDependencies where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetryGroupDependencies
+        <$> Toml.Schema.pickKey [Toml.Schema.Key "dependencies" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+
 allPoetryProductionDeps :: PyProject -> Map Text PoetryDependency
-allPoetryProductionDeps project = case pyprojectPoetry project of
-  Just (PyProjectPoetry{dependencies}) -> dependencies
+allPoetryProductionDeps project = case pyprojectTool project of
+  Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
+    Just (PyProjectPoetry{dependencies}) -> dependencies
+    _ -> mempty
   _ -> mempty
 
 allPoetryNonProductionDeps :: PyProject -> Map Text PoetryDependency
 allPoetryNonProductionDeps project = unions [olderPoetryDevDeps, optionalDeps]
   where
     optionalDeps :: Map Text PoetryDependency
-    optionalDeps = case pyprojectPoetry project of
-      Just (PyProjectPoetry{groupDevDependencies, groupTestDependencies}) -> unions [groupDevDependencies, groupTestDependencies]
+    optionalDeps = case pyprojectTool project of
+      Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
+        Just (PyProjectPoetry{pyprojectPoetryGroup}) -> case pyprojectPoetryGroup of
+          Just (PyProjectPoetryGroup{groupDev, groupTest}) -> case (groupDev, groupTest) of
+            (Just devDeps, Just testDeps) -> unions [groupDependencies devDeps, groupDependencies testDeps]
+            (Just devDeps, Nothing) -> groupDependencies devDeps
+            (Nothing, Just testDeps) -> groupDependencies testDeps
+            _ -> mempty
+          _ -> mempty
+        _ -> mempty
       _ -> mempty
 
     olderPoetryDevDeps :: Map Text PoetryDependency
-    olderPoetryDevDeps = case pyprojectPoetry project of
-      Just (PyProjectPoetry{devDependencies}) -> devDependencies
+    olderPoetryDevDeps = case pyprojectTool project of
+      Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
+        Just (PyProjectPoetry{devDependencies}) -> devDependencies
+        _ -> mempty
       _ -> mempty
 
 data PoetryDependency
@@ -155,54 +226,31 @@ data PoetryDependency
   | PyProjectPoetryUrlDependencySpec PyProjectPoetryUrlDependency
   deriving (Show, Eq, Ord)
 
-pyProjectPoetryCodec :: TomlCodec PyProjectPoetry
-pyProjectPoetryCodec =
-  PyProjectPoetry
-    <$> Toml.dioptional (Toml.text "name") .= name
-    <*> Toml.dioptional (Toml.text "version") .= version
-    <*> Toml.dioptional (Toml.text "description") .= description
-    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dependencies" .= dependencies
-    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "dev-dependencies" .= devDependencies
-    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.dev.dependencies" .= groupDevDependencies
-    <*> Toml.tableMap Toml._KeyText pyProjectPoetryDependencyCodec "group.test.dependencies" .= groupTestDependencies
-
-pyProjectPoetryDependencyCodec :: Toml.Key -> TomlCodec PoetryDependency
-pyProjectPoetryDependencyCodec key =
-  Toml.dimatch matchPyProjectPoetryTextVersionDependecySpec PoetryTextVersion (Toml.text key)
-    <|> Toml.dimatch matchPyProjectPoetryDetailedVersionDependencySpec PyProjectPoetryDetailedVersionDependencySpec (Toml.table pyProjectPoetryDetailedVersionDependencyCodec key)
-    <|> Toml.dimatch matchPyProjectPoetryGitDependencySpec PyProjectPoetryGitDependencySpec (Toml.table pyProjectPoetryGitDependencyCodec key)
-    <|> Toml.dimatch matchPyProjectPoetryPathDependencySpec PyProjectPoetryPathDependencySpec (Toml.table pyProjectPoetryPathDependencyCodec key)
-    <|> Toml.dimatch matchPyProjectPoetryUrlDependencySpec PyProjectPoetryUrlDependencySpec (Toml.table pyProjectPoetryUrlDependencyCodec key)
-
-matchPyProjectPoetryTextVersionDependecySpec :: PoetryDependency -> Maybe Text
-matchPyProjectPoetryTextVersionDependecySpec (PoetryTextVersion version) = Just version
-matchPyProjectPoetryTextVersionDependecySpec _ = Nothing
-
-matchPyProjectPoetryDetailedVersionDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryDetailedVersionDependency
-matchPyProjectPoetryDetailedVersionDependencySpec (PyProjectPoetryDetailedVersionDependencySpec spec) = Just spec
-matchPyProjectPoetryDetailedVersionDependencySpec _ = Nothing
-
-matchPyProjectPoetryGitDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryGitDependency
-matchPyProjectPoetryGitDependencySpec (PyProjectPoetryGitDependencySpec spec) = Just spec
-matchPyProjectPoetryGitDependencySpec _ = Nothing
-
-matchPyProjectPoetryPathDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryPathDependency
-matchPyProjectPoetryPathDependencySpec (PyProjectPoetryPathDependencySpec spec) = Just spec
-matchPyProjectPoetryPathDependencySpec _ = Nothing
-
-matchPyProjectPoetryUrlDependencySpec :: PoetryDependency -> Maybe PyProjectPoetryUrlDependency
-matchPyProjectPoetryUrlDependencySpec (PyProjectPoetryUrlDependencySpec spec) = Just spec
-matchPyProjectPoetryUrlDependencySpec _ = Nothing
+instance Toml.Schema.FromValue PoetryDependency where
+  fromValue (Toml.Text' _ t) = pure $ PoetryTextVersion t
+  fromValue v@(Toml.Table' l t) =
+    Toml.Schema.parseTable
+      ( Toml.Schema.pickKey $
+          [Toml.Schema.Key "version" (const (PyProjectPoetryDetailedVersionDependencySpec <$> Toml.Schema.fromValue v))]
+            <> [Toml.Schema.Key "git" (const (PyProjectPoetryGitDependencySpec <$> Toml.Schema.fromValue v))]
+            <> [Toml.Schema.Key "path" (const (PyProjectPoetryPathDependencySpec <$> Toml.Schema.fromValue v))]
+            <> [Toml.Schema.Key "url" (const (PyProjectPoetryUrlDependencySpec <$> Toml.Schema.fromValue v))]
+            <> [Toml.Schema.Else (Toml.Schema.failAt (Toml.valueAnn v) "invalid spec")]
+      )
+      l
+      t
+  fromValue v = Toml.Schema.failAt (Toml.valueAnn v) $ "invalid poetry dependency" <> Toml.valueType v
 
 newtype PyProjectPoetryDetailedVersionDependency = PyProjectPoetryDetailedVersionDependency
   { poetryDependencyVersion :: Text
   }
   deriving (Show, Eq, Ord)
 
-pyProjectPoetryDetailedVersionDependencyCodec :: TomlCodec PyProjectPoetryDetailedVersionDependency
-pyProjectPoetryDetailedVersionDependencyCodec =
-  PyProjectPoetryDetailedVersionDependency
-    <$> Toml.text "version" .= poetryDependencyVersion
+instance Toml.Schema.FromValue PyProjectPoetryDetailedVersionDependency where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetryDetailedVersionDependency
+        <$> Toml.Schema.reqKey "version"
 
 data PyProjectPoetryGitDependency = PyProjectPoetryGitDependency
   { gitUrl :: Text
@@ -212,33 +260,36 @@ data PyProjectPoetryGitDependency = PyProjectPoetryGitDependency
   }
   deriving (Show, Eq, Ord)
 
-pyProjectPoetryGitDependencyCodec :: TomlCodec PyProjectPoetryGitDependency
-pyProjectPoetryGitDependencyCodec =
-  PyProjectPoetryGitDependency
-    <$> Toml.text "git" .= gitUrl
-    <*> Toml.dioptional (Toml.text "branch") .= gitBranch
-    <*> Toml.dioptional (Toml.text "rev") .= gitRev
-    <*> Toml.dioptional (Toml.text "tag") .= gitTag
+instance Toml.Schema.FromValue PyProjectPoetryGitDependency where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetryGitDependency
+        <$> Toml.Schema.reqKey "git"
+        <*> Toml.Schema.optKey "branch"
+        <*> Toml.Schema.optKey "rev"
+        <*> Toml.Schema.optKey "tag"
 
 newtype PyProjectPoetryPathDependency = PyProjectPoetryPathDependency
   { sourcePath :: Text
   }
   deriving (Show, Eq, Ord)
 
-pyProjectPoetryPathDependencyCodec :: TomlCodec PyProjectPoetryPathDependency
-pyProjectPoetryPathDependencyCodec =
-  PyProjectPoetryPathDependency
-    <$> Toml.text "path" .= sourcePath
+instance Toml.Schema.FromValue PyProjectPoetryPathDependency where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetryPathDependency
+        <$> Toml.Schema.reqKey "path"
 
 newtype PyProjectPoetryUrlDependency = PyProjectPoetryUrlDependency
   { sourceUrl :: Text
   }
   deriving (Show, Eq, Ord)
 
-pyProjectPoetryUrlDependencyCodec :: TomlCodec PyProjectPoetryUrlDependency
-pyProjectPoetryUrlDependencyCodec =
-  PyProjectPoetryUrlDependency
-    <$> Toml.text "url" .= sourceUrl
+instance Toml.Schema.FromValue PyProjectPoetryUrlDependency where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PyProjectPoetryUrlDependency
+        <$> Toml.Schema.reqKey "url"
 
 toDependencyVersion :: Text -> Maybe VerConstraint
 toDependencyVersion dt = case parse parseConstraintExpr "" dt of

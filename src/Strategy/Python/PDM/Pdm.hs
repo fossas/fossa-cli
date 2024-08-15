@@ -16,8 +16,8 @@ import DepTypes (
 import Effect.ReadFS (Has, ReadFS, readContentsToml)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path)
-import Strategy.Python.PDM.PdmLock (buildGraph, pdmLockCodec)
-import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectMetadata (..), pyProjectCodec)
+import Strategy.Python.PDM.PdmLock (buildGraph)
+import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectMetadata (..), PyProjectPdm (..), PyProjectTool (..))
 import Strategy.Python.Util (Req (..), toConstraint)
 import Text.URI qualified as URI
 
@@ -93,7 +93,7 @@ analyze ::
   Maybe (Path Abs File) ->
   m (Graphing Dependency)
 analyze pyProjectToml pdmLockFile = do
-  pyproject <- readContentsToml pyProjectCodec pyProjectToml
+  pyproject <- readContentsToml pyProjectToml
 
   -- According to PDM, optional dependencies are not
   -- prod dependencies, and they are not installed when,
@@ -112,7 +112,7 @@ analyze pyProjectToml pdmLockFile = do
         (toDependency EnvProduction <$> prodReqs)
           ++ (toDependency EnvDevelopment <$> devReqs)
     Just pdmLockFile' -> do
-      pdmLock <- readContentsToml pdmLockCodec pdmLockFile'
+      pdmLock <- readContentsToml pdmLockFile'
       pure $ buildGraph prodReqs devReqs pdmLock
 
 toDependency :: DepEnvironment -> Req -> Dependency
@@ -146,9 +146,13 @@ reqDepVersion (NameReq _ _ Nothing _) = Nothing
 reqDepVersion (NameReq _ _ (Just ver) _) = Just . toConstraint $ ver
 
 reqsFromPdmMetadata :: PyProject -> [Req]
-reqsFromPdmMetadata pr = case pyprojectPdmDevDependencies pr of
+reqsFromPdmMetadata pr = case pyprojectTool pr of
   Nothing -> mempty
-  Just reqs -> concat . Map.elems $ reqs
+  Just (PyProjectTool{pyprojectPdm}) -> case pyprojectPdm of
+    Nothing -> mempty
+    Just (PyProjectPdm{pdmDevDependencies}) -> case pdmDevDependencies of
+      Nothing -> mempty
+      Just reqs -> concat . Map.elems $ reqs
 
 reqsFromPyProject :: PyProject -> ([Req], [Req])
 reqsFromPyProject pr = case pyprojectProject pr of

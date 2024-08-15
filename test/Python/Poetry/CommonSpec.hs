@@ -24,7 +24,7 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetryGitDependency (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
-  pyProjectCodec,
+  PyProjectTool (..),
  )
 import Test.Hspec (
   Spec,
@@ -35,73 +35,77 @@ import Test.Hspec (
   shouldMatchList,
  )
 import Toml qualified
+import Toml.Schema qualified
 
 expectedPyProject :: PyProject
 expectedPyProject =
   PyProject
     { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
     , pyprojectProject = Nothing
-    , pyprojectPdmDevDependencies = Nothing
-    , pyprojectPoetry =
+    , pyprojectTool =
         Just $
-          PyProjectPoetry
-            { name = Just "test_name"
-            , version = Just "test_version"
-            , description = Just "test_description"
-            , dependencies =
-                Map.fromList
-                  [ ("flake8", PoetryTextVersion "^1.1")
-                  , ("python", PoetryTextVersion "^3.9")
-                  ,
-                    ( "flask"
-                    , PyProjectPoetryGitDependencySpec
-                        PyProjectPoetryGitDependency
-                          { gitUrl = "https://github.com/pallets/flask.git"
-                          , gitRev = Just "38eb5d3b"
-                          , gitTag = Nothing
-                          , gitBranch = Nothing
-                          }
-                    )
-                  ,
-                    ( "networkx"
-                    , PyProjectPoetryGitDependencySpec
-                        PyProjectPoetryGitDependency
-                          { gitUrl = "https://github.com/networkx/networkx.git"
-                          , gitRev = Nothing
-                          , gitTag = Nothing
-                          , gitBranch = Nothing
-                          }
-                    )
-                  ,
-                    ( "numpy"
-                    , PyProjectPoetryGitDependencySpec
-                        PyProjectPoetryGitDependency
-                          { gitUrl = "https://github.com/numpy/numpy.git"
-                          , gitRev = Nothing
-                          , gitTag = Just "v0.13.2"
-                          , gitBranch = Nothing
-                          }
-                    )
-                  ,
-                    ( "requests"
-                    , PyProjectPoetryGitDependencySpec
-                        PyProjectPoetryGitDependency
-                          { gitUrl = "https://github.com/kennethreitz/requests.git"
-                          , gitRev = Nothing
-                          , gitTag = Nothing
-                          , gitBranch = Just "next"
-                          }
-                    )
-                  , ("my-packageUrl", PyProjectPoetryUrlDependencySpec $ PyProjectPoetryUrlDependency "https://example.com/my-package-0.1.0.tar.gz")
-                  , ("my-packageFile", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency "../my-package/dist/my-package-0.1.0.tar.gz")
-                  , ("my-packageDir", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency "../my-package/")
-                  , ("black", PyProjectPoetryDetailedVersionDependencySpec $ PyProjectPoetryDetailedVersionDependency "19.10b0")
-                  ]
-            , devDependencies =
-                Map.fromList
-                  [("pytest", PoetryTextVersion "*")]
-            , groupDevDependencies = Map.empty
-            , groupTestDependencies = Map.empty
+          PyProjectTool
+            { pyprojectPdm = Nothing
+            , pyprojectPoetry =
+                Just $
+                  PyProjectPoetry
+                    { name = Just "test_name"
+                    , version = Just "test_version"
+                    , description = Just "test_description"
+                    , dependencies =
+                        Map.fromList
+                          [ ("flake8", PoetryTextVersion "^1.1")
+                          , ("python", PoetryTextVersion "^3.9")
+                          ,
+                            ( "flask"
+                            , PyProjectPoetryGitDependencySpec
+                                PyProjectPoetryGitDependency
+                                  { gitUrl = "https://github.com/pallets/flask.git"
+                                  , gitRev = Just "38eb5d3b"
+                                  , gitTag = Nothing
+                                  , gitBranch = Nothing
+                                  }
+                            )
+                          ,
+                            ( "networkx"
+                            , PyProjectPoetryGitDependencySpec
+                                PyProjectPoetryGitDependency
+                                  { gitUrl = "https://github.com/networkx/networkx.git"
+                                  , gitRev = Nothing
+                                  , gitTag = Nothing
+                                  , gitBranch = Nothing
+                                  }
+                            )
+                          ,
+                            ( "numpy"
+                            , PyProjectPoetryGitDependencySpec
+                                PyProjectPoetryGitDependency
+                                  { gitUrl = "https://github.com/numpy/numpy.git"
+                                  , gitRev = Nothing
+                                  , gitTag = Just "v0.13.2"
+                                  , gitBranch = Nothing
+                                  }
+                            )
+                          ,
+                            ( "requests"
+                            , PyProjectPoetryGitDependencySpec
+                                PyProjectPoetryGitDependency
+                                  { gitUrl = "https://github.com/kennethreitz/requests.git"
+                                  , gitRev = Nothing
+                                  , gitTag = Nothing
+                                  , gitBranch = Just "next"
+                                  }
+                            )
+                          , ("my-packageUrl", PyProjectPoetryUrlDependencySpec $ PyProjectPoetryUrlDependency "https://example.com/my-package-0.1.0.tar.gz")
+                          , ("my-packageFile", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency "../my-package/dist/my-package-0.1.0.tar.gz")
+                          , ("my-packageDir", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency "../my-package/")
+                          , ("black", PyProjectPoetryDetailedVersionDependencySpec $ PyProjectPoetryDetailedVersionDependency "19.10b0")
+                          ]
+                    , devDependencies =
+                        Map.fromList
+                          [("pytest", PoetryTextVersion "*")]
+                    , pyprojectPoetryGroup = Nothing
+                    }
             }
     }
 
@@ -146,6 +150,11 @@ expectedDeps =
     devEnvs :: DepEnvironment
     devEnvs = EnvDevelopment
 
+decodeEither :: (Toml.Schema.FromValue a) => Text -> Either [String] a
+decodeEither f = case Toml.decode f of
+  Toml.Success _ r -> Right r
+  Toml.Failure e -> Left e
+
 spec :: Spec
 spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
@@ -172,12 +181,12 @@ spec = do
   describe "getPoetryBuildBackend" $ do
     describe "when provided with poetry build backend" $
       it "should return true" $
-        getPoetryBuildBackend <$> (Toml.decode pyProjectCodec nominalContents)
+        getPoetryBuildBackend <$> (decodeEither nominalContents)
           `shouldBe` Right (Just "poetry.core.masonry.api")
 
     describe "when not provided with any build system" $
       it "should return nothing" $
-        getPoetryBuildBackend <$> Toml.decode pyProjectCodec emptyContents
+        getPoetryBuildBackend <$> decodeEither emptyContents
           `shouldBe` Right Nothing
 
   describe "makePackageToLockDependencyMap" $ do

@@ -1,7 +1,6 @@
 module Strategy.Python.PDM.PdmLock (
   PdmLock (..),
   PdmLockPackage (..),
-  pdmLockCodec,
   buildGraph,
   toDependency,
 ) where
@@ -14,9 +13,8 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PipType, URLType, UnresolvedPathType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing, gmap)
-import Strategy.Python.Util (Req (..), reqCodec)
-import Toml (TomlCodec, (.=))
-import Toml qualified
+import Strategy.Python.Util (Req (..))
+import Toml.Schema qualified
 
 -- | Represents pdm lock file.
 --
@@ -33,6 +31,15 @@ import Toml qualified
 -- > ...
 newtype PdmLock = PdmLock {pdmLockPackages :: [PdmLockPackage]}
   deriving (Eq, Ord, Show)
+
+instance Toml.Schema.FromValue PdmLock where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PdmLock
+        <$> Toml.Schema.pickKey
+          [ Toml.Schema.Key "package" Toml.Schema.fromValue
+          , Toml.Schema.Else (pure [])
+          ]
 
 -- | Represents pdm lock package.
 --
@@ -57,19 +64,17 @@ data PdmLockPackage = PdmLockPackage
   }
   deriving (Eq, Ord, Show)
 
-pdmLockCodec :: TomlCodec PdmLock
-pdmLockCodec = PdmLock <$> Toml.list pdmLockPackageCodec "package" .= pdmLockPackages
-
-pdmLockPackageCodec :: TomlCodec PdmLockPackage
-pdmLockPackageCodec =
-  PdmLockPackage
-    <$> Toml.diwrap (Toml.text "name") .= name
-    <*> Toml.text "version" .= version
-    <*> Toml.dioptional (Toml.text "git") .= gitUrl
-    <*> Toml.dioptional (Toml.text "revision") .= gitRevision
-    <*> Toml.dioptional (Toml.text "path") .= fsPath
-    <*> Toml.dioptional (Toml.text "url") .= url
-    <*> Toml.dioptional (Toml.arrayOf reqCodec "dependencies") .= pdmDependencies
+instance Toml.Schema.FromValue PdmLockPackage where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PdmLockPackage
+        <$> Toml.Schema.reqKey "name"
+        <*> Toml.Schema.reqKey "version"
+        <*> Toml.Schema.optKey "git"
+        <*> Toml.Schema.optKey "revision"
+        <*> Toml.Schema.optKey "path"
+        <*> Toml.Schema.optKey "url"
+        <*> Toml.Schema.optKey "dependencies"
 
 toDependency :: [Req] -> [Req] -> PdmLockPackage -> Dependency
 toDependency prodReqs devReqs pkg =

@@ -18,8 +18,8 @@ import Strategy.Fortran.FpmToml (
   FpmGitDependency (..),
   FpmPathDependency (..),
   FpmToml (..),
+  FpmTomlExecutables (..),
   buildGraph,
-  fpmTomlCodec,
  )
 import Test.Hspec (
   Spec,
@@ -51,14 +51,23 @@ expectedFpmToml =
         ]
     )
     (fromList [("dep-dev", FpmGitDep mkGitFpmDep{url = "git-url-dev-dep", rev = Just "2f5eaba"})])
-    [fromList [("dep-exec", FpmGitDep mkGitFpmDep{url = "git-url-exec"})]]
+    ([FpmTomlExecutables $ fromList [("dep-exec", FpmGitDep mkGitFpmDep{url = "git-url-exec"})]])
 
 spec :: Spec
 spec = do
   content <- runIO (TIO.readFile "test/Fortran/testdata/fpm.toml")
   describe "fpmTomlCodec" $
     it "should parse fpm.toml file" $
-      Toml.decode fpmTomlCodec content `shouldBe` Right expectedFpmToml
+      Toml.decode content
+        `shouldBe` Toml.Success
+          [ "11:33: unexpected key: branch in dependencies.dep-branch"
+          , "13:30: unexpected key: rev in dependencies.dep-rev"
+          , "12:30: unexpected key: tag in dependencies.dep-tag"
+          , "16:38: unexpected key: rev in dev-dependencies.dep-dev"
+          , "4:1: unexpected key: name in executable[0]"
+          , "1:1: unexpected key: name in <top-level>"
+          ]
+          expectedFpmToml
 
   describe "buildGraph" $ do
     let graph = buildGraph expectedFpmToml
