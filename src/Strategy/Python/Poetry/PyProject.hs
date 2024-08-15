@@ -231,11 +231,12 @@ instance Toml.Schema.FromValue PoetryDependency where
   fromValue v@(Toml.Table' l t) =
     Toml.Schema.parseTable
       ( Toml.Schema.pickKey $
-          [Toml.Schema.Key "version" (const (PyProjectPoetryDetailedVersionDependencySpec <$> Toml.Schema.fromValue v))]
-            <> [Toml.Schema.Key "git" (const (PyProjectPoetryGitDependencySpec <$> Toml.Schema.fromValue v))]
-            <> [Toml.Schema.Key "path" (const (PyProjectPoetryPathDependencySpec <$> Toml.Schema.fromValue v))]
-            <> [Toml.Schema.Key "url" (const (PyProjectPoetryUrlDependencySpec <$> Toml.Schema.fromValue v))]
-            <> [Toml.Schema.Else (Toml.Schema.failAt (Toml.valueAnn v) "invalid spec")]
+          [ Toml.Schema.Key "version" (const (PyProjectPoetryDetailedVersionDependencySpec <$> Toml.Schema.fromValue v))
+          , Toml.Schema.Key "git" (const (PyProjectPoetryGitDependencySpec <$> Toml.Schema.fromValue v))
+          , Toml.Schema.Key "path" (const (PyProjectPoetryPathDependencySpec <$> Toml.Schema.fromValue v))
+          , Toml.Schema.Key "url" (const (PyProjectPoetryUrlDependencySpec <$> Toml.Schema.fromValue v))
+          , Toml.Schema.Else (Toml.Schema.failAt (Toml.valueAnn v) "invalid spec")
+          ]
       )
       l
       t
