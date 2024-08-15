@@ -126,7 +126,7 @@ data PyProjectMetadata = PyProjectMetadata
   deriving (Show, Eq, Ord)
 
 newtype PyProjectBuildSystem = PyProjectBuildSystem
-  { buildBackend :: Text
+  { buildBackend :: Maybe Text
   }
   deriving (Show, Eq, Ord)
 
@@ -134,7 +134,7 @@ instance Toml.Schema.FromValue PyProjectBuildSystem where
   fromValue =
     Toml.Schema.parseTableFromValue $
       PyProjectBuildSystem
-        <$> Toml.Schema.reqKey "build-backend"
+        <$> Toml.Schema.optKey "build-backend"
 
 data PyProjectPoetry = PyProjectPoetry
   { name :: Maybe Text

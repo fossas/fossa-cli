@@ -39,7 +39,7 @@ newPoetryLock pkgs = PoetryLock pkgs $ PoetryMetadata "some-version" "some-hash"
 candidatePyProject :: PyProject
 candidatePyProject =
   PyProject
-    { pyprojectBuildSystem = Just $ PyProjectBuildSystem "poetry.core.masonry.api"
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = Just "poetry.core.masonry.api"}
     , pyprojectProject = Nothing
     , pyprojectTool =
         Just $

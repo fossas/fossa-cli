@@ -44,7 +44,7 @@ import Strategy.Python.Poetry.PyProject (
 
 -- | Gets build backend of pyproject.
 getPoetryBuildBackend :: PyProject -> Maybe Text
-getPoetryBuildBackend project = buildBackend <$> pyprojectBuildSystem project
+getPoetryBuildBackend project = buildBackend =<< pyprojectBuildSystem project
 
 -- | Supported pyproject dependencies.
 supportedPyProjectDep :: PoetryDependency -> Bool

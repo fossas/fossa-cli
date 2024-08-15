@@ -54,7 +54,7 @@ shouldParseInto = parseMatch parseConstraintExpr
 expectedPyProject :: PyProject
 expectedPyProject =
   PyProject
-    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = Just "poetry.core.masonry.api"}
     , pyprojectProject = Nothing
     , pyprojectTool =
         Just $
@@ -90,7 +90,7 @@ expectedPyProject =
 expectedPyProject3 :: PyProject
 expectedPyProject3 =
   PyProject
-    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = Just "poetry.core.masonry.api"}
     , pyprojectProject = Nothing
     , pyprojectTool =
         Just $
