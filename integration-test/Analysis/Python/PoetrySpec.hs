@@ -24,4 +24,4 @@ poetry =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary poetry PoetryProjectType (DependencyResultsSummary 66 29 69 1 Complete)
+  testSuiteDepResultSummary poetry PoetryProjectType (DependencyResultsSummary 65 29 69 1 Complete)
