@@ -3,7 +3,7 @@ module App.Fossa.Report.AttributionSpec (
 ) where
 
 import App.Fossa.Report.Attribution
-import Control.Applicative (liftA2)
+import Control.Applicative ()
 import Data.Aeson
 import Data.Map.Strict (Map)
 import Data.Text (Text)

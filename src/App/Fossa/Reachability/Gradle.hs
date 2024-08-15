@@ -10,7 +10,7 @@ import Control.Carrier.Reader (Reader, runReader)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, errHelp, errSupport, renderDiagnostic)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Control.Monad.List (filterM)
+import Control.Monad (filterM)
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createErrataWithHeaderOnly)
