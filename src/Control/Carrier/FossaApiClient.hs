@@ -21,7 +21,7 @@ import Network.TLS (EMSMode (AllowEMS), Supported (supportedExtendedMainSecret))
 
 -- TODO: Remove the ReaderC Manager layer.
 -- This was created so that we can use AllowEMS for a few older servers that still require it.
--- In 10/24 we've said we'll be reverting this change.
+-- As of 2024-10-24 we are free to revert this change, but it must stay until then.
 -- After fixing the related errors, you should also be able to remove these deps from spectrometer.cabal:
 --  1. crypton-connection
 --  2. http-client-tls
