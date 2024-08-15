@@ -19,6 +19,13 @@ import Network.HTTP.Client (Manager, ManagerSettings, newManager)
 import Network.HTTP.Client.TLS (mkManagerSettings)
 import Network.TLS (EMSMode (AllowEMS), Supported (supportedExtendedMainSecret))
 
+-- TODO: Remove the ReaderC Manager layer.
+-- This was created so that we can use AllowEMS for a few older servers that still require it.
+-- In 10/24 we've said we'll be reverting this change.
+-- After fixing the related errors, you should also be able to remove these deps from spectrometer.cabal:
+--  1. crypton-connection
+--  2. http-client-tls
+--  3. data-default-class
 -- | A carrier to run FOSSA API functions in the IO monad
 type FossaApiClientC m = SimpleC FossaApiClientF (ReaderC Manager (ReaderC ApiOpts m))
 
