@@ -3,6 +3,9 @@ description = "test_description"
 name = "test_name"
 version = "test_version"
 
+[tool.poetry.scripts]
+test-script = "test_script"
+
 [tool.poetry.dependencies]
 
 # git

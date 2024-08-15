@@ -139,19 +139,20 @@ spec = do
       it "should parse pyrproject file with all source types" $ do
         Toml.decode nominalContents
           `shouldBe` Toml.Success
-            [ "37:1: unexpected key: requires in build-system"
-            , "24:31: unexpected key: allow-prereleases in tool.poetry.dependencies.black.version"
-            , "24:74: unexpected key: markers in tool.poetry.dependencies.black.version"
-            , "24:57: unexpected key: python in tool.poetry.dependencies.black.version"
-            , "24:31: unexpected key: allow-prereleases in tool.poetry.dependencies.black"
-            , "24:74: unexpected key: markers in tool.poetry.dependencies.black"
-            , "24:57: unexpected key: python in tool.poetry.dependencies.black"
-            , "9:56: unexpected key: rev in tool.poetry.dependencies.flask"
-            , "21:43: unexpected key: develop in tool.poetry.dependencies.my-packageDir.path"
-            , "21:43: unexpected key: develop in tool.poetry.dependencies.my-packageDir"
-            , "11:54: unexpected key: tag in tool.poetry.dependencies.numpy"
-            , "12:67: unexpected key: branch in tool.poetry.dependencies.requests"
-            , "39:15: unexpected key: source in tool.poetry"
+            [ "40:1: unexpected key: requires in build-system"
+            , "27:31: unexpected key: allow-prereleases in tool.poetry.dependencies.black.version"
+            , "27:74: unexpected key: markers in tool.poetry.dependencies.black.version"
+            , "27:57: unexpected key: python in tool.poetry.dependencies.black.version"
+            , "27:31: unexpected key: allow-prereleases in tool.poetry.dependencies.black"
+            , "27:74: unexpected key: markers in tool.poetry.dependencies.black"
+            , "27:57: unexpected key: python in tool.poetry.dependencies.black"
+            , "12:56: unexpected key: rev in tool.poetry.dependencies.flask"
+            , "24:43: unexpected key: develop in tool.poetry.dependencies.my-packageDir.path"
+            , "24:43: unexpected key: develop in tool.poetry.dependencies.my-packageDir"
+            , "14:54: unexpected key: tag in tool.poetry.dependencies.numpy"
+            , "15:67: unexpected key: branch in tool.poetry.dependencies.requests"
+            , "6:14: unexpected key: scripts in tool.poetry"
+            , "42:15: unexpected key: source in tool.poetry"
             ]
             expectedPyProject
 
