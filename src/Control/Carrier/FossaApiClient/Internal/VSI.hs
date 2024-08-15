@@ -17,9 +17,6 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Types (ProjectRevision)
 import Control.Algebra (Has)
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 qualified as API
-import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.Map (Map)
 import Fossa.API.Types (ApiOpts)
@@ -27,9 +24,7 @@ import Path (File, Path, Rel)
 import Srclib.Types (Locator)
 
 assertRevisionBinaries ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   Locator ->
@@ -40,9 +35,7 @@ assertRevisionBinaries meta fingerprints = do
   API.assertRevisionBinaries apiOpts meta fingerprints
 
 assertUserDefinedBinaries ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   IAT.UserDefinedAssertionMeta ->
@@ -53,9 +46,7 @@ assertUserDefinedBinaries meta fingerprints = do
   API.assertUserDefinedBinaries apiOpts meta fingerprints
 
 resolveUserDefinedBinary ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   IAT.UserDep ->
@@ -65,9 +56,7 @@ resolveUserDefinedBinary dep = do
   API.resolveUserDefinedBinary apiOpts dep
 
 resolveProjectDependencies ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.Locator ->
@@ -77,9 +66,7 @@ resolveProjectDependencies locator = do
   API.resolveProjectDependencies apiOpts locator
 
 createVsiScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
@@ -89,9 +76,7 @@ createVsiScan revision = do
   API.vsiCreateScan apiOpts revision
 
 addFilesToVsiScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
@@ -102,9 +87,7 @@ addFilesToVsiScan scanId files = do
   API.vsiAddFilesToScan apiOpts scanId files
 
 completeVsiScan ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
@@ -114,9 +97,7 @@ completeVsiScan scanId = do
   API.vsiCompleteScan apiOpts scanId
 
 getVsiScanAnalysisStatus ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
@@ -126,9 +107,7 @@ getVsiScanAnalysisStatus scanId = do
   API.vsiScanAnalysisStatus apiOpts scanId
 
 getVsiInferences ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has Debug sig m
+  ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   VSI.ScanID ->
