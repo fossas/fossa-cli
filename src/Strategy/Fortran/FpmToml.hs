@@ -28,7 +28,7 @@ import Toml qualified
 import Toml.Schema qualified
 
 -- | Represents the content of the fpm manifest.
--- Reference: https://github.com/fortran-lang/fpm/blob/main/manifest-reference.md
+-- Reference: https://fpm.fortran-lang.org/spec/manifest.html
 data FpmToml = FpmToml
   { fpmDependencies :: Map Text FpmDependency
   , fpmDevDependencies :: Map Text FpmDependency
@@ -58,6 +58,7 @@ instance Toml.Schema.FromValue FpmTomlExecutables where
 data FpmDependency
   = FpmGitDep FpmGitDependency
   | FpmPathDep FpmPathDependency
+  | FpmMetaDep Text
   deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue FpmDependency where
@@ -71,7 +72,11 @@ instance Toml.Schema.FromValue FpmDependency where
       )
       l
       t
+  fromValue (Toml.Schema.Text' _ t) = pure $ FpmMetaDep t
   fromValue v = Toml.Schema.failAt (Toml.valueAnn v) "Expected a table"
+
+newtype FpmMetaDependency = FpmMetaDependency Text
+  deriving (Eq, Ord, Show)
 
 newtype FpmPathDependency = FpmPathDependency
   { pathOf :: Text
@@ -118,6 +123,7 @@ buildGraph fpmToml = induceJust $ foldMap directs [deps, execDeps, devDeps]
 
     toDependency :: Maybe DepEnvironment -> FpmDependency -> Maybe Dependency
     toDependency _ (FpmPathDep _) = Nothing
+    toDependency _ (FpmMetaDep _) = Nothing
     toDependency env (FpmGitDep dep) =
       Just $
         Dependency
