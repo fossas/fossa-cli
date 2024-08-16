@@ -5,7 +5,6 @@ module Strategy.Go.GopkgToml (
   PkgConstraint (..),
   analyze',
   buildGraph,
-  gopkgCodec,
 ) where
 
 import Control.Applicative ((<|>))
@@ -27,29 +26,20 @@ import Graphing (Graphing)
 import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
-import Toml (TomlCodec, (.=))
-import Toml qualified
-
-gopkgCodec :: TomlCodec Gopkg
-gopkgCodec =
-  Gopkg
-    <$> Toml.list constraintCodec "constraint" .= pkgConstraints
-    <*> Toml.list constraintCodec "override" .= pkgOverrides
-
-constraintCodec :: TomlCodec PkgConstraint
-constraintCodec =
-  PkgConstraint
-    <$> Toml.text "name" .= constraintName
-    <*> Toml.dioptional (Toml.text "source") .= constraintSource
-    <*> Toml.dioptional (Toml.text "version") .= constraintVersion
-    <*> Toml.dioptional (Toml.text "branch") .= constraintBranch
-    <*> Toml.dioptional (Toml.text "revision") .= constraintRevision
+import Toml.Schema qualified
 
 data Gopkg = Gopkg
   { pkgConstraints :: [PkgConstraint]
   , pkgOverrides :: [PkgConstraint]
   }
   deriving (Eq, Ord, Show)
+
+instance Toml.Schema.FromValue Gopkg where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      Gopkg
+        <$> Toml.Schema.reqKey "constraint"
+        <*> Toml.Schema.reqKey "override"
 
 data PkgConstraint = PkgConstraint
   { constraintName :: Text
@@ -60,6 +50,16 @@ data PkgConstraint = PkgConstraint
   }
   deriving (Eq, Ord, Show)
 
+instance Toml.Schema.FromValue PkgConstraint where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PkgConstraint
+        <$> Toml.Schema.reqKey "name"
+        <*> Toml.Schema.optKey "source"
+        <*> Toml.Schema.optKey "version"
+        <*> Toml.Schema.optKey "branch"
+        <*> Toml.Schema.optKey "revision"
+
 analyze' ::
   ( Has ReadFS sig m
   , Has Exec sig m
@@ -68,7 +68,7 @@ analyze' ::
   Path Abs File ->
   m (Graphing Dependency)
 analyze' file = graphingGolang $ do
-  gopkg <- readContentsToml gopkgCodec file
+  gopkg <- readContentsToml file
   context "Building dependency graph" $ buildGraph gopkg
   void
     . recover

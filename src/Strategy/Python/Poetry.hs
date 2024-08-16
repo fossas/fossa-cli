@@ -47,8 +47,8 @@ import Strategy.Python.Errors (
   commitPoetryLockToVCS,
  )
 import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, toCanonicalName)
-import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryMetadata (poetryMetadataLockVersion), poetryLockCodec)
-import Strategy.Python.Poetry.PyProject (PyProject (..), allPoetryProductionDeps, pyProjectCodec)
+import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryMetadata (poetryMetadataLockVersion))
+import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectTool (..), allPoetryProductionDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PoetryProjectType), GraphBreadth (..))
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
@@ -117,7 +117,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
   case (poetryLockFile, pyprojectFile) of
     (poetry, Just pyproject) -> do
-      poetryProject <- readContentsToml pyProjectCodec pyproject
+      poetryProject <- readContentsToml pyproject
       let project = PoetryProject (ProjectDir dir) (PyProjectTomlFile pyproject) (PoetryLockFile <$> poetry)
       let pyprojectBuildBackend = getPoetryBuildBackend poetryProject
 
@@ -155,10 +155,10 @@ analyze ::
   PoetryProject ->
   m DependencyResults
 analyze PoetryProject{pyProjectToml, poetryLock} = do
-  pyproject <- readContentsToml pyProjectCodec (pyProjectTomlPath pyProjectToml)
+  pyproject <- readContentsToml (pyProjectTomlPath pyProjectToml)
   case poetryLock of
     Just lockPath -> do
-      poetryLockProject <- readContentsToml poetryLockCodec (poetryLockPath lockPath)
+      poetryLockProject <- readContentsToml (poetryLockPath lockPath)
       _ <- logIgnoredDeps pyproject (Just poetryLockProject)
       graph <- context "Building dependency graph from pyproject.toml and poetry.lock" . pure $ graphFromPyProjectAndLockFile pyproject poetryLockProject
       pure $
@@ -221,9 +221,11 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     directDeps = pyProjectDeps pyProject
 
     isDirect :: Dependency -> Bool
-    isDirect dep = case pyprojectPoetry pyProject of
+    isDirect dep = case pyprojectTool pyProject of
       Nothing -> False
-      Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) directDeps
+      Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
+        Nothing -> False
+        Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) directDeps
 
     pkgs :: [PoetryLockPackage]
     pkgs = poetryLockPackages poetryLock

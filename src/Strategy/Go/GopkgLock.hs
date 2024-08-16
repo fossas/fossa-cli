@@ -5,7 +5,6 @@ module Strategy.Go.GopkgLock (
   GoLock (..),
   Project (..),
   buildGraph,
-  golockCodec,
 ) where
 
 import Control.Effect.Diagnostics
@@ -24,25 +23,18 @@ import Graphing (Graphing)
 import Path
 import Strategy.Go.Transitive (fillInTransitive)
 import Strategy.Go.Types
-import Toml (TomlCodec, (.=))
-import Toml qualified
-
-golockCodec :: TomlCodec GoLock
-golockCodec =
-  GoLock
-    <$> Toml.list projectCodec "projects" .= lockProjects
-
-projectCodec :: TomlCodec Project
-projectCodec =
-  Project
-    <$> Toml.text "name" .= projectName
-    <*> Toml.dioptional (Toml.text "source") .= projectSource
-    <*> Toml.text "revision" .= projectRevision
+import Toml.Schema qualified
 
 newtype GoLock = GoLock
   { lockProjects :: [Project]
   }
   deriving (Eq, Ord, Show)
+
+instance Toml.Schema.FromValue GoLock where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      GoLock
+        <$> Toml.Schema.reqKey "projects"
 
 data Project = Project
   { projectName :: Text
@@ -50,6 +42,14 @@ data Project = Project
   , projectRevision :: Text
   }
   deriving (Eq, Ord, Show)
+
+instance Toml.Schema.FromValue Project where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      Project
+        <$> Toml.Schema.reqKey "name"
+        <*> Toml.Schema.optKey "source"
+        <*> Toml.Schema.reqKey "revision"
 
 analyze' ::
   ( Has ReadFS sig m
@@ -59,7 +59,7 @@ analyze' ::
   Path Abs File ->
   m (Graphing Dependency)
 analyze' file = graphingGolang $ do
-  golock <- readContentsToml golockCodec file
+  golock <- readContentsToml file
   context "Building dependency graph" $ buildGraph (lockProjects golock)
   void
     . recover
