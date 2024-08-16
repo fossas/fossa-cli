@@ -88,8 +88,7 @@ import Text.Megaparsec (
   try,
  )
 import Text.Megaparsec.Char (char, digitChar, space)
-import Toml (TomlCodec, dioptional, diwrap, (.=))
-import Toml qualified
+import Toml.Schema qualified
 import Types (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (CargoType),
@@ -244,11 +243,12 @@ data CargoPackage = CargoPackage
   }
   deriving (Eq, Show)
 
-cargoPackageCodec :: TomlCodec CargoPackage
-cargoPackageCodec =
-  CargoPackage
-    <$> dioptional (Toml.text "license") .= license
-    <*> dioptional (Toml.string "license-file") .= cargoLicenseFile
+instance Toml.Schema.FromValue CargoPackage where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      CargoPackage
+        <$> Toml.Schema.optKey "license"
+        <*> Toml.Schema.optKey "license-file"
 
 -- | Representation of a Cargo.toml file. See
 --  [here](https://doc.rust-lang.org/cargo/reference/manifest.html)
@@ -257,12 +257,11 @@ newtype CargoToml = CargoToml
   {cargoPackage :: CargoPackage}
   deriving (Eq, Show)
 
-cargoTomlCodec :: TomlCodec CargoToml
-cargoTomlCodec = diwrap (Toml.table cargoPackageCodec "package")
--- ^ ^ The above is a bit obscure. It's generating a TomlCodec CargoPackage and
---  then using 'diwrap'/Coercible to make a TomlCodec CargoToml.  I can't use
---  'CargoToml <$>' because TomlCodec aliases (Codec a a) and only (Codec a)
---  has a Functor instance, so I'd end up with a (Codec CargoPackage CargoToml).
+instance Toml.Schema.FromValue CargoToml where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      CargoToml
+        <$> Toml.Schema.reqKey "package"
 
 instance LicenseAnalyzeProject CargoProject where
   licenseAnalyzeProject = analyzeLicenses . cargoToml
@@ -271,7 +270,7 @@ instance LicenseAnalyzeProject CargoProject where
 --  (here)[https://doc.rust-lang.org/cargo/reference/manifest.html#the-license-and-license-file-fields]
 analyzeLicenses :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m [LicenseResult]
 analyzeLicenses tomlPath = do
-  pkg <- cargoPackage <$> readContentsToml cargoTomlCodec tomlPath
+  pkg <- cargoPackage <$> readContentsToml tomlPath
   licensePathText <- maybe (pure Nothing) mkLicensePath (cargoLicenseFile pkg)
 
   -- The license-file field in Cargo.toml is relative to the dir of the

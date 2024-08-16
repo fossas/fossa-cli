@@ -33,15 +33,18 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetry (..),
   PyProjectPoetryDetailedVersionDependency (..),
   PyProjectPoetryGitDependency (..),
+  PyProjectPoetryGroup (..),
+  PyProjectPoetryGroupDependencies (..),
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
+  PyProjectTool (..),
   allPoetryNonProductionDeps,
   toDependencyVersion,
  )
 
 -- | Gets build backend of pyproject.
 getPoetryBuildBackend :: PyProject -> Maybe Text
-getPoetryBuildBackend project = buildBackend <$> pyprojectBuildSystem project
+getPoetryBuildBackend project = buildBackend =<< pyprojectBuildSystem project
 
 -- | Supported pyproject dependencies.
 supportedPyProjectDep :: PoetryDependency -> Bool
@@ -70,7 +73,10 @@ logIgnoredDeps pyproject poetryLock = for_ notSupportedDepsMsgs (logDebug . pret
     notSupportedPyProjectDeps =
       Map.keys $
         Map.filter (not . supportedPyProjectDep) $
-          maybe Map.empty dependencies (pyprojectPoetry pyproject)
+          case pyprojectTool pyproject of
+            Nothing -> mempty
+            Just (PyProjectTool{pyprojectPoetry}) ->
+              maybe Map.empty dependencies (pyprojectPoetry)
 
 -- | Not supported poetry lock package.
 supportedPoetryLockDep :: PoetryLockPackage -> Bool
@@ -89,8 +95,8 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
     -- These are dependencies coming from dev-dependencies table
     -- which is pre 1.2.x style, understood by Poetry 1.0–1.2
     olderPoetryDevDeps :: Map Text PoetryDependency
-    olderPoetryDevDeps = case pyprojectPoetry project of
-      Just (PyProjectPoetry{devDependencies}) -> devDependencies
+    olderPoetryDevDeps = case pyprojectTool project of
+      Just (PyProjectTool{pyprojectPoetry}) -> maybe mempty devDependencies pyprojectPoetry
       _ -> mempty
 
     -- These are 'group' dependencies. All group dependencies are optional.
@@ -103,12 +109,22 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
     -- \* https://github.com/kowainik/tomland/issues/336
     -- \* https://python-poetry.org/docs/managing-dependencies#dependency-groups
     groupDeps :: Map Text PoetryDependency
-    groupDeps = case pyprojectPoetry project of
-      Just (PyProjectPoetry{groupDevDependencies, groupTestDependencies}) -> Map.unions [groupDevDependencies, groupTestDependencies]
+    groupDeps = case pyprojectTool project of
+      Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
+        Just (PyProjectPoetry{pyprojectPoetryGroup}) -> case pyprojectPoetryGroup of
+          Just (PyProjectPoetryGroup{groupDev, groupTest}) -> case (groupDev, groupTest) of
+            (Just devDeps, Just testDeps) -> Map.unions [groupDependencies devDeps, groupDependencies testDeps]
+            (Just devDeps, Nothing) -> groupDependencies devDeps
+            (Nothing, Just testDeps) -> groupDependencies testDeps
+            _ -> mempty
+          _ -> mempty
+        _ -> mempty
       _ -> mempty
 
     supportedProdDeps :: Map Text PoetryDependency
-    supportedProdDeps = Map.filter supportedPyProjectDep $ maybe Map.empty dependencies (pyprojectPoetry project)
+    supportedProdDeps = Map.filter supportedPyProjectDep $ case pyprojectTool project of
+      Just (PyProjectTool{pyprojectPoetry}) -> maybe Map.empty dependencies pyprojectPoetry
+      _ -> mempty
 
     toDependency :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
     toDependency depEnvs = Map.mapWithKey $ poetrytoDependency depEnvs

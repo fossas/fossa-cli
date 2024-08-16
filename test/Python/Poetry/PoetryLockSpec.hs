@@ -12,7 +12,6 @@ import Strategy.Python.Poetry.PoetryLock (
   PoetryLockPackage (..),
   PoetryLockPackageSource (..),
   PoetryMetadata (..),
-  poetryLockCodec,
  )
 import Test.Hspec (
   Spec,
@@ -149,6 +148,20 @@ expectedPoetryLock =
 spec :: Spec
 spec = do
   contents <- runIO (TIO.readFile "test/Python/Poetry/testdata/poetry.lock")
-  describe "poetryLockCodec" $
+  describe "decoding toml file" $
     it "should produce expected output" $
-      Toml.decode poetryLockCodec contents `shouldBe` Right expectedPoetryLock
+      Toml.decode contents
+        `shouldBe` Toml.Success
+          [ "5:1: unexpected key: description in package[0]"
+          , "21:1: unexpected key: description in package[1]"
+          , "34:1: unexpected key: description in package[2]"
+          , "54:28: unexpected key: markers in package[3].dependencies.pkgThreeChildofOne[0]"
+          , "55:28: unexpected key: markers in package[3].dependencies.pkgThreeChildofOne[1]"
+          , "57:38: unexpected key: markers in package[3].dependencies.pkgTwoChildofOne"
+          , "45:1: unexpected key: description in package[3]"
+          , "62:1: unexpected key: description in package[4]"
+          , "69:1: unexpected key: description in package[5]"
+          , "76:1: unexpected key: description in package[6]"
+          , "83:1: unexpected key: description in package[7]"
+          ]
+          expectedPoetryLock

@@ -1,7 +1,6 @@
 module Python.Poetry.PyProjectSpec (
   spec,
-)
-where
+) where
 
 import Data.Map qualified as Map
 import Data.Text (Text)
@@ -20,7 +19,20 @@ import DepTypes (
     COr
   ),
  )
-import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..), PyProjectPoetryDetailedVersionDependency (..), PyProjectPoetryGitDependency (..), PyProjectPoetryPathDependency (..), PyProjectPoetryUrlDependency (..), parseConstraintExpr, pyProjectCodec)
+import Strategy.Python.Poetry.PyProject (
+  PoetryDependency (..),
+  PyProject (..),
+  PyProjectBuildSystem (..),
+  PyProjectPoetry (..),
+  PyProjectPoetryDetailedVersionDependency (..),
+  PyProjectPoetryGitDependency (..),
+  PyProjectPoetryGroup (..),
+  PyProjectPoetryGroupDependencies (..),
+  PyProjectPoetryPathDependency (..),
+  PyProjectPoetryUrlDependency (..),
+  PyProjectTool (..),
+  parseConstraintExpr,
+ )
 import Test.Hspec (
   Expectation,
   Spec,
@@ -42,63 +54,78 @@ shouldParseInto = parseMatch parseConstraintExpr
 expectedPyProject :: PyProject
 expectedPyProject =
   PyProject
-    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = Just "poetry.core.masonry.api"}
     , pyprojectProject = Nothing
-    , pyprojectPdmDevDependencies = Just mempty
-    , pyprojectPoetry =
+    , pyprojectTool =
         Just $
-          PyProjectPoetry
-            { name = Just "test_name"
-            , version = Just "test_version"
-            , description = Just "test_description"
-            , dependencies =
-                Map.fromList
-                  [ ("flake8", PoetryTextVersion "^1.1")
-                  , ("python", PoetryTextVersion "^3.9")
-                  , ("flask", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/pallets/flask.git", gitRev = Just "38eb5d3b", gitTag = Nothing, gitBranch = Nothing})
-                  , ("networkx", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/networkx/networkx.git", gitRev = Nothing, gitTag = Nothing, gitBranch = Nothing})
-                  , ("numpy", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/numpy/numpy.git", gitRev = Nothing, gitTag = Just "v0.13.2", gitBranch = Nothing})
-                  , ("requests", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/kennethreitz/requests.git", gitRev = Nothing, gitTag = Nothing, gitBranch = Just "next"})
-                  , ("my-packageUrl", PyProjectPoetryUrlDependencySpec $ PyProjectPoetryUrlDependency{sourceUrl = "https://example.com/my-package-0.1.0.tar.gz"})
-                  , ("my-packageFile", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"})
-                  , ("my-packageDir", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/"})
-                  , ("black", PyProjectPoetryDetailedVersionDependencySpec $ PyProjectPoetryDetailedVersionDependency{poetryDependencyVersion = "19.10b0"})
-                  ]
-            , devDependencies =
-                Map.fromList
-                  [("pytest", PoetryTextVersion "*")]
-            , groupDevDependencies = Map.empty
-            , groupTestDependencies = Map.empty
+          PyProjectTool
+            { pyprojectPoetry =
+                Just $
+                  PyProjectPoetry
+                    { name = Just "test_name"
+                    , version = Just "test_version"
+                    , description = Just "test_description"
+                    , dependencies =
+                        Map.fromList
+                          [ ("flake8", PoetryTextVersion "^1.1")
+                          , ("python", PoetryTextVersion "^3.9")
+                          , ("flask", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/pallets/flask.git", gitRev = Just "38eb5d3b", gitTag = Nothing, gitBranch = Nothing})
+                          , ("networkx", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/networkx/networkx.git", gitRev = Nothing, gitTag = Nothing, gitBranch = Nothing})
+                          , ("numpy", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/numpy/numpy.git", gitRev = Nothing, gitTag = Just "v0.13.2", gitBranch = Nothing})
+                          , ("requests", PyProjectPoetryGitDependencySpec $ PyProjectPoetryGitDependency{gitUrl = "https://github.com/kennethreitz/requests.git", gitRev = Nothing, gitTag = Nothing, gitBranch = Just "next"})
+                          , ("my-packageUrl", PyProjectPoetryUrlDependencySpec $ PyProjectPoetryUrlDependency{sourceUrl = "https://example.com/my-package-0.1.0.tar.gz"})
+                          , ("my-packageFile", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"})
+                          , ("my-packageDir", PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/"})
+                          , ("black", PyProjectPoetryDetailedVersionDependencySpec $ PyProjectPoetryDetailedVersionDependency{poetryDependencyVersion = "19.10b0"})
+                          ]
+                    , devDependencies =
+                        Map.fromList
+                          [("pytest", PoetryTextVersion "*")]
+                    , pyprojectPoetryGroup = Nothing
+                    }
+            , pyprojectPdm = Nothing
             }
     }
 
 expectedPyProject3 :: PyProject
 expectedPyProject3 =
   PyProject
-    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = "poetry.core.masonry.api"}
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = Just "poetry.core.masonry.api"}
     , pyprojectProject = Nothing
-    , pyprojectPdmDevDependencies = Just mempty
-    , pyprojectPoetry =
+    , pyprojectTool =
         Just $
-          PyProjectPoetry
-            { name = Just "test_name"
-            , version = Just "test_version"
-            , description = Just "test_description"
-            , dependencies =
-                Map.fromList
-                  [ ("python", PoetryTextVersion "^3.12")
-                  , ("rich", PoetryTextVersion "*")
-                  ]
-            , devDependencies = Map.empty
-            , groupDevDependencies =
-                Map.fromList
-                  [ ("click", PoetryTextVersion "*")
-                  ]
-            , groupTestDependencies =
-                Map.fromList
-                  [ ("pytest", PoetryTextVersion "^6.0.0")
-                  , ("pytest-mock", PoetryTextVersion "*")
-                  ]
+          PyProjectTool
+            { pyprojectPoetry =
+                Just $
+                  PyProjectPoetry
+                    { name = Just "test_name"
+                    , version = Just "test_version"
+                    , description = Just "test_description"
+                    , dependencies =
+                        Map.fromList
+                          [ ("python", PoetryTextVersion "^3.12")
+                          , ("rich", PoetryTextVersion "*")
+                          ]
+                    , devDependencies = Map.empty
+                    , pyprojectPoetryGroup =
+                        Just $
+                          PyProjectPoetryGroup
+                            { groupDev =
+                                Just $
+                                  PyProjectPoetryGroupDependencies $
+                                    Map.fromList
+                                      [ ("click", PoetryTextVersion "*")
+                                      ]
+                            , groupTest =
+                                Just $
+                                  PyProjectPoetryGroupDependencies $
+                                    Map.fromList
+                                      [ ("pytest", PoetryTextVersion "^6.0.0")
+                                      , ("pytest-mock", PoetryTextVersion "*")
+                                      ]
+                            }
+                    }
+            , pyprojectPdm = Nothing
             }
     }
 
@@ -110,8 +137,33 @@ spec = do
   describe "pyProjectCodec" $
     describe "when provided with all possible types of dependency sources" $
       it "should parse pyrproject file with all source types" $ do
-        Toml.decode pyProjectCodec nominalContents `shouldBe` Right expectedPyProject
-        Toml.decode pyProjectCodec groupDevContents `shouldBe` Right expectedPyProject3
+        Toml.decode nominalContents
+          `shouldBe` Toml.Success
+            [ "40:1: unexpected key: requires in build-system"
+            , "27:31: unexpected key: allow-prereleases in tool.poetry.dependencies.black.version"
+            , "27:74: unexpected key: markers in tool.poetry.dependencies.black.version"
+            , "27:57: unexpected key: python in tool.poetry.dependencies.black.version"
+            , "27:31: unexpected key: allow-prereleases in tool.poetry.dependencies.black"
+            , "27:74: unexpected key: markers in tool.poetry.dependencies.black"
+            , "27:57: unexpected key: python in tool.poetry.dependencies.black"
+            , "12:56: unexpected key: rev in tool.poetry.dependencies.flask"
+            , "24:43: unexpected key: develop in tool.poetry.dependencies.my-packageDir.path"
+            , "24:43: unexpected key: develop in tool.poetry.dependencies.my-packageDir"
+            , "14:54: unexpected key: tag in tool.poetry.dependencies.numpy"
+            , "15:67: unexpected key: branch in tool.poetry.dependencies.requests"
+            , "6:14: unexpected key: scripts in tool.poetry"
+            , "42:15: unexpected key: source in tool.poetry"
+            ]
+            expectedPyProject
+
+        Toml.decode groupDevContents
+          `shouldBe` Toml.Success
+            [ "26:1: unexpected key: requires in build-system"
+            , "19:20: unexpected key: docs in tool.poetry.group"
+            , "5:1: unexpected key: authors in tool.poetry"
+            , "6:1: unexpected key: readme in tool.poetry"
+            ]
+            expectedPyProject3
 
   describe "parseConstraintExpr" $ do
     it "should parse equality constraint" $ do

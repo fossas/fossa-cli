@@ -6,7 +6,7 @@ module Pdm.PdmLockSpec (
 
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (..))
-import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), pdmLockCodec, toDependency)
+import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), toDependency)
 import Strategy.Python.Util (Req (..))
 import Test.Hspec (
   Spec,
@@ -25,11 +25,11 @@ spec = do
   describe "lockfile" $ do
     it "should parse empty lock file" $ do
       let expected = PdmLock mempty
-      Toml.decode pdmLockCodec lockNoContent `shouldBe` Right expected
+      Toml.decode lockNoContent `shouldBe` (Toml.Success [] expected)
 
     it "should parse lock file with one entry" $ do
       let expected = PdmLock [PdmLockPackage "blinker" "1.6.2" Nothing Nothing Nothing Nothing Nothing]
-      Toml.decode pdmLockCodec lockOneEntry `shouldBe` Right expected
+      Toml.decode lockOneEntry `shouldBe` (Toml.Success [] expected)
 
     it "should parse lock file with multiple entry" $ do
       let expected =
@@ -37,7 +37,7 @@ spec = do
               [ PdmLockPackage "blinker" "1.6.2" Nothing Nothing Nothing Nothing (Just [mkReq "b"])
               , PdmLockPackage "b" "1.0.0" Nothing Nothing Nothing Nothing Nothing
               ]
-      Toml.decode pdmLockCodec lockMultipleEntry `shouldBe` Right expected
+      Toml.decode lockMultipleEntry `shouldBe` (Toml.Success [] expected)
 
     it "should parse lock file, with git deps" $ do
       let expected =
@@ -51,14 +51,14 @@ spec = do
                   Nothing
                   Nothing
               ]
-      Toml.decode pdmLockCodec lockWithGitEntry `shouldBe` Right expected
+      Toml.decode lockWithGitEntry `shouldBe` (Toml.Success ["7:1: unexpected key: ref in package[0]", "5:1: unexpected key: requires_python in package[0]", "9:1: unexpected key: summary in package[0]"] expected)
 
     it "should parse lock file, with filepath deps" $ do
       let expected =
             PdmLock
               [ lockWithFilePathEntryPackage
               ]
-      Toml.decode pdmLockCodec lockWithFilePathEntry `shouldBe` Right expected
+      Toml.decode lockWithFilePathEntry `shouldBe` (Toml.Success ["5:1: unexpected key: requires_python in package[0]", "7:1: unexpected key: summary in package[0]"] expected)
 
     it "should parse lock file, with url deps" $ do
       let expected =
@@ -72,7 +72,7 @@ spec = do
                   (Just "https://github.com/explosion/spacy-models/releases/download/en_core_web_trf-3.5.0/en_core_web_trf-3.5.0-py3-none-any.whl")
                   Nothing
               ]
-      Toml.decode pdmLockCodec lockWithFileUrlEntry `shouldBe` Right expected
+      Toml.decode lockWithFileUrlEntry `shouldBe` (Toml.Success [] expected)
 
   describe "toDependency" $
     it "should handle pdm's local dependency correctly" $ do

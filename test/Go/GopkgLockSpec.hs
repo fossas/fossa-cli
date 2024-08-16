@@ -68,11 +68,25 @@ spec = do
 
   describe "analyze" $
     it "should produce expected output" $ do
-      case Toml.decode golockCodec contents of
-        Left err -> expectationFailure ("decode failed: " <> show err)
-        Right golock -> do
+      case Toml.decode contents of
+        Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
+        Toml.Success warnings golock -> do
           let result = buildGraph (lockProjects golock) & graphingGolang & run
           result `shouldBe` expected
+          warnings
+            `shouldBe` [ "5:3: unexpected key: digest in projects[0]"
+                       , "7:3: unexpected key: packages in projects[0]"
+                       , "8:3: unexpected key: pruneopts in projects[0]"
+                       , "10:3: unexpected key: version in projects[0]"
+                       , "13:3: unexpected key: digest in projects[1]"
+                       , "15:3: unexpected key: packages in projects[1]"
+                       , "23:3: unexpected key: pruneopts in projects[1]"
+                       , "25:3: unexpected key: version in projects[1]"
+                       , "29:3: unexpected key: branch in projects[2]"
+                       , "30:3: unexpected key: digest in projects[2]"
+                       , "32:3: unexpected key: packages in projects[2]"
+                       , "33:3: unexpected key: pruneopts in projects[2]"
+                       ]
 
   describe "buildGraph" $
     it "should produce expected output" $ do

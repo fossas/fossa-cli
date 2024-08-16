@@ -8,7 +8,6 @@ module Strategy.Python.Util (
   Req (..),
   requirementParser,
   reqToDependency,
-  reqCodec,
   toConstraint,
 ) where
 
@@ -30,6 +29,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.URI qualified as URI
 import Toml qualified
+import Toml.Schema qualified
 
 pkgToReq :: PythonPackage -> Req
 pkgToReq p =
@@ -173,8 +173,12 @@ data Req
   | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name, extras, ...
   deriving (Eq, Ord, Show)
 
-reqCodec :: Toml.TomlBiMap Req Toml.AnyValue
-reqCodec = Toml._TextBy (toText . show) parseReq
+instance Toml.Schema.FromValue Req where
+  fromValue v = do
+    value <- Toml.Schema.fromValue v
+    case parseReq value of
+      Left _ -> Toml.Schema.failAt (Toml.valueAnn v) "invalid req"
+      Right r -> pure r
 
 parseReq :: Text -> Either Text Req
 parseReq candidate = case runParser requirementParser "" candidate of

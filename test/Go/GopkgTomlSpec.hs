@@ -102,11 +102,12 @@ spec = do
 
   describe "analyze" $
     it "should produce expected output" $ do
-      case Toml.decode gopkgCodec contents of
-        Left err -> expectationFailure ("decode failed: " <> show err)
-        Right pkg -> do
+      case Toml.decode contents of
+        Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
+        Toml.Success warnings pkg -> do
           let result = buildGraph pkg & graphingGolang & run
           result `shouldBe` expected
+          warnings `shouldBe` []
 
   describe "buildGraph" $
     it "should produce expected output" $ do

@@ -152,7 +152,7 @@ common deps
     , th-lift-instances            ^>=0.1.17
     , time                         >=1.9       && <1.13
     , tls                          ^>=2.0
-    , tomland                      ^>=1.3.3.0
+    , toml-parser                  ^>=2.0.1.0
     , transformers
     , typed-process                ^>=0.2.6
     , unix-compat                  ^>=0.7
