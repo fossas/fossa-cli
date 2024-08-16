@@ -73,7 +73,7 @@ instance Toml.Schema.FromValue FpmDependency where
       l
       t
   fromValue (Toml.Schema.Text' _ t) = pure $ FpmMetaDep t
-  fromValue v = Toml.Schema.failAt (Toml.valueAnn v) "Expected a table"
+  fromValue v = Toml.Schema.failAt (Toml.valueAnn v) "Invalid dependency value, expected a table or a string"
 
 newtype FpmMetaDependency = FpmMetaDependency Text
   deriving (Eq, Ord, Show)
