@@ -62,7 +62,7 @@ jobs:
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: '3.10.2.1'
+        cabal-version: '3.10.3.0'
 
     # Set up Rust.
     # This action installs the 'minimal' profile.

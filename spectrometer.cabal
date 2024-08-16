@@ -73,6 +73,7 @@ common lang
     -Wall -Wincomplete-uni-patterns -Wcompat
     -Wincomplete-record-updates -Wmissing-home-modules
     -Wmissing-export-lists -Wredundant-constraints
+    -Wno-unrecognised-warning-flags
 
 -- TODO: Switch `semver` back to `versions` since https://github.com/fosskers/versions/issues/47 is fixed. This package maintainer seems much more responsive. Contrast https://github.com/brendanhay/semver/issues/12.
 -- codec-rpm is installed via cabal.project, so this number is an expected future version.
