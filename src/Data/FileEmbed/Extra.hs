@@ -48,9 +48,7 @@ embedFile' fp = runIO logEmbedFile *> embedFile fp
           let isRel = isRelative fp
           putStrLn $ "Relative?: " <> show isRel
 
-          -- `tail` is safe here because `iterate` returns an infinite list and
-          -- therefore must always have at least 1 element.
-          let dirs = take (length (splitPath fp) - if isRel then 0 else 1) $ tail $ iterate takeDirectory fp
+          let dirs = take (length (splitPath fp) - if isRel then 0 else 1) $ drop 1 $ iterate takeDirectory fp
           traverse_ ls dirs
 
     ls :: FilePath -> IO ()
