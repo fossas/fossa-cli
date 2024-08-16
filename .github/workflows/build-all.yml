@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     env:
-      GHC_VERSION: '9.4.8'
+      GHC_VERSION: '9.8.2'
 
 
     defaults:
@@ -23,25 +23,25 @@ jobs:
         include:
         - os: ubuntu-latest
           os-name: Linux
-          container: fossa/haskell-static-alpine:ghc-9.4.8
+          container: fossa/haskell-static-alpine:ghc-9.8.2
           project-file: cabal.project.ci.linux
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
         # macos-latest pointed at macos-12 this before it was changed to ARM.
         - os: macos-12
           os-name: macOS-intel
           project-file: cabal.project.ci.macos
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
         - os: windows-latest
           os-name: Windows
           project-file: cabal.project.ci.windows
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
         - os: macos-latest
           os-name: macOS-arm64
           project-file: cabal.project.ci.macos
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
     steps:
 
