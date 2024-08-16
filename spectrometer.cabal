@@ -551,7 +551,6 @@ test-suite unit-tests
   type:               exitcode-stdio-1.0
   hs-source-dirs:     test
   main-is:            test.hs
-  ghc-options:        -Wwarn=x-partial
 
   -- cabal-fmt: expand test
   other-modules:

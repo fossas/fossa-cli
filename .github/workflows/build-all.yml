@@ -315,8 +315,8 @@ jobs:
         echo ${GITHUB_SHA:0:12}
 
         VERSION=$(echo $(Linux-binaries/fossa --version))
-        EXPECTED="fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.4)"
-        echo " VERSION: $VERSION"
+        EXPECTED="fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.8)"
+        echo "VERSION: $VERSION"
         echo "EXPECTED: $EXPECTED"
 
         [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
