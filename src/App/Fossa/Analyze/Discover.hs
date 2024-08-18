@@ -4,6 +4,7 @@ module App.Fossa.Analyze.Discover (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject, DiscoverTaskEffs)
+import App.Fossa.Config.Analyze (StrictMode)
 import Control.Effect.Reader (Has, Reader)
 import Data.Aeson qualified as Aeson
 import Discovery.Filters (AllFilters)

@@ -7,11 +7,14 @@ module Strategy.Maven (
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrictMode (..))
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
+import Control.Carrier.Diagnostics qualified as Diag
+import Control.Effect.Diagnostics (Diag (..), Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import Data.Flag (Flag, fromFlag)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
@@ -21,6 +24,7 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdge
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs)
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -31,6 +35,7 @@ import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure (..))
 import Strategy.Maven.Pom.Closure qualified as PomClosure
+import Text.Pretty.Simple (pShow)
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
 discover ::
@@ -75,13 +80,22 @@ getDeps ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader (Flag StrictMode)) sig m
+  , Has Logger sig m
   ) =>
   FoundTargets ->
   MavenProject ->
   m DependencyResults
 getDeps foundTargets (MavenProject closure) = do
   let submoduleTargets = submoduleTargetSet foundTargets
-  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure <||> getStaticAnalysis submoduleTargets closure
+  strictMode <- ask @((Flag StrictMode))
+  (graph, graphBreadth) <-
+    if fromFlag StrictMode strictMode
+      then do
+        logDebug "In switch case for strict mode (getDeps) &&&&&&&&&"
+        context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure
+      else context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure <||> getStaticAnalysis submoduleTargets closure
+  -- (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure <||> getStaticAnalysis submoduleTargets closure
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -93,6 +107,8 @@ getDeps' ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader (Flag StrictMode)) sig m
+  , Has Logger sig m
   ) =>
   FoundTargets ->
   MavenProject ->
@@ -113,17 +129,34 @@ getDepsDynamicAnalysis ::
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader (Flag StrictMode)) sig m
+  , Has Logger sig m
   ) =>
   Set Text ->
   MavenProjectClosure ->
   m (Graphing Dependency, GraphBreadth)
 getDepsDynamicAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
+  strictMode <- ask @((Flag StrictMode))
+  logDebug $ "Is in strict mode for maven strategy ------------- " <> pretty (pShow strictMode)
   (graph, graphBreadth) <-
-    context "Dynamic Analysis"
-      $ warnOnErr MissingEdges
-        . warnOnErr MissingDeepDeps
-      $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+    if fromFlag StrictMode strictMode
+      then do
+        logDebug "In switch case for strict mode ==========="
+        context "Dynamic Analysis" $ getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure
+      else do
+        logDebug "NOT IN STRICT MODE ==========="
+        context "Dynamic Analysis"
+          $ warnOnErr MissingEdges
+            . warnOnErr MissingDeepDeps
+          $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+
+  logDebug $ "Is in strict mode for maven strategy ------------- " <> pretty (pShow strictMode)
+  -- (graph, graphBreadth) <-
+  --   context "Dynamic Analysis"
+  --     $ warnOnErr MissingEdges
+  --       . warnOnErr MissingDeepDeps
+  --     $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
   pure (withoutProjectAsDep filteredGraph, graphBreadth)
   where
@@ -137,28 +170,42 @@ getDepsPlugin ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Diagnostics sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsPlugin closure = context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
+getDepsPlugin closure = do
+  Diag.fatal MissingDeepDeps
+
+-- context "Plugin analysis" (Plugin.analyze' . parent $ PomClosure.closurePath closure)
 
 getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsPluginLegacy closure = context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
+getDepsPluginLegacy closure = do
+  logDebug $ "In plugin command ++++++++ "
+  -- Diag.fatal MissingDeepDeps
+  context "Legacy Plugin analysis" (Plugin.analyzeLegacy' . parent $ PomClosure.closurePath closure)
 
 getDepsTreeCmd ::
   ( Has (Lift IO) sig m
   , Has ReadFS sig m
   , CandidateCommandEffs sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
   ) =>
   MavenProjectClosure ->
   m (Graphing MavenDependency, GraphBreadth)
-getDepsTreeCmd closure =
+getDepsTreeCmd closure = do
+  logDebug $ "In deps tree comand ++++++++ "
+  Diag.fatal MissingDeepDeps
+
   context "Dynamic analysis" $
     DepTreeCmd.analyze . parent $
       PomClosure.closurePath closure

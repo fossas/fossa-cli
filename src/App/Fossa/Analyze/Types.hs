@@ -11,7 +11,7 @@ module App.Fossa.Analyze.Types (
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig, StrictMode (..))
 import App.Fossa.Lernie.Types (LernieResults)
 import App.Fossa.Reachability.Types (SourceUnitReachability (..))
 import Control.Effect.Debug (Debug)
@@ -19,6 +19,7 @@ import Control.Effect.Diagnostics (Diagnostics, Has)
 import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader)
 import Control.Effect.Telemetry (Telemetry)
+import Data.Flag (Flag)
 import Data.Set (Set)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success))
@@ -44,6 +45,7 @@ type DiscoverTaskEffs sig m =
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader (Flag StrictMode)) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   )
@@ -69,6 +71,7 @@ type AnalyzeStaticTaskEffs sig m =
   , Has Debug sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader (Flag StrictMode)) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   )

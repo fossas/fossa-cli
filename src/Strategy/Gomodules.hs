@@ -7,12 +7,13 @@ module Strategy.Gomodules (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..), StrictMode (..))
 import Control.Carrier.Diagnostics (warn)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
-import Control.Effect.Reader (Reader, asks)
+import Control.Effect.Reader (Reader, ask, asks)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
+import Data.Flag (Flag, fromFlag)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -67,9 +68,13 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
 getDeps project goDynamicTactic = do
-  (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
+  strictMode <- ask @((Flag StrictMode))
+  (graph, graphBreadth) <-
+    if fromFlag StrictMode strictMode
+      then context "Strict mode Gomodules" dynamicAnalysis
+      else context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
     DependencyResults

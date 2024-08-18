@@ -3,11 +3,13 @@ module Strategy.Godep (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrictMode (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import Data.Flag (Flag, fromFlag)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -69,11 +71,15 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
-getDeps project =
-  context "Godep" $
-    context "Gopkg.lock analysis" (analyzeGopkgLock project)
-      <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
+getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m) => GodepProject -> m DependencyResults
+getDeps project = do
+  strictMode <- ask @((Flag StrictMode))
+  if fromFlag StrictMode strictMode
+    then context "Strict mode Godep" $ context "Gopkg.lock analysis" (analyzeGopkgLock project)
+    else
+      context "Godep" $
+        context "Gopkg.lock analysis" (analyzeGopkgLock project)
+          <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
 
 analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 analyzeGopkgLock project = do

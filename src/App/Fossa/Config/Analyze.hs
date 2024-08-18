@@ -23,6 +23,7 @@ module App.Fossa.Config.Analyze (
   GoDynamicTactic (..),
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
+  StrictMode (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -135,6 +136,7 @@ data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 data StaticOnlyTactics = StaticOnlyTactics deriving (Generic)
+data StrictMode = StrictMode deriving (Generic, Show)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -226,6 +228,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeCustomFossaDepsFile :: Maybe FilePath
   , analyzeStaticOnlyTactics :: Flag StaticOnlyTactics
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
+  , analyzeStrictMode :: Flag StrictMode
   }
   deriving (Eq, Ord, Show)
 
@@ -264,6 +267,7 @@ data AnalyzeConfig = AnalyzeConfig
   , allowedTacticTypes :: AnalysisTacticTypes
   , reachabilityConfig :: ReachabilityConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
+  , strictMode :: Flag StrictMode
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -333,6 +337,7 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "fossa-deps-file" <> helpDoc fossaDepsFileHelp <> metavar "FILEPATH"))
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
+    <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Strict mode")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -541,6 +546,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure allowedTacticType
     <*> resolveReachabilityOptions reachabilityConfig
     <*> pure analyzeWithoutDefaultFilters
+    <*> pure analyzeStrictMode
 
 collectMavenScopeFilters ::
   ( Has Diagnostics sig m

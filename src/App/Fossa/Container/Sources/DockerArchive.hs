@@ -16,7 +16,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), StrictMode (..), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import Codec.Archive.Tar.Index (TarEntryOffset)
@@ -59,7 +59,7 @@ import Control.Monad (join, void, when)
 import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
-import Data.Flag (Flag, fromFlag)
+import Data.Flag (Flag, fromFlag, toFlag)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
 import Data.Maybe (isNothing, listToMaybe, mapMaybe)
@@ -202,6 +202,7 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
             runTarballReadFSIO layerFs tarball
               . runReader noExperimental
               . runReader noMavenScopeFilters
+              . runReader testFlag
               . Diag.context "discovery/analysis tasks"
               . runOutput @DiscoveredProjectScan
               . runStickyLogger SevInfo
@@ -213,6 +214,8 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
           pure projectResults
       )
   where
+    testFlag :: Flag StrictMode
+    testFlag = toFlag StrictMode False
     noMavenScopeFilters :: MavenScopeFilters
     noMavenScopeFilters = MavenScopeIncludeFilters mempty
     noExperimental :: ExperimentalAnalyzeConfig
@@ -256,6 +259,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader (Flag StrictMode)) sig m
   , Has (Reader AllFilters) sig m
   , Has Stack sig m
   , Has Telemetry sig m
@@ -373,6 +377,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           False -- Targets are not impacted by path dependencies.
       )
     . runReader (MavenScopeIncludeFilters mempty)
+    . runReader (toFlag StrictMode False)
     . runReader (mempty :: AllFilters)
     $ run
   where

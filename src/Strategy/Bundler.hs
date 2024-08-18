@@ -11,6 +11,7 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrictMode (..))
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -21,8 +22,9 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import Data.Flag (Flag, fromFlag)
 import Data.Glob as Glob (toGlob, (</>))
 import Data.Text (isSuffixOf)
 import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
@@ -35,6 +37,7 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, Has)
+import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -119,8 +122,16 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
-getDeps project = analyzeGemfileLock project <||> context "Bundler" (analyzeBundleShow project)
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m, Has Logger sig m) => BundlerProject -> m DependencyResults
+getDeps project = do
+  strictMode <- ask @((Flag StrictMode))
+  if fromFlag StrictMode strictMode
+    then do
+      logDebug "Ruby strict mode"
+      analyzeGemfileLock project
+    else do
+      logDebug "Ruby NOT IN STRICT MODE ==========="
+      analyzeGemfileLock project <||> context "Bundler" (analyzeBundleShow project)
 
 analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeBundleShow project = do
@@ -132,15 +143,11 @@ analyzeBundleShow project = do
       , dependencyManifestFiles = maybe [bundlerGemfile project] pure (bundlerGemfileLock project)
       }
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
-analyzeGemfileLock project =
-  warnOnErr AllDirectDeps
-    . warnOnErr MissingEdges
-    . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
-    . errHelp BundlerMissingLockFileHelp
-    . errDoc bundlerLockFileRationaleUrl
-    . errDoc rubyFossaDocUrl
-    $ do
+analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m) => BundlerProject -> m DependencyResults
+analyzeGemfileLock project = do
+  strictMode <- ask @((Flag StrictMode))
+  if fromFlag StrictMode strictMode
+    then do
       lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
       graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
       pure $
@@ -149,3 +156,35 @@ analyzeGemfileLock project =
           , dependencyGraphBreadth = Complete
           , dependencyManifestFiles = [lockFile]
           }
+    else do
+      warnOnErr AllDirectDeps
+        . warnOnErr MissingEdges
+        . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
+        . errHelp BundlerMissingLockFileHelp
+        . errDoc bundlerLockFileRationaleUrl
+        . errDoc rubyFossaDocUrl
+        $ do
+          lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
+          graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
+          pure $
+            DependencyResults
+              { dependencyGraph = graph
+              , dependencyGraphBreadth = Complete
+              , dependencyManifestFiles = [lockFile]
+              }
+
+-- warnOnErr AllDirectDeps
+--   . warnOnErr MissingEdges
+--   . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
+--   . errHelp BundlerMissingLockFileHelp
+--   . errDoc bundlerLockFileRationaleUrl
+--   . errDoc rubyFossaDocUrl
+--   $ do
+--     lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
+--     graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
+--     pure $
+--       DependencyResults
+--         { dependencyGraph = graph
+--         , dependencyGraphBreadth = Complete
+--         , dependencyManifestFiles = [lockFile]
+--         }

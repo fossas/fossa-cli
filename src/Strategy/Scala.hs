@@ -13,12 +13,14 @@ module Strategy.Scala (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrictMode (..))
 import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, fatalText, fromMaybeText, recover, warnOnErr, (<||>))
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.ByteString.Lazy (ByteString)
+import Data.Flag (Flag, fromFlag)
 import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString, toText)
 import Data.Text (Text)
@@ -127,10 +129,14 @@ mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
     , projectData = ScalaProject sbtBuildDir sbtTreeJson closure
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
-getDeps project =
-  warnOnErr MissingDeepDeps (analyzeWithDepTreeJson project <||> analyzeWithSbtDepTree project)
-    <||> analyzeWithPoms project
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader (Flag StrictMode)) sig m) => ScalaProject -> m DependencyResults
+getDeps project = do
+  strictMode <- ask @((Flag StrictMode))
+  if fromFlag StrictMode strictMode
+    then analyzeWithDepTreeJson project
+    else
+      warnOnErr MissingDeepDeps (analyzeWithDepTreeJson project <||> analyzeWithSbtDepTree project)
+        <||> analyzeWithPoms project
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath
