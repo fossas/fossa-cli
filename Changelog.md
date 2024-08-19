@@ -1,9 +1,10 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.31
 
 - Resolve an issue parsing toml configuration files. ([#1459](https://github.com/fossas/fossa-cli/pull/1459))
 - Gradle: ignore deprecated configurations ([#1457](https://github.com/fossas/fossa-cli/pull/1457))
+- Upgrade the GHC we use to build the CLI. ([#1460](https://github.com/fossas/fossa-cli/pull/1460))
 
 ## 3.9.30
 
