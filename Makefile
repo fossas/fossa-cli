@@ -3,7 +3,7 @@ current_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 FMT_OPTS := -co -XTypeApplications -o -XImportQualifiedPost
 FIND_OPTS := src test integration-test -type f -name '*.hs'
-GHC_VERSION := 9.4.8
+GHC_VERSION := 9.8.2
 DEV_TOOLS := ghcr.io/fossas/haskell-dev-tools:${GHC_VERSION}
 MOUNTED_DEV_TOOLS_OPTS := --rm
 MOUNTED_DEV_TOOLS_OPTS += --mount "type=bind,source=${current_dir},target=/fossa-cli"

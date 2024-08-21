@@ -493,7 +493,7 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
 --
 -- Package Spec: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 parsePkgId :: MonadFail m => Text.Text -> m PackageId
-parsePkgId t = either fail pure $ oldPkgIdParser' t <|> parseNewSpec
+parsePkgId t = either fail pure $ oldPkgIdParser' t <> parseNewSpec
   where
     oldPkgIdParser' = first toString . oldPkgIdParser
 

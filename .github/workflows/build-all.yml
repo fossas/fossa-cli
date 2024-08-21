@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
     env:
-      GHC_VERSION: '9.4.8'
+      GHC_VERSION: '9.8.2'
 
 
     defaults:
@@ -23,25 +23,25 @@ jobs:
         include:
         - os: ubuntu-latest
           os-name: Linux
-          container: fossa/haskell-static-alpine:ghc-9.4.8
+          container: fossa/haskell-static-alpine:ghc-9.8.2
           project-file: cabal.project.ci.linux
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
         # macos-latest pointed at macos-12 this before it was changed to ARM.
         - os: macos-12
           os-name: macOS-intel
           project-file: cabal.project.ci.macos
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
         - os: windows-latest
           os-name: Windows
           project-file: cabal.project.ci.windows
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
         - os: macos-latest
           os-name: macOS-arm64
           project-file: cabal.project.ci.macos
-          ghc: '9.4.8'
+          ghc: '9.8.2'
 
     steps:
 
@@ -62,7 +62,7 @@ jobs:
       if: ${{ !contains(matrix.os, 'ubuntu') }}
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: '3.10.2.1'
+        cabal-version: '3.10.3.0'
 
     # Set up Rust.
     # This action installs the 'minimal' profile.
@@ -315,8 +315,8 @@ jobs:
         echo ${GITHUB_SHA:0:12}
 
         VERSION=$(echo $(Linux-binaries/fossa --version))
-        EXPECTED="fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.4)"
-        echo " VERSION: $VERSION"
+        EXPECTED="fossa-cli version ${{ steps.get-version.outputs.VERSION }} (revision ${GITHUB_SHA:0:12} compiled with ghc-9.8)"
+        echo "VERSION: $VERSION"
         echo "EXPECTED: $EXPECTED"
 
         [ "$GITHUB_REF_TYPE" = "tag" ] && echo "Ref type OK"
