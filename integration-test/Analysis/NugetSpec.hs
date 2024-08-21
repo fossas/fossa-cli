@@ -7,7 +7,8 @@ import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
 import Path
-import Strategy.NuGet.PackageReference qualified as PackageReference
+
+import Strategy.NuGet qualified as NuGet
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Test.Hspec
 import Types
