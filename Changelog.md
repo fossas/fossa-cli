@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.44
+- NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
+
 ## 3.9.43
 - Discovery: Fix a bug where directories in paths.exclude may still be accessed during discovery which causes an error when users don't have permission to read those directories.
 
