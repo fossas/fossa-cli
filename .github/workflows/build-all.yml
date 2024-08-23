@@ -84,6 +84,10 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
+    # TODO: Make more specific
+    - name: build-essential
+      run: apt update && apt install build-essential
+
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
