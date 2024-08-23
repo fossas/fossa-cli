@@ -66,7 +66,7 @@ jobs:
     - uses: haskell-actions/setup@v2
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
-      if: ${{ !contains(matrix.os, 'ubuntu') }}
+      if: ${{ !contains(matrix.os-name, 'Linux') }}
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.10.3.0'
