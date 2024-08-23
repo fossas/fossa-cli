@@ -73,9 +73,9 @@ jobs:
 
     # Set up Rust.
     # This action installs the 'minimal' profile.
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: dtolnay/rust-toolchain@master
       with:
-        targets: ${{ matrix.target }}
+        targets: ${{ matrix.cargo-target }}
 
     - name: Install additional Rust tooling
       uses: taiki-e/install-action@v2
