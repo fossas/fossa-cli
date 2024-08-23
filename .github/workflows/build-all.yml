@@ -25,7 +25,6 @@ jobs:
         - os: LinuxARM
           os-name: Linux-arm
           project-file: cabal.project.ci.linux
-          cargo-target: aarch64-unknown-linux-musl
           ghc: '9.8.2'
 
         # - os: ubuntu-latest
@@ -84,10 +83,6 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    # TODO: Make more specific
-    - name: build-essential
-      run: apt update && apt install build-essential
-
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
@@ -101,17 +96,17 @@ jobs:
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
       if: ${{ matrix.os-name == 'linux' }}
-      run: cargo build --release ${CARGO_TARGET:+$(echo "--target $CARGO_TARGET")}
+      run: cargo build --release
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
     - name: Build Rust dependencies (non-Linux)
       if: ${{ matrix.os-name != 'linux' }}
-      run: cargo build --release ${CARGO_TARGET:+$(echo "--target $CARGO_TARGET")}
+      run: cargo build --release
 
     # Run tests in release mode to reduce the need for rebuilds.
     - name: Test Rust dependencies
-      run: cargo nextest run --release ${CARGO_TARGET:+$(echo "--target $CARGO_TARGET")}
+      run: cargo nextest run --release
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -127,6 +122,10 @@ jobs:
     # We compute the cache key based on the solved install plan instead of just
     # hashing the `.cabal` file, since there are many kinds of changes that will
     # cause `.cabal` to change (e.g. adding new source modules).
+    #
+    # On linux-arm this hash may not be generated from the _exact_ install plan that runs in the alpine environment.
+    # However, that's ok.
+    # The hash is always prefixed with the build environment and compiler and should not cause conflict even if the hash is the same as the x86_64 linux cache.
     - name: Compute cache key
       id: compute-cache-key
       env:
@@ -179,7 +178,7 @@ jobs:
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
-        args: ./.github/workflows/scripts/build-arm.sh
+        args: ./.github/workflows/scripts/build.sh
 
     - name: Temporary cancel
       run: gh run cancel ${{ github.run_id }}
