@@ -55,6 +55,12 @@ jobs:
         lfs: true
         fetch-depth: 2
 
+    - name: ARM build
+      if: ${{ matrix.os == 'LinuxARM' }}
+      uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+      with:
+        args: ls -al
+
     - name: Temporary cancel
       run: gh run cancel ${{ github.run_id }}
 
