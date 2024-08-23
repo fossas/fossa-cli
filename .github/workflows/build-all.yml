@@ -59,7 +59,7 @@ jobs:
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
-        args: ls -al && uname -a
+        args: .github/workflows/scripts/build-arm.sh
 
     - name: Temporary cancel
       run: gh run cancel ${{ github.run_id }}
