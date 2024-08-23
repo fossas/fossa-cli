@@ -73,7 +73,7 @@ jobs:
 
     # Set up Rust.
     # This action installs the 'minimal' profile.
-    - uses: dtolnay/rust-toolchain@master
+    - uses: dtolnay/rust-toolchain@stable
       with:
         targets: ${{ matrix.cargo-target }}
 
