@@ -97,7 +97,7 @@ jobs:
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
       if: ${{ matrix.os-name == 'linux' }}
-      run: cargo build --features jemalloc --release ${CARGO_TARGET:+$(echo "--target $CARGO_TARGET")}
+      run: cargo build --release ${CARGO_TARGET:+$(echo "--target $CARGO_TARGET")}
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
