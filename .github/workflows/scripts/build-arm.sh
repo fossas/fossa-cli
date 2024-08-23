@@ -1,3 +1,3 @@
 #!/usr/bin/env sh
 
-ls -al && uname -a
+cat /etc/os-release
