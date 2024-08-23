@@ -24,7 +24,6 @@ jobs:
         - os: LinuxARM
           os-name: Linux-arm
           project-file: cabal.project.ci.linux
-          container: fossa/haskell-static-alpine:ghc-9.8.2
           ghc: '9.8.2'
 
         # - os: ubuntu-latest
@@ -56,8 +55,8 @@ jobs:
         lfs: true
         fetch-depth: 2
 
-    # - name: Temporary cancel
-    #   run: gh run cancel ${{ github.run_id }}
+    - name: Temporary cancel
+      run: gh run cancel ${{ github.run_id }}
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
