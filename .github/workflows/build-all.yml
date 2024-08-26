@@ -302,20 +302,29 @@ jobs:
       if: ${{ github.ref_type == 'tag' }}
       uses: sigstore/cosign-installer@v3.4.0
 
-    - name: Sign Release (Linux)
+    - name: Sign and Verify Release (Linux)
       if: ${{ github.ref_type == 'tag' }}
       run: |
         cosign version
-        cosign sign-blob --yes --bundle "Linux-binaries/fossa.bundle" "Linux-binaries/fossa"
-        cosign sign-blob --yes --bundle "Linux-binaries/diagnose.bundle" "Linux-binaries/diagnose"
-        cosign sign-blob --yes --bundle "Linux-binaries/millhone.bundle" "Linux-binaries/millhone"
 
-    - name: Verify Signatures
-      if: ${{ github.ref_type == 'tag' }}
-      run: |
-        cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
-        cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
-        cosign verify-blob --bundle "Linux-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/millhone"
+        for linux_kind in 'Linux' 'Linux-arm'
+        do
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/fossa.bundle" "$linux_kind-binaries/fossa"
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/diagnose.bundle" "$linux_kind-binaries/diagnose"
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/millhone.bundle" "$linux_kind-binaries/millhone"
+
+          cosign verify-blob --bundle "$linux_kind-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" $linux_kind-binaries/fossa"
+          cosign verify-blob --bundle "$linux_kind-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" $linux_kind-binaries/diagnose"
+          cosign verify-blob --bundle "$linux_kind-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" $linux_kind-binaries/millhone"
+
+        done
+
+    # - name: Verify Signatures
+    #   if: ${{ github.ref_type == 'tag' }}
+    #   run: |
+    #     cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
+    #     cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
+    #     cosign verify-blob --bundle "Linux-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/millhone"
 
     # This uses names compatible with our install script.
     #
