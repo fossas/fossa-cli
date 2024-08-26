@@ -51,11 +51,20 @@ case "$(uname -s)" in
     ;;
 
   Linux)
-    ASSET_POSTFIX="linux"
-    THEMIS_ASSET_POSTFIX="linux-amd64"
-    LERNIE_ASSET_POSTFIX="x86_64-linux"
-    ;;
+    case "$(uname -m)" in
+      aarch64)
+        ASSET_POSTFIX="linux"
+        THEMIS_ASSET_POSTFIX="linux-arm64"
+        LERNIE_ASSET_POSTFIX="aarch64-linux"
+      ;;
 
+      *)
+        ASSET_POSTFIX="linux"
+        THEMIS_ASSET_POSTFIX="linux-amd64"
+        LERNIE_ASSET_POSTFIX="x86_64-linux"
+        ;;
+    esac
+    ;;
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
