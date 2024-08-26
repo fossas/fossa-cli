@@ -129,12 +129,12 @@ jobs:
       id: compute-cache-key
       run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
         
-   - name: Compute Cache Key (Linux Arm)
-     if: ${{ ! matrix.os == 'LinuxARM' }}
-     uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
-     with:
-       args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
-       
+    - name: Compute Cache Key (Linux Arm)
+      if: ${{ ! matrix.os == 'LinuxARM' }}
+      uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+      with:
+        args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
+
         # cabal --project-file=${{ matrix.project-file }} update
         # cabal --project-file=${{ matrix.project-file }} build --dry-run
         # cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
