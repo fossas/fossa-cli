@@ -131,6 +131,7 @@ jobs:
 
     - name: Compute Cache Key (Linux Arm)
       if: ${{ matrix.os == 'LinuxARM' }}
+      id: compute-cache-key-arm
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
@@ -156,7 +157,7 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key || steps.compute-cache-key-arm.outputs.cabal-cache-key }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
           ${{ matrix.os-name }}-${{ matrix.ghc }}-
