@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+set -e
+
 RUNNER_OS=$1
 PROJECT_FILE=$2
 

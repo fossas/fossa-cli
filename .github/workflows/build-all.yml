@@ -128,7 +128,7 @@ jobs:
       if: ${{ ! matrix.os != 'LinuxARM' }}
       id: compute-cache-key
       run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
-        
+
     - name: Compute Cache Key (Linux Arm)
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
@@ -178,39 +178,23 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
-    - name: ARM build
+    - name: Linux ARM build
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
         args: ./.github/workflows/scripts/build.sh
 
+    - name: Build and Unit Test
+      if: ${{ matrix.os != 'LinuxARM' }}
+      run: ./.github/workflows/scripts/build.sh
+
     - name: Temporary cancel
       run: gh run cancel ${{ github.run_id }}
 
-    - name: Build test data
-      run: |
-        make build-test-data
+    # - name: Build test data
+    #   run: |
+    #     make build-test-data
 
-    - name: Build
-      # Occasionally, we run out of memory on the build process.
-      # Since cabal uses incremental compilation, we can retry from where we left off
-      #   by simply re-running cabal if we fail.
-      env:
-        RUN_CMD: cabal build --project-file=${{ matrix.project-file }} all
-      run: |
-        : # With dist-newstyle caches:
-        : # Cabal mainly knows to recompile based on changes to files.
-        : # Tagging in git doesn't reliably change a file in a fixed location that cabal/GHC can track to indicate that there's a new tag.
-        : # For our release process, we merge to master, which builds (and may store a dist-newstyle cache), then push a release tag.
-        : # During the tag build, cabal/GHC may not realize that they have to rebuild the Version.hs file because the tag is invisible to it.
-        : # This line adds a unique comment to our version source file to prompt cabal/GHC to rebuild Version.hs unconditionally.
-        echo "{- $RANDOM$RANDOM$RANDOM -}" >> src/App/Version.hs
-        cabal update
-        $RUN_CMD || $RUN_CMD
-
-    - name: Run unit tests
-      run: |
-        cabal test --project-file=${{ matrix.project-file }} unit-tests
 
     - name: Validate diagnose commands run on the platform
       run: |
