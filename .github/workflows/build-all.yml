@@ -73,8 +73,6 @@ jobs:
     # Set up Rust.
     # This action installs the 'minimal' profile.
     - uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: ${{ matrix.cargo-target }}
 
     - name: Install additional Rust tooling
       uses: taiki-e/install-action@v2
@@ -96,7 +94,7 @@ jobs:
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
       if: ${{ matrix.os-name == 'linux' }}
-      run: cargo build --release
+      run: cargo build --feature jemalloc --release
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
@@ -126,26 +124,32 @@ jobs:
     # On linux-arm this hash may not be generated from the _exact_ install plan that runs in the alpine environment.
     # However, that's ok.
     # The hash is always prefixed with the build environment and compiler and should not cause conflict even if the hash is the same as the x86_64 linux cache.
-    - name: Compute cache key
+    - name: Compute cache key (not ARM Linux)
+      if: ${{ ! matrix.os != 'LinuxARM' }}
       id: compute-cache-key
-      env:
-        RUNNER_OS: ${{ runner.os }}
-      run: |
-        cabal --project-file=${{ matrix.project-file }} update
-        cabal --project-file=${{ matrix.project-file }} build --dry-run
-        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
-        echo "Install plan:"
-        cat /tmp/cabal-cache-key
+      run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
+        
+   - name: Compute Cache Key (Linux Arm)
+     if: ${{ ! matrix.os == 'LinuxARM' }}
+     uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+     with:
+       args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
+       
+        # cabal --project-file=${{ matrix.project-file }} update
+        # cabal --project-file=${{ matrix.project-file }} build --dry-run
+        # cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
+        # echo "Install plan:"
+        # cat /tmp/cabal-cache-key
 
-        if [ "$RUNNER_OS" = "macOS" ]; then
-           PLAN_SUM=$(shasum -a256 /tmp/cabal-cache-key)
-        else
-           PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
-        fi
+        # if [ "$RUNNER_OS" = "macOS" ]; then
+        #    PLAN_SUM=$(shasum -a256 /tmp/cabal-cache-key)
+        # else
+        #    PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
+        # fi
 
-        export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
-        echo "Cabal cache key: $CABAL_CACHE_KEY"
-        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+        # export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
+        # echo "Cabal cache key: $CABAL_CACHE_KEY"
+        # echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
 
     # Build FOSSA CLI.
     - uses: actions/cache@v4
