@@ -3,6 +3,11 @@
 set -e
 set -x
 
+if [ $# -lt 2 ] ; then
+    echo "Usage: ./compute_cache_key <RUNNER OS> <PROJECT FILE>"
+    exit 1
+fi
+
 RUNNER_OS=$1
 PROJECT_FILE=$2
 

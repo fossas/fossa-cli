@@ -121,9 +121,6 @@ jobs:
     # hashing the `.cabal` file, since there are many kinds of changes that will
     # cause `.cabal` to change (e.g. adding new source modules).
     #
-    # On linux-arm this hash may not be generated from the _exact_ install plan that runs in the alpine environment.
-    # However, that's ok.
-    # The hash is always prefixed with the build environment and compiler and should not cause conflict even if the hash is the same as the x86_64 linux cache.
     - name: Compute cache key (not ARM Linux)
       if: ${{ matrix.os != 'LinuxARM' }}
       id: compute-cache-key
@@ -135,22 +132,6 @@ jobs:
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
-
-        # cabal --project-file=${{ matrix.project-file }} update
-        # cabal --project-file=${{ matrix.project-file }} build --dry-run
-        # cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
-        # echo "Install plan:"
-        # cat /tmp/cabal-cache-key
-
-        # if [ "$RUNNER_OS" = "macOS" ]; then
-        #    PLAN_SUM=$(shasum -a256 /tmp/cabal-cache-key)
-        # else
-        #    PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
-        # fi
-
-        # export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
-        # echo "Cabal cache key: $CABAL_CACHE_KEY"
-        # echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
 
     # Build FOSSA CLI.
     - uses: actions/cache@v4
@@ -179,7 +160,7 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
-    - name: Linux ARM build
+    - name: Build and Unit Test (Linux ARM)
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
@@ -189,22 +170,9 @@ jobs:
       if: ${{ matrix.os != 'LinuxARM' }}
       run: ./.github/workflows/scripts/build.sh
 
-    - name: Temporary cancel
-      run: gh run cancel ${{ github.run_id }}
-
-    # - name: Build test data
-    #   run: |
-    #     make build-test-data
-
-
     - name: Validate diagnose commands run on the platform
       run: |
         cargo run --bin diagnose -- walk --trace-spans none --trace-level info
-
-    # Test cabal-install
-    - name: Test Cabal Install (Linux)
-      if: ${{ contains(matrix.os, 'linux') }}
-      run: cabal install --overwrite-policy=always --project=${{ matrix.project-file }} --ghc-options="-Wwarn"
 
     # Save artifacts.
     - name: Find and move binaries (Windows)
