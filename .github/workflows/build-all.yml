@@ -164,11 +164,11 @@ jobs:
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
-        args: ./.github/workflows/scripts/build.sh
+        args: ./.github/workflows/scripts/build.sh ${{ runner.os }} ${{ matrix.project-file }}
 
     - name: Build and Unit Test
       if: ${{ matrix.os != 'LinuxARM' }}
-      run: ./.github/workflows/scripts/build.sh
+      run: ./.github/workflows/scripts/build.sh ${{ runner.os }} ${{ matrix.project-file }}
 
     - name: Validate diagnose commands run on the platform
       run: |
