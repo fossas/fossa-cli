@@ -1,13 +1,14 @@
 #!/usr/bin/env sh
 
 set -e
+set -x
 
 RUNNER_OS=$1
 PROJECT_FILE=$2
 
 cabal --project-file="$PROJECT_FILE" update
 cabal --project-file="$PROJECT_FILE" build --dry-run
-cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
+jq '."install-plan"[]."id"' < dist-newstyle/cache/plan.json | sort > /tmp/cabal-cache-key
 echo "Install plan:"
 cat /tmp/cabal-cache-key
 
@@ -17,6 +18,7 @@ else
    PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
 fi
 
-export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
+CABAL_CACHE_KEY="$(echo "$PLAN_SUM" | awk '{print $1}')"
+export CABAL_CACHE_KEY
 echo "Cabal cache key: $CABAL_CACHE_KEY"
-echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
+echo "cabal-cache-key=$CABAL_CACHE_KEY" >> "$GITHUB_OUTPUT"
