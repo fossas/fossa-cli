@@ -130,7 +130,7 @@ jobs:
       run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
         
     - name: Compute Cache Key (Linux Arm)
-      if: ${{ ! matrix.os == 'LinuxARM' }}
+      if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
