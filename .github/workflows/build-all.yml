@@ -125,7 +125,7 @@ jobs:
     # However, that's ok.
     # The hash is always prefixed with the build environment and compiler and should not cause conflict even if the hash is the same as the x86_64 linux cache.
     - name: Compute cache key (not ARM Linux)
-      if: ${{ ! matrix.os != 'LinuxARM' }}
+      if: ${{ matrix.os != 'LinuxARM' }}
       id: compute-cache-key
       run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
