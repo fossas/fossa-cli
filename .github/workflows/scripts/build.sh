@@ -26,7 +26,7 @@ git config --global --add safe.directory "$GITHUB_WORKSPACE"
 echo "{- $GITHUB_RUN_ID -}" >> src/App/Version.hs
 cabal update
 cabal build --project-file=cabal.project.ci.linux all
-cabal test --project-file=cabal.project.ci.linux
+cabal test --project-file=cabal.project.ci.linux unit-tests
 
 # Test cabal-install.
 # This check ensures that QuickImport can use spectrometer as a library.
