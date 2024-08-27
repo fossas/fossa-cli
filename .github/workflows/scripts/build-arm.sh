@@ -13,7 +13,7 @@ PROJECT_FILE=$2
 
 # Install rust tooling
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-cargo install nextest
+. "/home/runner/.cargo/env"
 
 rustc -V
 cargo -V
@@ -21,7 +21,7 @@ cargo -V
 # Build Rust binaries
 cargo build --release
 
-cargo nextest run --release
+cargo test run --release
 
 # Now do Haskell things
 ./build.sh "$RUNNER_OS" "$PROJECT_FILE"
