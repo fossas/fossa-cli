@@ -74,6 +74,11 @@ jobs:
     # This action installs the 'minimal' profile.
     - uses: dtolnay/rust-toolchain@stable
 
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: nextest,cross
+      
+      
     - uses: Swatinem/rust-cache@v2
 
     - name: Debugging information
@@ -86,9 +91,9 @@ jobs:
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
-      if: ${{ matrix.os-name == 'Linux' }}
+      if: ${{ matrix.os == 'LinuxARM' }}
       run: |
-        cargo build --features jemalloc --release
+        cross build --target=aarch64-unknown-linux-musl --release
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
