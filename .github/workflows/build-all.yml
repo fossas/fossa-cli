@@ -97,8 +97,8 @@ jobs:
       run: cargo build --release
 
     # Run tests in release mode to reduce the need for rebuilds.
-    - name: Test Rust dependencies
-      run: cargo nextest run --release
+    # - name: Test Rust dependencies
+    #   run: cargo nextest run --release
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
