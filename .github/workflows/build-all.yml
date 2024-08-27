@@ -73,15 +73,8 @@ jobs:
     # Set up Rust, this is mainly used for rust-cache.
     # This action installs the 'minimal' profile.
     - uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: aarch64-unknown-linux-gnu,aarch64-unknown-linux-musl
 
     - uses: Swatinem/rust-cache@v2
-
-    - name: Install additional Rust tooling
-      uses: taiki-e/install-action@v2
-      with:
-        tool: nextest
 
     - name: Debugging information
       run: |
@@ -93,11 +86,9 @@ jobs:
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
-      if: ${{ contains(matrix.os-name, 'linux') }}
+      if: ${{ matrix.os-name == 'Linux' }}
       run: |
-        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
-        export CC=aarch64-linux-gnu-gcc
-        cargo build --target aarch64-unknown-linux-musl --release
+        cargo build --features jemalloc --release
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
@@ -167,7 +158,7 @@ jobs:
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
-        args: ./.github/workflows/scripts/build.sh ${{ runner.os }} ${{ matrix.project-file }}
+        args: ./.github/workflows/scripts/build-arm.sh ${{ runner.os }} ${{ matrix.project-file }}
 
     - name: Build and Unit Test
       if: ${{ matrix.os != 'LinuxARM' }}
