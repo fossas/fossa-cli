@@ -12,7 +12,7 @@ RUNNER_OS=$1
 PROJECT_FILE=$2
 
 # Install rust tooling
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --profile minimal
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
 cargo install nextest
 
 rustc -V
