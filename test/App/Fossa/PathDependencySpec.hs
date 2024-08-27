@@ -11,6 +11,7 @@ import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (PackageRevision))
 import Data.Flag (toFlag)
 import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvTesting),
@@ -41,10 +42,11 @@ absPathOfSpec = describe "absPathOfSpec" $ do
   mkPathSpec cwd "../" isAbsDir
   mkPathSpec cwd "./" isAbsDir
 
-  mkPathSpec cwd "../fossa-cli" isAbsDir
-  mkPathSpec cwd "../fossa-cli/" isAbsDir
-  mkPathSpec cwd "../fossa-cli/test" isAbsDir
-  mkPathSpec cwd "../fossa-cli/test/" isAbsDir
+  let currentPathRel = "../" <> (toText . toFilePath . dirname $ cwd)
+  mkPathSpec cwd currentPathRel isAbsDir
+  mkPathSpec cwd currentPathRel isAbsDir
+  mkPathSpec cwd (currentPathRel <> "/test") isAbsDir
+  mkPathSpec cwd (currentPathRel <> "/test") isAbsDir
 
   mkPathSpec cwd "./test" isAbsDir
   mkPathSpec cwd "./test/" isAbsDir
