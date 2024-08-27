@@ -85,20 +85,20 @@ jobs:
     # Linux builds are run in Alpine, which builds them statically;
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
-    # - name: Build Rust dependencies (Linux)
-    #   if: ${{ matrix.os-name == 'Linux') }}
-    #   run: |
-    #     cargo build --release
+    - name: Build Rust dependencies (Linux)
+      if: ${{ matrix.os-name == 'Linux') }}
+      run: |
+        cargo build --features jemalloc --release
 
-    # # Non-Linux environments generally don't need `jemalloc`
-    # # and in particular Windows doesn't support it.
-    # - name: Build Rust dependencies (non-Linux)
-    #   if: ${{ ! contains(matrix.os-name, 'linux') }}
-    #   run: cargo build --release
+    # Non-Linux environments generally don't need `jemalloc`
+    # and in particular Windows doesn't support it.
+    - name: Build Rust dependencies (non-Linux)
+      if: ${{ ! contains(matrix.os-name, 'linux') }}
+      run: cargo build --release
 
-    # # Run tests in release mode to reduce the need for rebuilds.
-    # - name: Test Rust dependencies
-    #   run: cargo nextest run --release
+    # Run tests in release mode to reduce the need for rebuilds.
+    - name: Test Rust dependencies
+      run: cargo nextest run --release
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -158,7 +158,7 @@ jobs:
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
-        args: ./.github/workflows/scripts/build.sh ${{ runner.os }} ${{ matrix.project-file }}
+        args: ./.github/workflows/scripts/build-arm.sh ${{ runner.os }} ${{ matrix.project-file }}
 
     - name: Build and Unit Test
       if: ${{ matrix.os != 'LinuxARM' }}
