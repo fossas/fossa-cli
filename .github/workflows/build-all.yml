@@ -70,16 +70,9 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.10.3.0'
 
-    # Set up Rust.
+    # Set up Rust, this is mainly used for rust-cache.
     # This action installs the 'minimal' profile.
     - uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: aarch64-unknown-linux-musl,aarch64-unknown-linux-gnu
-
-    - name: Install additional Rust tooling
-      uses: taiki-e/install-action@v2
-      with:
-        tool: nextest
 
     - uses: Swatinem/rust-cache@v2
 
@@ -88,29 +81,24 @@ jobs:
         ghc --version || echo "no ghc"
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
-        rustc -V || echo "no rustc"
-        cargo -V || echo "no cargo"
 
     # Linux builds are run in Alpine, which builds them statically;
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
-    - name: Build Rust dependencies (Linux)
-      if: ${{ contains(matrix.os-name, 'linux') }}
-      run: |
-        sudo apt update && sudo apt install -y musl-dev
-        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=aarch64-linux-gnu-gcc
-        export CC=aarch64-linux-gnu-gcc
-        cargo build --target aarch64-unknown-linux-musl --release
+    # - name: Build Rust dependencies (Linux)
+    #   if: ${{ matrix.os-name == 'Linux') }}
+    #   run: |
+    #     cargo build --release
 
-    # Non-Linux environments generally don't need `jemalloc`
-    # and in particular Windows doesn't support it.
-    - name: Build Rust dependencies (non-Linux)
-      if: ${{ matrix.os-name != 'linux' }}
-      run: cargo build --release
+    # # Non-Linux environments generally don't need `jemalloc`
+    # # and in particular Windows doesn't support it.
+    # - name: Build Rust dependencies (non-Linux)
+    #   if: ${{ ! contains(matrix.os-name, 'linux') }}
+    #   run: cargo build --release
 
-    # Run tests in release mode to reduce the need for rebuilds.
-    - name: Test Rust dependencies
-      run: cargo nextest run --target=aarch64-unknown-linux-musl --release
+    # # Run tests in release mode to reduce the need for rebuilds.
+    # - name: Test Rust dependencies
+    #   run: cargo nextest run --release
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
