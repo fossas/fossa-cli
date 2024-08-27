@@ -86,7 +86,7 @@ jobs:
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
-      if: ${{ matrix.os-name == 'Linux') }}
+      if: ${{ matrix.os-name == 'Linux' }}
       run: |
         cargo build --features jemalloc --release
 
