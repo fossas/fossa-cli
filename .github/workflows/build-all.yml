@@ -78,9 +78,11 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    - name: Install nextest
-      run: cargo install nextest
-      
+    - name: Install additional Rust tooling
+      uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
+
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
@@ -93,7 +95,7 @@ jobs:
     - name: Build Rust dependencies (Linux)
       if: ${{ contains(matrix.os-name, 'linux') }}
       run: |
-        cargo build --features jemalloc --release
+        cargo build --target aarch64-unknown-linux-musl --release
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
