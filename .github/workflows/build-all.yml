@@ -73,6 +73,8 @@ jobs:
     # Set up Rust.
     # This action installs the 'minimal' profile.
     - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: aarch64-unknown-linux-musl
 
     - name: Install additional Rust tooling
       uses: taiki-e/install-action@v2
@@ -93,8 +95,8 @@ jobs:
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies (Linux)
-      if: ${{ matrix.os-name == 'linux' }}
-      run: cargo build --feature jemalloc --release
+      if: ${{ contains(matrix.os-name, 'linux') }}
+      run: cargo build --target aarch64-unknown-linux-musl --release
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
@@ -104,7 +106,7 @@ jobs:
 
     # Run tests in release mode to reduce the need for rebuilds.
     - name: Test Rust dependencies
-      run: cargo nextest run --release
+      run: cargo nextest run --target=aarch64-unknown-linux-musl --release
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
