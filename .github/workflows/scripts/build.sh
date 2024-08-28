@@ -8,6 +8,8 @@ if [ $# -lt 2 ] ; then
     exit 1
 fi
 
+RUNNER_OS=$1
+PROJECT_FILE=$2
 
 make build-test-data
 
@@ -23,11 +25,11 @@ git config --global --add safe.directory "$GITHUB_WORKSPACE"
 # This line adds a comment to our version source file to prompt cabal/GHC to rebuild Version.hs.
 echo "{- $GITHUB_RUN_ID -}" >> src/App/Version.hs
 cabal update
-cabal build --project-file=cabal.project.ci.linux all
-cabal test --project-file=cabal.project.ci.linux unit-tests
+cabal build --project-file="$PROJECT_FILE" all
+cabal test --project-file="$PROJECT_FILE" unit-tests
 
 # Test cabal-install.
 # This check ensures that QuickImport can use spectrometer as a library.
 if [ "$RUNNER_OS" = 'Linux' ] ; then
-    cabal install --overwrite-policy=always --project="$PROJECT_FILE" --ghc-options="-Wwarn"
+    cabal install --overwrite-policy=always --project-file="$PROJECT_FILE" --ghc-options="-Wwarn"
 fi
