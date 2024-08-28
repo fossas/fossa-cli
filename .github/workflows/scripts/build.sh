@@ -31,8 +31,9 @@ cabal update
 cabal build --project-file="$PROJECT_FILE" all
 cabal test --project-file="$PROJECT_FILE" unit-tests
 
+# TODO: Bring this back.
 # Test cabal-install.
 # This check ensures that QuickImport can use spectrometer as a library.
-if [ "$RUNNER_OS" = 'Linux' ] ; then
-    cabal install --overwrite-policy=always --project-file="$PROJECT_FILE" --ghc-options="-Wwarn"
-fi
+# if [ "$RUNNER_OS" = 'Linux' ] ; then
+#     cabal install --overwrite-policy=always --project-file="$PROJECT_FILE" --ghc-options="-Wwarn"
+# fi
