@@ -24,4 +24,4 @@ cargo build --release
 cargo test run --release
 
 # Now do Haskell things
-./build.sh "$RUNNER_OS" "$PROJECT_FILE"
+./.github/workflows/scripts/build.sh "$RUNNER_OS" "$PROJECT_FILE"
