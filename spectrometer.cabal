@@ -21,6 +21,8 @@ extra-source-files:
   vendor-bins/lernie
   vendor-bins/themis-cli
 
+-- The following if statements are important for cabal install,
+-- which tries to build a source distribution including the binaries.
 if os(windows)
   extra-source-files:
     target/release/berkeleydb.exe
