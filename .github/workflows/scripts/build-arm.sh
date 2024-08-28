@@ -24,7 +24,10 @@ cargo -V
 # Build Rust binaries
 cargo build --release
 
-cargo test run --release
+cargo test --release
+
+ls -al target/
+ls -al target/release
 
 # Now do Haskell things
 ./.github/workflows/scripts/build.sh "$RUNNER_OS" "$PROJECT_FILE"
