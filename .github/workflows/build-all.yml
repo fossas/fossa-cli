@@ -127,9 +127,6 @@ jobs:
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
-    - name: print stuff
-      run: echo "Home dotfiles out of container $(ls -al ~/.*)"
-      
     # Build FOSSA CLI.
     - uses: actions/cache@v4
       name: Cache cabal store

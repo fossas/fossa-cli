@@ -27,9 +27,9 @@ git config --global --add safe.directory "$GITHUB_WORKSPACE"
 # During the tag build, cabal/GHC may not realize that they have to rebuild the Version.hs file because the tag is invisible to it.
 # This line adds a comment to our version source file to prompt cabal/GHC to rebuild Version.hs.
 echo "{- $GITHUB_RUN_ID -}" >> src/App/Version.hs
-cabal update
-cabal build --project-file="$PROJECT_FILE" all
-cabal test --project-file="$PROJECT_FILE" unit-tests
+cabal update --store-dir="$HOME"
+cabal build --store-dir="$HOME" --project-file="$PROJECT_FILE" all
+cabal test --store-dir="$HOME" --project-file="$PROJECT_FILE" unit-tests
 
 # TODO: Bring this back.
 # Test cabal-install.
