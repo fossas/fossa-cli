@@ -83,6 +83,7 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
       with:
+        prefix-key: ${{ matrix.os }}
         # This is because the home directory inside containers is different than the one outside of them.
         # LinuxARM needs this for its own caching to work.
         cache-directories: ${{ runner.temp }}/_github_home/.cargo
