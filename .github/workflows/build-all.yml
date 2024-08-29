@@ -27,7 +27,7 @@ jobs:
           project-file: cabal.project.ci.linux
           ghc: '9.8.2'
 
-        # - os: ubuntu-latest
+        # - os: ubuntu-latest 
         #   os-name: Linux
         #   container: fossa/haskell-static-alpine:ghc-9.8.2
         #   project-file: cabal.project.ci.linux
