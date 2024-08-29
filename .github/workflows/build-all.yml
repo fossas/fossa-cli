@@ -110,7 +110,7 @@ jobs:
 
     # Run tests in release mode to reduce the need for rebuilds.
     - name: Test Rust dependencies
-      if: ${{ matrix.os-name != 'LinuxARM' }}
+      if: ${{ matrix.os != 'LinuxARM' }}
       run: cargo nextest run --release
 
     - name: Validate diagnose commands run on the platform
