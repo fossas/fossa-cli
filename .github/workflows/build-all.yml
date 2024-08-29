@@ -72,9 +72,14 @@ jobs:
 
     # Set up Rust, this is mainly used for rust-cache.
     # This action installs the 'minimal' profile.
+    # Even on Linux ARM this is necessary because rust-cache uses it.
     - uses: dtolnay/rust-toolchain@stable
 
     - uses: Swatinem/rust-cache@v2
+      with:
+        # This additional directory is because the home directory inside containers
+        # is different than the one outside of it.
+        cache-directories: ${{ runner.temp }}/_github_home/.cargo
 
     - name: Debugging information
       run: |
