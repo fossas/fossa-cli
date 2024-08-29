@@ -27,3 +27,4 @@ CABAL_CACHE_KEY="$(echo "$PLAN_SUM" | awk '{print $1}')"
 export CABAL_CACHE_KEY
 echo "Cabal cache key: $CABAL_CACHE_KEY"
 echo "cabal-cache-key=$CABAL_CACHE_KEY" >> "$GITHUB_OUTPUT"
+chmod -R o+w dist-newstyle
