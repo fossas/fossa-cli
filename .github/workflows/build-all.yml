@@ -27,7 +27,7 @@ jobs:
           project-file: cabal.project.ci.linux
           ghc: '9.8.2'
 
-        - os: ubuntu-latest 
+        - os: ubuntu-latest
           os-name: Linux
           container: fossa/haskell-static-alpine:ghc-9.8.2
           project-file: cabal.project.ci.linux
@@ -343,12 +343,20 @@ jobs:
         LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
         LINUX_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_ARM_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+        LINUX_ARM_DIAGNOSE_TAR_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+        LINUX_ARM_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+
       run: |
         mkdir release
 
         ls -R
 
-        chmod +x Linux-binaries/*
+        chmod +x Linux*-binaries/*
+
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
         zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose
         zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone
@@ -356,7 +364,15 @@ jobs:
         tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
         tar --create --verbose --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone
 
+        zip -j "$LINUX_ARM_FOSSA_ZIP_PATH" Linux-arm-binaries/fossa
+        zip -j "$LINUX_ARM_DIAGNOSE_ZIP_PATH" Linux-arm-binaries/diagnose
+        zip -j "$LINUX_ARM_MILLHONE_ZIP_PATH" Linux-arm-binaries/millhone
+        tar --create --verbose --file "$LINUX_ARM_FOSSA_TAR_PATH" --directory Linux-arm-binaries fossa
+        tar --create --verbose --file "$LINUX_ARM_DIAGNOSE_TAR_PATH" --directory Linux-arm-binaries diagnose
+        tar --create --verbose --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone
+
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+          # TODO: add the arm stuff
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
           tar --append --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose.bundle
           tar --append --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone.bundle
@@ -368,6 +384,10 @@ jobs:
         gzip "$LINUX_FOSSA_TAR_PATH"
         gzip "$LINUX_DIAGNOSE_TAR_PATH"
         gzip "$LINUX_MILLHONE_TAR_PATH"
+
+        gzip "$LINUX_ARM_FOSSA_TAR_PATH"
+        gzip "$LINUX_ARM_DIAGNOSE_TAR_PATH"
+        gzip "$LINUX_ARM_MILLHONE_TAR_PATH"
 
         chmod +x macOS-intel-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/fossa
