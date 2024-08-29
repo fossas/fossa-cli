@@ -131,7 +131,6 @@ jobs:
     - uses: actions/cache@v4
       name: Cache cabal store
       with:
-        always-save: true
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
         key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key || steps.compute-cache-key-arm.outputs.cabal-cache-key }}
         restore-keys: |

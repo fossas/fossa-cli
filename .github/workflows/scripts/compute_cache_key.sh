@@ -28,5 +28,8 @@ export CABAL_CACHE_KEY
 echo "Cabal cache key: $CABAL_CACHE_KEY"
 echo "cabal-cache-key=$CABAL_CACHE_KEY" >> "$GITHUB_OUTPUT"
 
-# Cleanup
+echo "$HOME"
+
+# Cleanup. Restoring this cache seems to fail if the directory already exists.
+# TODO: See if we can just modify permissions and dump the old cache on top of this script's build products.
 rm -rf dist-newstyle
