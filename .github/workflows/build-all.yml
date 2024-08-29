@@ -76,6 +76,7 @@ jobs:
     - uses: dtolnay/rust-toolchain@stable
 
     - name: Install additional Rust tooling
+      if: ${{ matrix.os != 'LinuxARM' }}
       uses: taiki-e/install-action@v2
       with:
         tool: nextest
