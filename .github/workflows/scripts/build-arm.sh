@@ -3,9 +3,6 @@
 set -e
 set -x
 
-pwd
-ls -al
-
 if [ $# -lt 2 ] ; then
     echo "Usage: ./build-arm.sh <RUNNER OS> <PROJECT FILE>"
     exit 1
@@ -25,9 +22,6 @@ cargo -V
 cargo build --release
 
 cargo test --release
-
-ls -al target/
-ls -al target/release
 
 # Now do Haskell things
 ./.github/workflows/scripts/build.sh "$RUNNER_OS" "$PROJECT_FILE"

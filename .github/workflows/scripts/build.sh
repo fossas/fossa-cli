@@ -3,9 +3,6 @@
 set -e
 set -x
 
-pwd
-ls -al
-
 if [ $# -lt 2 ] ; then
     echo "Usage: ./build.sh <RUNNER OS> <PROJECT FILE>"
     exit 1
