@@ -97,13 +97,20 @@ jobs:
 
     # Non-Linux environments generally don't need `jemalloc`
     # and in particular Windows doesn't support it.
+    # This purposely excludes the linux arm build.
     - name: Build Rust dependencies (non-Linux)
       if: ${{ ! contains(matrix.os-name, 'linux') }}
       run: cargo build --release
 
     # Run tests in release mode to reduce the need for rebuilds.
-    # - name: Test Rust dependencies
-    #   run: cargo nextest run --release
+    - name: Test Rust dependencies
+      if: ${{ matrix.os-name != 'LinuxARM' }}
+      run: cargo nextest run --release
+
+    - name: Validate diagnose commands run on the platform
+      if: ${{ matrix.os != 'LinuxARM' }}
+      run: |
+        cargo run --release --bin diagnose -- walk --trace-spans none --trace-level info
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -171,10 +178,13 @@ jobs:
       if: ${{ matrix.os != 'LinuxARM' }}
       run: ./.github/workflows/scripts/build.sh ${{ runner.os }} ${{ matrix.project-file }}
 
-    # TODO: Got a permissions error, I'm guessing that the directory inside the image has bad perms outside of it.
-    # - name: Validate diagnose commands run on the platform
-    #   run: |
-    #     cargo run --release --bin diagnose -- walk --trace-spans none --trace-level info
+    # Test cabal-install
+    # TODO: This has apparently not been turned on for a while since no matrix.os contains 'linux'.
+    # When I make it function it causes an error.
+    # This is something I need to look into in the future.
+    - name: Test Cabal Install (Linux)
+      if: ${{ contains(matrix.os, 'linux') }}
+      run: cabal install --overwrite-policy=always --project=${{ matrix.project-file }} --ghc-options="-Wwarn"
 
     # Save artifacts.
     - name: Find and move binaries (Windows)

@@ -23,5 +23,8 @@ cargo build --release
 
 cargo test --release
 
+# Validate that diagnose runs
+cargo run --release --bin diagnose -- walk --trace-spans none --trace-level info
+
 # Now do Haskell things
 ./.github/workflows/scripts/build.sh "$RUNNER_OS" "$PROJECT_FILE"
