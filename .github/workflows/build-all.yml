@@ -127,14 +127,13 @@ jobs:
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
-    - name: print stuff
-      run: echo "Home dotfiles out of container $(ls -al ~/.*)"
-      
-    # Build FOSSA CLI.
+    # The home directory inside a github container run during a step is different than one run outside of it.
+    # This is why there is special logic for 'LinuxARM'.
+    # Its builds run inside a container but are cached by an action outside of it..
     - uses: actions/cache@v4
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
+        path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
         key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key || steps.compute-cache-key-arm.outputs.cabal-cache-key }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
