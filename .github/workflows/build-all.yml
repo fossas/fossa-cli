@@ -127,12 +127,6 @@ jobs:
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
-    # Cache permissions
-    - name: Update cache permissions
-      run: |
-        chmod -R u+rwx dist-newstyle
-        chown -R "$USER" dist-newstyle
-
     # Build FOSSA CLI.
     - uses: actions/cache@v4
       name: Cache cabal store
