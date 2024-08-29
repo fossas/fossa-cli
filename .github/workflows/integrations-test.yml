@@ -19,9 +19,6 @@ jobs:
       GHC_VERSION: '9.8.2'
 
     steps:
-    - name: Temporary cancel
-      run: gh run cancel ${{ github.run_id }}
-
     - uses: dtolnay/rust-toolchain@stable
 
     - uses: actions/checkout@v4
