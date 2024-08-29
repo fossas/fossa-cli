@@ -70,13 +70,13 @@ import App.Fossa.VendoredDependency (VendoredDependency (..))
 import App.Types (OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
-import Control.Monad.RWS qualified as Set
 import Control.Timeout (Duration (MilliSeconds))
 import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
@@ -511,7 +511,7 @@ vsiOptions :: VSI.VSIModeOptions
 vsiOptions =
   VSI.VSIModeOptions
     { vsiAnalysisEnabled = toFlag VSI.VSIAnalysis False
-    , vsiSkipSet = VSI.SkipResolution Set.mempty
+    , vsiSkipSet = VSI.SkipResolution Set.empty
     , iatAssertion = VSI.IATAssertion Nothing
     , dynamicLinkingTarget = VSI.DynamicLinkInspect Nothing
     , binaryDiscoveryEnabled = toFlag VSI.BinaryDiscovery False

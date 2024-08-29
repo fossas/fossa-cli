@@ -14,9 +14,9 @@ On Macs you need to have installed the developer tooling using `xcode-select --i
 Use [ghcup][ghcup] to install the `cabal` cli tool and the ghc version we're using:
 
 ```sh
-$ ghcup install ghc 9.4
+$ ghcup install ghc 9.8
 <long running output, about 4 min on my machine>
-$ ghcup set ghc 9.4
+$ ghcup set ghc 9.8
 $ cabal update
 $ cabal build
 ```
@@ -29,16 +29,16 @@ In previous GHC versions (8.10), `llvm` was required
 
 Ok, the quickstart worked for you, but why, and how?
 
-> `ghcup install ghc 9.4`
+> `ghcup install ghc 9.8`
 
 When you install `ghcup`, `ghc` and `cabal-install` are installed automatically as part of the initial installation (see [Tools](#tools) for descriptions of `ghc` and `cabal-install`).
-The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.4`.
+The `ghc` version that is automatically installed may not be the correct version we use (though it may work just fine).  So we install the correct version with `ghcup install ghc 9.8`.
 Currently, the best place to check the correct version is our CI build files (try `.github/workflows/build.yml`).
 
-> `ghcup set ghc 9.4`
+> `ghcup set ghc 9.8`
 
-`ghcup` works by setting symlinks to the "active" version of the tool you're using.  Here, we're telling `ghcup` to set GHC 9.4 as the active GHC version.
-Now, when you run `ghc`, you'll be running GHC 9.4.
+`ghcup` works by setting symlinks to the "active" version of the tool you're using.  Here, we're telling `ghcup` to set GHC 9.8 as the active GHC version.
+Now, when you run `ghc`, you'll be running GHC 9.8.
 
 > `cabal update`
 

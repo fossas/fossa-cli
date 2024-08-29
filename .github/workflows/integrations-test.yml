@@ -11,13 +11,12 @@ on:
 jobs:
   integration-test:
     name: integration-test
-    runs-on:
-      group: "FOSSA CLI Runner"
+    runs-on: "fossa-cli-integration-runner"
     # Be sure to update the env below too
-    container: fossa/haskell-static-alpine:ghc-9.4.8
+    container: fossa/haskell-static-alpine:ghc-9.8.2
 
     env:
-      GHC_VERSION: '9.4.8'
+      GHC_VERSION: '9.8.2'
 
     steps:
     - uses: dtolnay/rust-toolchain@stable

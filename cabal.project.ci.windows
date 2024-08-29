@@ -9,4 +9,4 @@ packages: .
 import: ./cabal.project.common
 
 package spectrometer
-  ghc-options: -Werror
+  ghc-options: -Werror -Wwarn=x-partial

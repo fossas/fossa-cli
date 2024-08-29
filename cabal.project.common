@@ -14,6 +14,16 @@ allow-newer:
   -- was in 2018, so we may have to fork when breakage occurs
   , codec-rpm:attoparsec
 
+  -- transformers has a few breaking changes from 0.5 -> 0.6.
+  -- But the removed symbols were already deprecated in 0.5.
+  -- fused-effects-exceptions has a PR out: https://github.com/fused-effects/fused-effects-exceptions/pull/22
+  -- When that merges you should be able to remove it from here.
+  -- lzma-conduit seems kind of moribund.
+  -- I've left an issue checking for signs of life: https://github.com/alphaHeavy/lzma-conduit/issues/27
+  -- I'll make a PR if someone responds. The lib is small enough we could just vendor it if not.
+  , lzma-conduit:transformers
+  , fused-effects-exceptions:transformers
+
 -- the semver package only exposes lens-style accessors for its Version type;
 -- normal accessors are in an un-exposed Internal module. on master, the
 -- Internal module is exposed, but a new release hasn't been cut to hackage yet
@@ -55,6 +65,6 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/fossas/codec-rpm
-  tag: 0f7431423d47fdf36945e4ff31fbee76005b7e68
+  tag: 55e6cc0c0b7906ca257cb7c6268b2d99592bb30f
 
-index-state: hackage.haskell.org 2024-04-12T15:16:26Z
+index-state: hackage.haskell.org 2024-08-14T18:49:08Z

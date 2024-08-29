@@ -137,7 +137,7 @@ If your match guards are any less readable than the introductory examples in
 [Learn you a haskell][guards], then you should stick to `case` and `if`
 expressions within the function body.
 
-[guards]: http://learnyouahaskell.com/syntax-in-functions#guards-guards
+[guards]: https://learnyouahaskell.github.io/syntax-in-functions.html#guards-guards
 
 ### Don't go crazy with point-free definitions
 

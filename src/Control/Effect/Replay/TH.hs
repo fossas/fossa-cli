@@ -1,4 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
+-- Some partial functions are used safely in this module.
+-- This turns their use into a warning, not an error.
+{-# OPTIONS_GHC -Wno-x-partial #-}
 
 module Control.Effect.Replay.TH (
   deriveReplayable,
@@ -89,6 +92,8 @@ conNm (NormalC nm _) = nm
 conNm (RecC nm _) = nm
 conNm (InfixC _ nm _) = nm
 conNm (ForallC _ _ con) = conNm con
+-- 'head' is safe here because that field is documented to be non-empty:
+-- https://hackage.haskell.org/package/template-haskell-2.22.0.0/docs/Language-Haskell-TH.html#v:GadtC
 conNm (GadtC nms _ _) = head nms
 conNm (RecGadtC nms _ _) = head nms
 

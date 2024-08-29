@@ -29,7 +29,7 @@ module Data.Rpm.DbHeaderBlob.Internal (
   regionTagType,
 ) where
 
-import Control.Applicative (liftA2)
+import Control.Applicative qualified as Ap
 import Control.Monad (foldM, replicateM, unless, when)
 import Data.Bifunctor (bimap, first)
 import Data.Binary.Get (ByteOffset, Get, getInt32be, getWord32be, label, runGetOrFail)
@@ -436,7 +436,7 @@ bsSubString start end = BLS.take (fromIntegral $ end - start) . BLS.drop (fromIn
 
 readEntries :: IndexCount -> Get (NonEmpty EntryMetadata)
 readEntries indexLength =
-  liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
+  Ap.liftA2 (:|) readEntry $ replicateM (fromIntegral (indexLength - 1)) readEntry
 
 readEntry :: Get EntryMetadata
 readEntry =

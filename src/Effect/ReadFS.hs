@@ -122,6 +122,7 @@ import System.PosixCompat.Types (CDev (..), CIno (..))
 import Text.Megaparsec (Parsec, runParser)
 import Text.Megaparsec.Error (errorBundlePretty)
 import Toml qualified
+import Toml.Schema qualified
 
 -- | A unique file identifier for a directory.
 -- Uniqueness is guaranteed within a single OS.
@@ -365,12 +366,12 @@ readContentsJson file = context ("Parsing JSON file '" <> toText (toString file)
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
 
-readContentsToml :: (Has ReadFS sig m, Has Diagnostics sig m) => Toml.TomlCodec a -> Path Abs File -> m a
-readContentsToml codec file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do
+readContentsToml :: (Toml.Schema.FromValue a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
+readContentsToml file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
-  case Toml.decode codec contents of
-    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (Toml.prettyTomlDecodeErrors err)
-    Right a -> pure a
+  case Toml.decode contents of
+    Toml.Failure err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText $ show err)
+    Toml.Success _ a -> pure a
 
 -- | Read YAML from a file
 readContentsYaml :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
