@@ -16,7 +16,7 @@ module Analysis.FixtureUtils (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
-import App.Types (OverrideDynamicAnalysisBinary)
+import App.Types (Mode (..), OverrideDynamicAnalysisBinary)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Finally (FinallyC, runFinally)
@@ -118,6 +118,7 @@ type TestC m =
     $ ReaderC AllFilters
     $ ReaderC MavenScopeFilters
     $ ReaderC ExperimentalAnalyzeConfig
+    $ ReaderC Mode
     $ FinallyC
     $ StackC
     $ IgnoreTelemetryC m
@@ -134,6 +135,7 @@ testRunner f env =
     & runReader (mempty :: AllFilters)
     & runReader (MavenScopeIncludeFilters mempty)
     & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic False)
+    & runReader (NonStrict :: Mode)
     & runFinally
     & runStack
     & withoutTelemetry
