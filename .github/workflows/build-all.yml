@@ -389,13 +389,20 @@ jobs:
         tar --create --verbose --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
-          # TODO: add the arm stuff
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
           tar --append --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose.bundle
           tar --append --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone.bundle
           zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
           zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
           zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone.bundle
+
+          tar --append --file "$LINUX_ARM_FOSSA_TAR_PATH" --directory Linux-arm-binaries fossa.bundle
+          tar --append --file "$LINUX_ARM_DIAGNOSE_TAR_PATH" --directory Linux-arm-binaries diagnose.bundle
+          tar --append --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone.bundle
+          zip -j "$LINUX_ARM_FOSSA_ZIP_PATH" Linux-arm-binaries/fossa.bundle
+          zip -j "$LINUX_ARM_DIAGNOSE_ZIP_PATH" Linux-arm-binaries/diagnose.bundle
+          zip -j "$LINUX_ARM_MILLHONE_ZIP_PATH" Linux-arm-binaries/millhone.bundle
+
         fi
 
         gzip "$LINUX_FOSSA_TAR_PATH"
