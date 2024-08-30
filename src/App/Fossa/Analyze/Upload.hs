@@ -210,6 +210,7 @@ buildProjectSummary project locator projectUrl = do
   pure $
     Aeson.object
       [ "project" .= locatorProject locator
+      , "projectId" .= (locatorFetcher locator <> "+" <> locatorProject locator)
       , "revision" .= revision
       , "branch" .= projectBranch project
       , "url" .= projectUrl
