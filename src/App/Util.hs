@@ -6,17 +6,15 @@ module App.Util (
   validateDir,
   validateFile,
   guardStrictMode,
-  populateWarningsForAnalysisMode,
   FileAncestry (..),
 ) where
 
 import App.Types
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics)
-import Control.Effect.Diagnostics (fatalText, warnOnErr)
+import Control.Effect.Diagnostics (fatalText)
 import Control.Monad (unless)
 import Data.String.Conversion (ToText (..))
-import Diag.Common (MissingDeepDeps (..), MissingEdges (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, Rel, SomeBase (..), toFilePath, (</>))
 import Path.Extra (tryMakeRelative)
@@ -56,10 +54,8 @@ ancestryDerived parent dir file = do
   rel <- ancestryDirect dir file
   pure $ fileAncestryPath parent </> rel
 
+-- | Guards analysis strategies depending on the mode. On strict mode, emit an error to end the chain of diagnostics to prevent
+-- other strategies to be executed. On non-strict mode, allow fallback strategies to be executed.
 guardStrictMode :: Has Diagnostics sig m => Mode -> m a -> m a
 guardStrictMode Strict _ = fatalText "Strict mode enabled, skipping other strategies"
 guardStrictMode NonStrict action = action
-
-populateWarningsForAnalysisMode :: (Has Diagnostics sig m) => Mode -> m a -> m a
-populateWarningsForAnalysisMode Strict = id
-populateWarningsForAnalysisMode NonStrict = warnOnErr MissingEdges . warnOnErr MissingDeepDeps

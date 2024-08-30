@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.32
+
+- `--strict`: Users can now enable strict mode for analysis. ([#1463](https://github.com/fossas/fossa-cli/pull/1463))
+
 ## 3.9.31
 
 - Resolve an issue parsing toml configuration files. ([#1459](https://github.com/fossas/fossa-cli/pull/1459))

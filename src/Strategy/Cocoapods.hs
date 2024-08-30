@@ -9,10 +9,10 @@ module Strategy.Cocoapods (
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Types (Mode (..))
-import App.Util (guardStrictMode, populateWarningsForAnalysisMode)
+import App.Util (guardStrictMode)
 import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errHelp)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
@@ -20,6 +20,7 @@ import Data.Glob qualified as Glob
 import Data.List (find)
 import Data.List.Extra (singleton)
 import Data.Text (isSuffixOf)
+import Diag.Common (MissingDeepDeps (..), MissingEdges (..))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -117,7 +118,7 @@ getDeps project = do
   context "Cocoapods" $
     context
       "Podfile.lock analysis"
-      ( populateWarningsForAnalysisMode mode
+      ( populateErrorInfo mode
           . errCtx MissingPodLockFileCtx
           . errHelp MissingPodLockFileHelp
           . errDoc refPodDocUrl
@@ -131,7 +132,7 @@ getDeps' project = do
   context "Cocoapods" $
     context
       "Podfile.lock analysis"
-      ( populateWarningsForAnalysisMode mode
+      ( populateErrorInfo mode
           . errCtx MissingPodLockFileCtx
           . errHelp MissingPodLockFileHelp
           . errDoc refPodDocUrl
@@ -171,3 +172,7 @@ analyzePodfileLockStatically project = do
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [lockFile]
       }
+
+populateErrorInfo :: (Has Diagnostics sig m) => Mode -> m a -> m a
+populateErrorInfo Strict = id
+populateErrorInfo NonStrict = warnOnErr MissingEdges . warnOnErr MissingDeepDeps

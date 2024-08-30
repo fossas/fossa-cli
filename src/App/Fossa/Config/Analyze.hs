@@ -24,7 +24,6 @@ module App.Fossa.Config.Analyze (
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
   StrictMode (..),
-  Mode (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -339,7 +338,7 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "fossa-deps-file" <> helpDoc fossaDepsFileHelp <> metavar "FILEPATH"))
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
-    <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Strict mode")
+    <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enables strict analysis to enforce that the first analysis strategy within a strategy type passes. Fallback strategies are not allowed in strict mode.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -348,6 +347,7 @@ cliParser =
           [ "Path to fossa-deps file including filename"
           , boldItalicized "Default:" <> " fossa-deps.{yaml|yml|json}"
           ]
+
 branchHelp :: Maybe (Doc AnsiStyle)
 branchHelp =
   Just . formatDoc $

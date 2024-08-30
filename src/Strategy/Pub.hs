@@ -20,7 +20,7 @@ import Effect.Exec (Exec, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Path
+import Path (Abs, Dir, File, Path)
 import Strategy.Dart.Errors (PubspecLimitation (..), refPubDocUrl)
 import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)

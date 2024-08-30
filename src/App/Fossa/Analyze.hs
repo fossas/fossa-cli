@@ -364,7 +364,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
-  -- logDebug $ "Is in strict mode ------------- " <> pretty (show strictMode)
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
@@ -599,7 +598,3 @@ updateProgress Progress{..} =
         <> " Completed"
         <> " ]"
     )
-
--- analyzeStrictModeGuard :: Has Diagnostics sig m => Mode -> m a -> m a
--- analyzeStrictModeGuard Strict _ = fatal "Strict mode enabled, skipping other strategies"
--- analyzeStrictModeGuard NonStrict action = action

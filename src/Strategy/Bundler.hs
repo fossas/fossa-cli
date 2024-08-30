@@ -11,7 +11,6 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (StrictMode (..))
 import App.Types (Mode (..))
 import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (
@@ -20,14 +19,12 @@ import Control.Effect.Diagnostics (
   errCtx,
   errDoc,
   errHelp,
-  fatal,
   warnOnErr,
   (<||>),
  )
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
-import Data.Flag (Flag, fromFlag)
 import Data.Glob as Glob (toGlob, (</>))
 import Data.Text (isSuffixOf)
 import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
@@ -40,7 +37,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, Has)
-import Effect.Logger (Logger, logDebug)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
