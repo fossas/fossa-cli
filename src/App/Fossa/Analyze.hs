@@ -45,7 +45,6 @@ import App.Fossa.Config.Analyze (
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
-  StrictMode (..),
   UnpackArchives (UnpackArchives),
   WithoutDefaultFilters (..),
  )
@@ -65,6 +64,7 @@ import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
   FirstPartyScansFlag (..),
+  Mode (..),
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
@@ -190,7 +190,7 @@ runDependencyAnalysis ::
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
-  , Has (Reader (Flag StrictMode)) sig m
+  , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Telemetry sig m
@@ -375,9 +375,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runAtomicCounter
       . runReader (Config.experimental cfg)
       . runReader (Config.mavenScopeFilterSet cfg)
-      . runReader (Config.strictMode cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
+      . runReader (Config.mode cfg)
       $ do
         runAnalyzers allowedTactics filters withoutDefaultFilters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
@@ -599,3 +599,7 @@ updateProgress Progress{..} =
         <> " Completed"
         <> " ]"
     )
+
+-- analyzeStrictModeGuard :: Has Diagnostics sig m => Mode -> m a -> m a
+-- analyzeStrictModeGuard Strict _ = fatal "Strict mode enabled, skipping other strategies"
+-- analyzeStrictModeGuard NonStrict action = action

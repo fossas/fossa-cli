@@ -17,6 +17,7 @@ module App.Types (
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
   ComponentUploadFileType (..),
+  Mode (..),
   uploadFileTypeToFetcherName,
 ) where
 
@@ -207,4 +208,12 @@ data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFla
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions
+
+data Mode
+  = Strict
+  | NonStrict
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Mode where
   toEncoding = genericToEncoding defaultOptions

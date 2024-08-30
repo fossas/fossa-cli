@@ -6,7 +6,7 @@ module App.Fossa.ListTargets (
 ) where
 
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc), discoverFuncs)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig, StrictMode (..))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
 import App.Fossa.Config.ListTargets (
   ListTargetOutputFormat (..),
   ListTargetsCliOpts,
@@ -14,7 +14,7 @@ import App.Fossa.Config.ListTargets (
   mkSubCommand,
  )
 import App.Fossa.Subcommand (SubCommand)
-import App.Types (BaseDir (..))
+import App.Types (BaseDir (..), Mode (..))
 import Control.Carrier.AtomicCounter (
   AtomicCounter,
   Has,
@@ -36,7 +36,6 @@ import Control.Effect.Stack (Stack)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (ToJSON, encode, object, (.=))
 import Data.Aeson.Extra (encodeJSONToText)
-import Data.Flag (Flag (..), toFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
@@ -84,14 +83,11 @@ listTargetsMain ListTargetsConfig{..} = do
     . runReader experimental
     -- `fossa list-targets` does not support maven scope filters.
     . runReader (MavenScopeIncludeFilters mempty)
-    . runReader (testFlag)
+    . runReader (NonStrict)
     -- The current version of `fossa list-targets` does not support filters.
     -- TODO: support both discovery and post-discovery filtering.
     . runReader (mempty :: AllFilters)
     $ runAll listTargetOutputFormat (unBaseDir baseDir)
-  where
-    testFlag :: Flag StrictMode
-    testFlag = toFlag StrictMode False
 
 runAll ::
   ( Has ReadFS sig m
@@ -104,7 +100,7 @@ runAll ::
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
-  , Has (Reader (Flag StrictMode)) sig m
+  , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   ) =>

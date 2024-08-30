@@ -67,7 +67,7 @@ import App.Fossa.Lernie.Types (GrepOptions (..), OrgWideCustomLicenseConfigPolic
 import App.Fossa.Reachability.Types (CallGraphAnalysis (NoCallGraphAnalysis), SourceUnitReachability (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
-import App.Types (OverrideDynamicAnalysisBinary (..))
+import App.Types (Mode (..), OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
@@ -582,6 +582,7 @@ standardAnalyzeConfig =
     , ANZ.allowedTacticTypes = Any
     , ANZ.reachabilityConfig = mempty
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
+    , ANZ.mode = NonStrict
     }
 
 sampleJarParsedContent :: Text

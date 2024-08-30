@@ -5,7 +5,8 @@ module Strategy.Conda (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (StrictMode (..))
+import App.Types (Mode (..))
+import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -14,7 +15,6 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
-import Data.Flag (Flag, fromFlag)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -75,12 +75,10 @@ mkProject project =
 -- There might be a dep with a version spec in an environment.yml file: i.e. conda+foo$1.2.*, and perhaps
 -- the same dep resolved to a known version in the users virtual environment: i.e. conda+'conda-forge':foo$1.2.4 (we get that from conda env create).
 -- If we combined the results then we would include both of those deps in the result, which is not correct behavior.
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m) => CondaProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => CondaProject -> m DependencyResults
 getDeps project = do
-  strictMode <- ask @((Flag StrictMode))
-  if fromFlag StrictMode strictMode
-    then analyzeCondaEnvCreate project
-    else analyzeCondaEnvCreate project <||> analyzeEnvironmentYml project
+  mode <- ask
+  analyzeCondaEnvCreate project <||> guardStrictMode mode (analyzeEnvironmentYml project)
 
 analyzeCondaEnvCreate :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
 analyzeCondaEnvCreate CondaProject{..} = do

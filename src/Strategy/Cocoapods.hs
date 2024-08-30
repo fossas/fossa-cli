@@ -8,19 +8,18 @@ module Strategy.Cocoapods (
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (StrictMode (..))
+import App.Types (Mode (..))
+import App.Util (guardStrictMode, populateWarningsForAnalysisMode)
 import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errHelp)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
-import Data.Flag (Flag, fromFlag)
 import Data.Glob qualified as Glob
 import Data.List (find)
 import Data.List.Extra (singleton)
 import Data.Text (isSuffixOf)
-import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -112,57 +111,33 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m, Has (Reader (Flag StrictMode)) sig m) => CocoapodsProject -> m DependencyResults
+getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m, Has (Reader Mode) sig m) => CocoapodsProject -> m DependencyResults
 getDeps project = do
-  strictMode <- ask @((Flag StrictMode))
-  if fromFlag StrictMode strictMode
-    then
-      context "Cocoapods" $
-        context
-          "Podfile.lock analysis"
-          ( errCtx MissingPodLockFileCtx
-              . errHelp MissingPodLockFileHelp
-              . errDoc refPodDocUrl
-              $ (analyzePodfileLock project)
-          )
-    else
-      context "Cocoapods" $
-        context
-          "Podfile.lock analysis"
-          ( warnOnErr MissingEdges
-              . warnOnErr MissingDeepDeps
-              . errCtx MissingPodLockFileCtx
-              . errHelp MissingPodLockFileHelp
-              . errDoc refPodDocUrl
-              $ (analyzePodfileLock project)
-          )
-          <||> context "Podfile analysis" (analyzePodfile project)
+  mode <- ask
+  context "Cocoapods" $
+    context
+      "Podfile.lock analysis"
+      ( populateWarningsForAnalysisMode mode
+          . errCtx MissingPodLockFileCtx
+          . errHelp MissingPodLockFileHelp
+          . errDoc refPodDocUrl
+          $ (analyzePodfileLock project)
+      )
+      <||> guardStrictMode mode (context "Podfile analysis" (analyzePodfile project))
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m) => CocoapodsProject -> m DependencyResults
+getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => CocoapodsProject -> m DependencyResults
 getDeps' project = do
-  strictMode <- ask @((Flag StrictMode))
-  if fromFlag StrictMode strictMode
-    then
-      context "Cocoapods" $
-        context
-          "Strict mode Podfile.lock analysis"
-          ( errCtx MissingPodLockFileCtx
-              . errHelp MissingPodLockFileHelp
-              . errDoc refPodDocUrl
-              $ (analyzePodfileLockStatically project)
-          )
-    else
-      context "Cocoapods" $
-        context
-          "Podfile.lock analysis"
-          ( warnOnErr MissingEdges
-              . warnOnErr MissingDeepDeps
-              . errCtx MissingPodLockFileCtx
-              . errHelp MissingPodLockFileHelp
-              . errDoc refPodDocUrl
-              $ (analyzePodfileLockStatically project)
-          )
-          <||> context "Podfile analysis" (analyzePodfile project)
+  mode <- ask
+  context "Cocoapods" $
+    context
+      "Podfile.lock analysis"
+      ( populateWarningsForAnalysisMode mode
+          . errCtx MissingPodLockFileCtx
+          . errHelp MissingPodLockFileHelp
+          . errDoc refPodDocUrl
+          $ (analyzePodfileLockStatically project)
+      )
+      <||> guardStrictMode mode (context "Podfile analysis" (analyzePodfile project))
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfile project = do

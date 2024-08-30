@@ -12,12 +12,15 @@ import App.Fossa.Analyze.LicenseAnalyze (
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (StrictMode (..))
+import App.Types (Mode (..))
+import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
   errCtx,
   errDoc,
   errHelp,
+  fatal,
   warnOnErr,
   (<||>),
  )
@@ -122,16 +125,10 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m, Has Logger sig m) => BundlerProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => BundlerProject -> m DependencyResults
 getDeps project = do
-  strictMode <- ask @((Flag StrictMode))
-  if fromFlag StrictMode strictMode
-    then do
-      logDebug "Ruby strict mode"
-      analyzeGemfileLock project
-    else do
-      logDebug "Ruby NOT IN STRICT MODE ==========="
-      analyzeGemfileLock project <||> context "Bundler" (analyzeBundleShow project)
+  mode <- ask
+  analyzeGemfileLock project <||> guardStrictMode mode (context "Bundler" (analyzeBundleShow project))
 
 analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeBundleShow project = do
@@ -143,11 +140,18 @@ analyzeBundleShow project = do
       , dependencyManifestFiles = maybe [bundlerGemfile project] pure (bundlerGemfileLock project)
       }
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader (Flag StrictMode)) sig m) => BundlerProject -> m DependencyResults
+analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => BundlerProject -> m DependencyResults
 analyzeGemfileLock project = do
-  strictMode <- ask @((Flag StrictMode))
-  if fromFlag StrictMode strictMode
-    then do
+  mode <- ask
+  let errorInfo = case mode of
+        Strict -> id
+        NonStrict -> warnOnErr AllDirectDeps . warnOnErr MissingEdges
+  errorInfo
+    . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
+    . errHelp BundlerMissingLockFileHelp
+    . errDoc bundlerLockFileRationaleUrl
+    . errDoc rubyFossaDocUrl
+    $ do
       lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
       graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
       pure $
@@ -156,35 +160,3 @@ analyzeGemfileLock project = do
           , dependencyGraphBreadth = Complete
           , dependencyManifestFiles = [lockFile]
           }
-    else do
-      warnOnErr AllDirectDeps
-        . warnOnErr MissingEdges
-        . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
-        . errHelp BundlerMissingLockFileHelp
-        . errDoc bundlerLockFileRationaleUrl
-        . errDoc rubyFossaDocUrl
-        $ do
-          lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
-          graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
-          pure $
-            DependencyResults
-              { dependencyGraph = graph
-              , dependencyGraphBreadth = Complete
-              , dependencyManifestFiles = [lockFile]
-              }
-
--- warnOnErr AllDirectDeps
---   . warnOnErr MissingEdges
---   . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
---   . errHelp BundlerMissingLockFileHelp
---   . errDoc bundlerLockFileRationaleUrl
---   . errDoc rubyFossaDocUrl
---   $ do
---     lockFile <- context "Retrieve Gemfile.lock" (Diag.fromMaybeText "No Gemfile.lock present in the project" (bundlerGemfileLock project))
---     graph <- context "Gemfile.lock analysis" . GemfileLock.analyze' $ lockFile
---     pure $
---       DependencyResults
---         { dependencyGraph = graph
---         , dependencyGraphBreadth = Complete
---         , dependencyManifestFiles = [lockFile]
---         }
