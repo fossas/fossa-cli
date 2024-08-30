@@ -332,9 +332,9 @@ jobs:
           cosign sign-blob --yes --bundle "$linux_kind-binaries/diagnose.bundle" "$linux_kind-binaries/diagnose"
           cosign sign-blob --yes --bundle "$linux_kind-binaries/millhone.bundle" "$linux_kind-binaries/millhone"
 
-          cosign verify-blob --bundle "$linux_kind-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" $linux_kind-binaries/fossa"
-          cosign verify-blob --bundle "$linux_kind-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" $linux_kind-binaries/diagnose"
-          cosign verify-blob --bundle "$linux_kind-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" $linux_kind-binaries/millhone"
+          cosign verify-blob --bundle "$linux_kind-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/fossa"
+          cosign verify-blob --bundle "$linux_kind-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/diagnose"
+          cosign verify-blob --bundle "$linux_kind-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/millhone"
 
         done
 
