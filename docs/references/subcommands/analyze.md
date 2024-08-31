@@ -59,7 +59,7 @@ fossa analyze --json
 ```
 
 ```json
-{"branch":"master", "id":"custom+<org-id>/new-project$123", "project":"org-id/new-project", "projectId":"custom+<org-id>/new-project", "revision":"123", "url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123"}
+{"branch":"master", "id":"custom+<org-id>/new-project$123", "project":"<org-id>/new-project", "projectId":"custom+<org-id>/new-project", "revision":"123", "url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123"}
 ```
 
 ### Running a specific fossa-deps file
