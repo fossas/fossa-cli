@@ -432,7 +432,7 @@ jobs:
       run: |
         cd release
 
-        for f in *.zip *.tar.gz
+        for f in fossa*.zip fossa*.tar.gz
         do
           sha256sum --binary "$f" > "$f.sha256"
         done
