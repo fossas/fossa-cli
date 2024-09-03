@@ -18,7 +18,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Fossa.API.Types (ApiOpts (..), Organization (..))
-import Srclib.Types (Locator (..))
+import Srclib.Types (Locator (..), projectId)
 import Text.URI qualified as URI
 import Text.URI.Builder (
   PathComponent (PathComponent),
@@ -31,10 +31,10 @@ import Text.URI.Builder (
 import Text.URI.QQ (uri)
 
 fossaProjectUrlPath :: Locator -> ProjectRevision -> [PathComponent]
-fossaProjectUrlPath Locator{..} ProjectRevision{..} = map PathComponent components
+fossaProjectUrlPath loc@Locator{..} ProjectRevision{..} = map PathComponent components
   where
     components = ["projects", project, "refs", "branch", branch, revision]
-    project = locatorFetcher <> "+" <> locatorProject
+    project = projectId loc
     revision = fromMaybe projectRevision locatorRevision
     -- We default to master because core does, and we need a branch to allow us to
     -- create links directly to builds.  If this changes, then a core change should
