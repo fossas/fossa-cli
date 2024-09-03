@@ -411,6 +411,7 @@ renderLocator :: Locator -> Text
 renderLocator Locator{..} =
   locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
 
+-- The projectId is the full locator of the project. E.g. custom+123/someProject (<fetcher>+<orgId>/<project-name>)
 projectId :: Locator -> Text
 projectId Locator{..} =
   locatorFetcher <> "+" <> locatorProject
