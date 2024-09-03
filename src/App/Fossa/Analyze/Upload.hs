@@ -70,6 +70,7 @@ import Srclib.Types (
   Locator (..),
   SourceUnit,
   licenseUnitToFullSourceUnit,
+  projectId,
   renderLocator,
   sourceUnitToFullSourceUnit,
  )
@@ -210,7 +211,7 @@ buildProjectSummary project locator projectUrl = do
   pure $
     Aeson.object
       [ "project" .= locatorProject locator
-      , "projectId" .= (locatorFetcher locator <> "+" <> locatorProject locator)
+      , "projectId" .= projectId locator
       , "revision" .= revision
       , "branch" .= projectBranch project
       , "url" .= projectUrl

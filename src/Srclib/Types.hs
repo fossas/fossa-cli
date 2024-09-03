@@ -20,6 +20,7 @@ module Srclib.Types (
   renderLocator,
   parseLocator,
   pathToOriginPath,
+  projectId,
   someBaseToOriginPath,
   somePathToOriginPath,
   emptyLicenseUnit,
@@ -409,6 +410,10 @@ instance ToText Locator where
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =
   locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+
+projectId :: Locator -> Text
+projectId Locator{..} =
+  locatorFetcher <> "+" <> locatorProject
 
 parseLocator :: Text -> Locator
 parseLocator raw = Locator fetcher project (if Text.null revision then Nothing else Just revision)
