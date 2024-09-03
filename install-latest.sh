@@ -122,7 +122,7 @@ adjust_arch() {
 }
 arch_version_check() {
   # TODO: Make this version correct before merging.
-  if [ "${ARCH}" = "arm64" ] && version_less_than "${VERSION}" '3.9.32'
+  if [ "${OS}/${ARCH}" = "linux/arm64" ] && version_less_than "${VERSION}" '3.9.32'
   then
     echo "There is no linux/arm64 binary for version $VERSION."
     echo "Please select a version that is at least version 3.9.32"
