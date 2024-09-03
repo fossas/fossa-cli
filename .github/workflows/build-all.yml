@@ -32,6 +32,9 @@ jobs:
           container: fossa/haskell-static-alpine:ghc-9.8.2
           project-file: cabal.project.ci.linux
           ghc: '9.8.2'
+          # Non-Linux environments generally don't need `jemalloc`
+          # and in particular Windows doesn't support it
+          rust-features: jemalloc
 
         # macos-latest pointed at macos-12 this before it was changed to ARM.
         - os: macos-12
@@ -70,7 +73,7 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.10.3.0'
 
-    # Set up Rust, this is mainly used for rust-cache.
+    # Set up Rust.
     # This action installs the 'minimal' profile.
     # Even on Linux ARM this is necessary because rust-cache uses it.
     - uses: dtolnay/rust-toolchain@stable
@@ -97,17 +100,12 @@ jobs:
     # Linux builds are run in Alpine, which builds them statically;
     # using jemalloc reduces the performance impact of this
     # over the default libc allocator (which performs very poorly in static builds).
-    - name: Build Rust dependencies (Linux)
-      if: ${{ matrix.os-name == 'Linux' }}
+    - name: Build Rust dependencies
+      if: ${{ matrix.os != 'LinuxARM' }}
+      env:
+        RUST_FEATURES: ${{ matrix.rust-features }}
       run: |
-        cargo build --features jemalloc --release
-
-    # Non-Linux environments generally don't need `jemalloc`
-    # and in particular Windows doesn't support it.
-    # This purposely excludes the linux arm build.
-    - name: Build Rust dependencies (non-Linux)
-      if: ${{ ! contains(matrix.os-name, 'linux') }}
-      run: cargo build --release
+        cargo build ${RUST_FEATURES:+--features $RUST_FEATURES} --release
 
     # Run tests in release mode to reduce the need for rebuilds.
     - name: Test Rust dependencies
