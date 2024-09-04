@@ -336,13 +336,6 @@ jobs:
 
         done
 
-    # - name: Verify Signatures
-    #   if: ${{ github.ref_type == 'tag' }}
-    #   run: |
-    #     cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
-    #     cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
-    #     cosign verify-blob --bundle "Linux-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/millhone"
-
     # This uses names compatible with our install script.
     #
     # Originally, CLI >=2.x Linux releases were only packaged as zip files, but
