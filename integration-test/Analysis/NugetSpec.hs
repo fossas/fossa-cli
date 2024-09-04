@@ -6,7 +6,8 @@ module Analysis.NugetSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import Path
-import Strategy.NuGet.PackageReference qualified as PackageReference
+
+import Strategy.NuGet qualified as NuGet
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Test.Hspec
 import Types
@@ -25,7 +26,7 @@ serviceStack discoveryFunc =
 
 testServiceStackForPkgReferences :: Spec
 testServiceStackForPkgReferences =
-  aroundAll (withAnalysisOf $ serviceStack PackageReference.discover) $ do
+  aroundAll (withAnalysisOf $ serviceStack NuGet.discover) $ do
     describe "ServiceStack" $ do
       it "should find targets" $ \(result, _) -> do
         length result `shouldBe` 64

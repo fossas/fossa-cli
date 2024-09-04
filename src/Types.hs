@@ -87,6 +87,7 @@ data DiscoveredProjectType
   | NDBProjectType
   | NimbleProjectType
   | NpmProjectType
+  | NuGetProjectType
   | NuspecProjectType
   | PackageReferenceProjectType
   | PackagesConfigProjectType
@@ -137,6 +138,7 @@ projectTypeToText = \case
   NDBProjectType -> "ndb"
   NimbleProjectType -> "nimble"
   NpmProjectType -> "npm"
+  NuGetProjectType -> "nuget"
   NuspecProjectType -> "nuspec"
   PackageReferenceProjectType -> "packagereference"
   PackagesConfigProjectType -> "packagesconfig"

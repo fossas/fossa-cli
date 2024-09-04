@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.32
+
+- NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
+
 ## 3.9.31
 
 - Resolve an issue parsing toml configuration files. ([#1459](https://github.com/fossas/fossa-cli/pull/1459))

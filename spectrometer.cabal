@@ -486,6 +486,7 @@ library
     Strategy.Node.YarnV2.Lockfile
     Strategy.Node.YarnV2.Resolvers
     Strategy.Node.YarnV2.YarnLock
+    Strategy.NuGet
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
