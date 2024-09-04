@@ -9,11 +9,6 @@ jobs:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    env:
-      # TODO: Use either this or the matrix value
-      GHC_VERSION: '9.8.2'
-      CARGO_TARGET: ${{ matrix.cargo-target }}
-
     defaults:
       run:
         shell: bash
@@ -87,8 +82,8 @@ jobs:
     - uses: Swatinem/rust-cache@v2
       with:
         prefix-key: ${{ matrix.os }}
-        # This is because the home directory inside containers is different than the one outside of them.
-        # LinuxARM needs this for its own caching to work.
+        # The home directory inside containers is different than the one outside of them.
+        # LinuxARM needs this for its caching to work inside haskell-static-alpine.
         cache-directories: ${{ runner.temp }}/_github_home/.cargo
 
     - name: Debugging information
@@ -131,7 +126,6 @@ jobs:
     # We compute the cache key based on the solved install plan instead of just
     # hashing the `.cabal` file, since there are many kinds of changes that will
     # cause `.cabal` to change (e.g. adding new source modules).
-    #
     - name: Compute cache key (not ARM Linux)
       if: ${{ matrix.os != 'LinuxARM' }}
       id: compute-cache-key
@@ -160,11 +154,11 @@ jobs:
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ github.sha }}
         restore-keys: |
-          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
-          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-
-          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-
 
     - name: Update vendored binaries
       run: |
