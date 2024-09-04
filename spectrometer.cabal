@@ -17,21 +17,13 @@ build-type:         Simple
 extra-source-files:
   scripts/*.gradle
   scripts/*.jar
+  target/release/berkeleydb
+  target/release/berkeleydb.exe
+  target/release/millhone
+  target/release/millhone.exe
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
-
--- The following if statements are important for cabal install,
--- which tries to build a source distribution including the binaries.
-if os(windows)
-  extra-source-files:
-    target/release/berkeleydb.exe
-    target/release/millhone.exe
-
-if !os(windows)
-  extra-source-files:
-    target/release/berkeleydb
-    target/release/millhone
 
 common lang
   build-depends:      base >=4.15 && <5
