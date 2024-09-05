@@ -71,6 +71,7 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
             , buildDependencies = deps
             }
     , sourceUnitGraphBreadth = graphBreadth
+    , sourceUnitNoticeFiles = Nothing
     , sourceUnitOriginPaths = originPaths
     , additionalData = Nothing
     }

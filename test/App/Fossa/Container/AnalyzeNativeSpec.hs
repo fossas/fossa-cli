@@ -236,6 +236,7 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
                     }
             , sourceUnitGraphBreadth = Complete
             , sourceUnitOriginPaths = [textToOriginPath "package-lock.json"]
+            , sourceUnitNoticeFiles = Nothing
             , additionalData = Nothing
             }
 

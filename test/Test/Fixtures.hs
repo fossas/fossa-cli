@@ -244,6 +244,7 @@ sourceUnits = [unit]
         , sourceUnitBuild = Nothing
         , sourceUnitGraphBreadth = Complete
         , sourceUnitOriginPaths = []
+        , sourceUnitNoticeFiles = Nothing
         , additionalData = Nothing
         }
 
@@ -310,6 +311,7 @@ vsiSourceUnit =
             }
     , sourceUnitGraphBreadth = Complete
     , sourceUnitOriginPaths = ["/tmp/one/two"]
+    , sourceUnitNoticeFiles = Nothing
     , additionalData = Nothing
     }
 

@@ -112,6 +112,25 @@ textToOriginPath = OriginPath . toString
 --   Manifest?: string;
 -- }
 
+data SourceUnitNoticeFile = SourceUnitNoticeFile
+  { sourceUnitNoticeFilePath :: Text
+  , sourceUnitNoticeFileContents :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance ToJSON SourceUnitNoticeFile where
+  toJSON SourceUnitNoticeFile{..} =
+    object
+      [ "path" .= sourceUnitNoticeFilePath
+      , "contents" .= sourceUnitNoticeFileContents
+      ]
+
+instance FromJSON SourceUnitNoticeFile where
+  parseJSON = withObject "SourceUnitNoticeFile" $ \obj ->
+    SourceUnitNoticeFile
+      <$> obj .: "path"
+      <*> obj .: "contents"
+
 data FullSourceUnit = FullSourceUnit
   { fullSourceUnitName :: Text
   , fullSourceUnitType :: Text
@@ -119,6 +138,7 @@ data FullSourceUnit = FullSourceUnit
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
+  , fullSourceUnitNoticeFiles :: Maybe (NonEmpty SourceUnitNoticeFile)
   , fullSourceUnitOriginPaths :: [OriginPath]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
   , fullSourceUnitFiles :: Maybe (NonEmpty Text)
@@ -136,6 +156,7 @@ licenseUnitToFullSourceUnit LicenseUnit{..} =
     , fullSourceUnitManifest = Nothing
     , fullSourceUnitBuild = Nothing
     , fullSourceUnitGraphBreadth = Complete
+    , fullSourceUnitNoticeFiles = licenseUnitNoticeFiles
     , fullSourceUnitOriginPaths = []
     , fullSourceUnitAdditionalData = Nothing
     , fullSourceUnitFiles = Just licenseUnitFiles
@@ -153,6 +174,7 @@ sourceUnitToFullSourceUnit SourceUnit{..} =
     , fullSourceUnitBuild = sourceUnitBuild
     , fullSourceUnitGraphBreadth = sourceUnitGraphBreadth
     , fullSourceUnitOriginPaths = sourceUnitOriginPaths
+    , fullSourceUnitNoticeFiles = sourceUnitNoticeFiles
     , fullSourceUnitAdditionalData = additionalData
     , fullSourceUnitFiles = Nothing
     , fullSourceUnitData = Nothing
@@ -169,6 +191,7 @@ instance ToJSON FullSourceUnit where
       , "Build" .= fullSourceUnitBuild
       , "GraphBreadth" .= fullSourceUnitGraphBreadth
       , "OriginPaths" .= fullSourceUnitOriginPaths
+      , "NoticeFiles" .= fullSourceUnitNoticeFiles
       , "AdditionalDependencyData" .= fullSourceUnitAdditionalData
       , "Files" .= fullSourceUnitFiles
       , "Data" .= fullSourceUnitData
@@ -204,6 +227,7 @@ data LicenseUnit = LicenseUnit
   , licenseUnitDir :: Text
   , licenseUnitFiles :: (NonEmpty Text)
   , licenseUnitData :: (NonEmpty LicenseUnitData)
+  , licenseUnitNoticeFiles :: Maybe (NonEmpty SourceUnitNoticeFile)
   , licenseUnitInfo :: LicenseUnitInfo
   }
   deriving (Eq, Ord, Show)
@@ -217,6 +241,7 @@ emptyLicenseUnit =
     , licenseUnitDir = ""
     , licenseUnitFiles = "" :| []
     , licenseUnitData = emptyLicenseUnitData :| []
+    , licenseUnitNoticeFiles = Nothing
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
     }
 
@@ -235,6 +260,7 @@ instance ToJSON LicenseUnit where
       , "Dir" .= licenseUnitDir
       , "Files" .= licenseUnitFiles
       , "Data" .= licenseUnitData
+      , "NoticeFiles" .= licenseUnitNoticeFiles
       , "Info" .= licenseUnitInfo
       ]
 
@@ -247,6 +273,7 @@ instance FromJSON LicenseUnit where
       <*> obj .: "Dir"
       <*> obj .: "Files"
       <*> obj .: "Data"
+      <*> obj .:? "NoticeFiles"
       <*> obj .: "Info"
 
 newtype LicenseUnitInfo = LicenseUnitInfo
@@ -350,6 +377,7 @@ data SourceUnit = SourceUnit
   -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
+  , sourceUnitNoticeFiles :: Maybe (NonEmpty SourceUnitNoticeFile)
   , sourceUnitOriginPaths :: [OriginPath]
   , additionalData :: Maybe AdditionalDepData
   }
@@ -431,6 +459,7 @@ instance ToJSON SourceUnit where
       , "Manifest" .= sourceUnitManifest
       , "Build" .= sourceUnitBuild
       , "GraphBreadth" .= sourceUnitGraphBreadth
+      , "NoticeFiles" .= sourceUnitNoticeFiles
       , "OriginPaths" .= sourceUnitOriginPaths
       , "AdditionalDependencyData" .= additionalData
       ]
@@ -443,6 +472,7 @@ instance FromJSON SourceUnit where
       <*> obj .: "Manifest"
       <*> obj .:? "Build"
       <*> obj .: "GraphBreadth"
+      <*> obj .:? "NoticeFiles"
       <*> obj .: "OriginPaths"
       <*> obj .:? "AdditionalDependencyData"
 
