@@ -13,7 +13,7 @@ import Data.Maybe (isJust)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData, licenseUnitName), LicenseUnitData (licenseUnitDataContents))
+import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData, licenseUnitName), LicenseUnitData (licenseUnitDataContents), licenseUnitType)
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
@@ -25,12 +25,16 @@ fixtureDir = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/repo")
 fixtureDirWithVendoredDeps :: Path Rel Dir
 fixtureDirWithVendoredDeps = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/firstparty")
 
+fixtureDirWithNoticeFiles :: Path Rel Dir
+fixtureDirWithNoticeFiles = $(mkRelDir "test/App/Fossa/VendoredDependency/testdata/firstparty-with-notice")
+
 spec :: Spec
 spec = do
   describe "runFirstPartyScan" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
     let scanDirWithVendoredDeps = currDir </> fixtureDirWithVendoredDeps
+    let scanDirWithNoticeFiles = currDir </> fixtureDirWithNoticeFiles
 
     it' "should fail if the organization does not support first party scans and you force it on" $ do
       expectGetOrganizationThatDoesNotSupportFirstPartyScans
@@ -98,6 +102,17 @@ spec = do
           licenseUnitName firstUnit `shouldBe'` "No_license_found"
           licenseUnitName secondUnit `shouldBe'` "apache-2.0"
           licenseUnitDataContents unitData `shouldBe'` Nothing
+
+    it' "should find notice files" $ do
+      expectGetOrganizationThatDefaultsToFirstPartyScans
+      licenseSourceUnit <- firstPartyScanWithOrgInfo scanDirWithNoticeFiles Fixtures.standardAnalyzeConfig
+      case licenseSourceUnit of
+        Nothing -> expectationFailure' "first party scan should have run"
+        Just LicenseSourceUnit{licenseSourceUnitLicenseUnits = units} -> do
+          length units `shouldBe'` 3
+          let noticeUnit = NE.head units
+          licenseUnitName noticeUnit `shouldBe'` ""
+          licenseUnitType noticeUnit `shouldBe'` "NoticeFileMatches"
 
 -- The default org defaults to not running first party scans but has first-party scans enabled
 expectGetOrganizationThatDefaultsToNoFirstPartyScans :: Has MockApi sig m => m ()
