@@ -427,24 +427,24 @@ instance FromJSON ReferencedDependency where
                   <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
-                    <* forbidNonRefDepFields obj
-                    <* forbidLinuxFields depType obj
-                    <* forbidEpoch depType obj
+                  <* forbidNonRefDepFields obj
+                  <* forbidLinuxFields depType obj
+                  <* forbidEpoch depType obj
               )
 
       parseApkOrDebDependency :: Object -> DepType -> Parser ReferencedDependency
       parseApkOrDebDependency obj depType =
         LinuxApkDebDep
           <$> parseLinuxDependency obj depType
-            <* forbidNonRefDepFields obj
-            <* forbidEpoch depType obj
+          <* forbidNonRefDepFields obj
+          <* forbidEpoch depType obj
 
       parseRpmDependency :: Object -> DepType -> Parser ReferencedDependency
       parseRpmDependency obj depType =
         LinuxRpmDep
           <$> parseLinuxDependency obj depType
           <*> (unTextLike <$$> obj .:? "epoch")
-            <* forbidNonRefDepFields obj
+          <* forbidNonRefDepFields obj
 
       parseLinuxDependency :: Object -> DepType -> Parser LinuxReferenceDependency
       parseLinuxDependency obj depType =
@@ -511,7 +511,7 @@ instance FromJSON CustomDependency where
       <*> (obj `neText` "license")
       <*> obj
         .:? "metadata"
-        <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
+      <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
   parseJSON = withObject "RemoteDependency" $ \obj -> do
