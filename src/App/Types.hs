@@ -210,6 +210,9 @@ data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFla
 instance ToJSON FirstPartyScansFlag where
   toEncoding = genericToEncoding defaultOptions
 
+-- | Represents the different modes of operation during the analysis process.
+-- 'Strict' mode enforces the most accurate results by rejecting fallback strategies.
+-- 'NonStrict' mode allows for fallback strategies.
 data Mode
   = Strict
   | NonStrict

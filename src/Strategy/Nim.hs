@@ -32,7 +32,7 @@ instance ToJSON NimbleProject
 
 instance AnalyzeProject NimbleProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NimbleProject]
 discover = simpleDiscover findProjects mkProject NimbleProjectType
@@ -62,8 +62,8 @@ getDeps project = do
       , dependencyManifestFiles = [nimbleLockFile project]
       }
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m) => NimbleProject -> m DependencyResults
-getDeps' project = do
+getDepsStatically :: (Has ReadFS sig m, Has Diagnostics sig m) => NimbleProject -> m DependencyResults
+getDepsStatically project = do
   (graph, graphBreadth) <- analyze' (nimDir project) (nimbleLockFile project)
   pure $
     DependencyResults

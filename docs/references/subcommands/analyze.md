@@ -13,26 +13,26 @@ For supported command-line flags, use `fossa analyze --help`
 
 In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supported by all commands, the analyze command supports the following FOSSA-project-related flags:
 
-| Name                                  | Short | Description                                                                         |
-| ------------------------------------- | ----- | ----------------------------------------------------------------------------------- |
-| `--title 'some title'`                | `-t`  | Set the title of the FOSSA project                                                  |
-| `--branch 'some branch'`              | `-b`  | Override the detected FOSSA project branch                                          |
-| `--project-url 'https://example.com'` | `-P`  | Add a URL to the FOSSA project                                                      |
-| `--jira-project-key 'some-key'`       | `-j`  | Add a Jira project key to the FOSSA project                                         |
-| `--link 'https://example.com'`        | `-L`  | Attach a link to the current FOSSA build                                            |
-| `--team 'some team'`                  | `-T`  | Specify a team within your FOSSA organization                                       |
-| `--policy 'some policy'`              |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.    |
-| `--policy-id 'some policy id'`        |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`. |
-| `--project-label`                     |       | assign up to 5 labels to the project                                                |
-| `--release-group-name 'MY_RG'`        |       | add the project to this release group (also requires `--release-group-release`)     |
-| `--release-group-release 'MY_RELEASE'`|       | add the project to this release version within the release group                    |
+| Name                                   | Short | Description                                                                         |
+|----------------------------------------|-------|-------------------------------------------------------------------------------------|
+| `--title 'some title'`                 | `-t`  | Set the title of the FOSSA project                                                  |
+| `--branch 'some branch'`               | `-b`  | Override the detected FOSSA project branch                                          |
+| `--project-url 'https://example.com'`  | `-P`  | Add a URL to the FOSSA project                                                      |
+| `--jira-project-key 'some-key'`        | `-j`  | Add a Jira project key to the FOSSA project                                         |
+| `--link 'https://example.com'`         | `-L`  | Attach a link to the current FOSSA build                                            |
+| `--team 'some team'`                   | `-T`  | Specify a team within your FOSSA organization                                       |
+| `--policy 'some policy'`               |       | Assign a specific FOSSA policy to this project. Mutually excludes `--policy-id`.    |
+| `--policy-id 'some policy id'`         |       | Assign a specific FOSSA policy to this project by id. Mutually excludes `--policy`. |
+| `--project-label`                      |       | assign up to 5 labels to the project                                                |
+| `--release-group-name 'MY_RG'`         |       | add the project to this release group (also requires `--release-group-release`)     |
+| `--release-group-release 'MY_RELEASE'` |       | add the project to this release version within the release group                    |
 
 ### Filtering Paths and Targets
 
 The paths and targets filtering options allow you to specify the exact targets which be should be scanned.
 
 | Name                             | Description                                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+|----------------------------------|--------------------------------------------------------------------------------------------------------------------------|
 | `--only-target`                  | Only scan these targets. See [targets.only](../files/fossa-yml.md#targets.only) in the fossa.yml spec.                   |
 | `--exclude-target`               | Exclude these targets from scanning. See [targets.exclude](../files/fossa-yml.md#targets.exclude) in the fossa.yml spec. |
 | `--only-path`                    | Only scan these paths. See [paths.only](../files/fossa-yml.md#paths.only) in the fossa.yml spec.                         |
@@ -76,7 +76,7 @@ fossa analyze --fossa-deps-file /path/to/file
 The Vendored Dependencies feature allows you to scan for licenses directly in your code. For more information, please see the [Vendored Dependencies documentation](../../features/vendored-dependencies.md).
 
 | Name                                      | Description                                                                                                                                                                           |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--force-vendored-dependency-scan-method` | Force the vendored dependency scan method. The options are 'CLILicenseScan' or 'ArchiveUpload'. 'CLILicenseScan' is usually the default unless your organization has overridden this. |
 | `--force-vendored-dependency-rescans`     | Force vendored dependencies to be rescanned even if the revision has been previously analyzed by FOSSA. This currently only works for CLI-side license scans.                         |
 
@@ -127,12 +127,12 @@ We support the following archive formats:
 
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following additional strategy flags:
 
-| Name                                                                              | Description                                                                                                                                                                                         |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------                            |
-| [`--detect-vendored`](./analyze/detect-vendored.md)                               | Enable the vendored source identification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                                                       |
-| [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md)                  | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                            |
-| [`--static-only-analysis`](../strategies/README.md#static-and-dynamic-strategies) | Do not use third-party tools when analyzing projects.                                                                                                                                               |
-| `--strict`                                                                        | Enable strict analysis to enforce that the first analysis strategy within a [strategy type](../strategies/README.md#strategies-by-type) passes. Fallback strategies are not allowed in strict mode. |
+| Name                                                                              | Description                                                                                                                                                              |
+|-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`--detect-vendored`](./analyze/detect-vendored.md)                               | Enable the vendored source identification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                            |
+| [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md)                  | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md). |
+| [`--static-only-analysis`](../strategies/README.md#static-and-dynamic-strategies) | Do not use third-party tools when analyzing projects.                                                                                                                    |
+| `--strict`                                                                        | Enforces strict analysis to ensure the most accurate results for a strategy without resorting to fallbacks.                                                              |
 
 
 ### Experimental Options
@@ -142,7 +142,7 @@ _Important: For support and other general information, refer to the [experimenta
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following experimental flags:
 
 | Name                                                                                     | Description                                                                                                                                                                                    |
-| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).                               |
 | [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).                                      |
 | [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                                                      |
@@ -258,7 +258,7 @@ touch reqs.txt && fossa analyze && rm reqs.txt && fossa test
 All `fossa` commands support the following FOSSA-project-related flags:
 
 | Name                               | Short | Description                                                                                                                              |
-| ---------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+|------------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------|
 | `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                       |
 | `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                  |
 | `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                              |

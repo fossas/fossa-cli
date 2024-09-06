@@ -135,7 +135,7 @@ testRunner f env =
     & runReader (mempty :: AllFilters)
     & runReader (MavenScopeIncludeFilters mempty)
     & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic False)
-    & runReader (NonStrict :: Mode)
+    & runReader NonStrict
     & runFinally
     & runStack
     & withoutTelemetry

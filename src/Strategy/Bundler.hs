@@ -36,7 +36,7 @@ import Discovery.Walk (
   findFilesMatchingGlob,
   walkWithFilters',
  )
-import Effect.Exec (Exec, Has)
+import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -121,7 +121,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => BundlerProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m) => BundlerProject -> m DependencyResults
 getDeps project = do
   mode <- ask
   analyzeGemfileLock project <||> guardStrictMode mode (context "Bundler" (analyzeBundleShow project))
@@ -136,7 +136,7 @@ analyzeBundleShow project = do
       , dependencyManifestFiles = maybe [bundlerGemfile project] pure (bundlerGemfileLock project)
       }
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => BundlerProject -> m DependencyResults
+analyzeGemfileLock :: (GetDepsEffs sig m) => BundlerProject -> m DependencyResults
 analyzeGemfileLock project = do
   mode <- ask
   let errorInfo = case mode of

@@ -296,7 +296,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
-  -- strictMode = Config.strictMode cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $

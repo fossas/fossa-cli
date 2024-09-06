@@ -376,7 +376,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           False -- Targets are not impacted by path dependencies.
       )
     . runReader (MavenScopeIncludeFilters mempty)
-    . runReader (NonStrict :: Mode)
+    . runReader NonStrict
     . runReader (mempty :: AllFilters)
     $ run
   where

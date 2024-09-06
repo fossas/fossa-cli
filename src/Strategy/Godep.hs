@@ -17,7 +17,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Exec (Exec, Has)
+import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -71,7 +71,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => GodepProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m) => GodepProject -> m DependencyResults
 getDeps project = do
   mode <- ask
   context "Godep" $

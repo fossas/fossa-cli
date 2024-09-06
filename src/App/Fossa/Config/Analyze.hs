@@ -338,7 +338,7 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "fossa-deps-file" <> helpDoc fossaDepsFileHelp <> metavar "FILEPATH"))
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
-    <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enables strict analysis to enforce that the first analysis strategy within a strategy type passes. Fallback strategies are not allowed in strict mode.")
+    <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results for a strategy without resorting to fallbacks.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =

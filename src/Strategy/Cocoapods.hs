@@ -29,7 +29,7 @@ import Discovery.Walk (
   findFilesMatchingGlob,
   walkWithFilters',
  )
-import Effect.Exec (Exec)
+import Effect.Exec (Exec, GetDepsEffs)
 import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import GHC.Generics (Generic)
@@ -81,7 +81,7 @@ instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 instance LicenseAnalyzeProject CocoapodsProject where
   licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles
@@ -112,7 +112,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m, Has (Reader Mode) sig m) => CocoapodsProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => CocoapodsProject -> m DependencyResults
 getDeps project = do
   mode <- ask
   context "Cocoapods" $
@@ -126,8 +126,8 @@ getDeps project = do
       )
       <||> guardStrictMode mode (context "Podfile analysis" (analyzePodfile project))
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => CocoapodsProject -> m DependencyResults
-getDeps' project = do
+getDepsStatically :: (GetDepsEffs sig m) => CocoapodsProject -> m DependencyResults
+getDepsStatically project = do
   mode <- ask
   context "Cocoapods" $
     context

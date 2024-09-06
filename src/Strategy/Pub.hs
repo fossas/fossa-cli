@@ -16,7 +16,7 @@ import Diag.Common (
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walkWithFilters')
-import Effect.Exec (Exec, Has)
+import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
@@ -55,7 +55,7 @@ instance ToJSON PubProject
 
 instance AnalyzeProject PubProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 mkProject :: PubProject -> DiscoveredProject PubProject
 mkProject project =
@@ -66,13 +66,13 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader Mode) sig m) => PubProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => PubProject -> m DependencyResults
 getDeps project = do
   mode <- ask
   (graph, graphBreadth) <- case pubLock project of
     Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> guardStrictMode mode (analyzePubLockFile lockFile)
     Nothing -> do
-      _ <- applyMissingPubSpecWarnings
+      applyMissingPubSpecWarnings
       analyzePubSpecFile (pubSpec project)
   pure $
     DependencyResults
@@ -81,12 +81,12 @@ getDeps project = do
       , dependencyManifestFiles = [pubSpec project]
       }
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
-getDeps' project = do
+getDepsStatically :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
+getDepsStatically project = do
   (graph, graphBreadth) <- case pubLock project of
     Just lockFile -> analyzePubLockFile lockFile
     Nothing -> do
-      _ <- applyMissingPubSpecWarnings
+      applyMissingPubSpecWarnings
       analyzePubSpecFile (pubSpec project)
   pure $
     DependencyResults

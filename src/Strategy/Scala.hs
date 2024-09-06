@@ -36,6 +36,7 @@ import Discovery.Walk (
 import Effect.Exec (
   Command (..),
   Exec,
+  GetDepsEffs,
   Has,
   execThrow,
  )
@@ -128,7 +129,7 @@ mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
     , projectData = ScalaProject sbtBuildDir sbtTreeJson closure
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader Mode) sig m) => ScalaProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
 getDeps project = do
   mode <- ask
   case mode of
