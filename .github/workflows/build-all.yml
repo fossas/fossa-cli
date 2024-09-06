@@ -28,6 +28,9 @@ jobs:
           container: fossa/haskell-static-alpine:ghc-9.8.2
           project-file: cabal.project.ci.linux
           ghc: '9.8.2'
+          # Linux builds are run in Alpine, which builds them statically;
+          # using jemalloc reduces the performance impact of this
+          # over the default libc allocator (which performs very poorly in static builds).
           # Non-Linux environments generally don't need `jemalloc`
           # and in particular Windows doesn't support it
           rust-features: jemalloc
@@ -93,9 +96,6 @@ jobs:
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
 
-    # Linux builds are run in Alpine, which builds them statically;
-    # using jemalloc reduces the performance impact of this
-    # over the default libc allocator (which performs very poorly in static builds).
     - name: Build Rust dependencies
       if: ${{ matrix.os != 'LinuxARM' }}
       env:
@@ -172,7 +172,7 @@ jobs:
       if: ${{ matrix.os == 'LinuxARM' }}
       uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
       with:
-        args: ./.github/workflows/scripts/build-arm.sh ${{ runner.os }} ${{ matrix.project-file }}
+        args: ./.github/workflows/scripts/build-arm.sh ${{ runner.os }} ${{ matrix.project-file }} ${{ matrix.rust-features }}
 
     - name: Build and Unit Test
       if: ${{ matrix.os != 'LinuxARM' }}

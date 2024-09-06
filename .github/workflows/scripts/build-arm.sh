@@ -4,22 +4,23 @@ set -e
 set -x
 
 if [ $# -lt 2 ] ; then
-    echo "Usage: ./build-arm.sh <RUNNER OS> <PROJECT FILE>"
+    echo "Usage: ./build-arm.sh <RUNNER OS> <PROJECT FILE> [FEATURES]"
     exit 1
 fi
 
 RUNNER_OS=$1
 PROJECT_FILE=$2
+FEATURES=$3
 
 # Install rust tooling
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-. "/home/runner/.cargo/env"
+. "$HOME/.cargo/env"
 
 rustc -V
 cargo -V
 
 # Build Rust binaries
-cargo build --features jemalloc --release
+cargo build ${FEATURES:+--features $FEATURES} jemalloc --release
 
 cargo test --release
 
