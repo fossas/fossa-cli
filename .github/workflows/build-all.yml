@@ -21,6 +21,7 @@ jobs:
           os-name: Linux-arm
           project-file: cabal.project.ci.linux
           ghc: '9.8.2'
+          rust-features: jemalloc
 
         - os: ubuntu-latest
           os-name: Linux
