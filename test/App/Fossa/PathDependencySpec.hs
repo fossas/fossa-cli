@@ -44,9 +44,9 @@ absPathOfSpec = describe "absPathOfSpec" $ do
 
   let currentPathRel = "../" <> (toText . toFilePath . dirname $ cwd)
   mkPathSpec cwd currentPathRel isAbsDir
-  mkPathSpec cwd currentPathRel isAbsDir
+  mkPathSpec cwd (currentPathRel <> "/") isAbsDir
   mkPathSpec cwd (currentPathRel <> "/test") isAbsDir
-  mkPathSpec cwd (currentPathRel <> "/test") isAbsDir
+  mkPathSpec cwd (currentPathRel <> "/test/") isAbsDir
 
   mkPathSpec cwd "./test" isAbsDir
   mkPathSpec cwd "./test/" isAbsDir
