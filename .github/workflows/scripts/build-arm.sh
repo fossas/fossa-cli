@@ -14,7 +14,7 @@ FEATURES=$3
 
 # Install rust tooling
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-. "$HOME/.cargo/env"
+. "/home/runner/.cargo/env"
 
 rustc -V
 cargo -V
