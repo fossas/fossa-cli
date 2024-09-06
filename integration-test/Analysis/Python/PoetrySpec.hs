@@ -5,6 +5,7 @@ module Analysis.Python.PoetrySpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Python.Poetry qualified as Poetry
 import Test.Hspec
@@ -24,4 +25,4 @@ poetry =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary poetry PoetryProjectType (DependencyResultsSummary 65 29 69 1 Complete)
+  testSuiteDepResultSummary NonStrict poetry PoetryProjectType (DependencyResultsSummary 65 29 69 1 Complete)

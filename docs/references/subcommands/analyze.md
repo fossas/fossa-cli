@@ -128,12 +128,12 @@ We support the following archive formats:
 
 In addition to the [standard flags](#specifying-fossa-project-details), the analyze command supports the following additional strategy flags:
 
-| Name                                                                              | Description                                                                                                                                                              |
-|-----------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`--detect-vendored`](./analyze/detect-vendored.md)                               | Enable the vendored source identification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                            |
-| [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md)                  | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md). |
-| [`--static-only-analysis`](../strategies/README.md#static-and-dynamic-strategies) | Do not use third-party tools when analyzing projects.                                                                                                                    |
-| `--strict`                                                                        | Enforces strict analysis to ensure the most accurate results for a strategy without resorting to fallbacks.                                                              |
+| Name                                                                              | Description                                                                                                                                                                                                       |
+|-----------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`--detect-vendored`](./analyze/detect-vendored.md)                               | Enable the vendored source identification engine. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                                                                     |
+| [`--detect-dynamic './some-binary`](./analyze/detect-dynamic.md)                  | Analyze the binary at the provided path for dynamically linked dependencies. For more information, see the [C and C++ overview](../strategies/languages/c-cpp/c-cpp.md).                                          |
+| [`--static-only-analysis`](../strategies/README.md#static-and-dynamic-strategies) | Do not use third-party tools when analyzing projects.                                                                                                                                                             |
+| `--strict`                                                                        | Enforces strict analysis to ensure the most accurate results for a strategy by rejecting fallbacks. When ran with `--statitic-only-analysis`, the most optimal static strategy will be applied without fallbacks. |
 
 
 ### Experimental Options

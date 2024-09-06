@@ -156,8 +156,8 @@ decorateCmdWith (NixEnv pkgs) cmd =
 -- --------------------------------
 -- Analysis fixture test runner
 
-performDiscoveryAndAnalyses :: (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) => Path Abs Dir -> AnalysisTestFixture a -> m [(DiscoveredProject a, DependencyResults)]
-performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
+performDiscoveryAndAnalyses :: (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) => Path Abs Dir -> AnalysisTestFixture a -> Mode -> m [(DiscoveredProject a, DependencyResults)]
+performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} mode = do
   -- Perform any project builds
   _ <- sendIO $ runCmd environment buildCmd
 
@@ -165,7 +165,7 @@ performDiscoveryAndAnalyses targetDir AnalysisTestFixture{..} = do
   discoveryResult <- sendIO $ testRunner (discover targetDir) environment
   withResult discoveryResult $ \_ dps ->
     for dps $ \dp -> do
-      analysisResult <- sendIO $ testRunner (ignoreDebug $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
+      analysisResult <- sendIO $ testRunner (ignoreDebug $ runReader mode $ analyzeProject (projectBuildTargets dp) (projectData dp)) environment
       withResult analysisResult $ \_ dr -> pure (dp, dr)
   where
     runCmd :: FixtureEnvironment -> Maybe (Command) -> IO ()

@@ -12,6 +12,7 @@ import Analysis.FixtureUtils (
   FixtureArtifact (FixtureArtifact),
   FixtureEnvironment (NixEnv),
  )
+import App.Types (Mode (NonStrict))
 import Path (reldir)
 import Strategy.Gradle qualified as Gradle
 import Test.Hspec (Spec, aroundAll, describe, it, shouldBe)
@@ -46,7 +47,7 @@ gradleSettingsOnly =
 
 testSpringBoot :: Spec
 testSpringBoot =
-  aroundAll (withAnalysisOf springBoot) $ do
+  aroundAll (withAnalysisOf NonStrict springBoot) $ do
     describe "gradle-java springboot" $ do
       it "should find targets" $ \(result, extractedDir) -> do
         expectProject (GradleProjectType, extractedDir) result
@@ -54,7 +55,7 @@ testSpringBoot =
 
 testGradleSettingsOnly :: Spec
 testGradleSettingsOnly =
-  aroundAll (withAnalysisOf gradleSettingsOnly) $ do
+  aroundAll (withAnalysisOf NonStrict gradleSettingsOnly) $ do
     describe "gradle-java gradle settings only" $ do
       it "should find targets" $ \(result, extractedDir) -> do
         expectProject (GradleProjectType, extractedDir) result

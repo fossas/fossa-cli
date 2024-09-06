@@ -5,7 +5,6 @@ module Strategy.Conda (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Types (Mode (..))
 import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (
   Diagnostics,

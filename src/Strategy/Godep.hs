@@ -3,7 +3,6 @@ module Strategy.Godep (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Types (Mode (..))
 import App.Util (guardStrictMode)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, (<||>))

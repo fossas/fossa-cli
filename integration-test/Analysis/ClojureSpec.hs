@@ -5,6 +5,7 @@ module Analysis.ClojureSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Leiningen qualified as Leiningen
 import Test.Hspec
@@ -39,5 +40,5 @@ ring =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary eastwood LeiningenProjectType (DependencyResultsSummary 10 7 3 1 Complete)
-  testSuiteDepResultSummary ring LeiningenProjectType (DependencyResultsSummary 23 6 17 1 Complete)
+  testSuiteDepResultSummary NonStrict eastwood LeiningenProjectType (DependencyResultsSummary 10 7 3 1 Complete)
+  testSuiteDepResultSummary NonStrict ring LeiningenProjectType (DependencyResultsSummary 23 6 17 1 Complete)

@@ -5,6 +5,7 @@ module Analysis.CocoapodsSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (..))
 import Path
 import Strategy.Cocoapods qualified as Cocoapods
 import Test.Hspec
@@ -36,5 +37,6 @@ sDWebImage =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary shadowsocksXNG CocoapodsProjectType (DependencyResultsSummary 7 6 2 1 Complete)
-  testSuiteDepResultSummary sDWebImage CocoapodsProjectType (DependencyResultsSummary 4 4 0 1 Partial)
+  testSuiteDepResultSummary NonStrict shadowsocksXNG CocoapodsProjectType (DependencyResultsSummary 7 6 2 1 Complete)
+  testSuiteDepResultSummary Strict shadowsocksXNG CocoapodsProjectType (DependencyResultsSummary 7 6 2 1 Complete)
+  testSuiteDepResultSummary NonStrict sDWebImage CocoapodsProjectType (DependencyResultsSummary 4 4 0 1 Partial)

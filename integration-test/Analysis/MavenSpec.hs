@@ -21,6 +21,8 @@ import Analysis.FixtureUtils (
   FixtureArtifact (FixtureArtifact),
   FixtureEnvironment (NixEnv),
  )
+import App.Types (Mode (..))
+
 import Path (reldir)
 import Strategy.Maven qualified as Maven
 import Test.Hspec (Spec, aroundAll, describe, it)
@@ -80,16 +82,24 @@ pomFileWithBuildDirOverride =
       [reldir|maven/build_dir_override/|]
       [reldir|example-pom-file-override-build-directory|]
 
-testKeycloak :: Spec
-testKeycloak = do
-  aroundAll (withAnalysisOf keycloak) $ do
-    describe "keycloak" $ do
+testKeycloakNonStrict :: Spec
+testKeycloakNonStrict = do
+  aroundAll (withAnalysisOf NonStrict keycloak) $ do
+    describe "keycloak non strict mode" $ do
+      it "should find targets" $ \(result, extractedDir) ->
+        expectProject (MavenProjectType, extractedDir) result
+
+testKeycloakStrict :: Spec
+testKeycloakStrict = do
+  aroundAll (withAnalysisOf Strict keycloak) $ do
+    describe "keycloak strict mode" $ do
       it "should find targets" $ \(result, extractedDir) ->
         expectProject (MavenProjectType, extractedDir) result
 
 testGuava :: Spec
 testGuava =
   testSuiteDepResultSummary
+    NonStrict
     guava
     Types.MavenProjectType
     DependencyResultsSummary
@@ -103,6 +113,7 @@ testGuava =
 testSimplePomFile :: Spec
 testSimplePomFile = do
   testSuiteDepResultSummary
+    NonStrict
     simplePomFile
     Types.MavenProjectType
     DependencyResultsSummary
@@ -116,6 +127,7 @@ testSimplePomFile = do
 testBuildDirOverride :: Spec
 testBuildDirOverride = do
   testSuiteDepResultSummary
+    NonStrict
     pomFileWithBuildDirOverride
     Types.MavenProjectType
     DependencyResultsSummary
@@ -128,7 +140,8 @@ testBuildDirOverride = do
 
 spec :: Spec
 spec = do
-  testKeycloak
+  testKeycloakNonStrict
+  testKeycloakStrict
   testGuava
   testBuildDirOverride
   testSimplePomFile

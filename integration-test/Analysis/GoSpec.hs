@@ -5,6 +5,7 @@ module Analysis.GoSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Gomodules qualified as Gomodules
 import Test.Hspec
@@ -27,7 +28,7 @@ vault =
 
 testVault :: Spec
 testVault =
-  aroundAll (withAnalysisOf vault) $ do
+  aroundAll (withAnalysisOf NonStrict vault) $ do
     describe "vault" $ do
       it "should find targets" $ \(result, extractedDir) -> do
         expectProject (GomodProjectType, extractedDir) result

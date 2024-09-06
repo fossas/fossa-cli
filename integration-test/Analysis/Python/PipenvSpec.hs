@@ -5,6 +5,7 @@ module Analysis.Python.PipenvSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Python.Pipenv qualified as Pipenv
 import Test.Hspec
@@ -24,4 +25,4 @@ pipenv =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary pipenv PipenvProjectType (DependencyResultsSummary 90 90 0 1 Complete)
+  testSuiteDepResultSummary NonStrict pipenv PipenvProjectType (DependencyResultsSummary 90 90 0 1 Complete)

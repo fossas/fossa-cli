@@ -5,6 +5,7 @@ module Analysis.CarthageSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Carthage qualified as Carthage
 import Test.Hspec
@@ -24,4 +25,4 @@ swiftQueue =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary swiftQueue CarthageProjectType (DependencyResultsSummary 1 1 0 1 Complete)
+  testSuiteDepResultSummary NonStrict swiftQueue CarthageProjectType (DependencyResultsSummary 1 1 0 1 Complete)
