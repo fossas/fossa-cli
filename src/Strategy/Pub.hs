@@ -2,7 +2,6 @@
 module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Types (Mode (..))
 import App.Util (guardStrictMode)
 import Control.Carrier.Diagnostics (errDoc, errHelp)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
@@ -16,7 +15,7 @@ import Diag.Common (
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walkWithFilters')
-import Effect.Exec (Exec, GetDepsEffs, Has)
+import Effect.Exec (GetDepsEffs, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
