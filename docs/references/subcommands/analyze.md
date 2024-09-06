@@ -57,8 +57,9 @@ The `--json` flag can be used to print project metadata after running `fossa ana
 ```sh
 fossa analyze --json
 ```
+
 ```json
-{"project":{"name":"custom@new-project","branch":"master","revision":"123","url":"https://app.fossa.com/projects/custom+<org-id>/new-project/refs/branch/master/123","id":"custom+<org-id>/new-project$123"}}
+{"branch":"master", "id":"custom+<org-id>/new-project$123", "project":"<org-id>/new-project", "projectId":"custom+<org-id>/new-project", "revision":"123", "url":"https://app.fossa.com/projects/custom%2b+<org-id>$2fnew-project/refs/branch/master/123"}
 ```
 
 ### Running a specific fossa-deps file
@@ -182,7 +183,7 @@ Note that the `MY_RG` release group must already exist, as well as `MY_RELEASE_V
 #### What are the default filters?
 
 Default filters are filters which `fossa-cli` applies by default. These filters,
-provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory, 
+provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory,
 default filters, intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
 analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
 the dependency's scope (development or production) and may double count dependencies.
