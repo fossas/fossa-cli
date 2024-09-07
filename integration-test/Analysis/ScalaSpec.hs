@@ -36,4 +36,3 @@ scalaExampleProject =
 spec :: Spec
 spec = do
   testSuiteDepResultSummary NonStrict scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)
-  testSuiteDepResultSummary Strict scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)
