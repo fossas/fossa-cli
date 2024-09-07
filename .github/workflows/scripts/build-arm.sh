@@ -20,7 +20,7 @@ rustc -V
 cargo -V
 
 # Build Rust binaries
-cargo build ${FEATURES:+--features $FEATURES} jemalloc --release
+cargo build ${FEATURES:+--features $FEATURES} --release
 
 cargo test --release
 
