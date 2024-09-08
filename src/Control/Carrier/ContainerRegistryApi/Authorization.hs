@@ -167,7 +167,7 @@ getAuthToken cred reqAttempt manager accepts registryCtx = do
     -- Other Errors
     -- -
     (Just (apiErrors :: ContainerRegistryApiErrorBody), _) -> fatal (originalReqUri response, apiErrors)
-    (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) $ responseStatus response
+    (Nothing, _) -> fatal $ UnknownApiError (originalReqUri response) (responseStatus response) (responseBody response)
   where
     respondToChallenge ::
       ( Has (Lift IO) sig m
