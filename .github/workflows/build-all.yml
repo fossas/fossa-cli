@@ -9,23 +9,31 @@ jobs:
     name: ${{ matrix.os-name }}-build
     runs-on: ${{ matrix.os }}
     container: ${{ matrix.container }}
-    env:
-      GHC_VERSION: '9.8.2'
-
-
     defaults:
       run:
         shell: bash
 
     strategy:
       matrix:
-        os: ['windows-latest', 'ubuntu-latest', 'macos-12', 'macos-latest']
+        os: [ 'LinuxARM', 'windows-latest', 'ubuntu-latest', 'macos-12', 'macos-latest']
         include:
+        - os: LinuxARM
+          os-name: Linux-arm
+          project-file: cabal.project.ci.linux
+          ghc: '9.8.2'
+          rust-features: jemalloc
+
         - os: ubuntu-latest
           os-name: Linux
           container: fossa/haskell-static-alpine:ghc-9.8.2
           project-file: cabal.project.ci.linux
           ghc: '9.8.2'
+          # Linux builds are run in Alpine, which builds them statically;
+          # using jemalloc reduces the performance impact of this
+          # over the default libc allocator (which performs very poorly in static builds).
+          # Non-Linux environments generally don't need `jemalloc`
+          # and in particular Windows doesn't support it
+          rust-features: jemalloc
 
         # macos-latest pointed at macos-12 this before it was changed to ARM.
         - os: macos-12
@@ -59,46 +67,51 @@ jobs:
     - uses: haskell-actions/setup@v2
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
-      if: ${{ !contains(matrix.os, 'ubuntu') }}
+      if: ${{ !contains(matrix.os-name, 'Linux') }}
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: '3.10.3.0'
 
     # Set up Rust.
     # This action installs the 'minimal' profile.
+    # Even on Linux ARM this is necessary because rust-cache uses it.
     - uses: dtolnay/rust-toolchain@stable
 
     - name: Install additional Rust tooling
+      if: ${{ matrix.os != 'LinuxARM' }}
       uses: taiki-e/install-action@v2
       with:
         tool: nextest
 
     - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: ${{ matrix.os }}
+        # The home directory inside containers is different than the one outside of them.
+        # LinuxARM needs this for its caching to work inside haskell-static-alpine.
+        cache-directories: ${{ runner.temp }}/_github_home/.cargo
 
     - name: Debugging information
       run: |
         ghc --version || echo "no ghc"
         cabal --version || echo "no cabal"
         ghcup --version || echo "no ghcup"
-        rustc -V || echo "no rustc"
-        cargo -V || echo "no cargo"
 
-    # Linux builds are run in Alpine, which builds them statically;
-    # using jemalloc reduces the performance impact of this
-    # over the default libc allocator (which performs very poorly in static builds).
-    - name: Build Rust dependencies (Linux)
-      if: ${{ matrix.os-name == 'linux' }}
-      run: cargo build --features jemalloc --release
-
-    # Non-Linux environments generally don't need `jemalloc`
-    # and in particular Windows doesn't support it.
-    - name: Build Rust dependencies (non-Linux)
-      if: ${{ matrix.os-name != 'linux' }}
-      run: cargo build --release
+    - name: Build Rust dependencies
+      if: ${{ matrix.os != 'LinuxARM' }}
+      env:
+        RUST_FEATURES: ${{ matrix.rust-features }}
+      run: |
+        cargo build ${RUST_FEATURES:+--features $RUST_FEATURES} --release
 
     # Run tests in release mode to reduce the need for rebuilds.
     - name: Test Rust dependencies
+      if: ${{ matrix.os != 'LinuxARM' }}
       run: cargo nextest run --release
+
+    - name: Validate diagnose commands run on the platform
+      if: ${{ matrix.os != 'LinuxARM' }}
+      run: |
+        cargo run --release --bin diagnose -- walk --trace-spans none --trace-level info
 
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -114,48 +127,39 @@ jobs:
     # We compute the cache key based on the solved install plan instead of just
     # hashing the `.cabal` file, since there are many kinds of changes that will
     # cause `.cabal` to change (e.g. adding new source modules).
-    - name: Compute cache key
+    - name: Compute cache key (not ARM Linux)
+      if: ${{ matrix.os != 'LinuxARM' }}
       id: compute-cache-key
-      env:
-        RUNNER_OS: ${{ runner.os }}
-      run: |
-        cabal --project-file=${{ matrix.project-file }} update
-        cabal --project-file=${{ matrix.project-file }} build --dry-run
-        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
-        echo "Install plan:"
-        cat /tmp/cabal-cache-key
+      run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
-        if [ "$RUNNER_OS" = "macOS" ]; then
-           PLAN_SUM=$(shasum -a256 /tmp/cabal-cache-key)
-        else
-           PLAN_SUM=$(sha256sum /tmp/cabal-cache-key)
-        fi
+    - name: Compute Cache Key (Linux Arm)
+      if: ${{ matrix.os == 'LinuxARM' }}
+      id: compute-cache-key-arm
+      uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+      with:
+        args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
-        export CABAL_CACHE_KEY=$(echo $PLAN_SUM | awk '{print $1}')
-        echo "Cabal cache key: $CABAL_CACHE_KEY"
-        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
-
-    # Build FOSSA CLI.
+    # The home directory inside a github container run during a step is different than one run outside of it.
+    # This is why there is special logic for 'LinuxARM'.
+    # Its builds run inside a container but are cached by an action outside of it..
     - uses: actions/cache@v4
       name: Cache cabal store
       with:
-        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
+        path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key || steps.compute-cache-key-arm.outputs.cabal-cache-key }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
           ${{ matrix.os-name }}-${{ matrix.ghc }}-
-          ${{ matrix.os-name }}-
 
     - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ github.sha }}
         restore-keys: |
-          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
-          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-dist-newstyle-
-          ${{ matrix.os-name }}-${{ env.GHC_VERSION }}-
-          ${{ matrix.os-name }}-
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-
 
     - name: Update vendored binaries
       run: |
@@ -164,38 +168,22 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
 
-    - name: Build test data
-      run: |
-        make build-test-data
+    - name: Build and Unit Test (Linux ARM)
+      if: ${{ matrix.os == 'LinuxARM' }}
+      uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+      with:
+        args: ./.github/workflows/scripts/build-arm.sh ${{ runner.os }} ${{ matrix.project-file }} ${{ matrix.rust-features }}
 
-    - name: Build
-      # Occasionally, we run out of memory on the build process.
-      # Since cabal uses incremental compilation, we can retry from where we left off
-      #   by simply re-running cabal if we fail.
-      env:
-        RUN_CMD: cabal build --project-file=${{ matrix.project-file }} all
-      run: |
-        : # With dist-newstyle caches:
-        : # Cabal mainly knows to recompile based on changes to files.
-        : # Tagging in git doesn't reliably change a file in a fixed location that cabal/GHC can track to indicate that there's a new tag.
-        : # For our release process, we merge to master, which builds (and may store a dist-newstyle cache), then push a release tag.
-        : # During the tag build, cabal/GHC may not realize that they have to rebuild the Version.hs file because the tag is invisible to it.
-        : # This line adds a unique comment to our version source file to prompt cabal/GHC to rebuild Version.hs unconditionally.
-        echo "{- $RANDOM$RANDOM$RANDOM -}" >> src/App/Version.hs
-        cabal update
-        $RUN_CMD || $RUN_CMD
-
-    - name: Run unit tests
-      run: |
-        cabal test --project-file=${{ matrix.project-file }} unit-tests
-
-    - name: Validate diagnose commands run on the platform
-      run: |
-        cargo run --bin diagnose -- walk --trace-spans none --trace-level info
+    - name: Build and Unit Test
+      if: ${{ matrix.os != 'LinuxARM' }}
+      run: ./.github/workflows/scripts/build.sh ${{ runner.os }} ${{ matrix.project-file }}
 
     # Test cabal-install
+    # TODO: This has apparently not been turned on for a while since no matrix.os contains 'linux'.
+    # When I make it function it causes an error.
+    # This is something I need to look into in the future.
     - name: Test Cabal Install (Linux)
-      if: ${{ contains(matrix.os, 'linux') }}
+      if: ${{ matrix.os == 'linux' }}
       run: cabal install --overwrite-policy=always --project=${{ matrix.project-file }} --ghc-options="-Wwarn"
 
     # Save artifacts.
@@ -326,20 +314,22 @@ jobs:
       if: ${{ github.ref_type == 'tag' }}
       uses: sigstore/cosign-installer@v3.4.0
 
-    - name: Sign Release (Linux)
+    - name: Sign and Verify Release (Linux)
       if: ${{ github.ref_type == 'tag' }}
       run: |
         cosign version
-        cosign sign-blob --yes --bundle "Linux-binaries/fossa.bundle" "Linux-binaries/fossa"
-        cosign sign-blob --yes --bundle "Linux-binaries/diagnose.bundle" "Linux-binaries/diagnose"
-        cosign sign-blob --yes --bundle "Linux-binaries/millhone.bundle" "Linux-binaries/millhone"
 
-    - name: Verify Signatures
-      if: ${{ github.ref_type == 'tag' }}
-      run: |
-        cosign verify-blob --bundle "Linux-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/fossa"
-        cosign verify-blob --bundle "Linux-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/diagnose"
-        cosign verify-blob --bundle "Linux-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "Linux-binaries/millhone"
+        for linux_kind in 'Linux' 'Linux-arm'
+        do
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/fossa.bundle" "$linux_kind-binaries/fossa"
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/diagnose.bundle" "$linux_kind-binaries/diagnose"
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/millhone.bundle" "$linux_kind-binaries/millhone"
+
+          cosign verify-blob --bundle "$linux_kind-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/fossa"
+          cosign verify-blob --bundle "$linux_kind-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/diagnose"
+          cosign verify-blob --bundle "$linux_kind-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/millhone"
+
+        done
 
     # This uses names compatible with our install script.
     #
@@ -356,18 +346,33 @@ jobs:
         LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
         LINUX_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_ARM_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+        LINUX_ARM_DIAGNOSE_TAR_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+        LINUX_ARM_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+
       run: |
         mkdir release
 
         ls -R
 
-        chmod +x Linux-binaries/*
+        chmod +x Linux*-binaries/*
+
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
         zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose
         zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
         tar --create --verbose --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone
+
+        zip -j "$LINUX_ARM_FOSSA_ZIP_PATH" Linux-arm-binaries/fossa
+        zip -j "$LINUX_ARM_DIAGNOSE_ZIP_PATH" Linux-arm-binaries/diagnose
+        zip -j "$LINUX_ARM_MILLHONE_ZIP_PATH" Linux-arm-binaries/millhone
+        tar --create --verbose --file "$LINUX_ARM_FOSSA_TAR_PATH" --directory Linux-arm-binaries fossa
+        tar --create --verbose --file "$LINUX_ARM_DIAGNOSE_TAR_PATH" --directory Linux-arm-binaries diagnose
+        tar --create --verbose --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
@@ -376,11 +381,23 @@ jobs:
           zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
           zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
           zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone.bundle
+
+          tar --append --file "$LINUX_ARM_FOSSA_TAR_PATH" --directory Linux-arm-binaries fossa.bundle
+          tar --append --file "$LINUX_ARM_DIAGNOSE_TAR_PATH" --directory Linux-arm-binaries diagnose.bundle
+          tar --append --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone.bundle
+          zip -j "$LINUX_ARM_FOSSA_ZIP_PATH" Linux-arm-binaries/fossa.bundle
+          zip -j "$LINUX_ARM_DIAGNOSE_ZIP_PATH" Linux-arm-binaries/diagnose.bundle
+          zip -j "$LINUX_ARM_MILLHONE_ZIP_PATH" Linux-arm-binaries/millhone.bundle
+
         fi
 
         gzip "$LINUX_FOSSA_TAR_PATH"
         gzip "$LINUX_DIAGNOSE_TAR_PATH"
         gzip "$LINUX_MILLHONE_TAR_PATH"
+
+        gzip "$LINUX_ARM_FOSSA_TAR_PATH"
+        gzip "$LINUX_ARM_DIAGNOSE_TAR_PATH"
+        gzip "$LINUX_ARM_MILLHONE_TAR_PATH"
 
         chmod +x macOS-intel-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/fossa
@@ -400,11 +417,11 @@ jobs:
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.
       run: |
         cd release
-        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip.sha256"
-        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz" > "fossa_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar.gz.sha256"
-        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip.sha256"
-        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip.sha256"
-        sha256sum --binary "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip" > "fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip.sha256"
+
+        for f in fossa*.zip fossa*.tar.gz
+        do
+          sha256sum --binary "$f" > "$f.sha256"
+        done
 
         echo "Sanity-checking the checksums."
 

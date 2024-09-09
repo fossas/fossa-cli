@@ -66,6 +66,7 @@ is_supported_platform() {
     darwin/amd64) found=0 ;;
     darwin/arm64) found=0 ;;
     linux/amd64) found=0 ;;
+    linux/arm64) found=0 ;;
   esac
   return $found
 }
@@ -119,7 +120,16 @@ adjust_arch() {
   # adjust archive name based on ARCH
   true
 }
-
+arch_version_check() {
+  # TODO: Make this version correct before merging.
+  if [ "${OS}/${ARCH}" = "linux/arm64" ] && version_less_than "${VERSION}" '3.9.32'
+  then
+    echo "There is no linux/arm64 binary for version $VERSION."
+    echo "Please select a version that is at least version 3.9.32"
+    exit 1
+  fi
+  true
+}
 cat /dev/null <<EOF
 ------------------------------------------------------------------------
 https://github.com/client9/shlib - portable posix shell functions
@@ -482,6 +492,7 @@ adjust_os
 
 adjust_arch
 
+arch_version_check
 
 NAME=$(get_binary_name)
 TARBALL=${NAME}.${FORMAT}

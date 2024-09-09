@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.32
+
+- Platform Support: Add a binary for ARM64 Linux environments. ([#1465](https://github.com/fossas/fossa-cli/pull/1465))
+
 ## 3.9.31
 
 - Resolve an issue parsing toml configuration files. ([#1459](https://github.com/fossas/fossa-cli/pull/1459))
