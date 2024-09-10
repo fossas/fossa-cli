@@ -167,7 +167,7 @@ common deps
     , yaml                         ^>=0.11.8
     , yarn-lock                    ^>=0.6.5
     , zip                          ^>=2.0.0
-    , zlib                         ^>=0.6.2.1
+    , zlib                         ^>=0.7.1.0
 
   if !os(windows)
     -- included with GHC, consider upgrading this as part of a ghc upgrade
