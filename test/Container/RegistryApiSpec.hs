@@ -104,7 +104,7 @@ registryApiSpec =
           confDigest <- getImageConfig amd64 dhImageWithDigest
           confDigest `shouldBe'` dhImageDigest
 
-        focus $ it' "should get manifest for multi-platform image (chooses target platform - grafana arm)" $ do
+        it' "should get manifest for multi-platform image (chooses target platform - grafana arm)" $ do
           confDigest <- getImageConfig arm64 grafanaMultiArchImage
           confDigest `shouldBe'` grafanaMultiArchImageDigest
 
@@ -174,7 +174,7 @@ redisImage :: Text
 redisImage = "redis:6.0.14-buster"
 
 redisImageDigest :: RepoDigest
-redisImageDigest = RepoDigest "sha256:86813a7dd3971d9b8088bb34fd894d2cf18a48679d3d8d958a1a0bd4955e6cef"
+redisImageDigest = RepoDigest "sha256:dd347200af9dbdb9a5f55851d1a0b8b5fb89462b94e84ac0bba89dfec30504fb"
 
 haskellDevImage :: Text
 haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.0.2"
