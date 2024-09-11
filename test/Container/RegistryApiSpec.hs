@@ -118,9 +118,6 @@ amd64 = "amd64"
 arm64 :: Text
 arm64 = "arm64"
 
-arm :: Text
-arm = "arm"
-
 githubImage :: Text
 githubImage = "ghcr.io/fossas/haskell-dev-tools:8.10.4"
 
