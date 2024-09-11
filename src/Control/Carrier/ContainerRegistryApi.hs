@@ -105,7 +105,6 @@ import Network.HTTP.Conduit qualified as HTTPConduit
 import Network.HTTP.Types.Header (ResponseHeaders)
 import Path (Abs, Dir, File, Path, filename, mkRelFile, toFilePath, (</>))
 import Path.Internal (Path (..))
-import Debug.Trace (traceShowM)
 
 -- | A carrier to run Registry API functions in the IO monad
 type ContainerRegistryApiC m = SimpleC ContainerRegistryApiF (ReaderC RegistryCtx m)
@@ -167,16 +166,14 @@ getImageManifest ::
   m OciManifestV2
 getImageManifest src = context "Getting Image Manifest" $ do
   manager <- reqManager
-  endpoint <- manifestEndpoint src
-  traceShowM endpoint
   resp <-
     fromResponse
-      =<< mkRequest manager (registryCred src) (Just supportedManifestKinds) endpoint
+      =<< mkRequest manager (registryCred src) (Just supportedManifestKinds)
+      =<< manifestEndpoint src
 
   let respBody :: ByteStringLazy.ByteString
       respBody = responseBody resp
 
-  traceShowM respBody
   if isManifestIndex (responseHeaders resp)
     then do
       manifestIndex <- fromEither $ eitherDecode respBody
@@ -185,7 +182,6 @@ getImageManifest src = context "Getting Image Manifest" $ do
       let platformArch :: Text
           platformArch = platformArchitecture src
 
-      traceShowM manifestIndex
       logDebug . pretty $ "Looking for platform architecture: " <> platformArch
       manifestDigest <-
         fromMaybeText
@@ -197,10 +193,7 @@ getImageManifest src = context "Getting Image Manifest" $ do
         =<< (manifestEndpoint $ src{registryContainerRepositoryReference = manifestDigest})
     else do
       logDebug "Retrieved single-platform image manifest."
-
-      res <- parseOciManifest resp
-      traceShowM res
-      pure res
+      parseOciManifest resp
   where
     isSupportedManifestKind :: ResponseHeaders -> Bool
     isSupportedManifestKind headers =

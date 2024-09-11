@@ -11,7 +11,7 @@ import Control.Effect.Lift (Lift)
 import Data.Text (Text)
 import Data.Void (Void)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Expectation, Spec, describe, it, focus)
+import Test.Hspec (Expectation, Spec, describe, it)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 import Text.Megaparsec.Error (ParseErrorBundle)
@@ -42,7 +42,7 @@ getImageConfig arch img =
     <$> (getImageManifest =<< fromEitherShow (decodeStrict arch img))
 
 spec :: Spec
-spec = focus $ do
+spec = do
   registryApiSpec
   parseAuthChallengeSpec
 
