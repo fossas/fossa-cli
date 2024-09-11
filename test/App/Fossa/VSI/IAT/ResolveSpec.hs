@@ -10,7 +10,7 @@ import DepTypes (DepType (CustomType))
 import Graphing qualified
 import Srclib.Converter (depTypeToFetcher)
 import Srclib.Types (SourceUserDefDep (..))
-import Test.Effect (expectFatal', it', shouldBe')
+import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Test.MockApi (fails, returnsOnce)
 
@@ -47,17 +47,22 @@ spec = do
       maybeDeps <- resolveRevision package
       maybeDeps `shouldBe'` Just [dep1, dep2]
   describe "resolveGraph" $ do
-    it' "dies if resolving any subgraph fails to resolve" $ do
+    it' "resolves available subgraphs" $ do
       let package1 = testTopLevelLocator 1
           package2 = testTopLevelLocator 2
           dep1 = testLocator 11
           dep2 = testLocator 12
           skips = SkipResolution (Set.empty)
+          expectedGraph =
+            Graphing.directs [package1, package2]
+              <> Graphing.edges [(package1, dep1), (package1, dep2)]
       -- Package1 is fine
       ResolveProjectDependencies package1 `returnsOnce` [dep1, dep2]
       -- Package2 has an error
       ResolveProjectDependencies package2 `fails` "Mock error"
-      expectFatal' $ resolveGraph [package1, package2] skips
+      -- The graph should resolve with the successful results.
+      graph <- resolveGraph [package1, package2] skips
+      graph `shouldBe'` expectedGraph
     it' "resolves dependencies not in the skip list" $ do
       let package1 = testTopLevelLocator 1
           package2 = testTopLevelLocator 2
