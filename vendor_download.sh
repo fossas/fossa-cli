@@ -83,7 +83,7 @@ THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
 curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
-    https://api.github.com/repos/fossas/themis/releases/174193232 > $THEMIS_RELEASE_JSON
+    https://api.github.com/repos/fossas/themis/releases/174441989 > $THEMIS_RELEASE_JSON
 
 THEMIS_TAG=$(jq -cr ".name" $THEMIS_RELEASE_JSON)
 echo "Using themis release: $THEMIS_TAG"
