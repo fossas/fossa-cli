@@ -54,7 +54,7 @@ spec = do
           dep2 = testLocator 12
           skips = SkipResolution (Set.empty)
           expectedGraph =
-            Graphing.directs [package1, package2]
+            Graphing.directs [package1]
               <> Graphing.edges [(package1, dep1), (package1, dep2)]
       -- Package1 is fine
       ResolveProjectDependencies package1 `returnsOnce` [dep1, dep2]
