@@ -87,7 +87,7 @@ registryApiSpec =
           confDigest <- getImageConfig amd64 githubImageWithDigest
           confDigest `shouldBe'` githubImageConfigDigest
 
-        it' "should get manifest for multi-platform image (chooses target platform)" $ do
+        it' "should get manifest for multi-platform image (chooses target platform - graalvm-ce)" $ do
           confDigest <- getImageConfig amd64 githubMultiArchImage
           confDigest `shouldBe'` githubMultiArchImageConfigDigest
 
@@ -104,11 +104,11 @@ registryApiSpec =
           confDigest <- getImageConfig amd64 dhImageWithDigest
           confDigest `shouldBe'` dhImageDigest
 
-        it' "should get manifest for multi-platform image (chooses target platform)" $ do
-          confDigest <- getImageConfig arm dhMultiArchImage
-          confDigest `shouldBe'` dhMultiArchImageDigest
+        it' "should get manifest for multi-platform image (chooses target platform - grafana arm)" $ do
+          confDigest <- getImageConfig arm grafanaMultiArgeImage
+          confDigest `shouldBe'` grafanaMultiArchImageDigest
 
-        it' "should get manifest for multi-platform images (chooses target platform)" $ do
+        it' "should get manifest for multi-platform images (chooses target platform -  redis arm64)" $ do
           redisDigest <- getImageConfig arm64 redisImage
           redisDigest `shouldBe'` redisImageDigest
 
@@ -151,12 +151,12 @@ dhImageWithDigest :: Text
 dhImageWithDigest =
   "amazon/aws-cli@sha256:7a27c26c2937a3d0b84171675709df1dc09aa331e86cad90f74ada6df7b59c89"
 
-dhMultiArchImage :: Text
-dhMultiArchImage = "grafana/grafana:8.1.7-ubuntu"
+grafanaMultiArgeImage :: Text
+grafanaMultiArgeImage = "grafana/grafana:8.1.7-ubuntu"
 
-dhMultiArchImageDigest :: RepoDigest
-dhMultiArchImageDigest =
-  RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
+grafanaMultiArchImageDigest :: RepoDigest
+grafanaMultiArchImageDigest =
+  RepoDigest "sha256:fff202f54b5922c3e42c55c45a58edd1e103bffd1f62992fce49dd55500013dd"
 
 mcrRegistryImage :: Text
 mcrRegistryImage = "mcr.microsoft.com/azure-cli:0.10.13"
