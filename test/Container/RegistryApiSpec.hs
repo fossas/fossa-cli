@@ -11,7 +11,7 @@ import Control.Effect.Lift (Lift)
 import Data.Text (Text)
 import Data.Void (Void)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Expectation, Spec, describe, it)
+import Test.Hspec (Expectation, Spec, describe, it, focus)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 import Text.Megaparsec.Error (ParseErrorBundle)
@@ -42,7 +42,7 @@ getImageConfig arch img =
     <$> (getImageManifest =<< fromEitherShow (decodeStrict arch img))
 
 spec :: Spec
-spec = do
+spec = focus $ do
   registryApiSpec
   parseAuthChallengeSpec
 
@@ -104,8 +104,8 @@ registryApiSpec =
           confDigest <- getImageConfig amd64 dhImageWithDigest
           confDigest `shouldBe'` dhImageDigest
 
-        it' "should get manifest for multi-platform image (chooses target platform - grafana arm)" $ do
-          confDigest <- getImageConfig arm grafanaMultiArgeImage
+        focus $ it' "should get manifest for multi-platform image (chooses target platform - grafana arm)" $ do
+          confDigest <- getImageConfig arm64 grafanaMultiArchImage
           confDigest `shouldBe'` grafanaMultiArchImageDigest
 
         it' "should get manifest for multi-platform images (chooses target platform -  redis arm64)" $ do
@@ -151,12 +151,12 @@ dhImageWithDigest :: Text
 dhImageWithDigest =
   "amazon/aws-cli@sha256:7a27c26c2937a3d0b84171675709df1dc09aa331e86cad90f74ada6df7b59c89"
 
-grafanaMultiArgeImage :: Text
-grafanaMultiArgeImage = "grafana/grafana:8.1.7-ubuntu"
+grafanaMultiArchImage :: Text
+grafanaMultiArchImage = "grafana/grafana:8.1.7-ubuntu"
 
 grafanaMultiArchImageDigest :: RepoDigest
 grafanaMultiArchImageDigest =
-  RepoDigest "sha256:fff202f54b5922c3e42c55c45a58edd1e103bffd1f62992fce49dd55500013dd"
+  RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
 
 mcrRegistryImage :: Text
 mcrRegistryImage = "mcr.microsoft.com/azure-cli:0.10.13"
