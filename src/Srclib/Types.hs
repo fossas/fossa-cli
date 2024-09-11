@@ -5,6 +5,7 @@ module Srclib.Types (
   SourceUnit (..),
   SourceUnitBuild (..),
   SourceUnitDependency (..),
+  SourceUnitNoticeFile (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
   SourceRemoteDep (..),
@@ -115,6 +116,7 @@ textToOriginPath = OriginPath . toString
 data SourceUnitNoticeFile = SourceUnitNoticeFile
   { sourceUnitNoticeFilePath :: Text
   , sourceUnitNoticeFileContents :: Text
+  , sourceUnitNoticeFileCopyrights :: Maybe (NonEmpty Text)
   }
   deriving (Eq, Ord, Show)
 
@@ -123,6 +125,7 @@ instance ToJSON SourceUnitNoticeFile where
     object
       [ "path" .= sourceUnitNoticeFilePath
       , "contents" .= sourceUnitNoticeFileContents
+      , "copyrights" .= sourceUnitNoticeFileCopyrights
       ]
 
 instance FromJSON SourceUnitNoticeFile where
@@ -130,6 +133,7 @@ instance FromJSON SourceUnitNoticeFile where
     SourceUnitNoticeFile
       <$> obj .: "path"
       <*> obj .: "contents"
+      <*> obj .:? "copyrights"
 
 data FullSourceUnit = FullSourceUnit
   { fullSourceUnitName :: Text

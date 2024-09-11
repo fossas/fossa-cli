@@ -9,11 +9,11 @@ import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (isJust)
+import Data.Maybe (fromMaybe, isJust)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
-import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (licenseUnitData, licenseUnitName), LicenseUnitData (licenseUnitDataContents), licenseUnitType)
+import Srclib.Types (LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (licenseUnitDataContents), SourceUnitNoticeFile (..))
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
@@ -113,6 +113,15 @@ spec = do
           let noticeUnit = NE.head units
           licenseUnitName noticeUnit `shouldBe'` ""
           licenseUnitType noticeUnit `shouldBe'` "NoticeFileMatches"
+          let noticeFiles = fromMaybe (NE.fromList []) (licenseUnitNoticeFiles noticeUnit)
+          length noticeFiles `shouldBe'` 1
+          let noticeFile = NE.head noticeFiles
+          let copyrights = fromMaybe (NE.fromList []) (sourceUnitNoticeFileCopyrights noticeFile)
+          length copyrights `shouldBe'` 1
+          let copyright = NE.head copyrights
+          copyright `shouldBe'` "2024 Frank Frankson"
+          sourceUnitNoticeFileContents noticeFile `shouldBe'` "This is a notice file that is copyright 2024 Frank Frankson\n"
+          sourceUnitNoticeFilePath noticeFile `shouldBe'` "NOTICE.txt"
 
 -- The default org defaults to not running first party scans but has first-party scans enabled
 expectGetOrganizationThatDefaultsToNoFirstPartyScans :: Has MockApi sig m => m ()
