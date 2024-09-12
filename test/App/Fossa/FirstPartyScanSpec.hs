@@ -121,7 +121,7 @@ spec = do
           length copyrights `shouldBe'` 1
           let copyright = NE.head copyrights
           copyright `shouldBe'` "2024 Frank Frankson"
-          strip (sourceUnitNoticeFileContents noticeFile) `shouldBe'` "This is a notice file that is copyright 2024 Frank Frankson\n"
+          strip (sourceUnitNoticeFileContents noticeFile) `shouldBe'` "This is a notice file that is copyright 2024 Frank Frankson"
           sourceUnitNoticeFilePath noticeFile `shouldBe'` "NOTICE.txt"
 
 -- The default org defaults to not running first party scans but has first-party scans enabled
