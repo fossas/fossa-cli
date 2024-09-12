@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+
+## 3.9.33
+
+- MSB: Failure to resolve a linked project no longer causes the scan to fail ([[#1469](https://github.com/fossas/fossa-cli/pull/1469)]).
+
 ## 3.9.32
 
 - Platform Support: Add a binary for ARM64 Linux environments. ([#1465](https://github.com/fossas/fossa-cli/pull/1465))
