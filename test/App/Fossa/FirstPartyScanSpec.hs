@@ -10,6 +10,7 @@ import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust)
+import Data.Text (strip)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO (getCurrentDir)
@@ -120,7 +121,7 @@ spec = do
           length copyrights `shouldBe'` 1
           let copyright = NE.head copyrights
           copyright `shouldBe'` "2024 Frank Frankson"
-          sourceUnitNoticeFileContents noticeFile `shouldBe'` "This is a notice file that is copyright 2024 Frank Frankson\n"
+          strip (sourceUnitNoticeFileContents noticeFile) `shouldBe'` "This is a notice file that is copyright 2024 Frank Frankson\n"
           sourceUnitNoticeFilePath noticeFile `shouldBe'` "NOTICE.txt"
 
 -- The default org defaults to not running first party scans but has first-party scans enabled
