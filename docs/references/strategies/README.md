@@ -129,12 +129,26 @@ With this option enabled, strategies that don't offer a way to analyze staticall
 
 It is important to note that neither type of strategy has an inherent benefit when detecting dependencies. If a supported language has only a static or only a dynamic strategy, this does not mean it is less supported than a language that has both.
 
+## Strict Analysis
+
+Strict analysis enforces the use of the most accurate strategy for detecting dependencies, ensuring precise and consistent results by rejecting fallback methods that may offer less reliable detection.
+
+For example, in Maven projects, FOSSA CLI attempts analysis with the following strategy order:
+
+1. Run the [mavenplugin](../strategies/languages/maven/mavenplugin.md) strategy, which provides the most accurate dependency information.
+2. If that fails, it attempts the [treecmd](../strategies/languages/maven/treecmd.md) strategy, which parses the output of the `mvn dependency:tree` command.
+3. Finally, it falls back to the [pomxml](../strategies/languages/maven/pomxml.md) strategy, scanning pom.xml files for dependencies.
+
+However, with the `--strict` flag, only the `mavenplugin` strategy will be used. If the `mavenplugin` command fails, FOSSA will not attempt the `treecmd` or `pomxml` methods. This ensures that your Maven analysis relies solely on the most precise and validated strategy.
+
+Invoke strict analysis with the `--strict` flag when running `fossa analyze`.
+
 ### Strategies by type
 
 > If the FOSSA CLI is forced to utilize a fallback strategy, meaning it did not detect ideal results, a warning is emitted in the scan summary after running `fossa analyze`.
 
 | Language/Package Manager                                                                                                                        | Dynamic   | Static    | Detect Vendored Code | Primary Strategy |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------- | --------- | -------------------- | ---------------- |
+|-------------------------------------------------------------------------------------------------------------------------------------------------|-----------|-----------|----------------------|------------------|
 | [C#](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet)                                               | ✅         | ✅         | ❌                    | Dynamic          |
 | [C](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                        | :warning: | :warning: | ✅                    | None             |
 | [C++](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                      | :warning: | :warning: | ✅                    | None             |

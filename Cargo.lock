@@ -1796,7 +1796,7 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 [[package]]
 name = "snippets"
 version = "0.1.3"
-source = "git+https://github.com/fossas/foundation-libs#4bc3762e73f371717566fb075d02e1d25b21146e"
+source = "git+https://github.com/fossas/lib-snippets?tag=v0.1.3#d0b2cd39b48793b36ea6860b7b284054e270cdb9"
 dependencies = [
  "base64 0.21.7",
  "derivative",

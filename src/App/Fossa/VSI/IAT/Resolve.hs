@@ -13,12 +13,13 @@ import App.Fossa.VSI.IAT.Types (
 import App.Fossa.VSI.IAT.Types qualified as IAT
 import App.Fossa.VSI.Types qualified as VSI
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover)
+import Control.Effect.Diagnostics (Diagnostics, context, recover, warn)
 import Control.Effect.FossaApiClient (FossaApiClient, resolveProjectDependencies, resolveUserDefinedBinary)
-import Data.Maybe (fromMaybe, isNothing)
+import Control.Monad (unless)
+import Data.Either (partitionEithers)
 import Data.String.Conversion (toText)
 import Data.Text (Text, intercalate)
-import Graphing (Graphing, direct, edges, empty)
+import Graphing (Graphing, direct, edges)
 import Srclib.Types (
   SourceUserDefDep (..),
  )
@@ -48,29 +49,28 @@ resolveGraph locators skipResolving = context ("Resolving graph for " <> toText 
   -- This typically means that the user doesn't have access to the project, or the project doesn't exist.
   -- Collect failed locators and report them to the user, along with mitigation suggestions.
   subgraphs <- traverseZipM (resolveSubgraph skipResolving) locators
-  if any resolutionFailed subgraphs
-    then fatalText $ resolveGraphFailureBundle subgraphs
-    else pure . mconcat $ fmap unwrap subgraphs
+  let (warned, success) = partitionMap partitionSubgraph subgraphs
+  renderWarnings warned
+  pure $ mconcat success
   where
-    resolutionFailed (_, b) = isNothing b
-    unwrap (_, b) = fromMaybe empty b
+    renderWarnings subgraphs = unless (null subgraphs) . warn $ resolveGraphFailureBundle subgraphs
+    partitionSubgraph (a, Nothing) = Left a
+    partitionSubgraph (_, Just b) = Right b
 
-resolveGraphFailureBundle :: [(VSI.Locator, Maybe (Graphing VSI.Locator))] -> Text
+resolveGraphFailureBundle :: [VSI.Locator] -> Text
 resolveGraphFailureBundle subgraphs =
   "Failed to resolve dependencies for the following FOSSA projects:\n\t"
-    <> intercalate "\n\t" (renderFailed subgraphs)
+    <> intercalate "\n\t" (fmap VSI.renderLocator subgraphs)
     <> "\n\n"
-    <> "You may not have access to the projects, or they may not exist (see the warnings below for details).\n"
-    <> "If desired you can use --experimental-skip-vsi-graph to skip resolving the dependencies of these projects."
-  where
-    renderFailed [] = []
-    renderFailed ((a, b) : xs) = case b of
-      Just _ -> renderFailed xs
-      Nothing -> VSI.renderLocator a : renderFailed xs
+    <> "You may not have access to the projects, or they may not exist.\n"
 
 -- | Given a traverseable list and a monadic function that resolves them to b, traverse and zip the list into a pair of (a, b)
 traverseZipM :: (Traversable t, Applicative m) => (a -> m b) -> t a -> m (t (a, b))
 traverseZipM f = traverse (\a -> (a,) <$> f a)
+
+-- | Split the list into two mapped lists based on the predicate.
+partitionMap :: (a -> Either b c) -> [a] -> ([b], [c])
+partitionMap split items = partitionEithers $ map split items
 
 -- Pass through the list of skipped locators all the way here:
 -- we want to still record the direct dependency, we just don't want to resolve it.
