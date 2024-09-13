@@ -11,6 +11,8 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Types (Mode (..))
+import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
@@ -21,7 +23,7 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Data.Glob as Glob (toGlob, (</>))
 import Data.Text (isSuffixOf)
@@ -34,7 +36,7 @@ import Discovery.Walk (
   findFilesMatchingGlob,
   walkWithFilters',
  )
-import Effect.Exec (Exec, Has)
+import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -119,8 +121,10 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
-getDeps project = analyzeGemfileLock project <||> context "Bundler" (analyzeBundleShow project)
+getDeps :: (GetDepsEffs sig m) => BundlerProject -> m DependencyResults
+getDeps project = do
+  mode <- ask
+  analyzeGemfileLock project <||> guardStrictMode mode (context "Bundler" (analyzeBundleShow project))
 
 analyzeBundleShow :: (Has Exec sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
 analyzeBundleShow project = do
@@ -132,10 +136,13 @@ analyzeBundleShow project = do
       , dependencyManifestFiles = maybe [bundlerGemfile project] pure (bundlerGemfileLock project)
       }
 
-analyzeGemfileLock :: (Has ReadFS sig m, Has Diagnostics sig m) => BundlerProject -> m DependencyResults
-analyzeGemfileLock project =
-  warnOnErr AllDirectDeps
-    . warnOnErr MissingEdges
+analyzeGemfileLock :: (GetDepsEffs sig m) => BundlerProject -> m DependencyResults
+analyzeGemfileLock project = do
+  mode <- ask
+  let errorInfo = case mode of
+        Strict -> id
+        NonStrict -> warnOnErr AllDirectDeps . warnOnErr MissingEdges
+  errorInfo
     . errCtx (BundlerMissingLockFileCtx $ bundlerGemfile project)
     . errHelp BundlerMissingLockFileHelp
     . errDoc bundlerLockFileRationaleUrl

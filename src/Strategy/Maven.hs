@@ -7,6 +7,8 @@ module Strategy.Maven (
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Types (Mode (..))
+import App.Util (guardStrictMode)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
 import Control.Effect.Lift (Lift)
@@ -20,7 +22,7 @@ import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
-import Effect.Exec (CandidateCommandEffs)
+import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -65,14 +67,14 @@ instance ToJSON MavenProject
 
 instance AnalyzeProject MavenProject where
   analyzeProject = getDeps
-  analyzeProjectStaticOnly = getDeps'
+  analyzeProjectStaticOnly = getDepsStatically
 
 instance LicenseAnalyzeProject MavenProject where
   licenseAnalyzeProject = pure . Pom.getLicenses . unMavenProject
 
 getDeps ::
   ( Has (Lift IO) sig m
-  , Has ReadFS sig m
+  , GetDepsEffs sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
   ) =>
@@ -81,7 +83,11 @@ getDeps ::
   m DependencyResults
 getDeps foundTargets (MavenProject closure) = do
   let submoduleTargets = submoduleTargetSet foundTargets
-  (graph, graphBreadth) <- context "Maven" $ getDepsDynamicAnalysis submoduleTargets closure <||> getStaticAnalysis submoduleTargets closure
+  mode <- ask
+  (graph, graphBreadth) <-
+    context "Maven" $
+      getDepsDynamicAnalysis submoduleTargets closure
+        <||> guardStrictMode mode (getStaticAnalysis submoduleTargets closure)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -89,7 +95,7 @@ getDeps foundTargets (MavenProject closure) = do
       , dependencyManifestFiles = [PomClosure.closurePath closure]
       }
 
-getDeps' ::
+getDepsStatically ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has (Reader MavenScopeFilters) sig m
@@ -97,7 +103,7 @@ getDeps' ::
   FoundTargets ->
   MavenProject ->
   m DependencyResults
-getDeps' foundTargets (MavenProject closure) = do
+getDepsStatically foundTargets (MavenProject closure) = do
   let submoduleTargets = submoduleTargetSet foundTargets
   (graph, graphBreadth) <- context "Maven" $ getStaticAnalysis submoduleTargets closure
 
@@ -110,7 +116,7 @@ getDeps' foundTargets (MavenProject closure) = do
 
 getDepsDynamicAnalysis ::
   ( Has (Lift IO) sig m
-  , Has ReadFS sig m
+  , GetDepsEffs sig m
   , CandidateCommandEffs sig m
   , Has (Reader MavenScopeFilters) sig m
   ) =>
@@ -119,11 +125,14 @@ getDepsDynamicAnalysis ::
   m (Graphing Dependency, GraphBreadth)
 getDepsDynamicAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
+  mode <- ask
+  let errorInfo = case mode of
+        Strict -> id
+        NonStrict -> warnOnErr MissingEdges . warnOnErr MissingDeepDeps
   (graph, graphBreadth) <-
-    context "Dynamic Analysis"
-      $ warnOnErr MissingEdges
-        . warnOnErr MissingDeepDeps
-      $ (getDepsPlugin closure <||> getDepsTreeCmd closure <||> getDepsPluginLegacy closure)
+    context "Dynamic Analysis" $
+      errorInfo (getDepsPlugin closure <||> guardStrictMode mode (getDepsTreeCmd closure <||> getDepsPluginLegacy closure))
+
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
   pure (withoutProjectAsDep filteredGraph, graphBreadth)
   where

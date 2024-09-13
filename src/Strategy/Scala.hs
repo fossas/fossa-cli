@@ -13,9 +13,10 @@ module Strategy.Scala (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Types (Mode (..))
 import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, fatalText, fromMaybeText, recover, warnOnErr, (<||>))
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.ByteString.Lazy (ByteString)
@@ -35,6 +36,7 @@ import Discovery.Walk (
 import Effect.Exec (
   Command (..),
   Exec,
+  GetDepsEffs,
   Has,
   execThrow,
  )
@@ -127,10 +129,14 @@ mkProject (ScalaProject sbtBuildDir sbtTreeJson closure) =
     , projectData = ScalaProject sbtBuildDir sbtTreeJson closure
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
-getDeps project =
-  warnOnErr MissingDeepDeps (analyzeWithDepTreeJson project <||> analyzeWithSbtDepTree project)
-    <||> analyzeWithPoms project
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => ScalaProject -> m DependencyResults
+getDeps project = do
+  mode <- ask
+  case mode of
+    Strict -> analyzeWithDepTreeJson project
+    NonStrict ->
+      warnOnErr MissingDeepDeps (analyzeWithDepTreeJson project <||> analyzeWithSbtDepTree project)
+        <||> analyzeWithPoms project
 
 pathToText :: Path ar fd -> Text
 pathToText = toText . toFilePath

@@ -5,6 +5,7 @@ module Analysis.RubySpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Bundler qualified as Bundler
 import Test.Hspec
@@ -24,4 +25,4 @@ rails =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary rails BundlerProjectType (DependencyResultsSummary 206 70 293 1 Complete)
+  testSuiteDepResultSummary NonStrict rails BundlerProjectType (DependencyResultsSummary 206 70 293 1 Complete)

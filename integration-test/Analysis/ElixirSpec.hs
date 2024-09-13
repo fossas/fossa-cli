@@ -5,6 +5,7 @@ module Analysis.ElixirSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Effect.Exec (AllowErr (Never), Command (Command))
 import Path
 import Strategy.Mix qualified as Mix
@@ -42,4 +43,4 @@ absinthe =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary absinthe MixProjectType (DependencyResultsSummary 4 4 1 1 Complete)
+  testSuiteDepResultSummary NonStrict absinthe MixProjectType (DependencyResultsSummary 4 4 1 1 Complete)

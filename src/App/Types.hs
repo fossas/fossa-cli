@@ -17,6 +17,7 @@ module App.Types (
   ReleaseGroupProjectRevision (..),
   ReleaseGroupReleaseRevision (..),
   ComponentUploadFileType (..),
+  Mode (..),
   uploadFileTypeToFetcherName,
 ) where
 
@@ -207,4 +208,15 @@ data FirstPartyScansFlag = FirstPartyScansOnFromFlag | FirstPartyScansOffFromFla
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON FirstPartyScansFlag where
+  toEncoding = genericToEncoding defaultOptions
+
+-- | Represents the different modes of operation during the analysis process.
+-- 'Strict' mode enforces the most accurate results by rejecting fallback strategies.
+-- 'NonStrict' mode allows for fallback strategies.
+data Mode
+  = Strict
+  | NonStrict
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON Mode where
   toEncoding = genericToEncoding defaultOptions

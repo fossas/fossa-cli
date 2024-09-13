@@ -23,6 +23,7 @@ module App.Fossa.Config.Analyze (
   GoDynamicTactic (..),
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
+  StrictMode (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -71,6 +72,7 @@ import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
   BaseDir,
   FirstPartyScansFlag (..),
+  Mode (..),
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
@@ -135,6 +137,7 @@ data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 data StaticOnlyTactics = StaticOnlyTactics deriving (Generic)
+data StrictMode = StrictMode deriving (Generic, Show)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -226,6 +229,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeCustomFossaDepsFile :: Maybe FilePath
   , analyzeStaticOnlyTactics :: Flag StaticOnlyTactics
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
+  , analyzeStrictMode :: Flag StrictMode
   }
   deriving (Eq, Ord, Show)
 
@@ -264,6 +268,7 @@ data AnalyzeConfig = AnalyzeConfig
   , allowedTacticTypes :: AnalysisTacticTypes
   , reachabilityConfig :: ReachabilityConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
+  , mode :: Mode
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -333,6 +338,7 @@ cliParser =
     <*> optional (strOption (applyFossaStyle <> long "fossa-deps-file" <> helpDoc fossaDepsFileHelp <> metavar "FILEPATH"))
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
+    <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -341,6 +347,7 @@ cliParser =
           [ "Path to fossa-deps file including filename"
           , boldItalicized "Default:" <> " fossa-deps.{yaml|yml|json}"
           ]
+
 branchHelp :: Maybe (Doc AnsiStyle)
 branchHelp =
   Just . formatDoc $
@@ -499,7 +506,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       revisionData =
         collectRevisionData' basedir maybeConfig WriteOnly $
           OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
-      modeOpts = collectModeOptions cliOpts
+      vsiModeOpts = collectVsiModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
       mavenScopeFilters = collectMavenScopeFilters maybeConfig
       experimentalCfgs = collectExperimental maybeConfig cliOpts
@@ -512,6 +519,10 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
           then StaticOnly
           else Any
       reachabilityConfig = collectReachabilityOptions maybeConfig
+      mode =
+        if fromFlag StrictMode analyzeStrictMode
+          then Strict
+          else NonStrict
 
   firstPartyScansFlag <-
     case (fromFlag ForceFirstPartyScans analyzeForceFirstPartyScans, fromFlag ForceNoFirstPartyScans analyzeForceNoFirstPartyScans) of
@@ -525,7 +536,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure logSeverity
     <*> scanDestination
     <*> revisionData
-    <*> modeOpts
+    <*> vsiModeOpts
     <*> filters
     <*> mavenScopeFilters
     <*> pure experimentalCfgs
@@ -541,6 +552,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure allowedTacticType
     <*> resolveReachabilityOptions reachabilityConfig
     <*> pure analyzeWithoutDefaultFilters
+    <*> pure mode
 
 collectMavenScopeFilters ::
   ( Has Diagnostics sig m
@@ -643,14 +655,14 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
       when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
       pure $ UploadScan apiOpts metaMerged
 
-collectModeOptions ::
+collectVsiModeOptions ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
   AnalyzeCliOpts ->
   m VSIModeOptions
-collectModeOptions AnalyzeCliOpts{..} = do
+collectVsiModeOptions AnalyzeCliOpts{..} = do
   assertionDir <- traverse validateDir analyzeAssertMode
   resolvedDynamicLinkTarget <- traverse validateExists analyzeDynamicLinkTarget
   pure

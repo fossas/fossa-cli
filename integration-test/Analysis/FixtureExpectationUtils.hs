@@ -16,6 +16,7 @@ module Analysis.FixtureExpectationUtils (
 
 import Analysis.FixtureUtils (AnalysisTestFixture (..), FixtureArtifact (..), getArtifact, performDiscoveryAndAnalyses)
 import App.Fossa.Analyze.Types (AnalyzeProject)
+import App.Types (Mode (..))
 import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.List (find)
@@ -51,12 +52,13 @@ summarize dr =
 -- | Performs discovery and analysis for all discovered project for provided analysis integration fixture.
 withAnalysisOf ::
   (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) =>
+  Mode ->
   AnalysisTestFixture a ->
   (([(DiscoveredProject a, DependencyResults)], Path Abs Dir) -> m b) ->
   m ()
-withAnalysisOf testFixture runTest = do
+withAnalysisOf mode testFixture runTest = do
   extractedDir <- getArtifact (artifact testFixture)
-  res <- performDiscoveryAndAnalyses extractedDir testFixture
+  res <- performDiscoveryAndAnalyses extractedDir testFixture mode
   _ <- runTest (res, extractedDir </> (scopedDir . artifact $ testFixture))
   sendIO $ PIO.removeDirRecur extractedDir
 
@@ -91,7 +93,7 @@ withProjectOfType result (projType, projPath) =
   find (\(dr, _) -> projectType dr == projType && projectPath dr == projPath) result
 
 testSuiteHasSomeDepResults :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> Spec
-testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture) $
+testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf NonStrict fixture) $
   describe (toString $ testName fixture) $ do
     it "should find targets" $ \(result, extractedDir) ->
       expectProject (projType, extractedDir) result
@@ -99,9 +101,9 @@ testSuiteHasSomeDepResults fixture projType = aroundAll (withAnalysisOf fixture)
     it "should have some dependency results" $ \(result, extractedDir) ->
       isJust (getDepResultsOf result (projType, extractedDir)) `shouldBe` True
 
-testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
-testSuiteDepResultSummary fixture projType depResultSummary =
-  aroundAll (withAnalysisOf fixture) $
+testSuiteDepResultSummary :: (AnalyzeProject a, Show a, Eq a) => Mode -> AnalysisTestFixture a -> DiscoveredProjectType -> DependencyResultsSummary -> Spec
+testSuiteDepResultSummary mode fixture projType depResultSummary =
+  aroundAll (withAnalysisOf mode fixture) $
     describe (toString $ testName fixture) $ do
       it "should find targets" $ \(result, extractedDir) ->
         expectProject (projType, extractedDir) result

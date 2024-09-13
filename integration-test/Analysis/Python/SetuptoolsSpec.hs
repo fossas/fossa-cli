@@ -5,6 +5,7 @@ module Analysis.Python.SetuptoolsSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Python.Setuptools qualified as Setuptools
 import Test.Hspec
@@ -36,5 +37,5 @@ flask =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary theFuck SetuptoolsProjectType (DependencyResultsSummary 16 16 0 2 Partial)
-  testSuiteDepResultSummary flask SetuptoolsProjectType (DependencyResultsSummary 4 4 0 1 Partial)
+  testSuiteDepResultSummary NonStrict theFuck SetuptoolsProjectType (DependencyResultsSummary 16 16 0 2 Partial)
+  testSuiteDepResultSummary NonStrict flask SetuptoolsProjectType (DependencyResultsSummary 4 4 0 1 Partial)

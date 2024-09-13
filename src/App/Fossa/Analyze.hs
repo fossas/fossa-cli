@@ -64,6 +64,7 @@ import App.Fossa.VSIDeps (analyzeVSIDeps)
 import App.Types (
   BaseDir (..),
   FirstPartyScansFlag (..),
+  Mode (..),
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
@@ -189,6 +190,7 @@ runDependencyAnalysis ::
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
   , Has (Reader OverrideDynamicAnalysisBinary) sig m
   , Has Telemetry sig m
@@ -361,7 +363,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
-
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
@@ -374,6 +375,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader (Config.mavenScopeFilterSet cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)
+      . runReader (Config.mode cfg)
       $ do
         runAnalyzers allowedTactics filters withoutDefaultFilters basedir Nothing
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $

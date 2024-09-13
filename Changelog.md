@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.34
+
+- `--strict`: Users can now enable strict mode for analysis. ([#1463](https://github.com/fossas/fossa-cli/pull/1463))
 
 ## 3.9.33
 
