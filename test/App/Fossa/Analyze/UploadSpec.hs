@@ -88,7 +88,7 @@ expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
         , fullSourceUnitFiles = Nothing
         , fullSourceUnitData = Nothing
         , fullSourceUnitInfo = Nothing
-        , fullSourceUnitNoticeFiles = Nothing
+        , fullSourceUnitNoticeFiles = []
         }
     fullLicenseUnit =
       FullSourceUnit
@@ -103,7 +103,7 @@ expectedMergedFullSourceUnits = NE.fromList [fullSourceUnit, fullLicenseUnit]
         , fullSourceUnitFiles = Just $ "" NE.:| []
         , fullSourceUnitData = Just $ emptyLicenseUnitData NE.:| []
         , fullSourceUnitInfo = Just LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
-        , fullSourceUnitNoticeFiles = Nothing
+        , fullSourceUnitNoticeFiles = []
         }
 
 expectGetSuccessWithReachability :: Has MockApi sig m => m ()

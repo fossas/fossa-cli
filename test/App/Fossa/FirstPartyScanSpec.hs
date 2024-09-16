@@ -9,7 +9,7 @@ import Control.Algebra (Has)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List qualified as List
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (isJust)
 import Data.Text (strip)
 import Fossa.API.Types (Organization (..))
 import Path (Dir, Path, Rel, mkRelDir, (</>))
@@ -114,12 +114,12 @@ spec = do
           let noticeUnit = NE.head units
           licenseUnitName noticeUnit `shouldBe'` ""
           licenseUnitType noticeUnit `shouldBe'` "NoticeFileMatches"
-          let noticeFiles = fromMaybe (NE.fromList []) (licenseUnitNoticeFiles noticeUnit)
+          let noticeFiles = licenseUnitNoticeFiles noticeUnit
           length noticeFiles `shouldBe'` 1
-          let noticeFile = NE.head noticeFiles
-          let copyrights = fromMaybe (NE.fromList []) (sourceUnitNoticeFileCopyrights noticeFile)
+          let noticeFile = head noticeFiles
+          let copyrights = sourceUnitNoticeFileCopyrights noticeFile
           length copyrights `shouldBe'` 1
-          let copyright = NE.head copyrights
+          let copyright = head copyrights
           copyright `shouldBe'` "2024 Frank Frankson"
           strip (sourceUnitNoticeFileContents noticeFile) `shouldBe'` "This is a notice file that is copyright 2024 Frank Frankson"
           sourceUnitNoticeFilePath noticeFile `shouldBe'` "NOTICE.txt"

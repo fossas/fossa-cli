@@ -43,7 +43,7 @@ unitOne =
     , licenseUnitFiles =
         NE.fromList ["foo/bar/LICENSE", "foo/bar/one.txt"]
     , licenseUnitInfo = info
-    , licenseUnitNoticeFiles = Nothing
+    , licenseUnitNoticeFiles = []
     }
 
 unitTwo :: LicenseUnit
@@ -56,7 +56,7 @@ unitTwo =
     , licenseUnitData = NE.fromList [emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/ANOTHER_LICENSE"}, emptyLicenseUnitData{licenseUnitDataPath = "foo/bar/baz/two.txt"}]
     , licenseUnitFiles = NE.fromList ["foo/bar/baz/ANOTHER_LICENSE", "foo/bar/baz/two.txt"]
     , licenseUnitInfo = info
-    , licenseUnitNoticeFiles = Nothing
+    , licenseUnitNoticeFiles = []
     }
 expectedCombinedUnit :: LicenseUnit
 expectedCombinedUnit =
@@ -80,7 +80,7 @@ expectedCombinedUnit =
           , "foo/bar/one.txt"
           ]
     , licenseUnitInfo = info
-    , licenseUnitNoticeFiles = Nothing
+    , licenseUnitNoticeFiles = []
     }
 
 fixtureDir :: Path Rel Dir

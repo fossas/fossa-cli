@@ -116,7 +116,7 @@ textToOriginPath = OriginPath . toString
 data SourceUnitNoticeFile = SourceUnitNoticeFile
   { sourceUnitNoticeFilePath :: Text
   , sourceUnitNoticeFileContents :: Text
-  , sourceUnitNoticeFileCopyrights :: Maybe (NonEmpty Text)
+  , sourceUnitNoticeFileCopyrights :: [Text]
   }
   deriving (Eq, Ord, Show)
 
@@ -133,7 +133,7 @@ instance FromJSON SourceUnitNoticeFile where
     SourceUnitNoticeFile
       <$> obj .: "path"
       <*> obj .: "contents"
-      <*> obj .:? "copyrights"
+      <*> obj .:? "copyrights" .!= []
 
 data FullSourceUnit = FullSourceUnit
   { fullSourceUnitName :: Text
@@ -142,7 +142,7 @@ data FullSourceUnit = FullSourceUnit
   , fullSourceUnitManifest :: Maybe Text
   , fullSourceUnitBuild :: Maybe SourceUnitBuild
   , fullSourceUnitGraphBreadth :: GraphBreadth
-  , fullSourceUnitNoticeFiles :: Maybe (NonEmpty SourceUnitNoticeFile)
+  , fullSourceUnitNoticeFiles :: [SourceUnitNoticeFile]
   , fullSourceUnitOriginPaths :: [OriginPath]
   , fullSourceUnitAdditionalData :: Maybe AdditionalDepData
   , fullSourceUnitFiles :: Maybe (NonEmpty Text)
@@ -231,7 +231,7 @@ data LicenseUnit = LicenseUnit
   , licenseUnitDir :: Text
   , licenseUnitFiles :: (NonEmpty Text)
   , licenseUnitData :: (NonEmpty LicenseUnitData)
-  , licenseUnitNoticeFiles :: Maybe (NonEmpty SourceUnitNoticeFile)
+  , licenseUnitNoticeFiles :: [SourceUnitNoticeFile]
   , licenseUnitInfo :: LicenseUnitInfo
   }
   deriving (Eq, Ord, Show)
@@ -245,7 +245,7 @@ emptyLicenseUnit =
     , licenseUnitDir = ""
     , licenseUnitFiles = "" :| []
     , licenseUnitData = emptyLicenseUnitData :| []
-    , licenseUnitNoticeFiles = Nothing
+    , licenseUnitNoticeFiles = []
     , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Nothing}
     }
 
@@ -277,7 +277,7 @@ instance FromJSON LicenseUnit where
       <*> obj .: "Dir"
       <*> obj .: "Files"
       <*> obj .: "Data"
-      <*> obj .:? "NoticeFiles"
+      <*> obj .:? "NoticeFiles" .!= []
       <*> obj .: "Info"
 
 newtype LicenseUnitInfo = LicenseUnitInfo
@@ -381,7 +381,7 @@ data SourceUnit = SourceUnit
   -- ^ path to manifest file
   , sourceUnitBuild :: Maybe SourceUnitBuild
   , sourceUnitGraphBreadth :: GraphBreadth
-  , sourceUnitNoticeFiles :: Maybe (NonEmpty SourceUnitNoticeFile)
+  , sourceUnitNoticeFiles :: [SourceUnitNoticeFile]
   , sourceUnitOriginPaths :: [OriginPath]
   , additionalData :: Maybe AdditionalDepData
   }
@@ -476,7 +476,7 @@ instance FromJSON SourceUnit where
       <*> obj .: "Manifest"
       <*> obj .:? "Build"
       <*> obj .: "GraphBreadth"
-      <*> obj .:? "NoticeFiles"
+      <*> obj .:? "NoticeFiles" .!= []
       <*> obj .: "OriginPaths"
       <*> obj .:? "AdditionalDependencyData"
 
