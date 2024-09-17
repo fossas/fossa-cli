@@ -121,8 +121,7 @@ matchExpectation a@(IsDockerEngineAccessible{}) (ApiExpectation _ requestExpecta
 matchExpectation _ _ = Nothing
 
 handleRequest ::
-  ( Has (State [ApiExpectation]) sig m
-  ) =>
+  (Has (State [ApiExpectation]) sig m) =>
   forall a.
   DockerEngineApiF a ->
   m (Maybe (ApiResult a))
@@ -171,8 +170,7 @@ runApiWithMock f = do
           assertUnexpectedCall req
 
 runMockApi ::
-  ( Has (Lift IO) sig m
-  ) =>
+  (Has (Lift IO) sig m) =>
   MockApiC m a ->
   m a
 runMockApi =

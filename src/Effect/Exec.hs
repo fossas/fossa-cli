@@ -440,8 +440,7 @@ mkSingleCandidateAnalysisCommand cmd = CandidateAnalysisCommands (NE.singleton c
 -- It is also possible that no supported command is valid in the provided context;
 -- in such a case a diagnostics error is thrown in @m@.
 mkAnalysisCommand ::
-  ( CandidateCommandEffs sig m
-  ) =>
+  (CandidateCommandEffs sig m) =>
   CandidateAnalysisCommands ->
   Path Abs Dir ->
   [Text] ->

@@ -167,8 +167,7 @@ osReleaseParser = do
   properties <- propertiesParser
   let nameId =
         asum
-          ( (`Map.lookup` properties) "ID" : [Just "linux"] -- We should default to linux as last resort per spec!
-          )
+          ((`Map.lookup` properties) "ID" : [Just "linux"]) -- We should default to linux as last resort per spec!
   let versionId = Map.lookup "VERSION_ID" properties
 
   case (nameId, versionId) of

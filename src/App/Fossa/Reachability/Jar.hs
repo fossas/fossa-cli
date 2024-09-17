@@ -40,8 +40,7 @@ execJar :: CallGraphJarParser
 execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.2.jar")}
 
 withUnpackedPlugin ::
-  ( Has (Lift IO) sig m
-  ) =>
+  (Has (Lift IO) sig m) =>
   CallGraphJarParser ->
   (FP.FilePath -> m a) ->
   m a

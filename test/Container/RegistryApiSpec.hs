@@ -61,8 +61,7 @@ parseAuthChallengeSpec =
 
     it "should parse basic auth challenge" $
       wwwAuthenticateBasic
-        `shouldParseInto` ( BasicAuthChallenge "https://quay.io/v2/auth"
-                          )
+        `shouldParseInto` (BasicAuthChallenge "https://quay.io/v2/auth")
 
 registryApiSpec :: Spec
 registryApiSpec =

@@ -255,8 +255,7 @@ matchExpectation _ _ = Nothing
 
 -- | Handles a request in the context of the mock API.
 handleRequest ::
-  ( Has (State [ApiExpectation]) sig m
-  ) =>
+  (Has (State [ApiExpectation]) sig m) =>
   forall a.
   FossaApiClientF a ->
   m (Maybe (ApiResult a))
@@ -310,8 +309,7 @@ runApiWithMock f = do
           assertUnexpectedCall req
 
 runMockApi ::
-  ( Has (Lift IO) sig m
-  ) =>
+  (Has (Lift IO) sig m) =>
   MockApiC m a ->
   m a
 runMockApi =

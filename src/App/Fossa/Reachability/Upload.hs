@@ -79,8 +79,7 @@ upload revision metadata units = do
   uploadBuildForReachability revision metadata units'
 
 uploadReachability ::
-  ( Has FossaApiClient sig m
-  ) =>
+  (Has FossaApiClient sig m) =>
   SourceUnitReachability ->
   m SourceUnitReachability
 uploadReachability unit = case callGraphAnalysis unit of
@@ -91,8 +90,7 @@ uploadReachability unit = case callGraphAnalysis unit of
     pure $ unit{callGraphAnalysis = JarAnalysis updatedJars}
 
 uploadJarAnalysis ::
-  ( Has FossaApiClient sig m
-  ) =>
+  (Has FossaApiClient sig m) =>
   ParsedJar ->
   m ParsedJar
 uploadJarAnalysis jar = case parsedJarContent jar of
