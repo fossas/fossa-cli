@@ -305,10 +305,10 @@ readHeaderBlobTagData :: BLS.ByteString -> HeaderBlob -> Either String [TagValue
 readHeaderBlobTagData bs HeaderBlob{..} = do
   let firstEntry = NonEmpty.head entryMetadatas
   if tag firstEntry >= TagHeaderI18nTable
-    then
-      -- v3 entries, these seem to be uncommon. They are distinct from > v4
-      -- entries in that they don't have a specialized region for v3 data, which
-      -- is why the function doesn't skip the first element of entryMetadatas
+    then -- v3 entries, these seem to be uncommon. They are distinct from > v4
+    -- entries in that they don't have a specialized region for v3 data, which
+    -- is why the function doesn't skip the first element of entryMetadatas
+
       bimap
         ("Failed to parse legacy index entries: " <>)
         fst

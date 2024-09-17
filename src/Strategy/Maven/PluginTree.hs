@@ -68,6 +68,7 @@ parseArtifactChild prefixCount =
     pos <- currentColumn
     if pos == prefixCount
       then -- The parser is where we expect a child of its parent to be positioned
+
         lexeme (string "+-" <|> string "\\-")
           *> parseTextArtifactAndChildren False
       else fail "can't parse child"
