@@ -326,8 +326,7 @@ validateExists fp =
     Just (resolved :: Path Abs Dir) -> pure . SomeDir $ Abs resolved
 
 validateApiKey ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   CommonOpts ->
@@ -347,8 +346,7 @@ validateApiKey maybeConfigFile EnvVars{envApiKey} CommonOpts{optAPIKey} = do
     else pure $ ApiKey textkey
 
 validateApiKeyGeneric ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   Maybe Text ->
   Maybe Text ->

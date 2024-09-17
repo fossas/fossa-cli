@@ -59,8 +59,7 @@ cliParser =
     <*> Common.releaseGroupReleaseTitleOpts
 
 mergeOpts ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   DeleteReleaseOpts ->

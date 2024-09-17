@@ -555,8 +555,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure mode
 
 collectMavenScopeFilters ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   m MavenScopeFilters
 collectMavenScopeFilters maybeConfig =
@@ -597,8 +596,7 @@ collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDyn
     shouldAnalyzePathDependencies
 
 collectVendoredDeps ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   AnalyzeCliOpts ->
   m VendoredDependencyOptions
@@ -639,8 +637,7 @@ configGrepToGrep :: ConfigGrepEntry -> GrepEntry
 configGrepToGrep configGrep = GrepEntry (configGrepMatchCriteria configGrep) (configGrepName configGrep)
 
 collectScanDestination ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->

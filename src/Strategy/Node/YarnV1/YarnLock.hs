@@ -71,8 +71,7 @@ data YarnV1Package = YarnV1Package
 
 buildGraph ::
   forall m sig.
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   YL.Lockfile ->
   FlatDeps ->
   m (Graphing Dependency)

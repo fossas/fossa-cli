@@ -185,8 +185,7 @@ spec = do
       it' "should set sink to nothing, when off scope is provided via configuration file" $ do
         sink <-
           collectTelemetrySink
-            ( Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry NoTelemetry}
-            )
+            (Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry NoTelemetry})
             defaultEnvVars
             noOpts
         sink `shouldBe'` Nothing
@@ -194,8 +193,7 @@ spec = do
       it' "should set sink to endpoint, when full scope is provided via configuration file" $ do
         sink <-
           collectTelemetrySink
-            ( Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry FullTelemetry}
-            )
+            (Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry FullTelemetry})
             defaultEnvVars
             noOpts
         sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))

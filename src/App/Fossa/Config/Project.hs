@@ -39,8 +39,7 @@ instance GetSeverity ProjectCommand where
   getSeverity (Edit (EditOpts{debug})) = if debug then SevDebug else SevInfo
 
 projectMergeOpts ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   ProjectCommand ->

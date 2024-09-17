@@ -64,8 +64,7 @@ cliParser =
     <*> optional (some (Common.releaseGroupProjectOpts))
 
 mergeOpts ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   CreateReleaseOpts ->

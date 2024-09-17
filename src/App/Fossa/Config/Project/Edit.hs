@@ -129,8 +129,7 @@ projectIdentiferOptions :: Parser (Maybe ProjectIdentifier)
 projectIdentiferOptions = optional (projectIdOptions <|> projectLocatorOptions)
 
 mergeOpts ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   EditOpts ->

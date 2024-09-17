@@ -99,8 +99,7 @@ depGraphPluginLegacy =
     }
 
 withUnpackedPlugin ::
-  ( Has (Lift IO) sig m
-  ) =>
+  (Has (Lift IO) sig m) =>
   DepGraphPlugin ->
   (FP.FilePath -> m a) ->
   m a

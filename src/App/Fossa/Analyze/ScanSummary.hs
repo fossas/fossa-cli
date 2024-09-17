@@ -222,8 +222,7 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dyna
   where
     reachabilitySummary =
       if null reachabilityAttempts
-        then
-          []
+        then []
         else summarizeReachability "Reachability analysis" reachabilityAttempts
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
     projects = sort dps

@@ -136,8 +136,7 @@ collectManifests = walk' $ \_ _ files ->
     Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)
 
 mkProject ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   NodeProject ->
   m (DiscoveredProject NodeProject)
 mkProject project = do
