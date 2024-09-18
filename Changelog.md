@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.9.35
+
+- Licensing: Add to the list of ignored copyright phrases (No PR)
+
 ## 3.9.34
 
 - `--strict`: Users can now enable strict mode for analysis. ([#1463](https://github.com/fossas/fossa-cli/pull/1463))
