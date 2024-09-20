@@ -73,6 +73,7 @@ At this moment the following `os` are supported:
 - `busybox`
 - `sles`
 - `fedora`
+- `rocky`
 
 For example:
 
