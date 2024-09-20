@@ -1,8 +1,8 @@
-# Unreleased
-
-- fossa-deps: Fixed an issue where Rocky linux deps could skip the fossa-deps file during analysis
-
 # FOSSA CLI Changelog
+
+## Unreleased
+
+- fossa-deps: Fixed an issue where Rocky Linux deps were not supported in the fossa-deps file ([#1473](https://github.com/fossas/fossa-cli/pull/1473))  
 
 ## 3.9.35
 
