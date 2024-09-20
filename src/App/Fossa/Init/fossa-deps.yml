@@ -60,7 +60,7 @@
 #   name: bash              # Name of the dependency. (Required)
 #   version: 5.1-6ubuntu1   # Revision of the dependency. (Optional)
 #   arch: amd64             # Arch associated with package. (Required)
-#   os: ubuntu              # OS (Required). Supported OS include: alpine, centos, debian, rehat, ubuntu, oraclelinux, busybox, seles, fedora.
+#   os: ubuntu              # OS (Required). Supported OS include: alpine, centos, debian, rehat, ubuntu, oraclelinux, busybox, sles, fedora, rocky.
 #   osVersion: 22.04        # Version of the OS. (Required)
 #
 #

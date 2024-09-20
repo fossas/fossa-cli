@@ -635,4 +635,5 @@ supportedOSs =
   , "busybox"
   , "sles"
   , "fedora"
+  , "rocky"
   ]
