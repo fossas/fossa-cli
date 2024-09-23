@@ -78,7 +78,6 @@ preflightChecks cmd = context "preflight-checks" $ do
           ReportChecks -> do
             tokenType <- getTokenType
             fullAccessTokenCheck tokenType
-            premiumSubscriptionCheck org
           _ -> pure ()
   pure org
 
@@ -128,14 +127,6 @@ fullAccessTokenCheck TokenTypeResponse{..} = case tokenType of
       $ fatal TokenTypeErr
   _ -> pure ()
 
-premiumSubscriptionCheck :: Has Diagnostics sig m => Organization -> m ()
-premiumSubscriptionCheck Organization{..} = case orgSubscription of
-  Free ->
-    errHelp ("To proceed, please upgrade your subscription" :: Text)
-      . errCtx ("You currently have a free subscription" :: Text)
-      $ fatal SubscriptionTypeErr
-  _ -> pure ()
-
 preflightCheckFileName :: Path Rel File
 preflightCheckFileName = $(mkRelFile "preflight-check.txt")
 
@@ -150,12 +141,6 @@ instance ToDiagnostic TokenTypeErr where
   renderDiagnostic :: TokenTypeErr -> Errata
   renderDiagnostic TokenTypeErr =
     Errata (Just "Invalid API token type") [] $ Just "The action you are trying to perform requires a `Full Access` API token"
-
-data SubscriptionTypeErr = SubscriptionTypeErr
-instance ToDiagnostic SubscriptionTypeErr where
-  renderDiagnostic :: SubscriptionTypeErr -> Errata
-  renderDiagnostic SubscriptionTypeErr =
-    Errata (Just "Invalid subscription type") [] $ Just "The action you are trying to perform requires a premium subscription"
 
 projectPermissionErrHeader :: Text
 projectPermissionErrHeader = "Invalid project permission"
