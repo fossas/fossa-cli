@@ -24,7 +24,7 @@ import Data.Text.IO qualified as TIO
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (renderIt)
 import Errata (Errata (..))
-import Fossa.API.Types (ApiOpts, CustomBuildUploadPermissions (..), Organization (..), ProjectPermissionStatus (..), ReleaseGroupPermissionStatus (..), Subscription (..), TokenType (..), TokenTypeResponse (..))
+import Fossa.API.Types (ApiOpts, CustomBuildUploadPermissions (..), Organization (..), ProjectPermissionStatus (..), ReleaseGroupPermissionStatus (..), TokenType (..), TokenTypeResponse (..))
 import Path (
   File,
   Path,
