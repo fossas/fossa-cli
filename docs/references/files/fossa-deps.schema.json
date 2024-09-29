@@ -13,7 +13,8 @@
                 "oraclelinux",
                 "busybox",
                 "sles",
-                "fedora"
+                "fedora",
+                "rocky"
             ],
             "description": "Name of the distribution OS."
         },

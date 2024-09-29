@@ -1,5 +1,25 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- fossa-deps: Fixed an issue where Rocky Linux deps were not supported in the fossa-deps file ([#1473](https://github.com/fossas/fossa-cli/pull/1473))  
+
+## 3.9.35
+
+- Licensing: Add to the list of ignored copyright phrases (No PR)
+
+## 3.9.34
+
+- `--strict`: Users can now enable strict mode for analysis. ([#1463](https://github.com/fossas/fossa-cli/pull/1463))
+
+## 3.9.33
+
+- MSB: Failure to resolve a linked project no longer causes the scan to fail ([[#1469](https://github.com/fossas/fossa-cli/pull/1469)]).
+
+## 3.9.32
+
+- Platform Support: Add a binary for ARM64 Linux environments. ([#1465](https://github.com/fossas/fossa-cli/pull/1465))
+
 ## 3.9.31
 
 - Resolve an issue parsing toml configuration files. ([#1459](https://github.com/fossas/fossa-cli/pull/1459))

@@ -2,9 +2,10 @@
 module Strategy.Pub (discover) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Util (guardStrictMode)
 import Control.Carrier.Diagnostics (errDoc, errHelp)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Diag.Common (
@@ -14,7 +15,7 @@ import Diag.Common (
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walkWithFilters')
-import Effect.Exec (Exec, Has)
+import Effect.Exec (GetDepsEffs, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
@@ -53,7 +54,7 @@ instance ToJSON PubProject
 
 instance AnalyzeProject PubProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 mkProject :: PubProject -> DiscoveredProject PubProject
 mkProject project =
@@ -64,18 +65,14 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => PubProject -> m DependencyResults
 getDeps project = do
+  mode <- ask
   (graph, graphBreadth) <- case pubLock project of
-    Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> analyzePubLockFile lockFile
+    Just lockFile -> analyzeDepsCmd lockFile (pubSpecDir project) <||> guardStrictMode mode (analyzePubLockFile lockFile)
     Nothing -> do
-      void . recover
-        $ warnOnErr MissingDeepDeps
-          . warnOnErr MissingEdges
-        $ errCtx PubspecLimitationCtx
-        $ errHelp PubspecLimitationHelp
-        $ errDoc refPubDocUrl (fatalText "Missing pubspec.lock file")
-      analyzePubSpecFile $ pubSpec project
+      applyMissingPubSpecWarnings
+      analyzePubSpecFile (pubSpec project)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -83,21 +80,25 @@ getDeps project = do
       , dependencyManifestFiles = [pubSpec project]
       }
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
-getDeps' project = do
+getDepsStatically :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => PubProject -> m DependencyResults
+getDepsStatically project = do
   (graph, graphBreadth) <- case pubLock project of
     Just lockFile -> analyzePubLockFile lockFile
     Nothing -> do
-      void . recover
-        $ warnOnErr MissingDeepDeps
-          . warnOnErr MissingEdges
-        $ errCtx PubspecLimitationCtx
-        $ errHelp PubspecLimitationHelp
-        $ errDoc refPubDocUrl (fatalText "Missing pubspec.lock file")
-      analyzePubSpecFile $ pubSpec project
+      applyMissingPubSpecWarnings
+      analyzePubSpecFile (pubSpec project)
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = graphBreadth
       , dependencyManifestFiles = [pubSpec project]
       }
+
+applyMissingPubSpecWarnings :: (Has Diagnostics sig m) => m ()
+applyMissingPubSpecWarnings =
+  void . recover $
+    warnOnErr MissingDeepDeps $
+      warnOnErr MissingEdges $
+        errCtx PubspecLimitationCtx $
+          errHelp PubspecLimitationHelp $
+            errDoc refPubDocUrl (fatalText "Missing pubspec.lock file")

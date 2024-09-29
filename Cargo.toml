@@ -17,3 +17,7 @@ resolver = "2"
 [profile.release]
 lto = "fat"
 strip = true
+
+# There is additional configuration in .cargo/config.toml.
+# It is used for building on aarch64-unknown-linux-musl.
+# More context on the split here: https://github.com/rust-lang/cargo/issues/12738

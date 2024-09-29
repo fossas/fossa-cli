@@ -19,6 +19,7 @@ import App.Fossa.Analyze.Types (
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
+import App.Types (Mode (..))
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -202,6 +203,7 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
             runTarballReadFSIO layerFs tarball
               . runReader noExperimental
               . runReader noMavenScopeFilters
+              . runReader NonStrict
               . Diag.context "discovery/analysis tasks"
               . runOutput @DiscoveredProjectScan
               . runStickyLogger SevInfo
@@ -256,6 +258,7 @@ runDependencyAnalysis ::
   , Has (Output DiscoveredProjectScan) sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
   , Has Stack sig m
   , Has Telemetry sig m
@@ -373,6 +376,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           False -- Targets are not impacted by path dependencies.
       )
     . runReader (MavenScopeIncludeFilters mempty)
+    . runReader NonStrict
     . runReader (mempty :: AllFilters)
     $ run
   where

@@ -5,6 +5,7 @@ module Analysis.SwiftSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.SwiftPM qualified as SwiftPM
 import Test.Hspec
@@ -24,4 +25,4 @@ exampleProject =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary exampleProject SwiftProjectType (DependencyResultsSummary 6 6 0 1 Partial)
+  testSuiteDepResultSummary NonStrict exampleProject SwiftProjectType (DependencyResultsSummary 6 6 0 1 Partial)

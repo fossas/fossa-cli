@@ -166,15 +166,13 @@ buildGraph description renvLock = run . evalGrapher $ do
   let allDirectPkgs = allPkgNames description
 
   if null $ Map.toList allLockPackages
-    then
-      -- We have empty lock file, and only description manifest
-      -- create direct dependencies
+    then -- We have empty lock file, and only description manifest
+    -- create direct dependencies
       for_ (toList allDirectPkgs) $ \pkgReq -> do
         direct $ toCranDependency pkgReq
-    else
-      -- We have non-empty lock file, and description manifest
-      -- create complete dependency graph. Any dependency that
-      -- is mentioned in description is considered to be direct
+    else -- We have non-empty lock file, and description manifest
+    -- create complete dependency graph. Any dependency that
+    -- is mentioned in description is considered to be direct
       for_ (Map.toList allLockPackages) $ \(_, pkgMetadata) -> do
         let currentDep = toDependency allRepositories pkgMetadata
         let childDeps =

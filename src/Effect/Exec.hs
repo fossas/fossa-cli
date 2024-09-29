@@ -33,10 +33,11 @@ module Effect.Exec (
   CandidateAnalysisCommands (..),
   mkAnalysisCommand,
   mkSingleCandidateAnalysisCommand,
+  GetDepsEffs,
 ) where
 
 import App.Support (reportDefectMsg)
-import App.Types (OverrideDynamicAnalysisBinary (..))
+import App.Types (Mode, OverrideDynamicAnalysisBinary (..))
 import Control.Algebra (Has)
 import Control.Carrier.Reader (Reader, ask)
 import Control.Carrier.Simple (
@@ -411,6 +412,9 @@ execCurrentDirStdinThrow cmd stdin = do
     Left failure -> fatal (CommandFailed failure)
     Right stdout -> pure stdout
 
+-- | Shorthand for the effects needed to retrieve dependencies in analysis command.
+type GetDepsEffs sig m = (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m)
+
 -- | Shorthand for the effects needed to select a candidate analysis command.
 type CandidateCommandEffs sig m = (Has Diagnostics sig m, Has Exec sig m, Has (Reader OverrideDynamicAnalysisBinary) sig m)
 
@@ -436,8 +440,7 @@ mkSingleCandidateAnalysisCommand cmd = CandidateAnalysisCommands (NE.singleton c
 -- It is also possible that no supported command is valid in the provided context;
 -- in such a case a diagnostics error is thrown in @m@.
 mkAnalysisCommand ::
-  ( CandidateCommandEffs sig m
-  ) =>
+  (CandidateCommandEffs sig m) =>
   CandidateAnalysisCommands ->
   Path Abs Dir ->
   [Text] ->

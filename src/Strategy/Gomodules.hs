@@ -8,9 +8,10 @@ module Strategy.Gomodules (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
+import App.Util (guardStrictMode)
 import Control.Carrier.Diagnostics (warn)
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
-import Control.Effect.Reader (Reader, asks)
+import Control.Effect.Reader (Reader, ask, asks)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Text (Text)
@@ -21,7 +22,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Exec (Exec, Has)
+import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -67,9 +68,10 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
+getDeps :: (GetDepsEffs sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
 getDeps project goDynamicTactic = do
-  (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> staticAnalysis
+  mode <- ask
+  (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> guardStrictMode mode staticAnalysis
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
     DependencyResults

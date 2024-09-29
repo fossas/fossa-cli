@@ -12,6 +12,7 @@ import Analysis.FixtureUtils (
   FixtureArtifact (..),
   FixtureEnvironment (NixEnv),
  )
+import App.Types (Mode (..))
 import Path (reldir)
 import Strategy.Scala qualified as Scala
 import Test.Hspec (Spec)
@@ -34,4 +35,4 @@ scalaExampleProject =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)
+  testSuiteDepResultSummary NonStrict scalaExampleProject ScalaProjectType (DependencyResultsSummary 3 2 1 1 Complete)

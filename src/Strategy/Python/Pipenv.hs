@@ -114,13 +114,13 @@ getDeps project = context "Pipenv" $ do
       , dependencyManifestFiles = [pipenvLockfile project]
       }
 
-getDeps' ::
+getDepsStatically ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   PipenvProject ->
   m DependencyResults
-getDeps' project = context "Pipenv" $ do
+getDepsStatically project = context "Pipenv" $ do
   lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
   graph <- context "Building dependency graph" $ pure (buildGraph lock Nothing)
   pure $
@@ -148,7 +148,7 @@ instance ToJSON PipenvProject
 
 instance AnalyzeProject PipenvProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 pipenvGraphCmd :: Command
 pipenvGraphCmd =

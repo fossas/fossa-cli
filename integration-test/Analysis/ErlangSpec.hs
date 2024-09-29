@@ -5,6 +5,7 @@ module Analysis.ErlangSpec (spec) where
 
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
+import App.Types (Mode (NonStrict))
 import Path
 import Strategy.Rebar3 qualified as Rebar3
 import Test.Hspec
@@ -39,5 +40,5 @@ emqx =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary cowboy Rebar3ProjectType (DependencyResultsSummary 2 2 0 1 Complete)
-  testSuiteDepResultSummary emqx Rebar3ProjectType (DependencyResultsSummary 0 0 0 1 Complete)
+  testSuiteDepResultSummary NonStrict cowboy Rebar3ProjectType (DependencyResultsSummary 2 2 0 1 Complete)
+  testSuiteDepResultSummary NonStrict emqx Rebar3ProjectType (DependencyResultsSummary 0 0 0 1 Complete)

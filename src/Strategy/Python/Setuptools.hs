@@ -79,8 +79,8 @@ getDeps project = do
       , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
       }
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
-getDeps' project = do
+getDepsStatically :: (Has ReadFS sig m, Has Diagnostics sig m) => SetuptoolsProject -> m DependencyResults
+getDepsStatically project = do
   graph <-
     context "Setuptools" $
       Diag.combineSuccessful @Text @Text
@@ -115,7 +115,7 @@ instance ToJSON SetuptoolsProject
 
 instance AnalyzeProject SetuptoolsProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 mkProject :: SetuptoolsProject -> DiscoveredProject SetuptoolsProject
 mkProject project =

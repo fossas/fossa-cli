@@ -58,8 +58,7 @@ instance GetSeverity ReleaseGroupCommand where
     DeleteRelease (DeleteReleaseOpts{DeleteRelease.releaseGroupCommon = ReleaseGroupCommonOpts{debug}}) -> if debug then SevDebug else SevInfo
 
 releaseGroupMergeOpts ::
-  ( Has Diagnostics sig m
-  ) =>
+  (Has Diagnostics sig m) =>
   Maybe ConfigFile ->
   EnvVars ->
   ReleaseGroupCommand ->

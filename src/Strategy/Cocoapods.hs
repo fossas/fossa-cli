@@ -8,17 +8,19 @@ module Strategy.Cocoapods (
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Types (Mode (..))
+import App.Util (guardStrictMode)
 import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errHelp)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Data.Glob qualified as Glob
 import Data.List (find)
 import Data.List.Extra (singleton)
 import Data.Text (isSuffixOf)
-import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
+import Diag.Common (MissingDeepDeps (..), MissingEdges (..))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -27,7 +29,7 @@ import Discovery.Walk (
   findFilesMatchingGlob,
   walkWithFilters',
  )
-import Effect.Exec (Exec)
+import Effect.Exec (Exec, GetDepsEffs)
 import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS, readContentsParser)
 import GHC.Generics (Generic)
@@ -79,7 +81,7 @@ instance ToJSON CocoapodsProject
 
 instance AnalyzeProject CocoapodsProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps'
+  analyzeProjectStaticOnly _ = getDepsStatically
 
 instance LicenseAnalyzeProject CocoapodsProject where
   licenseAnalyzeProject = traverse readLicense . cocoapodsSpecFiles
@@ -110,33 +112,33 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m, Has Exec sig m, Has Logger sig m) => CocoapodsProject -> m DependencyResults
-getDeps project =
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => CocoapodsProject -> m DependencyResults
+getDeps project = do
+  mode <- ask
   context "Cocoapods" $
     context
       "Podfile.lock analysis"
-      ( warnOnErr MissingEdges
-          . warnOnErr MissingDeepDeps
+      ( populateErrorInfo mode
           . errCtx MissingPodLockFileCtx
           . errHelp MissingPodLockFileHelp
           . errDoc refPodDocUrl
           $ (analyzePodfileLock project)
       )
-      <||> context "Podfile analysis" (analyzePodfile project)
+      <||> guardStrictMode mode (context "Podfile analysis" (analyzePodfile project))
 
-getDeps' :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
-getDeps' project =
+getDepsStatically :: (GetDepsEffs sig m) => CocoapodsProject -> m DependencyResults
+getDepsStatically project = do
+  mode <- ask
   context "Cocoapods" $
     context
       "Podfile.lock analysis"
-      ( warnOnErr MissingEdges
-          . warnOnErr MissingDeepDeps
+      ( populateErrorInfo mode
           . errCtx MissingPodLockFileCtx
           . errHelp MissingPodLockFileHelp
           . errDoc refPodDocUrl
           $ (analyzePodfileLockStatically project)
       )
-      <||> context "Podfile analysis" (analyzePodfile project)
+      <||> guardStrictMode mode (context "Podfile analysis" (analyzePodfile project))
 
 analyzePodfile :: (Has ReadFS sig m, Has Diagnostics sig m) => CocoapodsProject -> m DependencyResults
 analyzePodfile project = do
@@ -170,3 +172,7 @@ analyzePodfileLockStatically project = do
       , dependencyGraphBreadth = Complete
       , dependencyManifestFiles = [lockFile]
       }
+
+populateErrorInfo :: (Has Diagnostics sig m) => Mode -> m a -> m a
+populateErrorInfo Strict = id
+populateErrorInfo NonStrict = warnOnErr MissingEdges . warnOnErr MissingDeepDeps

@@ -14,7 +14,7 @@ import App.Fossa.Config.ListTargets (
   mkSubCommand,
  )
 import App.Fossa.Subcommand (SubCommand)
-import App.Types (BaseDir (..))
+import App.Types (BaseDir (..), Mode (..))
 import Control.Carrier.AtomicCounter (
   AtomicCounter,
   Has,
@@ -83,6 +83,7 @@ listTargetsMain ListTargetsConfig{..} = do
     . runReader experimental
     -- `fossa list-targets` does not support maven scope filters.
     . runReader (MavenScopeIncludeFilters mempty)
+    . runReader (NonStrict)
     -- The current version of `fossa list-targets` does not support filters.
     -- TODO: support both discovery and post-discovery filtering.
     . runReader (mempty :: AllFilters)
@@ -99,6 +100,7 @@ runAll ::
   , Has Stack sig m
   , Has (Reader ExperimentalAnalyzeConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
+  , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
   , Has Telemetry sig m
   ) =>

@@ -5,12 +5,14 @@ module App.Util (
   ancestryDirect,
   validateDir,
   validateFile,
+  guardStrictMode,
   FileAncestry (..),
 ) where
 
 import App.Types
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics (Diagnostics, fatalText)
+import Control.Carrier.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (fatalText)
 import Control.Monad (unless)
 import Data.String.Conversion (ToText (..))
 import GHC.Generics (Generic)
@@ -51,3 +53,9 @@ ancestryDerived :: Has Diagnostics sig m => FileAncestry -> Path Abs Dir -> Path
 ancestryDerived parent dir file = do
   rel <- ancestryDirect dir file
   pure $ fileAncestryPath parent </> rel
+
+-- | Guards analysis strategies depending on the mode. On strict mode, emit an error to end the chain of diagnostics to prevent
+-- other strategies to be executed. On non-strict mode, allow fallback strategies to be executed.
+guardStrictMode :: Has Diagnostics sig m => Mode -> m a -> m a
+guardStrictMode Strict _ = fatalText "Strict mode enabled, skipping other strategies"
+guardStrictMode NonStrict action = action

@@ -291,8 +291,7 @@ buildGraph lockFilePath lockFile@PodLock{lockExternalSources} = do
       Text ->
       m Dependency
     readPodSubSpecSourceAt podSpecPath candidateSubSpec = context
-      ( "Trying to resolve (" <> candidateSubSpec <> "), It is potentially a vendored subspec of podspec at: " <> showT podSpecPath
-      )
+      ("Trying to resolve (" <> candidateSubSpec <> "), It is potentially a vendored subspec of podspec at: " <> showT podSpecPath)
       $ do
         podSpecJson <- readPodSpecRaw podSpecPath
 

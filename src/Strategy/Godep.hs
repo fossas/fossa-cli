@@ -3,10 +3,11 @@ module Strategy.Godep (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Util (guardStrictMode)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -15,7 +16,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Exec (Exec, Has)
+import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -69,11 +70,12 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
-getDeps project =
+getDeps :: (GetDepsEffs sig m) => GodepProject -> m DependencyResults
+getDeps project = do
+  mode <- ask
   context "Godep" $
     context "Gopkg.lock analysis" (analyzeGopkgLock project)
-      <||> context "Gopkg.toml analysis" (analyzeGopkgToml project)
+      <||> guardStrictMode mode (context "Gopkg.toml analysis" (analyzeGopkgToml project))
 
 analyzeGopkgLock :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => GodepProject -> m DependencyResults
 analyzeGopkgLock project = do
