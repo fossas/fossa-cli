@@ -1,8 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.37
 
-- License Scanning: Update Themis to include NOTICE files, and parse the additional NOTICE file fields in Themis's output.
+- License Scanning: Update Themis to include NOTICE files, and parse the additional NOTICE file fields in Themis's output. ([#1466](https://github.com/fossas/fossa-cli/pull/1466))
 
 ## 3.9.36
 
