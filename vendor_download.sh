@@ -77,8 +77,7 @@ esac
 
 echo "Downloading asset information from latest tag for architecture '$ASSET_POSTFIX'"
 
-# TODO: Do not merge with this tag forced on
-echo "Downloading themis binary from v1.0.17-beta release"
+echo "Downloading themis binary from latest release"
 THEMIS_RELEASE_JSON=vendor-bins/themis-release.json
 curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
