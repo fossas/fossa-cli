@@ -206,6 +206,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       , sourceUnitType = "user-specific-yaml"
       , sourceUnitBuild = build
       , sourceUnitGraphBreadth = Complete
+      , sourceUnitNoticeFiles = []
       , sourceUnitOriginPaths = [someBaseToOriginPath originPath]
       , additionalData = additional
       }
@@ -508,7 +509,8 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj .:? "metadata"
+      <*> obj
+        .:? "metadata"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
