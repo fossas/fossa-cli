@@ -519,8 +519,7 @@ instance FromJSON RemoteDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
-      <*> obj
-        .:? "metadata"
+      <*> obj .:? "metadata"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
