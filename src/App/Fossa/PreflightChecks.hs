@@ -112,7 +112,7 @@ uploadBuildPermissionsCheck CustomBuildUploadPermissions{..} =
             $ fatal CreateTeamProjectPermissionErr
         InvalidCreateProjectOnlyToTeamPermission ->
           errDoc fossaConfigDocsUrl
-            . errHelp ("Ensure that you have specified a team to add this project to" :: Text)
+            . errHelp ("Please specify your team name, either in .fossa.yml or using the --team option with fossa analyze." :: Text)
             $ fatal CreateProjectOnlyToTeamPermissionErr
   where
     permissionHelpMsg :: Text
@@ -154,13 +154,13 @@ data ProjectPermissionErr
 instance ToDiagnostic ProjectPermissionErr where
   renderDiagnostic :: ProjectPermissionErr -> Errata
   renderDiagnostic CreateProjectPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for your Organization"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for your Organization."
   renderDiagnostic EditProjectPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to edit projects for your Organization"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to edit projects for your Organization."
   renderDiagnostic CreateTeamProjectPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for the specified team"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for the specified team."
   renderDiagnostic CreateProjectOnlyToTeamPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You only have permission to create projects for your team"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You only have permission to create projects for your team(s)."
 
 releaseGroupPermissionErrHeader :: Text
 releaseGroupPermissionErrHeader = "Invalid release group permission"
