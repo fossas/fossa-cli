@@ -154,13 +154,13 @@ data ProjectPermissionErr
 instance ToDiagnostic ProjectPermissionErr where
   renderDiagnostic :: ProjectPermissionErr -> Errata
   renderDiagnostic CreateProjectPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for your Organization"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for your Organization."
   renderDiagnostic EditProjectPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to edit projects for your Organization"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to edit projects for your Organization."
   renderDiagnostic CreateTeamProjectPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for the specified team"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You do not have permission to create projects for the specified team."
   renderDiagnostic CreateProjectOnlyToTeamPermissionErr =
-    Errata (Just projectPermissionErrHeader) [] $ Just "You only have permission to create projects for your team. Please specify a team in .fossa.yml or using the --team flag"
+    Errata (Just projectPermissionErrHeader) [] $ Just "You only have permission to create projects for your team(s)."
 
 releaseGroupPermissionErrHeader :: Text
 releaseGroupPermissionErrHeader = "Invalid release group permission"
