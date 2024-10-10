@@ -112,7 +112,7 @@ uploadBuildPermissionsCheck CustomBuildUploadPermissions{..} =
             $ fatal CreateTeamProjectPermissionErr
         InvalidCreateProjectOnlyToTeamPermission ->
           errDoc fossaConfigDocsUrl
-            . errHelp ("Ensure that you have specified a team to add this project to" :: Text)
+            . errHelp ("Please specify your team name, either in .fossa.yml or using the --team option with fossa analyze." :: Text)
             $ fatal CreateProjectOnlyToTeamPermissionErr
   where
     permissionHelpMsg :: Text
