@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file.
+
 ## 3.9.37
 
 - License Scanning: Update Themis to include NOTICE files, and parse the additional NOTICE file fields in Themis's output. ([#1466](https://github.com/fossas/fossa-cli/pull/1466))
