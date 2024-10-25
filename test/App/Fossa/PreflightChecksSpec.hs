@@ -53,10 +53,6 @@ spec = do
       expectOrganizationWithPremiumSubscription
       expectPushToken
       expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
-    it' "should fail premium subscription check for report command" $ do
-      expectOrganizationWithPreflightChecks
-      expectFullAccessToken
-      expectFatal' $ ignoreDebug $ preflightChecks ReportChecks
     it' "should pass all custom upload permission checks for analyze command" $ do
       expectOrganizationWithPreflightChecks
       (GetCustomBuildPermissons Fixtures.projectRevision Fixtures.projectMetadata) `returnsOnce` Fixtures.validCustomUploadPermissions

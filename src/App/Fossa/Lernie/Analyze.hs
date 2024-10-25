@@ -304,5 +304,6 @@ createLicenseUnitSingles ((path, title), licenseUnitData) =
         , licenseUnitDir = ""
         , licenseUnitFiles = NE.singleton (unCustomLicensePath path)
         , licenseUnitData = NE.singleton licenseUnitData
+        , licenseUnitNoticeFiles = []
         , licenseUnitInfo = LicenseUnitInfo{licenseUnitInfoDescription = Just $ "custom license search " <> unCustomLicenseTitle title}
         }
