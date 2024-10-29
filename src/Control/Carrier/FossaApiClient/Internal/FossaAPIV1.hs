@@ -531,7 +531,7 @@ instance ToDiagnostic FossaError where
           body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
       Errata (Just header) [] (Just body)
     NoResponseDataError ereq -> do
-      let header = "he connection to the FOSSA endpoint was closed without a response"
+      let header = "The connection to the FOSSA endpoint was closed without a response"
           content = renderIt $ reportFossaBugErrorMsg $ fossaEnvironment ereq
           ctx = "Request: " <> renderIt (renderRequest ereq)
           body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
