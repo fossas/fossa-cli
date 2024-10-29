@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io::{BufWriter, Read},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use clap::Parser;
@@ -125,15 +125,65 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
             debug!("fingerprinting");
             let entry = buffer(entry).context("read jar file")?;
 
-            match Combined::from_buffer(entry) {
-                Ok(fingerprints) => discoveries.push(DiscoveredJar::new(path, fingerprints)),
+            match Combined::from_buffer(entry.clone()) {
+                Ok(fingerprints) => {
+                    discoveries.push(DiscoveredJar::new(path.clone(), fingerprints))
+                }
                 Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
+            let mut discovered_in_jars =
+                recursive_jars_in_jars(&entry, path).context("recursively discover jars")?;
+            discoveries.append(&mut discovered_in_jars);
 
             Ok(())
         })?;
     }
 
+    Ok(discoveries)
+}
+
+#[tracing::instrument(skip(jar_contents))]
+fn recursive_jars_in_jars(
+    jar_contents: &[u8],
+    containing_jar_path: PathBuf,
+) -> Result<Vec<DiscoveredJar>> {
+    let mut discoveries = Vec::new();
+    let mut archive =
+        zip::ZipArchive::new(std::io::Cursor::new(jar_contents)).context("unzipping jar")?;
+    for path in archive.clone().file_names() {
+        debug!("file_name: {path}");
+
+        if !path.ends_with(".jar") {
+            debug!(?path, "skipped: not a jar file");
+            continue;
+        }
+        let mut zip_file = archive
+            .by_name(path)
+            .context("getting zip file info by path")?;
+        if !zip_file.is_file() {
+            debug!(?path, "skipped: not a file");
+            continue;
+        }
+        let mut buffer: Vec<u8> = Vec::new();
+        zip_file
+            .read_to_end(&mut buffer)
+            .context("reading jar from zip into buffer")?;
+
+        let joined_path = Path::new(&containing_jar_path).join(path);
+
+        // fingerprint the jar
+        match Combined::from_buffer(buffer.clone()) {
+            Ok(fingerprints) => {
+                discoveries.push(DiscoveredJar::new(joined_path.clone(), fingerprints))
+            }
+            Err(e) => warn!("failed to fingerprint: {e:?}"),
+        }
+
+        // recursively find more jars
+        let mut discovered_in_jars =
+            recursive_jars_in_jars(&buffer, joined_path).context("recursively discover jars")?;
+        discoveries.append(&mut discovered_in_jars);
+    }
     Ok(discoveries)
 }
 
