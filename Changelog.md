@@ -2,7 +2,7 @@
 
 ## 3.9.38
 - Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file.
-- Adds support for the following licenses and EULAs:
+- Licensing: Adds support for a handful of new licenses and EULAs (No PR)
   - ActiPro License Agreement, Versions 2009, 2020, 2021, and 2021-10-28
   - Authorized Dynatrace Customer Subscription Agreement
   - Chilkat Software License Agreement
