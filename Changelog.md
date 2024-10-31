@@ -1,7 +1,17 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.38
 - Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file.
+- Adds support for the following licenses and EULAs:
+  - ActiPro License Agreement, Versions 2009, 2020, 2021, and 2021-10-28
+  - Authorized Dynatrace Customer Subscription Agreement
+  - Chilkat Software License Agreement
+  - Google Play Core Software Development Kit Terms of Service
+  - Krypton Toolkit Licence Agreement for End-Users
+  - Madshi Software License Agreement
+  - Microsoft SQL Server 2019 Developer, 2019 Evaluation, and 2019 Express
+  - Microsoft SQL Server 2022 Enterprise, Standard, Web
+  - Viskoe.dk Terms of Use
 
 ## 3.9.37
 
