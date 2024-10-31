@@ -290,74 +290,74 @@ mod tests {
     const NESTED_JARS_MILLHONE_OUT: &str = r#"
 {
   "discovered_jars": {
-    "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
-    "blobs/sha256/476a31a60256751ca7e964c27116baa64645c6149d7d280fc0078bc685133595": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/top.jar",
-        "fingerprints": {
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "v1.raw.jar": "4l2etq8x/3TQcj1C4yFa4wxvX5AGS4rYrx8ZGvPkSwA=",
-          "sha_256": "EV1BNzRoI5CHQ5J0d82tkXOLCMW7oZkUmkg5MJu2y0s=",
-          "v1.mavencentral.jar": "CUS65nUip+7ij6tkZU1dYp6LFuo="
-        }
-      },
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/top.jar/top/middle.jar",
-        "fingerprints": {
-          "sha_256": "X8tTQyqpehlM8YaFdeIpOyfvVWgT0BaOeSezRuwJag0=",
-          "v1.raw.jar": "GGL0ob8eJm+yOvHbUZfkFhTzzwIf156mAOEh5s0s1tk=",
-          "v1.mavencentral.jar": "tlgbz/LZtVJXxPYdlSH+dNfqJJE=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-        }
-      },
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/top.jar/top/middle.jar/middle/deepest.jar",
-        "fingerprints": {
-          "sha_256": "TdKTi6xNJw58AmWLwU5BqiSDquEeHqfpkZQvwVA/NTY=",
-          "v1.mavencentral.jar": "8JPFcgZI0LwAjuzhp8jD3EyXDFw=",
-          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-        }
-      }
-    ],
-    "blobs/sha256/93a60e4656371bfa42d5f8aefc1e886f8bce0a57f6613107d07ae2329167b27c": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/middle.jar",
-        "fingerprints": {
-          "v1.raw.jar": "GGL0ob8eJm+yOvHbUZfkFhTzzwIf156mAOEh5s0s1tk=",
-          "sha_256": "X8tTQyqpehlM8YaFdeIpOyfvVWgT0BaOeSezRuwJag0=",
-          "v1.mavencentral.jar": "tlgbz/LZtVJXxPYdlSH+dNfqJJE=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-        }
-      },
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/middle.jar/middle/deepest.jar",
-        "fingerprints": {
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "sha_256": "TdKTi6xNJw58AmWLwU5BqiSDquEeHqfpkZQvwVA/NTY=",
-          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-          "v1.mavencentral.jar": "8JPFcgZI0LwAjuzhp8jD3EyXDFw="
-        }
-      }
-    ],
-    "blobs/sha256/d6823f4be79edfb1e8ace71a9bc86da09616b987a238234d8d8327a8fd28e73f": [
+    "blobs/sha256/3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992": [
       {
         "kind": "v1.discover.binary.jar",
         "path": "jars/deepest.jar",
         "fingerprints": {
+          "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
+        }
+      }
+    ],
+    "blobs/sha256/5ee98bff2cf0e70d115677fc37f734d26848435eef5fe52e905229ff7a7d87fb": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/middle.jar",
+        "fingerprints": {
+          "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+          "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI="
+        }
+      },
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/middle.jar/deepest.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+          "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
           "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-          "sha_256": "TdKTi6xNJw58AmWLwU5BqiSDquEeHqfpkZQvwVA/NTY=",
-          "v1.mavencentral.jar": "8JPFcgZI0LwAjuzhp8jD3EyXDFw=",
           "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
         }
       }
     ],
-    "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": []
+    "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
+    "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
+    "blobs/sha256/10bb0e91eb016af401369ecaadccfea9f4768776e54d46ad4e9a0309c82f1d7f": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/top.jar",
+        "fingerprints": {
+          "v1.raw.jar": "TNW7ezd3fqw3MULVTrexg68Q1x2PTDGk2DkltAqUefk=",
+          "v1.mavencentral.jar": "TtwsgEXwLd/8UFTohsFhJqYMJ74=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "sha_256": "l9XTA5PwWJhnFlz9t0SWKvr2cHDmcytIVvPsr6vqFis="
+        }
+      },
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/top.jar/middle.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI=",
+          "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k="
+        }
+      },
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/top.jar/middle.jar/deepest.jar",
+        "fingerprints": {
+          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+          "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+          "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+        }
+      }
+    ]
   }
 }
 "#;
@@ -380,6 +380,7 @@ mod tests {
     // It also includes middle.jar and deepest.jar
     // So we should find 6 total jars: three from top.jar and its nested jars, two from middle.jar and its nested jar and then deepest.jar
     // We are also testing that the fingerprints from the nested jars are equal to the fingerprints when they are at top-level
+    // See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
     #[test]
     fn it_finds_nested_jars() {
         let image_tar_file =
