@@ -287,81 +287,6 @@ mod tests {
 }
 "#;
 
-    const NESTED_JARS_MILLHONE_OUT: &str = r#"
-{
-  "discovered_jars": {
-    "blobs/sha256/3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/deepest.jar",
-        "fingerprints": {
-          "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
-          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
-        }
-      }
-    ],
-    "blobs/sha256/5ee98bff2cf0e70d115677fc37f734d26848435eef5fe52e905229ff7a7d87fb": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/middle.jar",
-        "fingerprints": {
-          "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
-          "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI="
-        }
-      },
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/middle.jar/deepest.jar",
-        "fingerprints": {
-          "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
-          "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
-          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-        }
-      }
-    ],
-    "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
-    "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
-    "blobs/sha256/10bb0e91eb016af401369ecaadccfea9f4768776e54d46ad4e9a0309c82f1d7f": [
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/top.jar",
-        "fingerprints": {
-          "v1.raw.jar": "TNW7ezd3fqw3MULVTrexg68Q1x2PTDGk2DkltAqUefk=",
-          "v1.mavencentral.jar": "TtwsgEXwLd/8UFTohsFhJqYMJ74=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "sha_256": "l9XTA5PwWJhnFlz9t0SWKvr2cHDmcytIVvPsr6vqFis="
-        }
-      },
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/top.jar/middle.jar",
-        "fingerprints": {
-          "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI=",
-          "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k="
-        }
-      },
-      {
-        "kind": "v1.discover.binary.jar",
-        "path": "jars/top.jar/middle.jar/deepest.jar",
-        "fingerprints": {
-          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-          "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
-          "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
-        }
-      }
-    ]
-  }
-}
-"#;
-
     #[test]
     fn it_finds_expected_output() {
         let image_tar_file =
@@ -383,6 +308,83 @@ mod tests {
     // See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
     #[test]
     fn it_finds_nested_jars() {
+        let nested_jars_millhone_out: String = format!(
+            r#"
+        {{
+          "discovered_jars": {{
+            "blobs/sha256/3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/deepest.jar",
+                "fingerprints": {{
+                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
+                }}
+              }}
+            ],
+            "blobs/sha256/5ee98bff2cf0e70d115677fc37f734d26848435eef5fe52e905229ff7a7d87fb": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/middle.jar",
+                "fingerprints": {{
+                  "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+                  "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI="
+                }}
+              }},
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/middle.jar{separator}deepest.jar",
+                "fingerprints": {{
+                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+                }}
+              }}
+            ],
+            "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
+            "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
+            "blobs/sha256/10bb0e91eb016af401369ecaadccfea9f4768776e54d46ad4e9a0309c82f1d7f": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/top.jar",
+                "fingerprints": {{
+                  "v1.raw.jar": "TNW7ezd3fqw3MULVTrexg68Q1x2PTDGk2DkltAqUefk=",
+                  "v1.mavencentral.jar": "TtwsgEXwLd/8UFTohsFhJqYMJ74=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "sha_256": "l9XTA5PwWJhnFlz9t0SWKvr2cHDmcytIVvPsr6vqFis="
+                }}
+              }},
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/top.jar{separator}middle.jar",
+                "fingerprints": {{
+                  "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI=",
+                  "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k="
+                }}
+              }},
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/top.jar{separator}middle.jar{separator}deepest.jar",
+                "fingerprints": {{
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+                }}
+              }}
+            ]
+          }}
+        }}
+        "#,
+            separator = std::path::MAIN_SEPARATOR
+        );
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
         let res = jars_in_container(&image_tar_file)
@@ -390,7 +392,7 @@ mod tests {
             .pipe(serde_json::to_value)
             .expect("encode as json");
         let expected: Value =
-            serde_json::from_str(NESTED_JARS_MILLHONE_OUT).expect("Parse expected json");
+            serde_json::from_str(&nested_jars_millhone_out).expect("Parse expected json");
         pretty_assertions::assert_eq!(expected, res);
     }
 }
