@@ -287,6 +287,47 @@ mod tests {
 }
 "#;
 
+    const NESTED_JARS_MILLHONE_OUT: &str = r#"
+{
+  "discovered_jars": {
+    "blobs/sha256/3d1e361d3f24bb518fc137ec2aad83889f48da150f0abba07a09f80dcb625fa1": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/top.jar",
+        "fingerprints": {
+          "sha_256": "/0zLgPr1B08BipWOe+Yk1Q4BLiDMKus1wRLZDgJfh50=",
+          "v1.raw.jar": "pPjvBGx5kp/d07A0UVGeFwf2Jcb9fDSudfdD63p0Zo4=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "v1.mavencentral.jar": "Oox7gNDPJSNRvHFUuwmVScgOs9g="
+        }
+      },
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/top.jar/top/middle.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "18EZ55m9DzLWwx59b7TjtGRCX24=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "sha_256": "CDEzfwwtG6MheCj70Fx6oKtkpeMJvyErNrExYJZQh14=",
+          "v1.raw.jar": "72zhFDX7n7NUz/PV6c6vAbbxTBi/miwefUpuIyPieow="
+        }
+      },
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/top.jar/top/middle.jar/middle/deepest.jar",
+        "fingerprints": {
+          "v1.mavencentral.jar": "nCn5pz7xTBTfkl6zCy5ckLciO+Q=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "sha_256": "A3dV1/X8rvn58Ek+dE375gcShq7EGgamuy5+v7RyU+4=",
+          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
+        }
+      }
+    ],
+    "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
+    "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": []
+  }
+}
+"#;
+
     #[test]
     fn it_finds_expected_output() {
         let image_tar_file =
@@ -298,6 +339,19 @@ mod tests {
             .expect("encode as json");
 
         let expected: Value = serde_json::from_str(MILLHONE_OUT).expect("Parse expected json");
+        pretty_assertions::assert_eq!(expected, res);
+    }
+
+    #[test]
+    fn it_finds_nested_jars() {
+        let image_tar_file =
+            PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
+        let res = jars_in_container(&image_tar_file)
+            .expect("Read jars out of container image.")
+            .pipe(serde_json::to_value)
+            .expect("encode as json");
+        let expected: Value =
+            serde_json::from_str(NESTED_JARS_MILLHONE_OUT).expect("Parse expected json");
         pretty_assertions::assert_eq!(expected, res);
     }
 }
