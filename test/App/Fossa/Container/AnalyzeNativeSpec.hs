@@ -250,7 +250,7 @@ nestedJarsInContainerSpec :: Spec
 nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> nestedJarsInContainerImage
-      baseLayerId = "sha256:3d1e361d3f24bb518fc137ec2aad83889f48da150f0abba07a09f80dcb625fa1"
+      baseLayerId = "sha256:d6823f4be79edfb1e8ace71a9bc86da09616b987a238234d8d8327a8fd28e73f"
       otherLayerId = "sha256:6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096"
 
   it' "Reads and merges the layers correctly" $ do
@@ -269,5 +269,5 @@ nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
     -- There is only one jar in the base layer, but it contains a jar that contains a jar.
     -- So this is testing that we recursively extract the jars
     -- See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
-    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 3
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 6
     (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 0
