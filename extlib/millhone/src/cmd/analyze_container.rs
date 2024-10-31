@@ -290,40 +290,74 @@ mod tests {
     const NESTED_JARS_MILLHONE_OUT: &str = r#"
 {
   "discovered_jars": {
-    "blobs/sha256/3d1e361d3f24bb518fc137ec2aad83889f48da150f0abba07a09f80dcb625fa1": [
+    "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
+    "blobs/sha256/476a31a60256751ca7e964c27116baa64645c6149d7d280fc0078bc685133595": [
       {
         "kind": "v1.discover.binary.jar",
         "path": "jars/top.jar",
         "fingerprints": {
-          "sha_256": "/0zLgPr1B08BipWOe+Yk1Q4BLiDMKus1wRLZDgJfh50=",
-          "v1.raw.jar": "pPjvBGx5kp/d07A0UVGeFwf2Jcb9fDSudfdD63p0Zo4=",
           "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "v1.mavencentral.jar": "Oox7gNDPJSNRvHFUuwmVScgOs9g="
+          "v1.raw.jar": "4l2etq8x/3TQcj1C4yFa4wxvX5AGS4rYrx8ZGvPkSwA=",
+          "sha_256": "EV1BNzRoI5CHQ5J0d82tkXOLCMW7oZkUmkg5MJu2y0s=",
+          "v1.mavencentral.jar": "CUS65nUip+7ij6tkZU1dYp6LFuo="
         }
       },
       {
         "kind": "v1.discover.binary.jar",
         "path": "jars/top.jar/top/middle.jar",
         "fingerprints": {
-          "v1.mavencentral.jar": "18EZ55m9DzLWwx59b7TjtGRCX24=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "sha_256": "CDEzfwwtG6MheCj70Fx6oKtkpeMJvyErNrExYJZQh14=",
-          "v1.raw.jar": "72zhFDX7n7NUz/PV6c6vAbbxTBi/miwefUpuIyPieow="
+          "sha_256": "X8tTQyqpehlM8YaFdeIpOyfvVWgT0BaOeSezRuwJag0=",
+          "v1.raw.jar": "GGL0ob8eJm+yOvHbUZfkFhTzzwIf156mAOEh5s0s1tk=",
+          "v1.mavencentral.jar": "tlgbz/LZtVJXxPYdlSH+dNfqJJE=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
         }
       },
       {
         "kind": "v1.discover.binary.jar",
         "path": "jars/top.jar/top/middle.jar/middle/deepest.jar",
         "fingerprints": {
-          "v1.mavencentral.jar": "nCn5pz7xTBTfkl6zCy5ckLciO+Q=",
-          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-          "sha_256": "A3dV1/X8rvn58Ek+dE375gcShq7EGgamuy5+v7RyU+4=",
-          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
+          "sha_256": "TdKTi6xNJw58AmWLwU5BqiSDquEeHqfpkZQvwVA/NTY=",
+          "v1.mavencentral.jar": "8JPFcgZI0LwAjuzhp8jD3EyXDFw=",
+          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
         }
       }
     ],
-    "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
-    "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": []
+    "blobs/sha256/93a60e4656371bfa42d5f8aefc1e886f8bce0a57f6613107d07ae2329167b27c": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/middle.jar",
+        "fingerprints": {
+          "v1.raw.jar": "GGL0ob8eJm+yOvHbUZfkFhTzzwIf156mAOEh5s0s1tk=",
+          "sha_256": "X8tTQyqpehlM8YaFdeIpOyfvVWgT0BaOeSezRuwJag0=",
+          "v1.mavencentral.jar": "tlgbz/LZtVJXxPYdlSH+dNfqJJE=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+        }
+      },
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/middle.jar/middle/deepest.jar",
+        "fingerprints": {
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+          "sha_256": "TdKTi6xNJw58AmWLwU5BqiSDquEeHqfpkZQvwVA/NTY=",
+          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+          "v1.mavencentral.jar": "8JPFcgZI0LwAjuzhp8jD3EyXDFw="
+        }
+      }
+    ],
+    "blobs/sha256/d6823f4be79edfb1e8ace71a9bc86da09616b987a238234d8d8327a8fd28e73f": [
+      {
+        "kind": "v1.discover.binary.jar",
+        "path": "jars/deepest.jar",
+        "fingerprints": {
+          "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+          "sha_256": "TdKTi6xNJw58AmWLwU5BqiSDquEeHqfpkZQvwVA/NTY=",
+          "v1.mavencentral.jar": "8JPFcgZI0LwAjuzhp8jD3EyXDFw=",
+          "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+        }
+      }
+    ],
+    "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": []
   }
 }
 "#;
@@ -342,6 +376,10 @@ mod tests {
         pretty_assertions::assert_eq!(expected, res);
     }
 
+    // This container contains top.jar which contains middle.jar, which contains deepest.jar
+    // It also includes middle.jar and deepest.jar
+    // So we should find 6 total jars: three from top.jar and its nested jars, two from middle.jar and its nested jar and then deepest.jar
+    // We are also testing that the fingerprints from the nested jars are equal to the fingerprints when they are at top-level
     #[test]
     fn it_finds_nested_jars() {
         let image_tar_file =
