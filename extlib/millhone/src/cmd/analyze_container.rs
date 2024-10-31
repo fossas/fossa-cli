@@ -132,7 +132,7 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
                 Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
             let mut discovered_in_jars =
-                recursive_jars_in_jars(&entry, path).context("recursively discover jars")?;
+                recursive_jars_in_jars(&entry, path, 0).context("recursively discover jars")?;
             discoveries.append(&mut discovered_in_jars);
 
             Ok(())
@@ -142,11 +142,17 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
     Ok(discoveries)
 }
 
+const MAX_JAR_DEPTH: u32 = 100;
+
 #[tracing::instrument(skip(jar_contents))]
 fn recursive_jars_in_jars(
     jar_contents: &[u8],
     containing_jar_path: PathBuf,
+    depth: u32,
 ) -> Result<Vec<DiscoveredJar>> {
+    if depth > MAX_JAR_DEPTH {
+        return Ok(vec![]);
+    }
     let mut discoveries = Vec::new();
     let mut archive =
         zip::ZipArchive::new(std::io::Cursor::new(jar_contents)).context("unzipping jar")?;
@@ -180,8 +186,8 @@ fn recursive_jars_in_jars(
         }
 
         // recursively find more jars
-        let mut discovered_in_jars =
-            recursive_jars_in_jars(&buffer, joined_path).context("recursively discover jars")?;
+        let mut discovered_in_jars = recursive_jars_in_jars(&buffer, joined_path, depth + 1)
+            .context("recursively discover jars")?;
         discoveries.append(&mut discovered_in_jars);
     }
     Ok(discoveries)
