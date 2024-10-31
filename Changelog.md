@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
 ## 3.9.38
-- Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file. ([#1476](https://github.com/fossas/fossa-cli/pull/1476))
+- Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file. ([#1475](https://github.com/fossas/fossa-cli/pull/1475))
+- Fixes a small typo in an error heading ([#1476](https://github.com/fossas/fossa-cli/pull/1476))
 - Licensing: Adds support for a handful of new licenses and EULAs (No PR)
   - ActiPro License Agreement, Versions 2009, 2020, 2021, and 2021-10-28
   - Authorized Dynatrace Customer Subscription Agreement
