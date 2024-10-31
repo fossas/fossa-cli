@@ -1,0 +1,19 @@
+#!/opt/homebrew/bin/bash
+rm -rf nested-jar
+mkdir nested-jar
+cd nested-jar || exit
+mkdir deepest
+echo "deepest" > deepest/something.txt
+zip deepest.zip deepest/*
+
+mkdir middle
+echo "middle" > middle/something.txt
+cp deepest.zip middle/deepest.jar
+zip middle.zip middle/*
+
+mkdir top
+echo "top" > top/something.txt
+cp middle.zip top/middle.jar
+zip top.zip top/*
+
+cp top.zip ../top.jar
