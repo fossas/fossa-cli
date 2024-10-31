@@ -383,7 +383,7 @@ mod tests {
           }}
         }}
         "#,
-            separator = std::path::MAIN_SEPARATOR
+            separator = std::path::MAIN_SEPARATOR_STR.replace("\\", "\\\\")
         );
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
