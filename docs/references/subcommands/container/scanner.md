@@ -194,7 +194,7 @@ image manifests, and image artifacts from registry. It does so in following mann
 4) Download all blobs using `GET /v2/<repository>/blobs/<digest>` (if blobs are tar.gzip, they will be gzip extracted)
 5) From artifacts downloaded representative image tarball will be created.
 
-All `GET` request from step 2 to step 5, will make `HEAD` call prior to confirm existence of resource. If
+All `GET` request from step 2 to step 5, will make a `HEAD` call prior to confirm existence of resource. If
 401 status is received new access token will be generated using auth flow mentioned in step (1).
 
 ## Container image analysis
