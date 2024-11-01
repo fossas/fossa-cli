@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs::File,
     io::{BufWriter, Read},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use clap::Parser;
@@ -125,15 +125,70 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
             debug!("fingerprinting");
             let entry = buffer(entry).context("read jar file")?;
 
-            match Combined::from_buffer(entry) {
-                Ok(fingerprints) => discoveries.push(DiscoveredJar::new(path, fingerprints)),
+            match Combined::from_buffer(entry.clone()) {
+                Ok(fingerprints) => {
+                    discoveries.push(DiscoveredJar::new(path.clone(), fingerprints))
+                }
                 Err(e) => warn!("failed to fingerprint: {e:?}"),
             }
+            let mut discovered_in_jars =
+                recursive_jars_in_jars(&entry, path, 0).context("recursively discover jars")?;
+            discoveries.append(&mut discovered_in_jars);
 
             Ok(())
         })?;
     }
 
+    Ok(discoveries)
+}
+
+const MAX_JAR_DEPTH: u32 = 100;
+
+#[tracing::instrument(skip(jar_contents))]
+fn recursive_jars_in_jars(
+    jar_contents: &[u8],
+    containing_jar_path: PathBuf,
+    depth: u32,
+) -> Result<Vec<DiscoveredJar>> {
+    if depth > MAX_JAR_DEPTH {
+        return Ok(vec![]);
+    }
+    let mut discoveries = Vec::new();
+    let mut archive =
+        zip::ZipArchive::new(std::io::Cursor::new(jar_contents)).context("unzipping jar")?;
+    for path in archive.clone().file_names() {
+        debug!("file_name: {path}");
+        if !path.ends_with(".jar") {
+            continue;
+        }
+
+        debug!(?path, "jar file found");
+        let mut zip_file = archive
+            .by_name(path)
+            .context("getting zip file info by path")?;
+        if !zip_file.is_file() {
+            debug!(?path, "skipped: not a file");
+            continue;
+        }
+        let mut buffer: Vec<u8> = Vec::new();
+        zip_file
+            .read_to_end(&mut buffer)
+            .context("reading jar from zip into buffer")?;
+        let joined_path = Path::new(&containing_jar_path).join(path);
+
+        // fingerprint the jar
+        match Combined::from_buffer(buffer.clone()) {
+            Ok(fingerprints) => {
+                discoveries.push(DiscoveredJar::new(joined_path.clone(), fingerprints))
+            }
+            Err(e) => warn!("failed to fingerprint: {e:?}"),
+        }
+
+        // recursively find more jars
+        let mut discovered_in_jars = recursive_jars_in_jars(&buffer, joined_path, depth + 1)
+            .context("recursively discover jars")?;
+        discoveries.append(&mut discovered_in_jars);
+    }
     Ok(discoveries)
 }
 
@@ -248,6 +303,101 @@ mod tests {
             .expect("encode as json");
 
         let expected: Value = serde_json::from_str(MILLHONE_OUT).expect("Parse expected json");
+        pretty_assertions::assert_eq!(expected, res);
+    }
+
+    // This container contains top.jar which contains middle.jar, which contains deepest.jar
+    // It also includes middle.jar and deepest.jar
+    // So we should find 6 total jars: three from top.jar and its nested jars, two from middle.jar and its nested jar and then deepest.jar
+    // We are also testing that the fingerprints from the nested jars are equal to the fingerprints when they are at top-level
+    // See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
+    #[test]
+    fn it_finds_nested_jars() {
+        let nested_jars_millhone_out: String = format!(
+            r#"
+        {{
+          "discovered_jars": {{
+            "blobs/sha256/3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/deepest.jar",
+                "fingerprints": {{
+                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
+                }}
+              }}
+            ],
+            "blobs/sha256/5ee98bff2cf0e70d115677fc37f734d26848435eef5fe52e905229ff7a7d87fb": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/middle.jar",
+                "fingerprints": {{
+                  "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+                  "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI="
+                }}
+              }},
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/middle.jar{separator}deepest.jar",
+                "fingerprints": {{
+                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+                }}
+              }}
+            ],
+            "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
+            "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
+            "blobs/sha256/10bb0e91eb016af401369ecaadccfea9f4768776e54d46ad4e9a0309c82f1d7f": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/top.jar",
+                "fingerprints": {{
+                  "v1.raw.jar": "TNW7ezd3fqw3MULVTrexg68Q1x2PTDGk2DkltAqUefk=",
+                  "v1.mavencentral.jar": "TtwsgEXwLd/8UFTohsFhJqYMJ74=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "sha_256": "l9XTA5PwWJhnFlz9t0SWKvr2cHDmcytIVvPsr6vqFis="
+                }}
+              }},
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/top.jar{separator}middle.jar",
+                "fingerprints": {{
+                  "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI=",
+                  "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k="
+                }}
+              }},
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/top.jar{separator}middle.jar{separator}deepest.jar",
+                "fingerprints": {{
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
+                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
+                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+                }}
+              }}
+            ]
+          }}
+        }}
+        "#,
+            separator = std::path::MAIN_SEPARATOR_STR.replace("\\", "\\\\")
+        );
+        let image_tar_file =
+            PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
+        let res = jars_in_container(&image_tar_file)
+            .expect("Read jars out of container image.")
+            .pipe(serde_json::to_value)
+            .expect("encode as json");
+        let expected: Value =
+            serde_json::from_str(&nested_jars_millhone_out).expect("Parse expected json");
         pretty_assertions::assert_eq!(expected, res);
     }
 }

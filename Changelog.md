@@ -13,6 +13,7 @@
   - Microsoft SQL Server 2019 Developer, 2019 Evaluation, and 2019 Express
   - Microsoft SQL Server 2022 Enterprise, Standard, Web
   - Viskoe.dk Terms of Use
+- Container scanning: Recursively find jars within jars ([#1478](https://github.com/fossas/fossa-cli/pull/1478))
 
 ## 3.9.37
 

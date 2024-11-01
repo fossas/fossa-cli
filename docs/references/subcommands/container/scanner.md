@@ -1,14 +1,14 @@
 # FOSSA's container scanner
 
-- [FOSSA's container scanner](#fossas-new-container-scanner)
-  - [What's new in this scanner?](#whats-new-in-this-scanner)
+- [FOSSA's container scanner](#fossas-container-scanner)
+  - [What's supported in FOSSA's container scanner?](#whats-supported-in-fossas-container-scanner)
 - [Documentation](#documentation)
   - [Container image source](#container-image-source)
     - [1) Exported docker archive](#1-exported-docker-archive)
     - [2) From Docker Engine](#2-from-docker-engine)
     - [3) From registries](#3-from-registries)
   - [Container image analysis](#container-image-analysis)
-    - [Container Jar analysis](#container-jar-analysis)
+    - [Container JAR analysis](#container-jar-analysis)
     - [Distroless Containers](#distroless-containers)
     - [Supported Container Package Managers](#supported-container-package-managers)
     - [View detected projects](#view-detected-projects)
@@ -19,7 +19,7 @@
       - [How do I scan multi-platform container images with `fossa-cli`?](#how-do-i-scan-multi-platform-container-images-with-fossa-cli)
     - [How can I only scan for system dependencies (alpine, dpkg, rpm)?](#how-can-i-only-scan-for-system-dependencies-alpine-dpkg-rpm)
     - [How do I exclude specific projects from container scanning?](#how-do-i-exclude-specific-projects-from-container-scanning)
-  - [Limitations & Workarounds](#limitations--workarounds)
+  - [Limitations \& Workarounds](#limitations--workarounds)
 
 ## What's supported in FOSSA's container scanner?
 
@@ -50,9 +50,9 @@ To scan a container image with `fossa-cli`, use the `container analyze` command:
 # This command uses the repository name as project name, and image digest as the revision.
 # Like standard FOSSA analysis, the project name is customizable via `--project` and revision via `--revision`:
 #
-#   >> fossa container analyze <IMAGE> --project <PROJECT-NAME> --revision <REVISION-VALUE> 
+#   >> fossa container analyze <IMAGE> --project <PROJECT-NAME> --revision <REVISION-VALUE>
 #
-fossa container analyze <IMAGE> 
+fossa container analyze <IMAGE>
 
 # Similar to the above, but instead of uploading the results they are instead written to the terminal in JSON format.
 #
@@ -89,13 +89,13 @@ By default `fossa-cli` attempts to identify `<IMAGE>` source in the following or
 
 ```bash
 docker save redis:alpine > redis_alpine.tar
-fossa container analyze redis_alpine.tar 
+fossa container analyze redis_alpine.tar
 ```
 
 ### 2) From Docker Engine
 
 ```bash
-fossa container analyze redis:alpine 
+fossa container analyze redis:alpine
 ```
 
 For this image source to work, `fossa-cli` requires docker to be running and accessible.
@@ -118,7 +118,7 @@ curl --unix-socket /var/run/docker.sock -X GET "http://localhost/v1.28/images/re
 ### 3) From registries
 
 ```bash
-fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2 
+fossa container analyze ghcr.io/fossas/haskell-dev-tools:9.0.2
 ```
 
 This step works even if you do not have docker installed or have docker engine accessible.
@@ -138,17 +138,17 @@ If `<IMAGE>` is not a docker image archive and is not accessible via the docker 
 | `quay.io/org/image:tag`                           | `quay.io`                            | `org/image`                | `tag`                          |
 
 Note:
-- When the domain is not present, `fossa-cli` defaults to the registry `index.docker.io`. 
-- When digest or tag is not present, `fossa-cli` defaults to the tag `latest`. 
-- When the registry is `index.docker.io`, and repository does not contain the literal `/`, `fossa-cli` infers that this is official image stored under `library/<image>`. 
-- When a multi-platform image is provided (e.g. `ghcr.io/graalvm/graalvm-ce:ol7-java11-21.3.3`), `fossa-cli` defaults to selecting image artifacts for current runtime platform. 
+- When the domain is not present, `fossa-cli` defaults to the registry `index.docker.io`.
+- When digest or tag is not present, `fossa-cli` defaults to the tag `latest`.
+- When the registry is `index.docker.io`, and repository does not contain the literal `/`, `fossa-cli` infers that this is official image stored under `library/<image>`.
+- When a multi-platform image is provided (e.g. `ghcr.io/graalvm/graalvm-ce:ol7-java11-21.3.3`), `fossa-cli` defaults to selecting image artifacts for current runtime platform.
 
 Analyzing the container image for a platform other than the one currently running is possible by specifying the digest for the image on a different platform.
 
 For example, the following command analyzes the `arm64` platform image of `ghcr.io/graalvm/graalvm-ce@sha256` regardless of the platform running `fossa container analyze`:
 
 ```bash
-fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef 
+fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef
 ```
 
 **Private registries**
@@ -171,18 +171,18 @@ This is done in following steps:
 }
 ```
 
-If any of the steps above fail, `fossa-cli` defaults to connecting without user credentials. 
-   
+If any of the steps above fail, `fossa-cli` defaults to connecting without user credentials.
+
 To explicitly provide a username and password, use HTTP-style authentication in the image URL.
 For this to work the host value must be present in the image URL:
 
 ```bash
-fossa container analyze user:secret@quay.io/org/image:tag 
+fossa container analyze user:secret@quay.io/org/image:tag
 ```
 
 **Retrieving image from registry**
 
-`fossa-cli` uses `/v2/` registry api (per OCI distribution spec) for retrieving 
+`fossa-cli` uses `/v2/` registry api (per OCI distribution spec) for retrieving
 image manifests, and image artifacts from registry. It does so in following manner:
 
 1) `HEAD <repository>/manifests/<tag-or-digest>` (to see if the manifests exists)
@@ -194,19 +194,21 @@ image manifests, and image artifacts from registry. It does so in following mann
 4) Download all blobs using `GET /v2/<repository>/blobs/<digest>` (if blobs are tar.gzip, they will be gzip extracted)
 5) From artifacts downloaded representative image tarball will be created.
 
-All `GET` request from step 2 to step 5, will make `HEAD` call prior to confirm existence of resource. If 
+All `GET` request from step 2 to step 5, will make a `HEAD` call prior to confirm existence of resource. If
 401 status is received new access token will be generated using auth flow mentioned in step (1).
 
 ## Container image analysis
 
 The container scanner scans in two steps:
 1. The base layer.
-2. The rest of the layers, squashed. 
+2. The rest of the layers, squashed.
 
 ### Container JAR analysis
 
 The container analyzer will try to find Java Archive (Jar) files inside each layer.
 It will then report them to FOSSA which will try to match the Jar files to the project they are a build artifact from.
+
+The container analyzer will also expand each Jar file that it encounters and report any Jar files that it finds in the expanded Jar file. This is done recursively.
 
 This process relies on there being a back-end that can perform that analysis.
 SaaS customers should have this functionality available but on-prem customers may need to contact FOSSA support to have it enabled.
@@ -264,7 +266,7 @@ and if desired can inform [analysis target configuration](../../files/fossa-yml.
 
 Example output:
 ```bash
-; fossa container list-targets ghcr.io/tcort/markdown-link-check:stable  
+; fossa container list-targets ghcr.io/tcort/markdown-link-check:stable
 
 [ INFO] Discovered image for: ghcr.io/tcort/markdown-link-check:stable (of 137610196 bytes) via docker engine api.
 [ INFO] Exporting docker image to temp file: /private/var/folders/hb/pg5d0r196kq1qdswr6_79hzh0000gn/T/fossa-docker-engine-tmp-f7af2b5d1ec5173d/image.tar! This may take a while!
@@ -296,7 +298,7 @@ exclude:
 
 ### Debugging
 
-`fossa-cli` supports the `--debug` flag and debug bundle generation with the container scanner. 
+`fossa-cli` supports the `--debug` flag and debug bundle generation with the container scanner.
 
 ```bash
 fossa container analyze redis:alpine --debug
@@ -315,7 +317,7 @@ Images can be exported to archives using Docker:
 docker pull <IMAGE>:<TAG> # or docker pull <IMAGE>@<DIGEST>
 docker save <IMAGE>:<TAG> > image.tar
 
-fossa container analyze image.tar --container scanner 
+fossa container analyze image.tar --container scanner
 
 rm image.tar
 ```
@@ -328,7 +330,7 @@ By default when `fossa-cli` is analyzing multi-platform image it prefers using t
 If a specific platform is desired, use the digest for that platform:
 
 ```bash
-fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef 
+fossa container analyze ghcr.io/graalvm/graalvm-ce@sha256:bdcba07acb11053fea0026b807ecf94550ace7df27b10596ca4c765165243cef
 ```
 
 ### How can I only scan for system dependencies (alpine, dpkg, rpm)?
@@ -342,7 +344,7 @@ fossa container analyze <IMAGE> --only-system-deps
 ### How do I exclude specific projects from container scanning?
 
 Use a FOSSA configuration file to perform exclusion of projects or paths.
-Refer to the [configuration file](./../../files/fossa-yml.md) documentation for more details. 
+Refer to the [configuration file](./../../files/fossa-yml.md) documentation for more details.
 
 As an example, the following configuration file only analyzes `setuptools`, and `alpine` packages:
 
@@ -371,7 +373,7 @@ The recommended workaround is to export the image to an archive, then analyze th
 docker pull quay.io/org/image:tag
 docker save quay.io/org/image:tag > img.tar
 
-fossa container analyze img.tar 
+fossa container analyze img.tar
 rm img.tar
 ```
 

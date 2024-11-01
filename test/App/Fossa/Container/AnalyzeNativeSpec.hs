@@ -54,6 +54,7 @@ spec = do
   dockerEngineSpec
   analyzeSpec
   jarsInContainerSpec
+  nestedJarsInContainerSpec
 
 dockerEngineSpec :: Spec
 dockerEngineSpec = describe "parseDockerEngineSource" $ do
@@ -241,3 +242,33 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
             }
 
     Map.lookup otherLayerId srcUnitsMap `shouldBe'` Just [expectedSrcUnit]
+
+nestedJarsInContainerImage :: Path Rel File
+nestedJarsInContainerImage = $(mkRelFile "test/App/Fossa/Container/testdata/nested_jars.tar")
+
+nestedJarsInContainerSpec :: Spec
+nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
+  currDir <- runIO getCurrentDir
+  let imageArchivePath = currDir </> nestedJarsInContainerImage
+      baseLayerId = "sha256:3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992"
+      otherLayerId = "sha256:6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096"
+
+  it' "Reads and merges the layers correctly" $ do
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    let layerIds = map layerId imageLayers
+    layerIds
+      `shouldMatchList'` [baseLayerId, otherLayerId]
+
+  it' "Each layer should have the expected number of JAR observations" $ do
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    let observationsMap = Map.fromList $ map (\layer -> (layerId layer, observations layer)) imageLayers
+
+    -- The CLI only passes observations along without inspecting them.
+    -- So this test just checks that the number of them that we expect are there.
+    -- More specific tests for observation content are in Millhone.
+    -- This container contains top.jar which contains middle.jar, which contains deepest.jar
+    -- It also directly includes middle.jar and deepest.jar
+    -- So we should find 6 total jars: three from top.jar and its nested jars, two from middle.jar and its nested jar and then deepest.jar
+    -- See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 6
+    (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 0
