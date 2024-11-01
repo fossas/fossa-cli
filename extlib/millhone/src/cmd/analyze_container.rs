@@ -158,11 +158,11 @@ fn recursive_jars_in_jars(
         zip::ZipArchive::new(std::io::Cursor::new(jar_contents)).context("unzipping jar")?;
     for path in archive.clone().file_names() {
         debug!("file_name: {path}");
-
         if !path.ends_with(".jar") {
-            debug!(?path, "skipped: not a jar file");
             continue;
         }
+
+        debug!(?path, "jar file found");
         let mut zip_file = archive
             .by_name(path)
             .context("getting zip file info by path")?;
@@ -174,7 +174,6 @@ fn recursive_jars_in_jars(
         zip_file
             .read_to_end(&mut buffer)
             .context("reading jar from zip into buffer")?;
-
         let joined_path = Path::new(&containing_jar_path).join(path);
 
         // fingerprint the jar
