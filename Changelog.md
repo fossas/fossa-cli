@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.39
+- Licensing: Add PSF-3.12.7 and correcting MulanPSL. Add a new public-domain rule (No PR)
+
 ## 3.9.38
 - Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file. ([#1475](https://github.com/fossas/fossa-cli/pull/1475))
 - Fixes a small typo in an error heading ([#1476](https://github.com/fossas/fossa-cli/pull/1476))
