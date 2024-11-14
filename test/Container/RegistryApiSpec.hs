@@ -150,10 +150,9 @@ dhImageWithDigest =
 grafanaMultiArchImage :: Text
 grafanaMultiArchImage = "grafana/grafana:8.1.7-ubuntu"
 
--- TODO
 grafanaMultiArchImageDigest :: RepoDigest
 grafanaMultiArchImageDigest =
-  RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
+  RepoDigest "sha256:ce1398ea33a7afcbc577e417d1a499aeeba6b5be732a2336995916406c913833"
 
 mcrRegistryImage :: Text
 mcrRegistryImage = "mcr.microsoft.com/azure-cli:0.10.13"
@@ -171,7 +170,7 @@ redisImage :: Text
 redisImage = "redis:6.0.14-buster"
 
 redisImageDigest :: RepoDigest
-redisImageDigest = RepoDigest "sha256:dd347200af9dbdb9a5f55851d1a0b8b5fb89462b94e84ac0bba89dfec30504fb"
+redisImageDigest = RepoDigest "sha256:86813a7dd3971d9b8088bb34fd894d2cf18a48679d3d8d958a1a0bd4955e6cef"
 
 haskellDevImage :: Text
 haskellDevImage = "ghcr.io/fossas/haskell-dev-tools:9.0.2"
