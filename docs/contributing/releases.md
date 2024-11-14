@@ -14,8 +14,9 @@ We'll assume that you want to release all changes currently on `master`.  You sh
     git checkout master
     git pull origin
 
-    git tag -a vX.Y.Z -m "Releases vX.Y.Z"
-    git push origin vX.Y.Z
+    export TAG_NAME="vX.Y.Z"
+    git tag -a $TAG_NAME -m "Releases $TAG_NAME"
+    git push origin $TAG_NAME
     ```
     Replace `vX.Y.Z` with your version number, such as `v3.1.4`.  The tag _must_ start with `v`.
 3. GitHub Actions will take the tag and run some tests before generating a draft release which can be found on the [releases page](https://github.com/fossas/fossa-cli/releases).
