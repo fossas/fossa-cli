@@ -150,6 +150,7 @@ dhImageWithDigest =
 grafanaMultiArchImage :: Text
 grafanaMultiArchImage = "grafana/grafana:8.1.7-ubuntu"
 
+-- TODO
 grafanaMultiArchImageDigest :: RepoDigest
 grafanaMultiArchImageDigest =
   RepoDigest "sha256:86618e1e78e4962b5abec6cc7fabe89010ebfbbf0885cbba1aada7287457c263"
