@@ -5,25 +5,25 @@ jobs:
   dependency-scan:
     name: dependency-scan
     runs-on: ubuntu-latest
+    env:
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Debugging information
+      
+      - name: Log debug information
         run: |
           ghc --version || echo "no ghc"
           cabal --version || echo "no cabal"
           ghcup --version || echo "no ghcup"
 
-      - name: Update cabal cache for spectrometer run
-        run: |
-          cabal update
+      - name: Update cabal cache
+        run: cabal update
 
-      - name: Install spectrometer from github
-        run: |
-          ./install-latest.sh -d
+      - name: Install latest release from github
+        run: ./install-latest.sh -d
 
-      - name: Use Spectrometer's GHC and Cabal
+      - name: Install and set GHC and Cabal versions
         # The first line works around a ghcup issue:
         # https://github.com/actions/runner-images/issues/7061#issuecomment-1422639889
         run: |
@@ -34,14 +34,8 @@ jobs:
           ghcup set cabal 3.6.2.0
           cabal update
 
-      - name: Run dependency scan on Spectrometer
-        env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
-        run: |
-          fossa analyze --only-target cabal --only-target cargo
+      - name: Run dependency scan
+        run: fossa analyze --only-target cabal --only-target cargo
 
       - name: Check for scan results
-        env:
-          FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
-        run: |
-          fossa test
+        run: fossa test
