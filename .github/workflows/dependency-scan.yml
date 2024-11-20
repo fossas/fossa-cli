@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Log debug information
         run: |
           ghc --version || echo "no ghc"
