@@ -11,18 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log debug information
-        run: |
-          ghc --version || echo "no ghc"
-          cabal --version || echo "no cabal"
-          ghcup --version || echo "no ghcup"
-
-      - name: Update cabal cache
-        run: cabal update
-
-      - name: Install latest release from github
-        run: ./install-latest.sh -d
-
       - name: Install and set GHC and Cabal versions
         # The first line works around a ghcup issue:
         # https://github.com/actions/runner-images/issues/7061#issuecomment-1422639889
@@ -33,6 +21,15 @@ jobs:
           ghcup install cabal 3.6.2.0
           ghcup set cabal 3.6.2.0
           cabal update
+
+      - name: Log debug information
+        run: |
+          ghc --version || echo "no ghc"
+          cabal --version || echo "no cabal"
+          ghcup --version || echo "no ghcup"
+
+      - name: Install latest release from github
+        run: ./install-latest.sh -d
 
       - name: Run dependency scan
         run: fossa analyze --only-target cabal --only-target cargo
