@@ -3,7 +3,7 @@
 
 The test command checks whether the most-recent scan of your FOSSA project raised license-policy or vulnerability issues. This command is usually run immediately after `fossa analyze`
 
-- If there are issues, it prints them to stdout and fails with an exit code of 1
+- If there are issues, it prints them to stderr and fails with an exit code of 1
 - If there are no issues, it prints nothing and succeeds with an exit code of 0
 
 `fossa test` supports the [Common FOSSA Project Flags](./analyze.md#common-fossa-project-flags) supported by all commands
