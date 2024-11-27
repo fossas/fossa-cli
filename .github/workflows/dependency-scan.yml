@@ -18,8 +18,8 @@ jobs:
           sudo chown -R $USER /usr/local/.ghcup
           ghcup install ghc 9.8.2
           ghcup set ghc 9.8.2
-          ghcup install cabal 3.6.2.0
-          ghcup set cabal 3.6.2.0
+          ghcup install cabal 3.10.3.0
+          ghcup set cabal 3.10.3.0
           cabal update
 
       - name: Log debug information
