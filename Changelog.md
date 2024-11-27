@@ -1,4 +1,6 @@
 # FOSSA CLI Changelog
+## 3.9.40
+- Licensing: Fix a bug where license scanner output sometimes included log lines, which breaks JSON parsing
 
 ## 3.9.39
 - Licensing: Add the PSF-3.12.7 license. Make a correction to the MulanPSL license. Add a new public-domain rule ([#1480](https://github.com/fossas/fossa-cli/pull/1480))
