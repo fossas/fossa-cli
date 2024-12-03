@@ -104,6 +104,10 @@ where:
 - `replace` rewrites `require`s. In this example, our requires resolve to
   `[github.com/example/one v1.2.3, github.com/example/other v2.0.0]`
 
+
+This strategy will attempt to fill in transitive dependencies by calling out to Go tools.
+If it fails or `fossa analyze` is invoked with `--static-analysis-only`, the strategy will report what it found in `go.mod` without any transitive dependencies.
+
 ## FAQ
 
 ### Why do I see a dependency in `go.mod`, but it is not reflected in FOSSA?
