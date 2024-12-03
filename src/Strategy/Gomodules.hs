@@ -74,7 +74,7 @@ getDeps project goDynamicTactic = do
   mode <- ask
   (graph, graphBreadth) <-
     context "Gomodules" $
-      dynamicAnalysis <||> guardStrictMode mode fallbacks
+      dynamicAnalysis <||> guardStrictMode mode goDotModAnalysis
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
     DependencyResults
@@ -83,8 +83,6 @@ getDeps project goDynamicTactic = do
       , dependencyManifestFiles = [gomodulesGomod project]
       }
   where
-    fallbacks :: (Has Diagnostics sig m, Has Exec sig m, Has ReadFS sig m) => m (Graphing Dependency, GraphBreadth)
-    fallbacks = goDotModAnalysis <||> Gomod.analyzeStatic (gomodulesGomod project)
     -- `go list -json -deps all` marks std lib deps with a boolean, so Strategy.Go.GoListPackages does this filtering itself.
     -- I think this can be removed when `go list -json -deps all` becomes the default.
     filterGraph :: Maybe [GoStdlibDep] -> Graphing Dependency -> Graphing Dependency
