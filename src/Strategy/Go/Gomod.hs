@@ -14,6 +14,7 @@ module Strategy.Go.Gomod (
   PackageVersion (..),
   parsePackageVersion,
   gomodParser,
+  analyzeStatic,
 ) where
 
 import Control.Algebra (Has)
@@ -394,6 +395,14 @@ analyze' file = do
       . warnOnErr MissingEdges
       $ fillInTransitive (parent file)
     pure ()
+  pure (graph, Partial)
+
+-- | This variant of analyze will not attempt to fill in transitive dependencies.
+analyzeStatic :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency, GraphBreadth)
+analyzeStatic file = do
+  graph <- graphingGolang $ do
+    gomod <- readContentsParser gomodParser file
+    context "Building dependency graph (static)" $ buildGraph gomod
   pure (graph, Partial)
 
 buildGraph :: Has GolangGrapher sig m => Gomod -> m ()

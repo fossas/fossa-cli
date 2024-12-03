@@ -1,4 +1,8 @@
 # FOSSA CLI Changelog
+
+## 3.9.41
+- GoModules: Fix a bug where a static analysis method was not exposed. ([#1468](https://github.com/fossas/fossa-cli/pull/1486))
+
 ## 3.9.40
 - Licensing: Fix a bug where license scanner output sometimes included log lines, which breaks JSON parsing
 

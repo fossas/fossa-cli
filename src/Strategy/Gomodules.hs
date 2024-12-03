@@ -11,7 +11,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analy
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
 import App.Util (guardStrictMode)
 import Control.Carrier.Diagnostics (warn)
-import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, recover, (<||>))
 import Control.Effect.Reader (Reader, ask, asks)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
@@ -58,7 +58,7 @@ instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
   analyzeProject _ proj = asks useV3GoResolver >>= getDeps proj
-  analyzeProjectStaticOnly _ proj = staticAnalysisResults proj <$> staticAnalysis proj
+  analyzeProjectStaticOnly _ = staticAnalysis
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
 mkProject project =
@@ -72,7 +72,9 @@ mkProject project =
 getDeps :: (GetDepsEffs sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
 getDeps project goDynamicTactic = do
   mode <- ask
-  (graph, graphBreadth) <- context "Gomodules" $ dynamicAnalysis <||> guardStrictMode mode (staticAnalysis project)
+  (graph, graphBreadth) <-
+    context "Gomodules" $
+      dynamicAnalysis <||> guardStrictMode mode fallbacks
   stdlib <- recover . context "Collect go standard library information" . listGoStdlibPackages $ gomodulesDir project
   pure $
     DependencyResults
@@ -81,11 +83,16 @@ getDeps project goDynamicTactic = do
       , dependencyManifestFiles = [gomodulesGomod project]
       }
   where
+    fallbacks :: (Has Diagnostics sig m, Has Exec sig m, Has ReadFS sig m) => m (Graphing Dependency, GraphBreadth)
+    fallbacks = goDotModAnalysis <||> Gomod.analyzeStatic (gomodulesGomod project)
     -- `go list -json -deps all` marks std lib deps with a boolean, so Strategy.Go.GoListPackages does this filtering itself.
     -- I think this can be removed when `go list -json -deps all` becomes the default.
     filterGraph :: Maybe [GoStdlibDep] -> Graphing Dependency -> Graphing Dependency
     filterGraph Nothing deps = deps
     filterGraph (Just stdlib) deps = filterGoStdlibPackages stdlib deps
+
+    goDotModAnalysis :: (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
+    goDotModAnalysis = context "Go.mod analysis" (Gomod.analyze' (gomodulesGomod project))
 
     dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
@@ -97,13 +104,13 @@ getDeps project goDynamicTactic = do
 
         context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
 
-staticAnalysis :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => GomodulesProject -> m (Graphing Dependency, GraphBreadth)
-staticAnalysis project = context "Static analysis" (Gomod.analyze' (gomodulesGomod project))
-
-staticAnalysisResults :: GomodulesProject -> (Graphing Dependency, GraphBreadth) -> DependencyResults
-staticAnalysisResults proj (graph, graphBreadth) =
-  DependencyResults
-    { dependencyGraph = graph
-    , dependencyGraphBreadth = graphBreadth
-    , dependencyManifestFiles = [gomodulesGomod proj]
-    }
+staticAnalysis :: (Has Diagnostics sig m, Has ReadFS sig m) => GomodulesProject -> m DependencyResults
+staticAnalysis proj = do
+  let projectPath = gomodulesGomod proj
+  (graph, breadth) <- context "Go.mod analysis (static)" $ Gomod.analyzeStatic projectPath
+  pure $
+    DependencyResults
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = breadth
+      , dependencyManifestFiles = [projectPath]
+      }
