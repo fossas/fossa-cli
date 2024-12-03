@@ -106,7 +106,7 @@ where:
 
 
 This strategy will attempt to fill in transitive dependencies by calling out to Go tools.
-If it fails for `fossa analyze` is invoked with `--static-analysis-only`, it will report what it found in `go.mod` without any transitive dependencies.
+If it fails or `fossa analyze` is invoked with `--static-analysis-only`, the strategy will report what it found in `go.mod` without any transitive dependencies.
 
 ## FAQ
 
