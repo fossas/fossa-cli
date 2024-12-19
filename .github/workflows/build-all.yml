@@ -35,8 +35,9 @@ jobs:
           # and in particular Windows doesn't support it
           rust-features: jemalloc
 
-        # macos-latest pointed at macos-12 this before it was changed to ARM.
-        - os: macos-12
+        # The 'large' runners are the only intel ones left:
+        # https://github.com/actions/runner-images?tab=readme-ov-file#available-images
+        - os: macos-latest-large
           os-name: macOS-intel
           project-file: cabal.project.ci.macos
           ghc: '9.8.2'
