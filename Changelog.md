@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.42
+- Licensing: Adds support for the Text-Tabs+Wrap License
+
 ## 3.9.41
 - GoModules: Expose a static only analysis method for Go. ([#1468](https://github.com/fossas/fossa-cli/pull/1486))
 
