@@ -131,7 +131,7 @@ data PnpmLockFileVersion
   = PnpmLockLt4 Text
   | PnpmLock4Or5
   | PnpmLock6
-  | PnpmLockGt6 Text
+  | PnpmLockV678 Text
   | PnpmLockV9
   deriving (Show, Eq, Ord)
 
@@ -167,7 +167,7 @@ instance FromJSON PnpmLockfile where
         (Just '4') -> pure PnpmLock4Or5
         (Just '5') -> pure PnpmLock4Or5
         (Just '6') -> pure PnpmLock6
-        (Just x) | x `elem` ['7', '8'] -> pure $ PnpmLockGt6 ver
+        (Just x) | x `elem` ['7', '8'] -> pure $ PnpmLockV678 ver
         (Just '9') -> pure PnpmLockV9
         _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
 
@@ -254,7 +254,7 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 
   case lockFileVersion pnpmLockFile of
     PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
-    PnpmLockGt6 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    PnpmLockV678 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
     _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
@@ -310,7 +310,7 @@ buildGraph lockFile = withoutLocalPackages $
       PnpmLock4Or5 -> getPkgNameVersionV5
       PnpmLock6 -> getPkgNameVersionV6
       PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
-      PnpmLockGt6 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
+      PnpmLockV678 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
       PnpmLockV9 -> getPkgNameVersionV9
 
     -- Gets package name and version from package's key.
@@ -399,7 +399,8 @@ buildGraph lockFile = withoutLocalPackages $
       -- v3 or below are deprecated and are not used in practice, fallback to closest
       PnpmLockLt4 _ -> "/" <> name <> "/" <> version
       -- at the time of writing there is no v7, so default to closest
-      PnpmLockGt6 _ -> "/" <> name <> "@" <> version
+      PnpmLockV678 _ -> "/" <> name <> "@" <> version
+      PnpmLockV9 -> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
