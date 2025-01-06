@@ -27,7 +27,7 @@ pub struct Opts {
     /// Generally spans correlate to functions; in other words when a function is entered a span is also entered.
     /// There are some exceptions to this (not all functions generate spans, and not all spans are in functions)
     /// but in general this is a reasonable way to think of it for most users.
-    #[clap(long, global = true, default_value_t = Span::Full)]
+    #[clap(long, global = true, default_value_t = Span::Active)]
     #[getset(get_copy = "pub")]
     trace_spans: Span,
 
@@ -136,7 +136,7 @@ pub enum Span {
     #[strum(serialize = "close")]
     Close,
 
-    /// spans are ignored (this is the default)
+    /// spans are ignored
     #[strum(serialize = "none")]
     None,
 
