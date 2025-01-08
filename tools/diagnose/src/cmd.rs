@@ -41,6 +41,11 @@ pub struct Opts {
     #[getset(get_copy = "pub")]
     format: Format,
 
+    /// Control the interaction mode for the program.
+    #[clap(long, default_value_t = Mode::Log, global = true)]
+    #[getset(get_copy = "pub")]
+    mode: Mode,
+
     /// Run a number of subcommands.
     #[clap(subcommand)]
     #[getset(get = "pub")]
@@ -161,6 +166,18 @@ impl From<Span> for FmtSpan {
             Span::Full => FmtSpan::FULL,
         }
     }
+}
+
+/// The output mode for the tool.
+#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+pub enum Mode {
+    /// Log messages are emitted as files are walked.
+    #[strum(serialize = "log")]
+    Log,
+
+    /// Displays a TUI with information about the walk.
+    #[strum(serialize = "tui")]
+    Tui,
 }
 
 #[derive(Clone, Debug, Subcommand)]
