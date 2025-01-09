@@ -11,7 +11,6 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
-  (<||>),
  )
 import Control.Effect.Reader (Reader)
 import Data.Aeson (
@@ -31,12 +30,13 @@ import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, parent)
 import Strategy.NuGet.PackageReference qualified as PackageReference
-import Strategy.NuGet.PackageReference qualified as ProjectAssetsJson
+import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (NuGetProjectType),
  )
+
 
 discover ::
   ( Has ReadFS sig m
@@ -82,7 +82,10 @@ instance AnalyzeProject NuGetProject where
   analyzeProjectStaticOnly _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuGetProject -> m DependencyResults
-getDeps project = context "NuGet" (getAssetsJsonDeps project <||> getPackageReferenceDeps project)
+getDeps project = context "NuGet" $
+  if "project.assets.json" == (fileName . nugetProjectFile) project
+    then getAssetsJsonDeps project
+    else getPackageReferenceDeps project
 
 getAssetsJsonDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuGetProject -> m DependencyResults
 getAssetsJsonDeps = context "ProjectAssetsJson" . context "Static analysis" . ProjectAssetsJson.analyze' . nugetProjectFile
