@@ -35,12 +35,12 @@ Note: When parsed, YAML considers text that could be a decimal number (such as 1
 Supported dependency types:
 
 - `bower` - Bower dependencies that are typically found at [bower.io](https://registry.bower.io).
-- <!-- markdown-link-check-disable-next-line -->
+<!-- markdown-link-check-disable-next-line -->
 - `cargo` - Rust dependencies that are typically found at [crates.io](https://crates.io/).
 - `carthage` - Dependencies as specified by the [Carthage](https://github.com/Carthage/Carthage) package manager.
 - `composer` - Dependencies specified by the PHP package manager [Composer](https://getcomposer.org/), which are located on [Packagist](https://packagist.org/).
 - `cpan` - Dependencies located on the [CPAN package manager](https://www.cpan.org/).
-- <!-- markdown-link-check-disable-next-line -->
+<!-- markdown-link-check-disable-next-line -->
 - `cran` - Dependencies located on the [CRAN](https://cran.r-project.org/) like repository.
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
 - `git` - Github projects (which appear as dependencies in many package managers). Specified as the full GitHub repository `https://github.com/fossas/fossa-cli`.
