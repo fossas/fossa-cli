@@ -1,12 +1,12 @@
 # NuGet Analysis
 
-| Strategy                                 | Direct Deps | Transitive Deps | Edges |
-| ---------------------------------------- | ----------- | --------- | ----- |
-| [project.assets.json](projectassetsjson.md) | ✅          | ✅        | ✅    |
-| [PackageReference](packagereference.md)     | ✅          | ❌        | ❌    |
-| [project.json](projectjson.md)              | ✅          | ❌        | ❌    |
-| [packages.config](packagesconfig.md)        | ✅          | ❌        | ❌    |
-| [nuspec](nuspec.md)                         | ✅          | ❌        | ❌    |
+| Strategy                                    | Direct Deps | Transitive Deps | Edges |
+|---------------------------------------------|-------------|-----------------|-------|
+| [project.assets.json](projectassetsjson.md) | ✅           | ✅               | ✅     |
+| [PackageReference](packagereference.md)     | ✅           | ❌               | ❌     |
+| [project.json](projectjson.md)              | ✅           | ❌               | ❌     |
+| [packages.config](packagesconfig.md)        | ✅           | ❌               | ❌     |
+| [nuspec](nuspec.md)                         | ✅           | ❌               | ❌     |
 
 NuGet analysis follows these strategies in sequence:
 1. `project.assets.json`

@@ -1,8 +1,8 @@
 # Paket
 
-| Strategy                                 | Direct Deps | Transitive Deps | Edges |
-| ---------------------------------------- | ----------- | --------- | ----- |
-| [paket](paket.md)                           | ✅          | ✅        | ✅    |
+| Strategy          | Direct Deps | Transitive Deps | Edges |
+|-------------------|-------------|-----------------|-------|
+| [paket](paket.md) | ✅           | ✅               | ✅     |
 
 Paket is a dependency manager for .NET projects. Paket enables precise and predictable control over your dependencies
 
