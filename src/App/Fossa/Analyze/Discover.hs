@@ -29,10 +29,8 @@ import Strategy.Nim qualified as Nim
 import Strategy.Node qualified as Node
 import Strategy.NuGet qualified as NuGet
 import Strategy.NuGet.Nuspec qualified as Nuspec
-import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Strategy.NuGet.Paket qualified as Paket
-import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
 import Strategy.Perl qualified as Perl
 import Strategy.Pub qualified as Pub
