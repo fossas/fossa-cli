@@ -40,6 +40,7 @@ import Strategy.Maven.Pom.PomFile (
   pomLicenseName,
   validatePom,
  )
+import Discovery.Filters (AllFilters)
 
 data JarMetadata = JarMetadata
   { jarName :: Text
@@ -53,9 +54,9 @@ data JarMetadata = JarMetadata
 --   2. Search inside for a file named `pom.xml`; if there are multiple pick the one with the shortest path.
 --      If a representative pom.xml was found, parse it and return metadata derived from it.
 --   3. Attempt to open `META-INF/MANIFEST.MF`, parse it, and return metadata derived from it.
-resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
-resolveJar _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
-resolveJar root file = do
+resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Maybe AllFilters -> Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
+resolveJar _ _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
+resolveJar filters root file = do
   let fileDescription = toText file
   logDebug $ "Inferring metadata from " <> pretty fileDescription
   result <- recover
@@ -64,7 +65,7 @@ resolveJar root file = do
     . context ("Infer metadata from " <> fileDescription)
     . runFinally
     $ withArchive extractZip file
-    $ \dir -> tacticPom dir <||> tacticMetaInf dir
+    $ \dir -> tacticPom filters dir <||> tacticMetaInf dir
   pure $ fmap (toUserDefDep root file) (join result)
 
 newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)
@@ -101,9 +102,9 @@ metaInfManifestToMeta manifest =
     <*> fromMaybeText "Missing implementation version" (Map.lookup "Implementation-Version" manifest)
     <*> pure "" -- Don't attempt to use Bundle-License; it's a URL and we don't parse it on the backend
 
-tacticPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> m JarMetadata
-tacticPom archive = context ("Parse representative pom.xml in " <> toText archive) $ do
-  poms <- context "Find pom.xml files" $ walk' (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
+tacticPom :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Maybe AllFilters -> Path Abs Dir -> m JarMetadata
+tacticPom filters archive = context ("Parse representative pom.xml in " <> toText archive) $ do
+  poms <- context "Find pom.xml files" $ walk' filters (collectFilesNamed "pom.xml") (archive </> $(mkRelDir "META-INF"))
   when (length poms > 1) $
     logDebug $
       "Found multiple pom.xml files: " <> pretty (Text.intercalate "; " $ map (renderRelative archive) poms)

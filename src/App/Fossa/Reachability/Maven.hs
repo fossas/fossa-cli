@@ -23,6 +23,7 @@ import Strategy.Maven.Pom.PomFile (
   PomBuild (PomBuild),
  )
 import Text.Pretty.Simple (pShow)
+import Discovery.Filters (AllFilters)
 
 -- | Discovers the JAR files associated with the project at the provided path,
 -- then returns the parsed results of analyzing these JARs.
@@ -33,10 +34,11 @@ mavenJarCallGraph ::
   , Has Exec sig m
   , Has (Lift IO) sig m
   ) =>
+  Maybe AllFilters ->
   Path Abs Dir ->
   m CallGraphAnalysis
-mavenJarCallGraph dir = context ("build call graph for " <> toText dir) $ do
-  jars <- getJarsByBuild dir
+mavenJarCallGraph filters dir = context ("build call graph for " <> toText dir) $ do
+  jars <- getJarsByBuild filters dir
   logDebug . pretty $ "found jars: " ++ show jars
   callGraphFromJars jars
 
@@ -45,10 +47,11 @@ getJarsByBuild ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
+  Maybe AllFilters ->
   Path Abs Dir ->
   m [Path Abs File]
-getJarsByBuild dir = context ("find jars from build for project at '" <> toText dir <> "'") $ do
-  mvnProjectClosures <- findProjects dir
+getJarsByBuild filters dir = context ("find jars from build for project at '" <> toText dir <> "'") $ do
+  mvnProjectClosures <- findProjects filters dir
   let pomPathsAndPom = concatMap (Map.elems . closurePoms) mvnProjectClosures
 
   candidateJars <- catMaybes <$> traverse getJarPathFromPom pomPathsAndPom

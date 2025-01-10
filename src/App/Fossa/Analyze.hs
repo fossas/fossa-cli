@@ -512,7 +512,8 @@ doAssertRevisionBinaries ::
   Locator ->
   m ()
 doAssertRevisionBinaries (IATAssertion (Just dir)) locator =
-  assertRevisionBinaries dir locator
+  -- TODO: get an AllFilters here
+  assertRevisionBinaries Nothing dir locator
 doAssertRevisionBinaries _ _ = pure ()
 
 doAnalyzeDynamicLinkedBinary ::

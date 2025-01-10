@@ -136,7 +136,7 @@ recursivelyScanArchives ::
   FileUpload ->
   Path Abs Dir ->
   m [LicenseUnit]
-recursivelyScanArchives pathPrefix licenseScanPathFilters uploadKind dir = flip walk' dir $
+recursivelyScanArchives pathPrefix licenseScanPathFilters uploadKind dir = flip (walk' Nothing) dir $
   \_ _ files -> do
     let process file unpackedDir = do
           let updatedPathPrefix = pathPrefix <> getPathPrefix dir (parent file)
@@ -292,7 +292,7 @@ hasAnyFiles ::
   m Bool
 hasAnyFiles path = getAny <$> go path
   where
-    go = walk' $ \_ _ files ->
+    go = walk' Nothing $ \_ _ files ->
       pure
         if null files
           then (Any False, WalkContinue)

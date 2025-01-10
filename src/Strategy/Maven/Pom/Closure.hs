@@ -28,16 +28,23 @@ import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
 import Data.Text (Text)
+import Discovery.Filters (AllFilters)
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
-findProjects basedir = do
-  pomFiles <- context "Finding pom files" $ findPomFiles basedir
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe AllFilters -> Path Abs Dir -> m [MavenProjectClosure]
+findProjects filters basedir = do
+  pomFiles <- context "Finding pom files" $ findPomFiles filters basedir
   globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
-findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
-findPomFiles dir = execState @[Path Abs File] [] $
-  flip walk dir $ \_ _ files -> do
+findPomFiles ::
+  (Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Maybe AllFilters ->
+  Path Abs Dir ->
+  m [Path Abs File]
+findPomFiles filters dir = execState @[Path Abs File] [] $
+  flip (walk filters) dir $ \_ _ files -> do
     let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
     traverse_ (modify . (:)) poms
 

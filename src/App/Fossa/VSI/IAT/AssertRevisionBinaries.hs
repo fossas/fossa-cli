@@ -11,6 +11,7 @@ import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
 import Srclib.Types (Locator)
+import Discovery.Filters (AllFilters (AllFilters))
 
 assertRevisionBinaries ::
   ( Has Diagnostics sig m
@@ -19,12 +20,13 @@ assertRevisionBinaries ::
   , Has Logger sig m
   , Has API.FossaApiClient sig m
   ) =>
+  Maybe AllFilters ->
   Path Abs Dir ->
   Locator ->
   m ()
-assertRevisionBinaries dir locator = do
+assertRevisionBinaries filters dir locator = do
   logInfo "Fingerprinting assertion directory contents"
-  fingerprints <- fingerprintContentsRaw dir
+  fingerprints <- fingerprintContentsRaw filters dir
 
   logInfo "Uploading assertion to FOSSA"
   API.assertRevisionBinaries locator fingerprints

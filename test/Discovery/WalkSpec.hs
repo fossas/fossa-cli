@@ -16,9 +16,12 @@ import Data.Map qualified as Map
 import Discovery.Walk
 import Effect.ReadFS
 import Path
-import Path.IO (createDir, createDirLink)
+import Path.IO (createDir, createDirLink, getPermissions, setPermissions, emptyPermissions)
 import Test.Effect
 import Test.Hspec
+import Discovery.Filters (AllFilters (AllFilters, excludeFilters), comboExclude)
+import App.Fossa.Config.Analyze (AnalyzeCliOpts(analyzeExcludePaths))
+import Control.Exception (finally)
 
 spec :: Spec
 spec =
@@ -71,7 +74,7 @@ spec =
         createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/pg/lib"))
         createDirLink (tmpDir </> $(mkRelDir "lib")) (tmpDir </> $(mkRelDir "lib/sqlite/lib"))
 
-      paths <- runWalkWithCircuitBreaker 10 tmpDir
+      paths <- runWalkWithCircuitBreaker Nothing 10 tmpDir
       pathsToTree paths
         `shouldBe'` dirTree
           [
@@ -87,6 +90,41 @@ spec =
                 ]
             )
           ]
+
+    it' "handles excluded files without permission" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
+      -- This example comes from the `shards` dependency manager.
+      let dirs@[lib, foo, bar] =
+            map
+              (tmpDir </>)
+              [ $(mkRelDir "lib")
+              , $(mkRelDir "lib/foo")
+              , $(mkRelDir "lib/bar")
+              ]
+      sendIO $ do
+        traverse_ createDir dirs
+        setPermissions bar emptyPermissions
+
+      finally $ do
+        fooPermissions <- liftIO $ getPermissions foo
+        setPermissions bar fooPermissions
+
+      let filters = AllFilters mempty $ comboExclude mempty [relativeTo tmpDir bar]
+
+      paths <- runWalkWithFilters filters tmpDir
+      pathsToTree paths
+        `shouldBe'` dirTree
+          [
+            ( tmpDir
+            , dirTree
+                [
+                  ( lib
+                  , dirTree
+                      [ (foo, dirTree []) ]
+                  )
+                ]
+            )
+          ]
+        
 
 newtype DirTree = DirTree (Map (Path Abs Dir) DirTree) deriving (Show, Eq)
 
@@ -106,17 +144,21 @@ pathsToTree (path : paths) =
 
 runWalk ::
   (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs Dir]
-runWalk = runWalkWithCircuitBreaker 100
+runWalk = runWalkWithCircuitBreaker Nothing 100
+
+runWalkWithFilters ::
+  (Has ReadFS sig m, Has Diagnostics sig m) => AllFilters -> Path Abs Dir -> m [Path Abs Dir]
+runWalkWithFilters filters = runWalkWithCircuitBreaker (Just filters) 100
 
 runWalkWithCircuitBreaker ::
-  (Has ReadFS sig m, Has Diagnostics sig m) => Int -> Path Abs Dir -> m [Path Abs Dir]
-runWalkWithCircuitBreaker maxIters startDir =
+  (Has ReadFS sig m, Has Diagnostics sig m) => Maybe AllFilters -> Int -> Path Abs Dir -> m [Path Abs Dir]
+runWalkWithCircuitBreaker filters maxIters startDir =
   do
     fmap fst
     . runWriter
     . fmap snd
     . runState (0 :: Int)
-    $ walk
+    $ walk filters 
       ( \dir _ _ -> do
           iterations :: Int <- get
           if iterations < maxIters

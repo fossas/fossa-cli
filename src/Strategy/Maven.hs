@@ -20,7 +20,7 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
 import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
@@ -44,9 +44,12 @@ discover ::
   Path Abs Dir ->
   m [DiscoveredProject MavenProject]
 discover = do
-  simpleDiscover findProjects mkProject MavenProjectType
+  -- TODO: why doesn't `Has (Reader AllFilters) sig m` give me the affordance to call `ask` here?
+  -- filters <- ask @AllFilters
+  filters :: AllFilters <- undefined
+  simpleDiscover (findProjects filters) mkProject MavenProjectType
   where
-    findProjects dir = map MavenProject <$> PomClosure.findProjects dir
+    findProjects filters dir = map MavenProject <$> PomClosure.findProjects (Just filters) dir
 
 mkProject :: MavenProject -> DiscoveredProject MavenProject
 mkProject (MavenProject closure) =

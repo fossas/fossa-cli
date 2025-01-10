@@ -32,7 +32,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
-import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
+import Discovery.Filters (combinedPaths, excludeFilters, includeFilters, AllFilters)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
 import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, hsep, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
@@ -239,8 +239,10 @@ discover ::
   m ()
 discover output filters root renderAncestry =
   context "discover" $ do
+    -- TODO: get a Reader in the sig? Get an AllFilters?
+    -- allFilters <- ask @AllFilters
     logDebug . pretty $ "walking new root: " <> toText root
-    flip walk root $ \dir _ files -> handle dir files
+    flip (walk $ Nothing) root $ \dir _ files -> handle dir files
   where
     handle dir files | filters `allow` dir = do
       logDebug . pretty $ "processing dir: " <> toText dir

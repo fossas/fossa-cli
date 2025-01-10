@@ -51,6 +51,8 @@ import Path qualified as P
 import Path.IO qualified as PIO
 import Prettyprinter (Pretty (pretty), hsep, viaShow, vsep)
 import Prelude hiding (zip)
+import Discovery.Filters (AllFilters (AllFilters))
+import Control.Carrier.Reader (Reader, ask)
 
 data ArchiveUnpackFailure = ArchiveUnpackFailure (Path Abs File) SomeException
 newtype UnsupportedArchiveErr = UnsupportedArchiveErr (Path Abs File)
@@ -84,7 +86,7 @@ convertArchiveToDir file = do
 
 -- | Given a function to run over unarchived contents, recursively unpack archives
 discover ::
-  (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m) =>
+  (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Finally sig m, Has TaskPool sig m, Has (Reader Discovery.Filters.AllFilters) sig m) =>
   -- | Callback to run on the discovered file
   (Path Abs Dir -> Maybe FileAncestry -> m ()) ->
   -- | Path to the archive
@@ -93,7 +95,8 @@ discover ::
   (Path Abs Dir -> Path Abs File -> m (Path Rel File)) ->
   m ()
 discover go dir renderAncestry = context "Finding archives" $ do
-  flip walk dir $ \_ _ files -> do
+  filters <- ask @Discovery.Filters.AllFilters
+  flip (walk $ Just filters) dir $ \_ _ files -> do
     -- To process an unpacked archive, run the provided function on the archive
     -- contents, and recursively call discover
     let process file unpackedDir = context (toText (fileName file)) $ do

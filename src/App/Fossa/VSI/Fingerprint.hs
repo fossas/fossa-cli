@@ -29,6 +29,7 @@ import Data.Word8 (isSpace)
 import Discovery.Walk (WalkStep (..), walk')
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, toFilePath)
+import Discovery.Filters (AllFilters)
 
 -- | Fingerprint deterministically idenfies a file and is derived from its content.
 --
@@ -99,8 +100,8 @@ fingerprintRaw file = context "raw" $ contentIsBinary file >>= doFingerprint
       fp <- hasher $ toFilePath file
       pure $ encodeFingerprint fp
 
-fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Abs Dir -> m [Fingerprint Raw]
-fingerprintContentsRaw = walk' $ \_ _ files -> do
+fingerprintContentsRaw :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Maybe AllFilters -> Path Abs Dir -> m [Fingerprint Raw]
+fingerprintContentsRaw filters = walk' filters $ \_ _ files -> do
   fps <- traverse fingerprintRaw files
   pure (fps, WalkContinue)
 

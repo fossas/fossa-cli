@@ -26,7 +26,7 @@ import Control.Effect.Diagnostics (
   recover,
   warnOnErr,
  )
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void, (<=<))
 import Data.Glob (Glob)
 import Data.Glob qualified as Glob
@@ -45,7 +45,7 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters, withMultiToolFilter)
+import Discovery.Filters (AllFilters (AllFilters), withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
@@ -129,11 +129,21 @@ discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProject
         graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
         context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
-collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Manifest]
-collectManifests = walk' $ \_ _ files ->
-  case findFileNamed "package.json" files of
-    Nothing -> pure ([], skipJsFolders)
-    Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)
+collectManifests ::
+  (Has ReadFS sig m
+  , Has Diagnostics sig m
+  -- , Has (Reader AllFilters) sig m
+  -- , Has (Reader (Path Abs Dir)) sig m
+  ) =>
+  Path Abs Dir ->
+  m [Manifest]
+collectManifests = do
+  -- TODO: why doesn't this work?
+  -- filters <- ask @AllFilters
+  walk' Nothing $ \_ _ files ->
+    case findFileNamed "package.json" files of
+      Nothing -> pure ([], skipJsFolders)
+      Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)
 
 mkProject ::
   (Has Diagnostics sig m) =>

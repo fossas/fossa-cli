@@ -38,7 +38,7 @@ assertUserDefinedBinaries LinkUserBinsConfig{..} = do
   void $ guardWithPreflightChecks apiOpts AssertUserDefinedBinariesChecks
 
   logInfo "Fingerprinting directory contents"
-  fingerprints <- fingerprintContentsRaw $ unBaseDir baseDir
+  fingerprints <- fingerprintContentsRaw Nothing $ unBaseDir baseDir
 
   logInfo "Uploading assertion to FOSSA"
   ignoreDebug . runFossaApiClient apiOpts $ API.assertUserDefinedBinaries binMetadata fingerprints

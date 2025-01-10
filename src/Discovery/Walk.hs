@@ -22,7 +22,7 @@ import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
 import Data.List ((\\))
-import Data.Maybe (mapMaybe)
+import Data.Maybe (mapMaybe, isJust)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -51,10 +51,11 @@ walk ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
+  Maybe AllFilters ->
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m WalkStep) ->
   Path Abs Dir ->
   m ()
-walk f = walkDir $ \dir subdirs files -> do
+walk filters f = walkDir filters $ \dir subdirs files -> do
   -- Check that the path matches the filters
   step <- f dir subdirs files
   case step of
@@ -92,11 +93,12 @@ walk' ::
   , Has Diagnostics sig m
   , Monoid o
   ) =>
+  Maybe AllFilters ->
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)) ->
   Path Abs Dir ->
   m o
-walk' f base = do
-  foo <- runWriter (curry pure) $ walk mangled base
+walk' filters f base = do
+  foo <- runWriter (curry pure) $ walk filters mangled base
   pure (fst foo)
   where
     mangled :: Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> WriterC o m WalkStep
@@ -118,7 +120,7 @@ walkWithFilters' ::
 walkWithFilters' f root = do
   filters <- ask
   let f' dir subdirs files = pathFilterIntercept filters root dir $ f dir subdirs files
-  walk' f' root
+  walk' (Just filters) f' root
 
 -- | Search upwards in the directory tree for the existence of the supplied file.
 findFileInAncestor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)
@@ -161,12 +163,14 @@ findFilesMatchingGlob g = filter (`Glob.matches` g)
 
 walkDir ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
+  -- | Optional Filters to respect dir exclusion filters
+  Maybe AllFilters ->
   -- | Handler (@dir -> subdirs -> files -> 'WalkAction'@)
   (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (WalkAction Abs)) ->
   -- | Directory where traversal begins
   Path Abs Dir ->
   m ()
-walkDir handler topdir =
+walkDir filters handler topdir =
   context "Walking the filetree" $
     void $
       -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
@@ -177,19 +181,24 @@ walkDir handler topdir =
       case mRes of
         Nothing -> pure $ Just ()
         Just traversed' -> walktree traversed' curdir
-    walktree traversed curdir = do
-      (subdirs, files) <- listDir curdir
-      action <- handler curdir subdirs files
-      case action of
-        WalkFinish -> pure Nothing
-        WalkExclude xdirs ->
-          case subdirs \\ xdirs of
-            [] -> pure $ Just ()
-            ds ->
-              runMaybeT $
-                mapM_
-                  (MaybeT . walkAvoidLoop traversed)
-                  ds
+    walktree traversed curdir =
+        let isPathAllowed = maybe True ((flip pathAllowed) (dirname curdir)) filters
+        in if isPathAllowed
+          then do
+            (subdirs, files) <- listDir curdir
+            action <- handler curdir subdirs files
+            case action of
+              WalkFinish -> pure Nothing
+              WalkExclude xdirs ->
+                case subdirs \\ xdirs of
+                  [] -> pure $ Just ()
+                  ds ->
+                    runMaybeT $
+                      mapM_
+                        (MaybeT . walkAvoidLoop traversed)
+                        ds
+          else pure Nothing
+
     checkLoop traversed dir = do
       identifier <- getIdentifier dir
       pure $

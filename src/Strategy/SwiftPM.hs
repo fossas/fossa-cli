@@ -9,11 +9,10 @@ module Strategy.SwiftPM (
 import App.Fossa.Analyze.Types (AnalyzeProject (..))
 import Control.Carrier.Simple (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Data.Functor (($>))
 import Data.Maybe (listToMaybe)
-import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
@@ -27,6 +26,7 @@ import Path (Abs, Dir, File, Path, dirname, reldir)
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (SwiftProjectType), GraphBreadth (..))
+import Discovery.Filters (AllFilters)
 
 data SwiftProject
   = PackageProject SwiftPackageProject
@@ -52,17 +52,20 @@ instance ToJSON XcodeProjectUsingSwiftPm
 instance ToJSON SwiftProject
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
-discover = simpleDiscover findProjects mkProject SwiftProjectType
+discover = do
+  --TODO: how do I ask for an AllFilters without changing the type of DiscoveryFunc?
+  -- filters <- ask @AllFilters
+  simpleDiscover (findProjects $ Nothing) mkProject SwiftProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [SwiftProject]
-findProjects dir = do
-  swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
-  xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Maybe AllFilters -> Path Abs Dir -> m [SwiftProject]
+findProjects filters dir = do
+  swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects filters dir
+  xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects filters dir
   pure (swiftPackageProjects <> xCodeProjects)
 
 -- TODO: determine if walkWithFilters' is safe here
-findSwiftPackageProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [SwiftProject]
-findSwiftPackageProjects = walk' $ \dir _ files -> do
+findSwiftPackageProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe AllFilters -> Path Abs Dir -> m [SwiftProject]
+findSwiftPackageProjects filters = walk' filters $ \dir _ files -> do
   let packageManifestFile = findFileNamed "Package.swift" files
   let packageResolvedFile = findFileNamed "Package.resolved" files
   case (packageManifestFile, packageResolvedFile) of
@@ -73,13 +76,13 @@ findSwiftPackageProjects = walk' $ \dir _ files -> do
     (Nothing, _) -> pure ([], WalkContinue)
 
 -- TODO: determine if walkWithFilters' is safe here
-findXcodeProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m [SwiftProject]
-findXcodeProjects = walk' $ \dir _ files -> do
+findXcodeProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Maybe AllFilters -> Path Abs Dir -> m [SwiftProject]
+findXcodeProjects filters = walk' filters $ \dir _ files -> do
   let xcodeProjectFile = findFileNamed "project.pbxproj" files
   case xcodeProjectFile of
     Nothing -> pure ([], WalkContinue)
     Just projFile -> do
-      resolvedFile <- findFirstResolvedFileRecursively dir
+      resolvedFile <- findFirstResolvedFileRecursively filters dir
       xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
       if xCodeProjWithDependencies
         then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
@@ -89,8 +92,8 @@ findXcodeProjects = walk' $ \dir _ files -> do
 -- XCode projects using swift package manager retain Package.resolved,
 -- not in the same directory as project file, but rather in workspace's xcshareddata/swiftpm directory.
 -- Reference: https://developer.apple.com/documentation/swift_packages/adding_package_dependencies_to_your_app.
-findFirstResolvedFileRecursively :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe (Path Abs File))
-findFirstResolvedFileRecursively baseDir = listToMaybe <$> walk' findFile baseDir
+findFirstResolvedFileRecursively :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe AllFilters -> Path Abs Dir -> m (Maybe (Path Abs File))
+findFirstResolvedFileRecursively filters baseDir = listToMaybe <$> walk' filters findFile baseDir
   where
     isParentDirSwiftPm :: Path Abs Dir -> Bool
     isParentDirSwiftPm d = (dirname d) == [reldir|swiftpm|]

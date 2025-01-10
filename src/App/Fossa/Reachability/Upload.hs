@@ -141,7 +141,8 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
           callGraphFromJars jars
         Nothing -> do
           logDebug . pretty $ "Trying to infer build jars from maven project: " <> show (projectResultPath projectResult)
-          mavenJarCallGraph (projectResultPath projectResult)
+          --TODO: how to get an AllFilters here?
+          mavenJarCallGraph Nothing (projectResultPath projectResult)
       case analysis of
         Success wg r -> pure $ SourceUnitReachabilityFound dpi (Success wg $ unit{callGraphAnalysis = r})
         Failure wg eg -> pure $ SourceUnitReachabilityFound dpi (Failure wg eg)

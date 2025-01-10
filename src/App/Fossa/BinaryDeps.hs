@@ -29,7 +29,7 @@ import Types (DiscoveredProjectType (BinaryDepsProjectType), GraphBreadth (Compl
 -- Users may then use standard FOSSA UX flows to ignore or add license information to the detected binaries.
 analyzeBinaryDeps :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> AllFilters -> m (Maybe SourceUnit)
 analyzeBinaryDeps dir filters = do
-  binaryPaths <- findBinaries (toPathFilters dir filters) dir
+  binaryPaths <- findBinaries filters dir
   if null binaryPaths
     then pure Nothing
     else do
@@ -46,13 +46,14 @@ analyzeBinaryDeps dir filters = do
 analyzeSingleBinary :: (Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
 analyzeSingleBinary root file = context ("Analyzing " <> toText file) $ resolveBinary strategies root file
 
-findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
-findBinaries filters = walk' $ \dir _ files -> do
-  if shouldFingerprintDir dir filters
-    then do
-      binaries <- filterM contentIsBinary files
-      pure (binaries, WalkContinue)
-    else pure ([], WalkContinue)
+findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => AllFilters -> Path Abs Dir -> m [Path Abs File]
+findBinaries filters = walk' (Just filters) $ \dir _ files -> do
+  let pathFilters = toPathFilters dir filters
+    in if shouldFingerprintDir dir pathFilters
+      then do
+        binaries <- filterM contentIsBinary files
+        pure (binaries, WalkContinue)
+      else pure ([], WalkContinue)
 
 -- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
 data PathFilters = PathFilters
@@ -102,7 +103,8 @@ resolveBinary [] = strategyRawFingerprint
 -- | Functions which may be able to resolve a binary to a dependency.
 strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
 strategies =
-  [resolveJar]
+  -- TODO: get an AllFilters in here
+  [resolveJar Nothing]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
