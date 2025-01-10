@@ -413,7 +413,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   reachabilityUnitsResult <-
     case orgInfo of
       (Just (Organization{orgSupportsReachability = False})) -> pure []
-      _ -> Diag.context "reachability analysis" . runReader (Config.reachabilityConfig cfg) $ analyzeForReachability projectScans
+      _ -> Diag.context "reachability analysis"
+        . runReader (Config.reachabilityConfig cfg)
+        . runReader filters
+        $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult

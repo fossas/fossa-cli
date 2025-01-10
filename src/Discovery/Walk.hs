@@ -26,7 +26,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Discovery.Filters (AllFilters, pathAllowed)
+import Discovery.Filters (pathAllowed, AllFilters)
 import Effect.ReadFS
 import Path
 
@@ -73,17 +73,46 @@ pathFilterIntercept ::
   AllFilters ->
   Path Abs Dir ->
   Path Abs Dir ->
+  [Path Abs Dir] ->
   m (o, WalkStep) ->
   m (o, WalkStep)
-pathFilterIntercept filters base path act = do
+pathFilterIntercept filters base dir subdirs act = do
   -- We know that the two have the same base, but if that invariant is broken,
   -- we just allow the path during discovery.  It's better than crashing.
-  case stripProperPrefix base path of
+  case stripProperPrefix base dir of
     Nothing -> act
     Just relative ->
       if pathAllowed filters relative
-        then act
+        then skipDisallowed act
         else pure (mempty, WalkSkipAll)
+  where
+    disallowedSubdirs :: [Path Abs Dir]
+    disallowedSubdirs = do
+      subdir <- subdirs
+      stripped <- stripProperPrefix base subdir
+      let isAllowed = pathAllowed filters stripped
+      if isAllowed
+        then mempty
+        else [subdir]
+
+    -- skipDisallowed needs to look at either:
+    --  * WalkStep.WalkContinue
+    --  * WalkStep.WalkSkipSome [Text]
+    -- and add on any missing disalloewd subdirs
+    skipDisallowed :: (Applicative m) => m (o, WalkStep) -> m (o, WalkStep)
+    skipDisallowed =
+      fmap $ \ (o, action) ->
+        let skipNames = map (toText . toFilePath . dirname) disallowedSubdirs
+        in if not (null disallowedSubdirs)
+            then
+              let step = case action of
+                    WalkContinue -> WalkSkipSome skipNames
+                    WalkSkipSome dirs -> WalkSkipSome $ skipNames ++ dirs
+                    WalkSkipAll -> action
+                    WalkStop -> action
+              in (o, step)
+            else
+              (o, action)
 
 -- | Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
@@ -117,7 +146,7 @@ walkWithFilters' ::
   m o
 walkWithFilters' f root = do
   filters <- ask
-  let f' dir subdirs files = pathFilterIntercept filters root dir $ f dir subdirs files
+  let f' dir subdirs files = pathFilterIntercept filters root dir subdirs $ f dir subdirs files
   walk' f' root
 
 -- | Search upwards in the directory tree for the existence of the supplied file.

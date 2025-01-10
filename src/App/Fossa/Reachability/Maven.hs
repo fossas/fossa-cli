@@ -23,6 +23,8 @@ import Strategy.Maven.Pom.PomFile (
   PomBuild (PomBuild),
  )
 import Text.Pretty.Simple (pShow)
+import Control.Effect.Reader (Reader)
+import Discovery.Filters (AllFilters)
 
 -- | Discovers the JAR files associated with the project at the provided path,
 -- then returns the parsed results of analyzing these JARs.
@@ -32,6 +34,7 @@ mavenJarCallGraph ::
   , Has Diagnostics sig m
   , Has Exec sig m
   , Has (Lift IO) sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m CallGraphAnalysis
@@ -44,6 +47,7 @@ getJarsByBuild ::
   ( Has Logger sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [Path Abs File]

@@ -48,6 +48,7 @@ import Srclib.Types (
   SourceUnitDependency (..),
  )
 import Types (DiscoveredProjectType (..), GraphBreadth (..))
+import Discovery.Filters (AllFilters)
 
 analyzeForReachability ::
   ( Has Logger sig m
@@ -57,6 +58,7 @@ analyzeForReachability ::
   , Has (Lift IO) sig m
   , Has Debug sig m
   , Has (Reader ReachabilityConfig) sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   [DiscoveredProjectScan] ->
   m [SourceUnitReachabilityAttempt]
@@ -107,6 +109,7 @@ callGraphOf ::
   , Has (Lift IO) sig m
   , Has Debug sig m
   , Has (Reader ReachabilityConfig) sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   DiscoveredProjectScan ->
   m SourceUnitReachabilityAttempt

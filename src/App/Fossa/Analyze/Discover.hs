@@ -47,7 +47,7 @@ import Strategy.SwiftPM qualified as SwiftPM
 import Types (DiscoveredProject)
 
 discoverFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
-discoverFuncs =
+discoverFuncs = 
   [ DiscoverFunc Bundler.discover
   , DiscoverFunc Cabal.discover
   , DiscoverFunc Cargo.discover
