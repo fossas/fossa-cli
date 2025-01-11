@@ -284,6 +284,8 @@ testHarness include exclude = traverse_ testSingle
   where
     testSingle ((buildtool, dir), targets, expected) = applyFilters (AllFilters include exclude) buildtool dir targets `shouldBe` expected
 
+-- This is copy/pasted into WalkSpec.hs
+-- and might deserve a common definition
 excludePath :: Path Rel Dir -> AllFilters
 excludePath path = AllFilters mempty $ comboExclude mempty [path]
 
