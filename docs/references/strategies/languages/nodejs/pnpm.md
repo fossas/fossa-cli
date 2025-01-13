@@ -161,10 +161,17 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 You can explicitly specify an analysis target in `.fossa.yml` file. The example below will exclude all analysis targets except for pnpm.
 
 ```yaml
-# .fossa.yml 
+# .fossa.yml
 
 version: 3
 targets:
   only:
     - type: pnpm
 ```
+### Are all versions of `pnpm` supported?
+
+At this time, the latest version of pnpm (v9) and its associated v9 lockfiles are not correctly parsed by FOSSA. Please revert to v8 (v6 lockfile) if your dependencies are not resolved in the FOSSA UI: "FOSSA was unable to analyze this dependency. If it is behind a private registry or auth you may need to configure FOSSA's access, then rebuild this dependency." This is due to the version number being appended to the package name:
+
+<img width="796" alt="image" src="https://github.com/user-attachments/assets/d1461506-d3e7-42da-b9be-2b53a87f79f1" />
+
+We have [requested](https://github.com/pnpm/spec/issues/6#issuecomment-2588100182) more details on the pnpm v9 lockfile spec and hope to be able to prioritize this improvement soon.
