@@ -174,4 +174,4 @@ At this time, the latest version of pnpm (v9) and its associated v9 lockfiles ar
 
 <img width="796" alt="image" src="https://github.com/user-attachments/assets/d1461506-d3e7-42da-b9be-2b53a87f79f1" />
 
-We have [requested](https://github.com/pnpm/spec/issues/6#issuecomment-2588100182) more details on the pnpm v9 lockfile spec and hope to be able to prioritize this improvement soon.
+Please [email](mailto:support@fossa.com) FOSSA support if you are affected by this limitation.
