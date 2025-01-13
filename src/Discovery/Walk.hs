@@ -98,7 +98,7 @@ pathFilterIntercept filters base dir subdirs act = do
     -- skipDisallowed needs to look at either:
     --  * WalkStep.WalkContinue
     --  * WalkStep.WalkSkipSome [Text]
-    -- and add on any missing disalloewd subdirs
+    -- and add on any missing disallowed subdirs
     skipDisallowed :: (Applicative m) => m (o, WalkStep) -> m (o, WalkStep)
     skipDisallowed =
       fmap $ \ (o, action) ->
