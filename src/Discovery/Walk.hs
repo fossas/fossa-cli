@@ -14,7 +14,7 @@ module Discovery.Walk (
 ) where
 
 import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics
+import Control.Effect.Diagnostics ( Diagnostics, fatal, context )
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
@@ -29,6 +29,7 @@ import Data.Text (Text)
 import Discovery.Filters (pathAllowed, AllFilters)
 import Effect.ReadFS
 import Path
+import Data.Bifunctor (second)
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -83,36 +84,32 @@ pathFilterIntercept filters base dir subdirs act = do
     Nothing -> act
     Just relative ->
       if pathAllowed filters relative
-        then skipDisallowed act
+        then (fmap . second) skipDisallowed act
         else pure (mempty, WalkSkipAll)
   where
-    disallowedSubdirs :: [Path Abs Dir]
+    disallowedSubdirs :: [Text]
     disallowedSubdirs = do
       subdir <- subdirs
       stripped <- stripProperPrefix base subdir
       let isAllowed = pathAllowed filters stripped
       if isAllowed
         then mempty
-        else [subdir]
+        else pure $ (toText . toFilePath . dirname) subdir
 
     -- skipDisallowed needs to look at either:
     --  * WalkStep.WalkContinue
     --  * WalkStep.WalkSkipSome [Text]
     -- and add on any missing disallowed subdirs
-    skipDisallowed :: (Applicative m) => m (o, WalkStep) -> m (o, WalkStep)
-    skipDisallowed =
-      fmap $ \ (o, action) ->
-        let skipNames = map (toText . toFilePath . dirname) disallowedSubdirs
-        in if not (null disallowedSubdirs)
-            then
-              let step = case action of
-                    WalkContinue -> WalkSkipSome skipNames
-                    WalkSkipSome dirs -> WalkSkipSome $ skipNames ++ dirs
-                    WalkSkipAll -> action
-                    WalkStop -> action
-              in (o, step)
-            else
-              (o, action)
+    skipDisallowed :: WalkStep ->  WalkStep
+    skipDisallowed action =
+      if null disallowedSubdirs
+        then
+          action
+        else
+          case action of
+            WalkContinue -> WalkSkipSome disallowedSubdirs
+            WalkSkipSome dirs -> WalkSkipSome $ disallowedSubdirs ++ dirs
+            _ -> action
 
 -- | Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
@@ -198,6 +195,7 @@ walkDir ::
 walkDir handler topdir =
   context "Walking the filetree" $
     void $
+      -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
       -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
       walkAvoidLoop Set.empty topdir
   where

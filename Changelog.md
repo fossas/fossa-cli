@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.43
+- Fix a bug where `paths.exclude` may be `ls`'d as part of walking the file system, which raises errors if the user does not have permissions for the excluded path.
+
 ## 3.9.42
 - Licensing: Adds support for the Text-Tabs+Wrap License
 

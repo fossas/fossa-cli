@@ -18,9 +18,10 @@ import Effect.ReadFS
 import Path
 import Path.IO (createDir, createDirLink, setPermissions, emptyPermissions, getPermissions)
 import Test.Effect
+import Test.Fixtures (excludePath)
 import Test.Hspec
-import Discovery.Filters ( AllFilters(AllFilters), comboExclude )
 import Control.Carrier.Reader (runReader)
+import Discovery.Filters (AllFilters)
 
 walkWithFilters'Spec :: Spec
 walkWithFilters'Spec =
@@ -198,8 +199,3 @@ runWalkWithCircuitBreaker maxIters startDir =
               pure WalkStop
       )
       startDir
-
--- This is copy/pasted from FilterSpec.hs
--- and might deserve a common definition
-excludePath :: Path Rel Dir -> AllFilters
-excludePath path = AllFilters mempty $ comboExclude mempty [path]
