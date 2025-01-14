@@ -1,6 +1,5 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Analysis.ErlangSpec (spec) where
 
@@ -14,18 +13,6 @@ import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 
 erlangEnv :: FixtureEnvironment
 erlangEnv = NixEnv ["erlang", "rebar3"]
-
-cowboy :: AnalysisTestFixture (Rebar3.RebarProject)
-cowboy =
-  AnalysisTestFixture
-    "cowboy"
-    Rebar3.discover
-    erlangEnv
-    Nothing
-    $ FixtureArtifact
-      "https://github.com/ninenines/cowboy/archive/refs/tags/2.9.0.tar.gz"
-      [reldir|erlang/cowboy/|]
-      [reldir|cowboy-2.9.0/|]
 
 emqx :: AnalysisTestFixture (Rebar3.RebarProject)
 emqx =
