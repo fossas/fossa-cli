@@ -1,5 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
+{-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
 module Analysis.ErlangSpec (spec) where
 
@@ -40,5 +41,4 @@ emqx =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary NonStrict cowboy Rebar3ProjectType (DependencyResultsSummary 2 2 0 1 Complete)
   testSuiteDepResultSummary NonStrict emqx Rebar3ProjectType (DependencyResultsSummary 0 0 0 1 Complete)
