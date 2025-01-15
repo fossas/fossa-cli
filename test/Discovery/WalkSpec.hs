@@ -5,7 +5,6 @@ module Discovery.WalkSpec (
   spec,
 ) where
 
-import Control.Carrier.Reader (runReader)
 import Control.Carrier.State.Strict (runState)
 import Control.Carrier.Writer.Strict (runWriter, tell)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -14,55 +13,15 @@ import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Discovery.Filters (AllFilters)
 import Discovery.Walk
 import Effect.ReadFS
 import Path
-import Path.IO (createDir, createDirLink, emptyPermissions, getPermissions, setPermissions)
+import Path.IO (createDir, createDirLink)
 import Test.Effect
-import Test.Fixtures (excludePath)
 import Test.Hspec
 
-walkWithFilters'Spec :: Spec
-walkWithFilters'Spec =
-  describe "walkWithFilters'" $ do
-    it' "ignores excluded paths" . withTempDir "test-Discovery-Walk-walkWithFilters'" $ \tmpDir -> do
-      let dirs@[foo, bar, baz] =
-            map
-              (tmpDir </>)
-              [ $(mkRelDir "foo")
-              , $(mkRelDir "foo/bar")
-              , $(mkRelDir "foo/baz")
-              ]
-      sendIO $ do
-        traverse_ createDir dirs
-        setPermissions bar emptyPermissions
-
-      case stripProperPrefix tmpDir bar of
-        Nothing -> expectationFailure' "Failed to get a relative path of foo/bar"
-        Just relBar -> do
-          let filters = excludePath relBar
-          paths <- runWalkWithFilters' 100 filters tmpDir
-          pathsToTree paths
-            `shouldBe'` dirTree
-              [
-                ( tmpDir
-                , dirTree
-                    [
-                      ( foo
-                      , dirTree
-                          [ (baz, dirTree [])
-                          ]
-                      )
-                    ]
-                )
-              ]
-      sendIO $ do
-        fooPermissions <- getPermissions foo
-        setPermissions bar fooPermissions
-
-walkSpec :: Spec
-walkSpec =
+spec :: Spec
+spec =
   describe "walk" $ do
     it' "does a pre-order depth-first traversal" . withTempDir "test-Discovery-Walk" $ \tmpDir -> do
       let dirs@[a, ab, c, cd] =
@@ -129,11 +88,6 @@ walkSpec =
             )
           ]
 
-spec :: Spec
-spec = do
-  walkSpec
-  walkWithFilters'Spec
-
 newtype DirTree = DirTree (Map (Path Abs Dir) DirTree) deriving (Show, Eq)
 
 dirTree :: [(Path Abs Dir, DirTree)] -> DirTree
@@ -153,34 +107,6 @@ pathsToTree (path : paths) =
 runWalk ::
   (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs Dir]
 runWalk = runWalkWithCircuitBreaker 100
-
-runWalkWithFilters' ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  ) =>
-  Int ->
-  AllFilters ->
-  Path Abs Dir ->
-  m [Path Abs Dir]
-runWalkWithFilters' maxIters filters startDir =
-  do
-    fmap fst
-    . runWriter
-    . fmap snd
-    . runState (0 :: Int)
-    . runReader filters
-    $ walkWithFilters'
-      ( \dir _ _ -> do
-          iterations :: Int <- get
-          if iterations < maxIters
-            then do
-              put (iterations + 1)
-              tell [dir]
-              pure ((), WalkContinue)
-            else do
-              pure ((), WalkStop)
-      )
-      startDir
 
 runWalkWithCircuitBreaker ::
   (Has ReadFS sig m, Has Diagnostics sig m) => Int -> Path Abs Dir -> m [Path Abs Dir]

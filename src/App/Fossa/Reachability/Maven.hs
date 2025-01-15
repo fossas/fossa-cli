@@ -7,13 +7,11 @@ import App.Fossa.Reachability.Jar (callGraphFromJars, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Diagnostics (Diagnostics, context, fromEither, recover)
-import Control.Effect.Reader (Reader)
 import Control.Monad (filterM, join)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, replace)
-import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (Has, ReadFS, resolveDir', resolveFile)
@@ -34,7 +32,6 @@ mavenJarCallGraph ::
   , Has Diagnostics sig m
   , Has Exec sig m
   , Has (Lift IO) sig m
-  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m CallGraphAnalysis
@@ -47,7 +44,6 @@ getJarsByBuild ::
   ( Has Logger sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [Path Abs File]

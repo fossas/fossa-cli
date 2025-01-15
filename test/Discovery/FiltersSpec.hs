@@ -24,7 +24,6 @@ import Discovery.Filters (
   withToolFilter,
  )
 import Path (Dir, Path, Rel, mkRelDir)
-import Test.Fixtures (excludePath)
 import Test.Hspec (
   Expectation,
   Spec,
@@ -284,6 +283,9 @@ testHarness :: FilterCombination Include -> FilterCombination Exclude -> [((Text
 testHarness include exclude = traverse_ testSingle
   where
     testSingle ((buildtool, dir), targets, expected) = applyFilters (AllFilters include exclude) buildtool dir targets `shouldBe` expected
+
+excludePath :: Path Rel Dir -> AllFilters
+excludePath path = AllFilters mempty $ comboExclude mempty [path]
 
 excludeTool :: DiscoveredProjectType -> AllFilters
 excludeTool tool = AllFilters mempty $ comboExclude [TypeTarget $ toText tool] mempty

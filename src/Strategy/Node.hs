@@ -49,7 +49,7 @@ import Discovery.Filters (AllFilters, withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
-  walkWithFilters',
+  walk',
  )
 import Effect.Logger (
   Logger,
@@ -129,8 +129,8 @@ discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProject
         graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
         context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
-collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Manifest]
-collectManifests = walkWithFilters' $ \_ _ files ->
+collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Manifest]
+collectManifests = walk' $ \_ _ files ->
   case findFileNamed "package.json" files of
     Nothing -> pure ([], skipJsFolders)
     Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)

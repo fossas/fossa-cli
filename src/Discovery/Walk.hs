@@ -14,11 +14,10 @@ module Discovery.Walk (
 ) where
 
 import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics (Diagnostics, context, fatal)
+import Control.Effect.Diagnostics
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
-import Data.Bifunctor (second)
 import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
@@ -74,41 +73,17 @@ pathFilterIntercept ::
   AllFilters ->
   Path Abs Dir ->
   Path Abs Dir ->
-  [Path Abs Dir] ->
   m (o, WalkStep) ->
   m (o, WalkStep)
-pathFilterIntercept filters base dir subdirs act = do
+pathFilterIntercept filters base path act = do
   -- We know that the two have the same base, but if that invariant is broken,
   -- we just allow the path during discovery.  It's better than crashing.
-  case stripProperPrefix base dir of
+  case stripProperPrefix base path of
     Nothing -> act
     Just relative ->
       if pathAllowed filters relative
-        then (fmap . second) skipDisallowed act
+        then act
         else pure (mempty, WalkSkipAll)
-  where
-    disallowedSubdirs :: [Text]
-    disallowedSubdirs = do
-      subdir <- subdirs
-      stripped <- stripProperPrefix base subdir
-      let isAllowed = pathAllowed filters stripped
-      if isAllowed
-        then mempty
-        else pure $ (toText . toFilePath . dirname) subdir
-
-    -- skipDisallowed needs to look at either:
-    --  * WalkStep.WalkContinue
-    --  * WalkStep.WalkSkipSome [Text]
-    -- and add on any missing disallowed subdirs
-    skipDisallowed :: WalkStep -> WalkStep
-    skipDisallowed action =
-      if null disallowedSubdirs
-        then
-          action
-        else case action of
-          WalkContinue -> WalkSkipSome disallowedSubdirs
-          WalkSkipSome dirs -> WalkSkipSome $ disallowedSubdirs ++ dirs
-          _ -> action
 
 -- | Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::
@@ -142,7 +117,7 @@ walkWithFilters' ::
   m o
 walkWithFilters' f root = do
   filters <- ask
-  let f' dir subdirs files = pathFilterIntercept filters root dir subdirs $ f dir subdirs files
+  let f' dir subdirs files = pathFilterIntercept filters root dir $ f dir subdirs files
   walk' f' root
 
 -- | Search upwards in the directory tree for the existence of the supplied file.
@@ -194,7 +169,6 @@ walkDir ::
 walkDir handler topdir =
   context "Walking the filetree" $
     void $
-      -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
       -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
       walkAvoidLoop Set.empty topdir
   where
