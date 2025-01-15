@@ -27,9 +27,9 @@ import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
+import Control.Effect.Reader (Reader)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
-import Control.Effect.Reader (Reader)
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
@@ -38,13 +38,13 @@ findProjects basedir = do
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
 findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Path Abs File]
-findPomFiles dir = 
+findPomFiles dir =
   execState @[Path Abs File] [] $
-  flip walkWithFilters' dir $ \_ _ files -> do
-    let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
-    traverse_ (modify . (:)) poms
+    flip walkWithFilters' dir $ \_ _ files -> do
+      let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
+      traverse_ (modify . (:)) poms
 
-    pure ((), WalkSkipSome ["target"])
+      pure ((), WalkSkipSome ["target"])
 
 buildProjectClosures :: Path Abs Dir -> GlobalClosure -> [MavenProjectClosure]
 buildProjectClosures basedir global = closures

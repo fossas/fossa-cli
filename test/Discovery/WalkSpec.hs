@@ -5,6 +5,7 @@ module Discovery.WalkSpec (
   spec,
 ) where
 
+import Control.Carrier.Reader (runReader)
 import Control.Carrier.State.Strict (runState)
 import Control.Carrier.Writer.Strict (runWriter, tell)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -13,15 +14,14 @@ import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Discovery.Filters (AllFilters)
 import Discovery.Walk
 import Effect.ReadFS
 import Path
-import Path.IO (createDir, createDirLink, setPermissions, emptyPermissions, getPermissions)
+import Path.IO (createDir, createDirLink, emptyPermissions, getPermissions, setPermissions)
 import Test.Effect
 import Test.Fixtures (excludePath)
 import Test.Hspec
-import Control.Carrier.Reader (runReader)
-import Discovery.Filters (AllFilters)
 
 walkWithFilters'Spec :: Spec
 walkWithFilters'Spec =
@@ -48,13 +48,13 @@ walkWithFilters'Spec =
               [
                 ( tmpDir
                 , dirTree
-                  [
-                    (foo
-                    , dirTree
-                        [ (baz, dirTree [])
-                        ]
-                    )
-                  ]
+                    [
+                      ( foo
+                      , dirTree
+                          [ (baz, dirTree [])
+                          ]
+                      )
+                    ]
                 )
               ]
       sendIO $ do
@@ -158,7 +158,10 @@ runWalkWithFilters' ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
-  Int -> AllFilters -> Path Abs Dir -> m [Path Abs Dir]
+  Int ->
+  AllFilters ->
+  Path Abs Dir ->
+  m [Path Abs Dir]
 runWalkWithFilters' maxIters filters startDir =
   do
     fmap fst

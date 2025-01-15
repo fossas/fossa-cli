@@ -112,7 +112,8 @@ findFirstResolvedFileRecursively ::
   , Has Diagnostics sig m
   , Has (Reader AllFilters) sig m
   ) =>
-  Path Abs Dir -> m (Maybe (Path Abs File))
+  Path Abs Dir ->
+  m (Maybe (Path Abs File))
 findFirstResolvedFileRecursively baseDir = listToMaybe <$> walkWithFilters' findFile baseDir
   where
     isParentDirSwiftPm :: Path Abs Dir -> Bool

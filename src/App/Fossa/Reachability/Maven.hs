@@ -7,11 +7,13 @@ import App.Fossa.Reachability.Jar (callGraphFromJars, isValidJar)
 import App.Fossa.Reachability.Types (CallGraphAnalysis (..))
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Diagnostics (Diagnostics, context, fromEither, recover)
+import Control.Effect.Reader (Reader)
 import Control.Monad (filterM, join)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, replace)
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (Has, ReadFS, resolveDir', resolveFile)
@@ -23,8 +25,6 @@ import Strategy.Maven.Pom.PomFile (
   PomBuild (PomBuild),
  )
 import Text.Pretty.Simple (pShow)
-import Control.Effect.Reader (Reader)
-import Discovery.Filters (AllFilters)
 
 -- | Discovers the JAR files associated with the project at the provided path,
 -- then returns the parsed results of analyzing these JARs.

@@ -666,7 +666,7 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan =
       ( warnOnErr @Text "Container scan upload to new analysis service failed, falling back to core analysis."
           . errCtx ("Upload to new analysis service at " <> renderUrl sparkleAnalysisUrl)
           $ uploadScan sparkleAnalysisUrl scan
-      )
+        )
         <||> context "Upload to CORE analysis service" (uploadScan (containerUploadUrl Core baseUrl) scan)
 
     pure $ responseBody resp

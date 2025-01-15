@@ -14,10 +14,11 @@ module Discovery.Walk (
 ) where
 
 import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics ( Diagnostics, fatal, context )
+import Control.Effect.Diagnostics (Diagnostics, context, fatal)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
+import Data.Bifunctor (second)
 import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
@@ -26,10 +27,9 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
-import Discovery.Filters (pathAllowed, AllFilters)
+import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS
 import Path
-import Data.Bifunctor (second)
 
 data WalkStep
   = -- | Continue walking subdirectories
@@ -100,16 +100,15 @@ pathFilterIntercept filters base dir subdirs act = do
     --  * WalkStep.WalkContinue
     --  * WalkStep.WalkSkipSome [Text]
     -- and add on any missing disallowed subdirs
-    skipDisallowed :: WalkStep ->  WalkStep
+    skipDisallowed :: WalkStep -> WalkStep
     skipDisallowed action =
       if null disallowedSubdirs
         then
           action
-        else
-          case action of
-            WalkContinue -> WalkSkipSome disallowedSubdirs
-            WalkSkipSome dirs -> WalkSkipSome $ disallowedSubdirs ++ dirs
-            _ -> action
+        else case action of
+          WalkContinue -> WalkSkipSome disallowedSubdirs
+          WalkSkipSome dirs -> WalkSkipSome $ disallowedSubdirs ++ dirs
+          _ -> action
 
 -- | Like @walk@, but collects the output of @f@ in a monoid.
 walk' ::

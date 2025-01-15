@@ -37,6 +37,7 @@ import Data.List (nub)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Diag.Result (Result (..))
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
@@ -48,7 +49,6 @@ import Srclib.Types (
   SourceUnitDependency (..),
  )
 import Types (DiscoveredProjectType (..), GraphBreadth (..))
-import Discovery.Filters (AllFilters)
 
 analyzeForReachability ::
   ( Has Logger sig m
