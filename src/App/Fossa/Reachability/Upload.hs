@@ -37,6 +37,7 @@ import Data.List (nub)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Diag.Result (Result (..))
+import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
@@ -57,6 +58,7 @@ analyzeForReachability ::
   , Has (Lift IO) sig m
   , Has Debug sig m
   , Has (Reader ReachabilityConfig) sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   [DiscoveredProjectScan] ->
   m [SourceUnitReachabilityAttempt]
@@ -107,6 +109,7 @@ callGraphOf ::
   , Has (Lift IO) sig m
   , Has Debug sig m
   , Has (Reader ReachabilityConfig) sig m
+  , Has (Reader AllFilters) sig m
   ) =>
   DiscoveredProjectScan ->
   m SourceUnitReachabilityAttempt

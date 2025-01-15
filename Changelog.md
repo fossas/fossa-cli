@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.43
+- Discovery: Fix a bug where directories in paths.exclude may still be accessed during discovery which causes an error when users don't have permission to read those directories.
+
 ## 3.9.42
 - Licensing: Adds support for the Text-Tabs+Wrap License
 

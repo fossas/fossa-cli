@@ -27,21 +27,24 @@ import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile
 import Strategy.Maven.Pom.Resolver
 
+import Control.Effect.Reader (Reader)
 import Data.Text (Text)
+import Discovery.Filters (AllFilters)
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- context "Finding pom files" $ findPomFiles basedir
   globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
-findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
-findPomFiles dir = execState @[Path Abs File] [] $
-  flip walk dir $ \_ _ files -> do
-    let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
-    traverse_ (modify . (:)) poms
+findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Path Abs File]
+findPomFiles dir =
+  execState @[Path Abs File] [] $
+    flip walkWithFilters' dir $ \_ _ files -> do
+      let poms = filter (\file -> "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file) files
+      traverse_ (modify . (:)) poms
 
-    pure (WalkSkipSome ["target"])
+      pure ((), WalkSkipSome ["target"])
 
 buildProjectClosures :: Path Abs Dir -> GlobalClosure -> [MavenProjectClosure]
 buildProjectClosures basedir global = closures
