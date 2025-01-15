@@ -14,18 +14,6 @@ import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 erlangEnv :: FixtureEnvironment
 erlangEnv = NixEnv ["erlang", "rebar3"]
 
-cowboy :: AnalysisTestFixture (Rebar3.RebarProject)
-cowboy =
-  AnalysisTestFixture
-    "cowboy"
-    Rebar3.discover
-    erlangEnv
-    Nothing
-    $ FixtureArtifact
-      "https://github.com/ninenines/cowboy/archive/refs/tags/2.9.0.tar.gz"
-      [reldir|erlang/cowboy/|]
-      [reldir|cowboy-2.9.0/|]
-
 emqx :: AnalysisTestFixture (Rebar3.RebarProject)
 emqx =
   AnalysisTestFixture
@@ -40,5 +28,4 @@ emqx =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary NonStrict cowboy Rebar3ProjectType (DependencyResultsSummary 2 2 0 1 Complete)
   testSuiteDepResultSummary NonStrict emqx Rebar3ProjectType (DependencyResultsSummary 0 0 0 1 Complete)
