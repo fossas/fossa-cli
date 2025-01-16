@@ -1,11 +1,23 @@
-use std::path::PathBuf;
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
+use bounded_vec_deque::BoundedVecDeque;
 use clap::{Parser, ValueEnum};
+use ratatui::{
+    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    layout::{Constraint, Layout},
+    widgets::{Block, List, Paragraph},
+    DefaultTerminal,
+};
 use regex::{Regex, RegexSet};
 use stable_eyre::{eyre::Context, Result};
 use strum::Display;
 use tracing::{debug, info, trace, warn};
 use walkdir::{DirEntry, WalkDir};
+
+use super::Mode;
 
 /// Arguments used by the "walk" command.
 #[derive(Debug, Clone, Parser)]
@@ -43,9 +55,187 @@ pub enum SymlinkStrategy {
 }
 
 #[tracing::instrument(skip(args), fields(root_device_id))]
-pub fn main(root: PathBuf, args: &WalkArgs) -> Result<()> {
+pub fn main(root: PathBuf, mode: Mode, args: &WalkArgs) -> Result<()> {
+    match mode {
+        Mode::Log => main_logged(root, args),
+        Mode::Tui => {
+            let start = Instant::now();
+            let mut terminal = ratatui::init();
+            let result = main_tui(root, args, &mut terminal);
+            ratatui::restore();
+
+            match result {
+                Ok(stats) => {
+                    println!("walk stats:");
+                    println!("  skipped: {}", stats.skipped);
+                    println!("  warnings: {}", stats.warnings);
+                    println!("  loops: {}", stats.loops);
+                    println!("  visited: {}", stats.visited);
+                    println!("  time: {:?}", start.elapsed());
+                    Ok(())
+                }
+                Err(err) => Err(err),
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct WalkStats {
+    skipped: usize,
+    warnings: usize,
+    loops: usize,
+    visited: usize,
+}
+
+#[tracing::instrument(skip(args), fields(root_device_id))]
+fn main_tui(root: PathBuf, args: &WalkArgs, terminal: &mut DefaultTerminal) -> Result<WalkStats> {
+    let regexes = args.filters.iter().map(|rx| rx.as_str());
+    let filters = RegexSet::new(regexes).wrap_err("parse provided regular expressions as a set")?;
+
+    let mut skipped_count = 0usize;
+    let mut warnings_count = 0usize;
+    let mut loops_count = 0usize;
+    let mut visited_count = 0usize;
+    let mut skipped = BoundedVecDeque::new(1000);
+    let mut warnings = BoundedVecDeque::new(1000);
+    let mut loops = BoundedVecDeque::new(1000);
+    let mut visited = BoundedVecDeque::new(1000);
+    let mut drawn = Instant::now();
+
+    const FPS: u64 = 30;
+    const TIME_PER_FRAME: Duration = Duration::from_millis(1000 / FPS);
+
+    let walker = WalkDir::new(&root)
+        .follow_links(matches!(args.symlinks, SymlinkStrategy::Follow))
+        .into_iter();
+
+    for entry in walker {
+        let path = match entry {
+            Ok(entry) => entry.path().to_string_lossy().to_string(),
+            Err(err) => {
+                let msg = format!("{err:#}");
+                if msg.contains("loop") {
+                    loops.push_front(msg);
+                    loops_count += 1;
+                } else {
+                    warnings.push_front(msg);
+                    warnings_count += 1;
+                }
+
+                continue;
+            }
+        };
+
+        if filters.is_match(&path) {
+            skipped.push_front(path.to_string());
+            skipped_count += 1;
+            continue;
+        }
+
+        visited.push_front(path);
+        visited_count += 1;
+
+        let now = Instant::now();
+        if now.duration_since(drawn) < TIME_PER_FRAME {
+            continue;
+        }
+
+        terminal
+            .draw(|frame| {
+                use Constraint::*;
+
+                let section = Layout::vertical([Length(1), Min(0)]);
+                let rows = Layout::vertical([Length(1), Fill(4), Fill(2), Fill(1), Fill(1)]);
+                let [info_area, visited_area, loops_area, warnings_area, skipped_area] =
+                    rows.areas(frame.area());
+
+                frame.render_widget(Paragraph::new(format!("Press 'q' to exit")), info_area);
+
+                let [visited_title, visited_content] = section.areas(visited_area);
+                let [loops_title, loops_content] = section.areas(loops_area);
+                let [warnings_title, warnings_content] = section.areas(warnings_area);
+                let [skipped_title, skipped_content] = section.areas(skipped_area);
+
+                frame.render_widget(
+                    Block::bordered().title(format!("Visited: {}", visited_count)),
+                    visited_title,
+                );
+                let visited_list = List::new(
+                    visited
+                        .iter()
+                        .take(visited_content.height as usize)
+                        .cloned(),
+                );
+                frame.render_widget(visited_list, visited_content);
+
+                frame.render_widget(
+                    Block::bordered().title(format!("Loops: {}", loops_count)),
+                    loops_title,
+                );
+                let loops_list =
+                    List::new(loops.iter().take(loops_content.height as usize).cloned());
+                frame.render_widget(loops_list, loops_content);
+
+                frame.render_widget(
+                    Block::bordered().title(format!("Warnings: {}", warnings_count)),
+                    warnings_title,
+                );
+                let warnings_list = List::new(
+                    warnings
+                        .iter()
+                        .take(warnings_content.height as usize)
+                        .cloned(),
+                );
+                frame.render_widget(warnings_list, warnings_content);
+
+                frame.render_widget(
+                    Block::bordered().title(format!("Skipped: {}", skipped_count)),
+                    skipped_title,
+                );
+                let skipped_list = List::new(
+                    skipped
+                        .iter()
+                        .take(skipped_content.height as usize)
+                        .cloned(),
+                );
+                frame.render_widget(skipped_list, skipped_content);
+            })
+            .context("draw frame")?;
+
+        if handle_tui_events().context("handle TUI events")? {
+            break;
+        }
+
+        drawn = now;
+    }
+
+    Ok(WalkStats {
+        skipped: skipped_count,
+        warnings: warnings_count,
+        loops: loops_count,
+        visited: visited_count,
+    })
+}
+
+fn handle_tui_events() -> std::io::Result<bool> {
+    if !event::poll(Duration::from_micros(100))? {
+        return Ok(false);
+    }
+
+    match event::read()? {
+        Event::Key(key) if key.kind == KeyEventKind::Press => match key.code {
+            KeyCode::Char('q') => return Ok(true),
+            _ => {}
+        },
+        _ => {}
+    }
+    Ok(false)
+}
+
+#[tracing::instrument(skip(args), fields(root_device_id))]
+fn main_logged(root: PathBuf, args: &WalkArgs) -> Result<()> {
     info!("inspecting root: {}", root.display());
-    trace!("inspecting root: {}", root.display());
     debug!("walk options: {args:?}");
 
     let root_device_id = util::device_num(&root).wrap_err("get device ID")?;
