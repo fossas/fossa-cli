@@ -54,6 +54,7 @@ Supported dependency types:
 - `pub` - Dart dependencies found at [pub.dev](https://www.pub.dev/).
 - `pypi` - Python dependencies that are typically found at [Pypi.org](https://pypi.org/).
 - `swift` - Swift dependencies using the [Swift Package Manager](https://www.swift.org/package-manager/).
+<!-- markdown-link-check-disable-next-line -->
 - `cocoapods` - Swift and Objective-C dependencies found at [Cocoapods.org](https://cocoapods.org/).
 
 The following dependency types are also supported but they require `arch`, `os`, and `osVersion` attributes:

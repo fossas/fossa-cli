@@ -1,17 +1,22 @@
-# Quick reference: NuGet
+# NuGet Analysis
 
-## Requirements
+| Strategy                                    | Direct Deps | Transitive Deps | Edges |
+|---------------------------------------------|-------------|-----------------|-------|
+| [project.assets.json](projectassetsjson.md) | ✅           | ✅               | ✅     |
+| [PackageReference](packagereference.md)     | ✅           | ❌               | ❌     |
+| [project.json](projectjson.md)              | ✅           | ❌               | ❌     |
+| [packages.config](packagesconfig.md)        | ✅           | ❌               | ❌     |
+| [nuspec](nuspec.md)                         | ✅           | ❌               | ❌     |
 
-**Ideal/Minimum**
+NuGet analysis follows these strategies in sequence:
+1. `project.assets.json`
+2. `PackageReference`
 
-One more more of the following:
+`project.assets.json` files and their dependencies are generated from  `.csproj` files. `PackageReference` dependencies can be found in `.csproj`, `.xproj`, `.vbproj`, `.dbproj`, or `.fsproj` files. To consolidate findings from these two strategies, `project.assets.json` analysis is attempted first and falls back to `PackageReference` analysis. 
 
-- [`.nuspec`](https://docs.microsoft.com/en-us/nuget/reference/nuspec) formatted file in your directory.
-- [Package reference](https://docs.microsoft.com/en-us/nuget/consume-packages/package-references-in-project-files) file present in your project. Commonly with an ending such as `.csproj`, `xproj`, `vbproj` and others.
-- `project.assets.json`
-- `packages.config`
-- `project.json`
+The following strategies are executed independently::
+1. `project.json`
+2. `packages.config`
+3. `nuspec`
 
-## Project discovery
-
-Directories containing any of the files listed above are considered NuGet projects.
+`project.json` and `packages.config` files are deprecated in favor of `.csproj` and their usage of `PackageReference` format. `nuspec` serves as a manifest containing package metadata, used both for building the package and providing information to consumers. These strategies are isolated from the `project.assets.json` and `PackageReference` approaches and therefore run independently.
