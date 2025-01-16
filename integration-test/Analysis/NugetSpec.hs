@@ -6,11 +6,10 @@ module Analysis.NugetSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
-import Data.Set qualified as Set
 import Data.Set (member)
+import Data.Set qualified as Set
 import Discovery.Walk (fileName)
 import Path
-
 import Strategy.NuGet qualified as NuGet
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Test.Hspec
@@ -40,7 +39,6 @@ dotnetCoreTwoExample discoveryFunc =
       [reldir|nuget/dotnet-core-2.0-example-0.0.1/|]
       [reldir|dotnet-core-2.0-example-0.0.1//|]
 
-
 testServiceStackForPkgReferences :: Spec
 testServiceStackForPkgReferences =
   aroundAll (withAnalysisOf NonStrict $ serviceStack NuGet.discover) $ do
@@ -61,7 +59,7 @@ testDotnetCoreTwoExampleForPackageAssetsJson =
     describe "dotnet-core-2.0-example" $ do
       it "should find targets" $ \(result, _) -> do
         length result `shouldBe` 2
-        let projectDataPaths = Set.fromList $ map (fileName . NuGet.nugetProjectFile . Types.projectData . fst) result 
+        let projectDataPaths = Set.fromList $ map (fileName . NuGet.nugetProjectFile . Types.projectData . fst) result
         let doesProjectAssetsJsonTargetExist = member "project.assets.json" projectDataPaths
         let doesCsprojTargetExist = member "example.csproj" projectDataPaths
         doesProjectAssetsJsonTargetExist `shouldBe` True

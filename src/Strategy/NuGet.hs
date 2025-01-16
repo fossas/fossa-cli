@@ -37,7 +37,6 @@ import Types (
   DiscoveredProjectType (NuGetProjectType),
  )
 
-
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
@@ -82,10 +81,11 @@ instance AnalyzeProject NuGetProject where
   analyzeProjectStaticOnly _ = getDeps
 
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuGetProject -> m DependencyResults
-getDeps project = context "NuGet" $
-  if "project.assets.json" == (fileName . nugetProjectFile) project
-    then getAssetsJsonDeps project
-    else getPackageReferenceDeps project
+getDeps project =
+  context "NuGet" $
+    if "project.assets.json" == (fileName . nugetProjectFile) project
+      then getAssetsJsonDeps project
+      else getPackageReferenceDeps project
 
 getAssetsJsonDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuGetProject -> m DependencyResults
 getAssetsJsonDeps = context "ProjectAssetsJson" . context "Static analysis" . ProjectAssetsJson.analyze' . nugetProjectFile
