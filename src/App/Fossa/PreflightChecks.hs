@@ -21,6 +21,8 @@ import Control.Monad (void, when)
 import Data.Error (createErrataWithHeaderOnly)
 import Data.Text
 import Data.Text.IO qualified as TIO
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Diag.Diagnostic (ToDiagnostic (..))
 import Effect.Logger (renderIt)
 import Errata (Errata (..))
@@ -30,7 +32,7 @@ import Path (
   Path,
   Rel,
   fromAbsFile,
-  mkRelFile,
+  parseRelFile,
   (</>),
  )
 import Path.IO (getTempDir, removeFile)
@@ -62,8 +64,10 @@ preflightChecks ::
 preflightChecks cmd = context "preflight-checks" $ do
   -- Check for writing to temp dir
   tmpDir <- sendIO getTempDir
-  fatalOnIOException "Failed to write to temp directory" . sendIO $ TIO.writeFile (fromAbsFile $ tmpDir </> preflightCheckFileName) "Writing to temp dir"
-  sendIO $ removeFile (tmpDir </> preflightCheckFileName)
+  fileName <- preflightCheckFileName
+  let file = tmpDir </> fileName
+  fatalOnIOException "Failed to write to temp directory" . sendIO $ TIO.writeFile (fromAbsFile file) "Writing to temp dir"
+  sendIO $ removeFile file
 
   -- Check for valid API Key and if user can connect to fossa app
   org <- errHelp InvalidApiKeyErr $ errDoc apiKeyUrl getOrganization
@@ -127,8 +131,13 @@ fullAccessTokenCheck TokenTypeResponse{..} = case tokenType of
       $ fatal TokenTypeErr
   _ -> pure ()
 
-preflightCheckFileName :: Path Rel File
-preflightCheckFileName = $(mkRelFile "preflight-check.txt")
+-- | Generate a unique filename for a preflight check file.
+--
+-- The filename needs to be unique so that we don't clobber the file when multiple instances of fossa run on the same machine.
+preflightCheckFileName :: Has (Lift IO) sig m => m (Path Rel File)
+preflightCheckFileName = do
+  suffix <- sendIO $ UUID.toString <$> UUID.nextRandom
+  sendIO $ parseRelFile $ "preflight-check-" <> suffix <> ".txt"
 
 data InvalidApiKeyErr = InvalidApiKeyErr
 instance ToDiagnostic InvalidApiKeyErr where
