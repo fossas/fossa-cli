@@ -1,5 +1,11 @@
 # FOSSA CLI Changelog
 
+## 3.9.44
+- Preflight: Fix a bug where the preflight check could fail if you ran fossa multiple times simultaneously ([#1498](https://github.com/fossas/fossa-cli/pull/1498))
+
+## 3.9.43
+- Discovery: Fix a bug where directories in paths.exclude may still be accessed during discovery which causes an error when users don't have permission to read those directories ([#1493](https://github.com/fossas/fossa-cli/pull/1493))
+
 ## 3.9.42
 - Licensing: Adds support for the Text-Tabs+Wrap License
 

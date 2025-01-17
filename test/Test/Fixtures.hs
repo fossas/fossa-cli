@@ -57,6 +57,7 @@ module Test.Fixtures (
   releaseProject,
   policy,
   team,
+  excludePath,
 ) where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
@@ -80,12 +81,16 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.Encoding qualified as TL
 import Data.Text.Extra (showT)
-import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
+import Discovery.Filters (
+  AllFilters (AllFilters),
+  MavenScopeFilters (MavenScopeIncludeFilters),
+  comboExclude,
+ )
 import Effect.Logger (Severity (..))
 import Fossa.API.CoreTypes qualified as CoreAPI
 import Fossa.API.Types (Archive (..))
 import Fossa.API.Types qualified as API
-import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, parseAbsDir, (</>))
+import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, parseAbsDir, (</>))
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
@@ -607,3 +612,6 @@ M:vuln.project.sample.App:parse(java.net.URL) (M)org.dom4j.io.SAXReader:read(jav
 
 sampleJarParsedContent' :: LB.ByteString
 sampleJarParsedContent' = LB.fromStrict . TL.encodeUtf8 $ sampleJarParsedContent
+
+excludePath :: Path Rel Dir -> AllFilters
+excludePath path = AllFilters mempty $ comboExclude mempty [path]
