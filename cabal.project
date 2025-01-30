@@ -11,6 +11,12 @@ package spectrometer
   -- Bug filed here: https://github.com/snoyberg/file-embed/issues/45
   ghc-options: -ffull-laziness
 
+allow-newer:
+  codec-rpm:text,
+  codec-rpm:bytestring,
+  git-config:text,
+  lzma-conduit:text
+
 import: ./cabal.project.common
               
 package *

@@ -34,10 +34,12 @@ import Container.Docker.SourceParser (
     RegistryImageSource,
     platformArchitecture,
     registryContainerRepositoryReference,
-    registryCred
+    registryCred,
+    registryHost
   ),
   RepoDigest,
   RepoReference (RepoReferenceDigest),
+  toRegistryApiHost,
  )
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
@@ -147,13 +149,13 @@ reqManager = sendIO $ newManager tlsManagerSettings
 -- Refer to: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests
 manifestEndpoint :: Has (Lift IO) sig m => RegistryImageSource -> m Request
 manifestEndpoint (RegistryImageSource url scheme _ repo ref _) =
-  sendIO $ parseRequest (toString $ (toText . show $ scheme) <> url <> "/v2/" <> repo <> "/manifests/" <> (toText . show $ ref))
+  sendIO $ parseRequest (toString $ (toText . show $ scheme) <> toRegistryApiHost url <> "/v2/" <> repo <> "/manifests/" <> (toText . show $ ref))
 
 -- | Blob Endpoint.
 -- Refer to: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs
 blobEndpoint :: Has (Lift IO) sig m => RegistryImageSource -> m Request
 blobEndpoint (RegistryImageSource url scheme _ repo ref _) =
-  sendIO $ parseRequest (toString $ (toText . show $ scheme) <> url <> "/v2/" <> repo <> "/blobs/" <> (toText . show $ ref))
+  sendIO $ parseRequest (toString $ (toText . show $ scheme) <> toRegistryApiHost url <> "/v2/" <> repo <> "/blobs/" <> (toText . show $ ref))
 
 -- | Retrieve Manifest.
 getImageManifest ::
