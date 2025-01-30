@@ -34,8 +34,7 @@ import Container.Docker.SourceParser (
     RegistryImageSource,
     platformArchitecture,
     registryContainerRepositoryReference,
-    registryCred,
-    registryHost
+    registryCred
   ),
   RepoDigest,
   RepoReference (RepoReferenceDigest),
