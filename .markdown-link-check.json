@@ -4,9 +4,6 @@
   "ignorePatterns": [
     {
       "pattern": "https://support.fossa.com"
-    },
-    {
-      "pattern": "^https://hoogle\\.haskell\\.org"
     }
   ]
 }
