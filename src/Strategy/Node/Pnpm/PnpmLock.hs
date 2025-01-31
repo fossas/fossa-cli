@@ -123,6 +123,7 @@ import qualified Data.Maybe as Maybe
 data PnpmLockfile = PnpmLockfile
   { importers :: Map Text ProjectMap
   , packages :: Map Text PackageData
+  , catalogs :: Map Text CatalogMap
   , lockFileVersion :: PnpmLockFileVersion
   }
   deriving (Show, Eq, Ord)
@@ -131,8 +132,7 @@ data PnpmLockFileVersion
   = PnpmLockLt4 Text
   | PnpmLock4Or5
   | PnpmLock6
-  | PnpmLockV678 Text
-  | PnpmLockV9
+  | PnpmLockGt6 Text
   deriving (Show, Eq, Ord)
 
 instance FromJSON PnpmLockfile where
@@ -140,6 +140,7 @@ instance FromJSON PnpmLockfile where
     rawLockFileVersion <- getVersion =<< obj .:? "lockfileVersion" .!= (TextLike mempty)
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
+    catalogs <- obj .:? "catalogs" .!= mempty
 
     -- Map pnpm non-workspace lockfile format to pnpm workspace lockfile format.
     --
@@ -158,7 +159,7 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile refinedImporters packages rawLockFileVersion
+    pure $ PnpmLockfile refinedImporters packages catalogs rawLockFileVersion
     where
       getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
         (Just '1') -> pure $ PnpmLockLt4 ver
@@ -167,8 +168,7 @@ instance FromJSON PnpmLockfile where
         (Just '4') -> pure PnpmLock4Or5
         (Just '5') -> pure PnpmLock4Or5
         (Just '6') -> pure PnpmLock6
-        (Just x) | x `elem` ['7', '8'] -> pure $ PnpmLockV678 ver
-        (Just '9') -> pure PnpmLockV9
+        (Just x) | x `elem` ['7', '8', '9'] -> pure $ PnpmLockGt6 ver
         _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
 
 data ProjectMap = ProjectMap
@@ -248,13 +248,35 @@ instance FromJSON Resolution where
       gitRes :: Object -> Parser Resolution
       gitRes obj = GitResolve <$> (GitResolution <$> obj .: "repo" <*> obj .: "commit")
 
+-- | Catalog map contains package versions and their metadata
+newtype CatalogMap = CatalogMap
+  { catalogEntries :: Map Text CatalogEntry
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON CatalogMap where
+  parseJSON = Yaml.withObject "CatalogMap" $ \obj ->
+    CatalogMap <$> traverse parseCatalogEntry obj
+
+data CatalogEntry = CatalogEntry
+  { specifier :: Text
+  , version :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON CatalogEntry where
+  parseJSON = Yaml.withObject "CatalogEntry" $ \obj ->
+    CatalogEntry
+      <$> obj .: "specifier"
+      <*> obj .: "version"
+
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
 
   case lockFileVersion pnpmLockFile of
     PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
-    PnpmLockV678 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    PnpmLockGt6 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
     _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
@@ -309,9 +331,8 @@ buildGraph lockFile = withoutLocalPackages $
     getPkgNameVersion = case lockFileVersion lockFile of
       PnpmLock4Or5 -> getPkgNameVersionV5
       PnpmLock6 -> getPkgNameVersionV6
+      PnpmLockGt6 _ -> getPkgNameVersionV9
       PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
-      PnpmLockV678 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
-      PnpmLockV9 -> getPkgNameVersionV9
 
     -- Gets package name and version from package's key.
     --
@@ -400,15 +421,23 @@ buildGraph lockFile = withoutLocalPackages $
     mkPkgKey name version = case lockFileVersion lockFile of
       PnpmLock4Or5 -> "/" <> name <> "/" <> version
       PnpmLock6 -> "/" <> name <> "@" <> version
-      PnpmLockV9 -> name <> "@" <> version  -- v9 doesn't use leading slash
+      PnpmLockGt6 _ -> name <> "@" <> version  -- v9 doesn't use leading slash
       -- v3 or below are deprecated and are not used in practice, fallback to closest
       PnpmLockLt4 _ -> "/" <> name <> "/" <> version
-      -- at the time of writing there is no v7/v8, so default to closest
-      PnpmLockV678 _ -> "/" <> name <> "@" <> version
+
+    -- | Get the actual version for a package, checking catalogs if needed
+    getPackageVersion :: Text -> Text -> Maybe Text
+    getPackageVersion name version = 
+      if "catalog" `Text.isPrefixOf` version
+        then do
+          defaultCatalog <- Map.lookup "default" (catalogs lockFile)
+          entry <- Map.lookup name (catalogEntries defaultCatalog)
+          Just $ version entry
+        else Just version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
-      toDep NodeJSType name (Just . normalizeVersion . withoutPeerDepSuffix . withoutSymConstraint $ Maybe.fromMaybe "" maybeVersion) isDev
+      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> (maybeVersion >>= getPackageVersion name)) isDev
     toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
       toDep GitType url (Just rev) isDev
     toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
