@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+- Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error
+
 ## 3.9.45
 - Preflight: Fix a bug where the preflight checks fail for SBOM team analysis ([#1499](https://github.com/fossas/fossa-cli/pull/1499))
 
