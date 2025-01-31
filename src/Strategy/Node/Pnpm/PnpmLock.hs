@@ -260,7 +260,7 @@ instance FromJSON CatalogMap where
 
 data CatalogEntry = CatalogEntry
   { specifier :: Text
-  , version :: Text
+  , catalogVersion :: Text  -- renamed from version to avoid name collision
   }
   deriving (Show, Eq, Ord)
 
@@ -435,7 +435,7 @@ buildGraph lockFile = withoutLocalPackages $
         then do
           defaultCatalog <- Map.lookup "default" (catalogs lockFile)
           entry <- Map.lookup name (catalogEntries defaultCatalog)
-          Just $ version entry
+          Just $ catalogVersion entry
         else Just version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Bool -> Dependency
