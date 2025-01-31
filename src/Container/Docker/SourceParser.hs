@@ -47,6 +47,7 @@ module Container.Docker.SourceParser (
   suggestDockerExport,
   showReferenceWithSep,
   toRepoNameWithRegistry,
+  toRegistryApiHost,
 ) where
 
 import Control.Monad (unless, void)
@@ -157,6 +158,14 @@ suggestDockerExport (RegistryImageSource host _ _ repo ref _) =
 showReferenceWithSep :: RepoReference -> Text
 showReferenceWithSep (RepoReferenceTag (RepoTag tag)) = ":" <> tag
 showReferenceWithSep (RepoReferenceDigest (RepoDigest digest)) = "@" <> digest
+
+-- | Convert a registry host to its API endpoint.
+-- For Docker Hub, we need to use registry-1.docker.io instead of index.docker.io
+-- See: https://docs.docker.com/registry/spec/api/
+toRegistryApiHost :: Text -> Text
+toRegistryApiHost host
+  | host == defaultRegistry = "registry-1.docker.io"
+  | otherwise = host
 
 -- | Parses to RegistryImageSource.
 --

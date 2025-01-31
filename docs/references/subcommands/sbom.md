@@ -23,8 +23,15 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 
 | Name                                  | Short | Description                                                                         |
 | ------------------------------------- | ----- | ----------------------------------------------------------------------------------- |
-| `--team 'team name'` | `-T` | Specify a team within your FOSSA organization |
+| `--team 'team name'` | `-T` | Specify a team within your FOSSA organization. If you only have team-scoped permissions, you must specify a team of which you are a member. |
 | `--force-rescan`  | | Force the SBOM file to be rescanned, even if this exact revision has been previously uploaded |
+
+### Team Permissions
+
+When using `fossa sbom analyze`, the command respects team-scoped permissions:
+- If you have organization-wide permissions, you can upload SBOMs without specifying a team
+- If you only have team-scoped permissions, you must use the `--team` flag to specify a team of which you are a member
+- The behavior matches that of `fossa analyze --team`
 
 ## `fossa sbom test <path to sbom file>`
 
