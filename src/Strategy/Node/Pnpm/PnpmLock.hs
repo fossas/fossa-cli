@@ -330,8 +330,11 @@ buildGraph lockFile = withoutLocalPackages $
           (Just name, v) -> Just (name, v <> peerDepInfo)
           _ -> Nothing
     -- Pnpm 9.0 registry packages may not have a leading slash, so it is not required.
+    -- Version may also be a catalog reference like "workspace:*" or "workspace:^1.0.0"
     --
-    -- >> getPkgNameVersionV9 "@angular/core@1.0.0(babel@1.0.0) = Just ("@angular/core", "1.0.0(babel@1.0.0")
+    -- >> getPkgNameVersionV9 "@angular/core@1.0.0(babel@1.0.0)" = Just ("@angular/core", "1.0.0(babel@1.0.0)")
+    -- >> getPkgNameVersionV9 "pkg-a@workspace:*" = Just ("pkg-a", "workspace:*")
+    -- >> getPkgNameVersionV9 "pkg-b@workspace:^1.0.0" = Just ("pkg-b", "workspace:^1.0.0")
     getPkgNameVersionV9 :: Text -> Maybe (Text, Text)
     getPkgNameVersionV9 pkgKey = do
       let txt = Maybe.fromMaybe pkgKey (Text.stripPrefix "/" pkgKey)
@@ -392,19 +395,20 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a/1.0.0" -- for v5 fmt
     -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a@1.0.0" -- for v6 fmt
     -- >> mkPkgKey "pkg-a" "1.0.0(babal@1.0.0)" = "/pkg-a@1.0.0(babal@1.0.0)" -- for v6 fmt
+    -- >> mkPkgKey "pkg-a" "1.0.0" = "pkg-a@1.0.0" -- for v9 fmt (no leading slash)
     mkPkgKey :: Text -> Text -> Text
     mkPkgKey name version = case lockFileVersion lockFile of
       PnpmLock4Or5 -> "/" <> name <> "/" <> version
       PnpmLock6 -> "/" <> name <> "@" <> version
+      PnpmLockV9 -> name <> "@" <> version  -- v9 doesn't use leading slash
       -- v3 or below are deprecated and are not used in practice, fallback to closest
       PnpmLockLt4 _ -> "/" <> name <> "/" <> version
-      -- at the time of writing there is no v7, so default to closest
+      -- at the time of writing there is no v7/v8, so default to closest
       PnpmLockV678 _ -> "/" <> name <> "@" <> version
-      PnpmLockV9 -> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
-      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
+      toDep NodeJSType name (Just . normalizeVersion . withoutPeerDepSuffix . withoutSymConstraint $ Maybe.fromMaybe "" maybeVersion) isDev
     toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
       toDep GitType url (Just rev) isDev
     toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
@@ -430,6 +434,15 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
     withoutPeerDepSuffix :: Text -> Text
     withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
+
+    -- | Normalize version string by handling catalog references
+    -- >> normalizeVersion "workspace:*" = "*"
+    -- >> normalizeVersion "workspace:^1.0.0" = "1.0.0"
+    -- >> normalizeVersion "1.0.0" = "1.0.0"
+    normalizeVersion :: Text -> Text
+    normalizeVersion version
+      | "workspace:" `Text.isPrefixOf` version = Text.dropWhile (/= '*') $ Text.drop 10 version
+      | otherwise = version
 
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
