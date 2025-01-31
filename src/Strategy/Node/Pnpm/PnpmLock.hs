@@ -285,12 +285,15 @@ buildGraph :: PnpmLockfile -> Graphing Dependency
 buildGraph lockFile = withoutLocalPackages $
   run . evalGrapher $ do
     for_ (toList $ importers lockFile) $ \(_, projectSnapshot) -> do
+      -- Track which packages are dev dependencies from the importers section
+      let prodDeps = Set.fromList $ map fst $ toList (directDependencies projectSnapshot)
+      let devDeps = Set.fromList $ map fst $ toList (directDevDependencies projectSnapshot)
       let allDirectDependencies =
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
 
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
-        maybe (pure ()) direct $ toResolvedDependency depName depVersion
+        maybe (pure ()) direct $ toResolvedDependency depName depVersion (Set.member depName devDeps)
 
     -- Add edges and deep dependencies by iterating over all packages.
     --
@@ -318,14 +321,14 @@ buildGraph lockFile = withoutLocalPackages $
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
-      let parentDep = toDependency depName depVersion pkgMeta
+      let parentDep = toDependency depName depVersion pkgMeta False -- Not a direct dependency, use package's isDev
 
       -- It is ok, if this dependency was already graphed as direct
       -- @direct 1 <> deep 1 = direct 1@
       deep parentDep
 
       for_ deepDependencies $ \(deepName, deepVersion) -> do
-        maybe (pure ()) (edge parentDep) (toResolvedDependency deepName deepVersion)
+        maybe (pure ()) (edge parentDep) (toResolvedDependency deepName deepVersion False)
   where
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion = case lockFileVersion lockFile of
@@ -401,14 +404,14 @@ buildGraph lockFile = withoutLocalPackages $
     --    e.g.
     --      file:../local-package
     --
-    toResolvedDependency :: Text -> Text -> Maybe Dependency
-    toResolvedDependency depName depVersion = do
+    toResolvedDependency :: Text -> Text -> Bool -> Maybe Dependency
+    toResolvedDependency depName depVersion isImporterDevDep = do
       let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
       let maybeRegistrySrcPackage = Map.lookup (mkPkgKey depName depVersion) (packages lockFile)
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
-        (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg
-        (Nothing, Just registryPkg) -> Just $ toDependency depName (Just depVersion) registryPkg
+        (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg isImporterDevDep
+        (Nothing, Just registryPkg) -> Just $ toDependency depName (Just depVersion) registryPkg isImporterDevDep
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
@@ -435,17 +438,17 @@ buildGraph lockFile = withoutLocalPackages $
           Just $ version entry
         else Just version
 
-    toDependency :: Text -> Maybe Text -> PackageData -> Dependency
-    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
-      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> (maybeVersion >>= getPackageVersion name)) isDev
-    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
-      toDep GitType url (Just rev) isDev
-    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
-      toDep URLType url Nothing isDev
-    toDependency _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) =
-      toDep UserType name Nothing isDev
-    toDependency name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
-      toDep UserType name Nothing isDev
+    toDependency :: Text -> Maybe Text -> PackageData -> Bool -> Dependency
+    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) isImporterDevDep =
+      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> (maybeVersion >>= getPackageVersion name)) (isDev || isImporterDevDep)
+    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
+      toDep GitType url (Just rev) (isDev || isImporterDevDep)
+    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) isImporterDevDep =
+      toDep URLType url Nothing (isDev || isImporterDevDep)
+    toDependency _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) isImporterDevDep =
+      toDep UserType name Nothing (isDev || isImporterDevDep)
+    toDependency name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) isImporterDevDep =
+      toDep UserType name Nothing (isDev || isImporterDevDep)
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.
