@@ -15,7 +15,7 @@ We'll assume that you want to release all changes currently on `master`.  You sh
     git pull origin
 
     export TAG_NAME="vX.Y.Z"
-    git tag -a $TAG_NAME -m "Releases $TAG_NAME"
+    git tag --annotate $TAG_NAME -m "Releases $TAG_NAME"
     git push origin $TAG_NAME
     ```
     Replace `vX.Y.Z` with your version number, such as `v3.1.4`.  The tag _must_ start with `v`.
