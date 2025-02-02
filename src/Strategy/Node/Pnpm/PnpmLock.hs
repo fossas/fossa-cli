@@ -184,7 +184,7 @@ instance FromJSON ProjectMap where
       <*> obj .:? "devDependencies" .!= mempty
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
-  { version :: Text
+  { depVersion :: Text  -- renamed from version to avoid name collision
   }
   deriving (Show, Eq, Ord)
 
@@ -256,7 +256,7 @@ newtype CatalogMap = CatalogMap
 
 instance FromJSON CatalogMap where
   parseJSON = Yaml.withObject "CatalogMap" $ \obj ->
-    CatalogMap <$> traverse parseCatalogEntry obj
+    CatalogMap <$> traverse parseJSON obj
 
 data CatalogEntry = CatalogEntry
   { specifier :: Text
@@ -268,7 +268,7 @@ instance FromJSON CatalogEntry where
   parseJSON = Yaml.withObject "CatalogEntry" $ \obj ->
     CatalogEntry
       <$> obj .: "specifier"
-      <*> obj .: "version"
+      <*> obj .: "version"  -- maps the JSON field "version" to our catalogVersion field
 
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Npm Lockfile (v3)" $ do
