@@ -8,6 +8,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Aeson.Extra (TextLike (..))
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
@@ -256,7 +257,7 @@ newtype CatalogMap = CatalogMap
 
 instance FromJSON CatalogMap where
   parseJSON = Yaml.withObject "CatalogMap" $ \obj ->
-    CatalogMap <$> traverse Yaml.parseJSON obj
+    CatalogMap <$> traverse Yaml.parseJSON (KeyMap.toMap obj)
 
 data CatalogEntry = CatalogEntry
   { specifier :: Text
