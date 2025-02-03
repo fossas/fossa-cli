@@ -256,7 +256,7 @@ newtype CatalogMap = CatalogMap
 
 instance FromJSON CatalogMap where
   parseJSON = Yaml.withObject "CatalogMap" $ \obj ->
-    CatalogMap <$> traverse parseJSON obj
+    CatalogMap <$> traverse Yaml.parseJSON obj
 
 data CatalogEntry = CatalogEntry
   { specifier :: Text
