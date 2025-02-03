@@ -100,6 +100,12 @@ spec = do
     checkGraph pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
     checkGraph pnpmLockV6 pnpmLockV6GraphSpec
 
+  -- v9 format
+  let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
+
+  describe "can work with v9.0 format" $ do
+    checkGraph pnpmLockV9 pnpmLockV9GraphSpec
+
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
@@ -356,6 +362,46 @@ pnpmLockV6GraphSpec graph = do
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
 
       -- react 18.1.0
+      -- └─┬ loose-envify 1.4.0
+      --   └── js-tokens 4.0.0
+      hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
+      hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
+
+pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
+pnpmLockV9GraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph" $ do
+    it "should include dependencies from importers as direct" $ do
+      expectDirect
+        [ mkProdDep "aws-sdk@2.1148.0"
+        , mkProdDep "commander@9.2.0"
+        , mkDevDep "react@18.1.0"
+        ]
+        graph
+
+    it "should handle catalog versions correctly" $ do
+      expectDirect
+        [ mkProdDep "aws-sdk@2.1148.0"  -- workspace:* resolves to 2.1148.0
+        , mkProdDep "commander@9.2.0"    -- workspace:^9.2.0 resolves to 9.2.0
+        ]
+        graph
+
+    it "should include all relevant edges and deps" $ do
+      -- aws-sdk 2.1148.0
+      -- ├─┬ buffer 4.9.2
+      -- │ ├── base64-js 1.5.1
+      -- │ ├── ieee754 1.1.13
+      -- │ └── isarray 1.0.0
+      -- └── events 1.1.1
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "buffer@4.9.2")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "base64-js@1.5.1")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "ieee754@1.1.13")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "isarray@1.0.0")
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "events@1.1.1")
+
+      -- react 18.1.0 (dev)
       -- └─┬ loose-envify 1.4.0
       --   └── js-tokens 4.0.0
       hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
