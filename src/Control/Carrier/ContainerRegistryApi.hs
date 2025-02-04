@@ -106,6 +106,7 @@ import Network.HTTP.Conduit qualified as HTTPConduit
 import Network.HTTP.Types.Header (ResponseHeaders)
 import Path (Abs, Dir, File, Path, filename, mkRelFile, toFilePath, (</>))
 import Path.Internal (Path (..))
+import Text.Pretty.Simple (pShow)
 
 -- | A carrier to run Registry API functions in the IO monad
 type ContainerRegistryApiC m = SimpleC ContainerRegistryApiF (ReaderC RegistryCtx m)
@@ -175,6 +176,8 @@ getImageManifest src = context "Getting Image Manifest" $ do
   let respBody :: ByteStringLazy.ByteString
       respBody = responseBody resp
 
+  logDebug $ "Image manifest response body:" <> pretty (pShow respBody)
+
   if isManifestIndex (responseHeaders resp)
     then do
       manifestIndex <- fromEither $ eitherDecode respBody
@@ -209,7 +212,8 @@ getImageManifest src = context "Getting Image Manifest" $ do
       if isSupportedManifestKind (responseHeaders resp)
         then case eitherDecode (responseBody resp) of
           Left err -> fatalText $ toText err
-          Right manifest -> pure manifest
+          Right manifest -> do
+            pure manifest
         else
           fatal $
             NotSupportedManifestFmt
@@ -256,6 +260,7 @@ exportBlob ::
   (RepoDigest, Bool, Text) ->
   m (Path Abs File)
 exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
+  logDebug $ "The img source:" <> pretty (pShow imgSrc)
   exportJobId <- sendIO UUID.nextRandom
   threadId <- sendIO myThreadId
   let exportDesc = "Export job ID: " <> UUID.toText exportJobId <> ", Export thread ID: " <> showText threadId
@@ -272,10 +277,12 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
     -- I think the only way this *might* be possible is through redirects when fetching blobs.
     -- I think the registry fetcher would still make progress in that case, but would just make more token reqs than necessary.
     token <- getAuthToken (registryCred imgSrc) req manager Nothing =<< ask
+    logDebug $ "The auth token:" <> pretty (pShow token)
     -- This message generally means that auth is not required.
     -- It may also indicate a bug in how we update/share tokens between threads.
     when (isNothing token) $ logDebug "Got Nothing as a token."
     let req' = applyAuthToken token req
+    logDebug $ "The full request with auth:" <> pretty (pShow req')
 
     -- Download image artifact
     sendIO . runResourceT $ do
