@@ -192,3 +192,31 @@ spec = do
           expectDirect [depOne, depTwo, depThree, depFour] result
           expectEdges [] result
         Left _ -> expectationFailure "failed to parse"
+
+-- Helper functions for testing graph dependencies
+mkPkg :: Text -> Text -> PipPkg
+mkPkg name version = PipPkg name (Just version)
+
+graphContains :: Graphing Dependency -> PipPkg -> Bool
+graphContains graph pkg = Graphing.hasVertex (toDependency pkg) graph
+  where
+    toDependency p = Dependency
+      { dependencyType = PipType
+      , dependencyName = pipPkgName p
+      , dependencyVersion = CEq <$> pipPkgVersion p
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
+
+graphContainsDirect :: Graphing Dependency -> PipPkg -> Bool
+graphContainsDirect graph pkg = Graphing.hasDirectVertex (toDependency pkg) graph
+  where
+    toDependency p = Dependency
+      { dependencyType = PipType
+      , dependencyName = pipPkgName p
+      , dependencyVersion = CEq <$> pipPkgVersion p
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
