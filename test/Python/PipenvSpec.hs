@@ -140,6 +140,39 @@ spec = do
       expectDirect [depOne, depTwo] result
       expectEdges [(depTwo, depThree)] result
 
+  describe "buildGraph" $ do
+    it "should correctly handle transitive dependencies" $ do
+      let lock = PipfileLock
+            { fileMeta = PipfileMeta []
+            , fileDefault = Map.fromList
+                [ ("requests", PipfileDep (Just "==2.25.1") Nothing)
+                ]
+            , fileDevelop = Map.empty
+            }
+          deps =
+            [ PipenvGraphDep
+                { depName = "requests"
+                , depInstalled = "2.25.1"
+                , depRequired = "2.25.1"
+                , depDependencies =
+                    [ PipenvGraphDep
+                        { depName = "urllib3"
+                        , depInstalled = "1.26.6"
+                        , depRequired = ">=1.21.1"
+                        , depDependencies = []
+                        }
+                    ]
+                }
+            ]
+      
+      let graph = buildGraph lock (Just deps)
+      -- requests should be direct
+      graphContainsDirect graph (mkPkg "requests" "2.25.1") `shouldBe` True
+      -- urllib3 should be transitive
+      graphContainsDirect graph (mkPkg "urllib3" "1.26.6") `shouldBe` False
+      -- but urllib3 should still be in the graph
+      graphContains graph (mkPkg "urllib3" "1.26.6") `shouldBe` True
+
   describe "analyzeNoCmd" $
     it "should set all dependencies as direct" $ do
       let result = buildGraph pipfileLock Nothing
