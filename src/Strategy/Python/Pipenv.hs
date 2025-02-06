@@ -227,19 +227,19 @@ buildEdges pipenvDeps = do
   -- Only mark top-level deps as direct
   traverse_ (direct . mkPkg) pipenvDeps
   -- Build edges for the dependency tree
-  traverse_ (mkEdgesRec False) pipenvDeps
+  traverse_ mkEdgesRec pipenvDeps
   where
     mkPkg :: PipenvGraphDep -> PipPkg
     mkPkg dep = PipPkg (depName dep) $ Just (depInstalled dep)
 
-    -- New helper that takes a boolean to track if we're at the top level
-    mkEdgesRec :: Has PipGrapher sig m => Bool -> PipenvGraphDep -> m ()
-    mkEdgesRec isTransitive parentDep =
+    -- Helper to recursively build edges through the dependency tree
+    mkEdgesRec :: Has PipGrapher sig m => PipenvGraphDep -> m ()
+    mkEdgesRec parentDep =
       for_ (depDependencies parentDep) $ \childDep -> do
         -- Create edge between parent and child
         edge (mkPkg parentDep) (mkPkg childDep)
-        -- Process child's dependencies (always transitive at this point)
-        mkEdgesRec True childDep
+        -- Process child's dependencies
+        mkEdgesRec childDep
 
 ---------- Pipfile.lock
 
