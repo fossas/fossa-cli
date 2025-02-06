@@ -2,12 +2,18 @@ module Python.PipenvSpec (
   spec,
 ) where
 
+import Control.Carrier.Diagnostics
+import Control.Carrier.Stack
 import Data.Aeson (eitherDecodeStrict)
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Data.Text (Text)
 import DepTypes
+import Graphing (Graphing)
+import Graphing qualified
 import GraphUtil
+import Path.IO
 import Strategy.Python.Pipenv
 import Test.Hspec hiding (xit)
 
@@ -200,23 +206,25 @@ mkPkg name version = PipPkg name (Just version)
 graphContains :: Graphing Dependency -> PipPkg -> Bool
 graphContains graph pkg = Graphing.hasVertex (toDependency pkg) graph
   where
-    toDependency p = Dependency
-      { dependencyType = PipType
-      , dependencyName = pipPkgName p
-      , dependencyVersion = CEq <$> pipPkgVersion p
-      , dependencyLocations = []
-      , dependencyEnvironments = mempty
-      , dependencyTags = Map.empty
-      }
+    toDependency p =
+      Dependency
+        { dependencyType = PipType
+        , dependencyName = pipPkgName p
+        , dependencyVersion = CEq <$> pipPkgVersion p
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
 
 graphContainsDirect :: Graphing Dependency -> PipPkg -> Bool
 graphContainsDirect graph pkg = Graphing.hasDirectVertex (toDependency pkg) graph
   where
-    toDependency p = Dependency
-      { dependencyType = PipType
-      , dependencyName = pipPkgName p
-      , dependencyVersion = CEq <$> pipPkgVersion p
-      , dependencyLocations = []
-      , dependencyEnvironments = mempty
-      , dependencyTags = Map.empty
-      }
+    toDependency p =
+      Dependency
+        { dependencyType = PipType
+        , dependencyName = pipPkgName p
+        , dependencyVersion = CEq <$> pipPkgVersion p
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
