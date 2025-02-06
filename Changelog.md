@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
 ## Unreleased
-- Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error
+- Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error ([#1500](https://github.com/fossas/fossa-cli/pull/1500))
+- Python: Fixed an issue where pipenv transitive dependencies were incorrectly being reported as direct dependencies ([#1502](https://github.com/fossas/fossa-cli/pull/1502))
 
 ## 3.9.45
 - Preflight: Fix a bug where the preflight checks fail for SBOM team analysis ([#1499](https://github.com/fossas/fossa-cli/pull/1499))
