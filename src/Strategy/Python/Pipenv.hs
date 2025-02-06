@@ -1,14 +1,10 @@
-git add test/Python/PipenvSpec.hs && git commit -m "[ANE-1400] Add helper functions for testing pipenv dependencies
-
-Added three helper functions to PipenvSpec:
-- mkPkg: Creates PipPkg from name and version
-- graphContains: Checks if package exists in graph
-- graphContainsDirect: Checks if package exists as direct dependency"{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Python.Pipenv (
   discover,
   findProjects,
   getDeps,
+  getDepsStatically,
   mkProject,
   PipenvGraphDep (..),
   PipfileLock (..),
