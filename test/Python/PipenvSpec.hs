@@ -21,7 +21,10 @@ import Strategy.Python.Pipenv (
     PipfileDep (..),
     PipfileLock (..),
     PipfileMeta (..),
+    PipfileSource (..),
     buildGraph,
+    sourceName,
+    sourceUrl,
   )
 import Test.Hspec hiding (xit)
 
@@ -225,14 +228,7 @@ graphContains graph pkg = Graphing.hasVertex (toDependency pkg) graph
         }
 
 graphContainsDirect :: Graphing Dependency -> PipPkg -> Bool
-graphContainsDirect graph pkg = Graphing.hasVertex (toDependency pkg) graph && Graphing.isDirect (toDependency pkg) graph
+graphContainsDirect graph pkg = Graphing.hasVertex (toDependency pkg) graph && pkg `elem` directDeps
   where
-    toDependency p =
-      Dependency
-        { dependencyType = PipType
-        , dependencyName = pipPkgName p
-        , dependencyVersion = CEq <$> pipPkgVersion p
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    directDeps = [p | p <- allPkgs, Graphing.direct (toDependency p) graph]
+    allPkgs = [pkg]  -- We only need to check the one package
