@@ -142,13 +142,15 @@ spec = do
 
   describe "buildGraph" $ do
     it "should correctly handle transitive dependencies" $ do
-      let lock = PipfileLock
-            { fileMeta = PipfileMeta []
-            , fileDefault = Map.fromList
-                [ ("requests", PipfileDep (Just "==2.25.1") Nothing)
-                ]
-            , fileDevelop = Map.empty
-            }
+      let lock =
+            PipfileLock
+              { fileMeta = PipfileMeta []
+              , fileDefault =
+                  Map.fromList
+                    [ ("requests", PipfileDep (Just "==2.25.1") Nothing)
+                    ]
+              , fileDevelop = Map.empty
+              }
           deps =
             [ PipenvGraphDep
                 { depName = "requests"
@@ -164,7 +166,7 @@ spec = do
                     ]
                 }
             ]
-      
+
       let graph = buildGraph lock (Just deps)
       -- requests should be direct
       graphContainsDirect graph (mkPkg "requests" "2.25.1") `shouldBe` True
