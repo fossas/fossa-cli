@@ -14,14 +14,14 @@ import GraphUtil
 import Graphing (Graphing)
 import Graphing qualified
 import Path.IO
-import Strategy.Python.Pipenv
-  ( PipenvGraphDep (..)
-  , PipenvProject (..)
-  , PipPkg (..)
-  , PipfileDep (..)
-  , PipfileLock (..)
-  , PipfileMeta (..)
-  , buildGraph
+import Strategy.Python.Pipenv (
+    PipPkg (..),
+    PipenvGraphDep (..),
+    PipenvProject (..),
+    PipfileDep (..),
+    PipfileLock (..),
+    PipfileMeta (..),
+    buildGraph,
   )
 import Test.Hspec hiding (xit)
 
