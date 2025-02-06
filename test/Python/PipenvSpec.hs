@@ -10,11 +10,19 @@ import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes
+import GraphUtil
 import Graphing (Graphing)
 import Graphing qualified
-import GraphUtil
 import Path.IO
 import Strategy.Python.Pipenv
+  ( PipenvGraphDep (..)
+  , PipenvProject (..)
+  , PipPkg (..)
+  , PipfileDep (..)
+  , PipfileLock (..)
+  , PipfileMeta (..)
+  , buildGraph
+  )
 import Test.Hspec hiding (xit)
 
 pipfileLock :: PipfileLock
@@ -217,7 +225,7 @@ graphContains graph pkg = Graphing.hasVertex (toDependency pkg) graph
         }
 
 graphContainsDirect :: Graphing Dependency -> PipPkg -> Bool
-graphContainsDirect graph pkg = Graphing.hasDirectVertex (toDependency pkg) graph
+graphContainsDirect graph pkg = Graphing.hasVertex (toDependency pkg) graph && Graphing.isDirect (toDependency pkg) graph
   where
     toDependency p =
       Dependency
