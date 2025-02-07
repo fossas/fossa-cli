@@ -63,7 +63,6 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
   LabeledGrapher,
-  addNode,
   direct,
   edge,
   label,
@@ -238,7 +237,7 @@ buildNodes PipfileLock{..} = do
     addWithEnv env sourcesMap depName dep = do
       let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
       -- Add the package to the graph (but don't mark as direct)
-      addNode pkg
+      edge pkg pkg -- Add the node to the graph without marking it as direct
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
