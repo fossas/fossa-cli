@@ -63,10 +63,10 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
   LabeledGrapher,
+  addNode,
   direct,
   edge,
   label,
-  vertex,
   withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
@@ -220,11 +220,10 @@ data PipLabel
 
 buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
-  let
-    indexBy :: (a -> Text) -> [a] -> Map Text a
-    indexBy ix = Map.fromList . map (\v -> (ix v, v))
+  let indexBy :: (a -> Text) -> [a] -> Map Text a
+      indexBy ix = Map.fromList . map (\v -> (ix v, v))
 
-    sourcesMap = indexBy sourceName (fileSources fileMeta)
+      sourcesMap = indexBy sourceName (fileSources fileMeta)
 
   _ <- Map.traverseWithKey (addWithEnv EnvDevelopment sourcesMap) fileDevelop
   _ <- Map.traverseWithKey (addWithEnv EnvProduction sourcesMap) fileDefault
@@ -239,7 +238,7 @@ buildNodes PipfileLock{..} = do
     addWithEnv env sourcesMap depName dep = do
       let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
       -- Add the package to the graph (but don't mark as direct)
-      vertex pkg
+      addNode pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
