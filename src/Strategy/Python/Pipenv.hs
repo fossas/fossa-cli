@@ -66,6 +66,7 @@ import Effect.Grapher (
   direct,
   edge,
   label,
+  vertex,
   withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
@@ -163,8 +164,30 @@ pipenvGraphCmd =
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do
   buildNodes lock
-  traverse_ buildEdges maybeDeps
+  for_ maybeDeps $ \deps -> do
+    -- Mark top-level dependencies from pipenv graph as direct
+    traverse_ (direct . mkPkg) $ filter isTopLevel deps
+    -- Build edges for the dependency tree
+    traverse_ mkEdgesRec deps
   where
+    -- Helper to identify top-level dependencies (those in fileDefault or fileDevelop)
+    isTopLevel :: PipenvGraphDep -> Bool
+    isTopLevel dep = 
+      Map.member (depName dep) (fileDefault lock) || 
+      Map.member (depName dep) (fileDevelop lock)
+
+    mkPkg :: PipenvGraphDep -> PipPkg
+    mkPkg dep = PipPkg (depName dep) $ Just (depInstalled dep)
+
+    -- Helper to recursively build edges through the dependency tree
+    mkEdgesRec :: Has PipGrapher sig m => PipenvGraphDep -> m ()
+    mkEdgesRec parentDep =
+      for_ (depDependencies parentDep) $ \childDep -> do
+        -- Create edge between parent and child
+        edge (mkPkg parentDep) (mkPkg childDep)
+        -- Process child's dependencies
+        mkEdgesRec childDep
+
     toDependency :: PipPkg -> Set PipLabel -> Dependency
     toDependency pkg = foldr applyLabel start
       where
@@ -197,10 +220,11 @@ data PipLabel
 
 buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
 buildNodes PipfileLock{..} = do
-  let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
-      indexBy ix = Map.fromList . map (\v -> (ix v, v))
+  let
+    indexBy :: (a -> Text) -> [a] -> Map Text a
+    indexBy ix = Map.fromList . map (\v -> (ix v, v))
 
-      sourcesMap = indexBy sourceName (fileSources fileMeta)
+    sourcesMap = indexBy sourceName (fileSources fileMeta)
 
   _ <- Map.traverseWithKey (addWithEnv EnvDevelopment sourcesMap) fileDevelop
   _ <- Map.traverseWithKey (addWithEnv EnvProduction sourcesMap) fileDefault
@@ -214,8 +238,8 @@ buildNodes PipfileLock{..} = do
       m ()
     addWithEnv env sourcesMap depName dep = do
       let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
-      -- TODO: reachable instead of direct
-      direct pkg
+      -- Add the package to the graph (but don't mark as direct)
+      vertex pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
@@ -223,25 +247,6 @@ buildNodes PipfileLock{..} = do
         case Map.lookup index sourcesMap of
           Just source -> label pkg (PipSource (sourceUrl source))
           Nothing -> pure ()
-
-buildEdges :: Has PipGrapher sig m => [PipenvGraphDep] -> m ()
-buildEdges pipenvDeps = do
-  -- Only mark top-level deps as direct
-  traverse_ (direct . mkPkg) pipenvDeps
-  -- Build edges for the dependency tree
-  traverse_ mkEdgesRec pipenvDeps
-  where
-    mkPkg :: PipenvGraphDep -> PipPkg
-    mkPkg dep = PipPkg (depName dep) $ Just (depInstalled dep)
-
-    -- Helper to recursively build edges through the dependency tree
-    mkEdgesRec :: Has PipGrapher sig m => PipenvGraphDep -> m ()
-    mkEdgesRec parentDep =
-      for_ (depDependencies parentDep) $ \childDep -> do
-        -- Create edge between parent and child
-        edge (mkPkg parentDep) (mkPkg childDep)
-        -- Process child's dependencies
-        mkEdgesRec childDep
 
 ---------- Pipfile.lock
 
