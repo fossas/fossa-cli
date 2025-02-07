@@ -172,9 +172,9 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
   where
     -- Helper to identify top-level dependencies (those in fileDefault or fileDevelop)
     isTopLevel :: PipenvGraphDep -> Bool
-    isTopLevel dep = 
-      Map.member (depName dep) (fileDefault lock) || 
-      Map.member (depName dep) (fileDevelop lock)
+    isTopLevel dep =
+      Map.member (depName dep) (fileDefault lock)
+        || Map.member (depName dep) (fileDevelop lock)
 
     mkPkg :: PipenvGraphDep -> PipPkg
     mkPkg dep = PipPkg (depName dep) $ Just (depInstalled dep)
