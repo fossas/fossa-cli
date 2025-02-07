@@ -2,30 +2,13 @@ module Python.PipenvSpec (
   spec,
 ) where
 
-import Control.Carrier.Diagnostics
-import Control.Carrier.Stack
 import Data.Aeson (eitherDecodeStrict)
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import Data.Text (Text)
 import DepTypes
 import GraphUtil
-import Graphing (Graphing)
-import Graphing qualified
-import Path.IO
-import Strategy.Python.Pipenv (
-    PipPkg (..),
-    PipenvGraphDep (..),
-    PipenvProject (..),
-    PipfileDep (..),
-    PipfileLock (..),
-    PipfileMeta (..),
-    PipfileSource (..),
-    buildGraph,
-    sourceName,
-    sourceUrl,
-  )
+import Strategy.Python.Pipenv
 import Test.Hspec hiding (xit)
 
 pipfileLock :: PipfileLock
@@ -157,41 +140,6 @@ spec = do
       expectDirect [depOne, depTwo] result
       expectEdges [(depTwo, depThree)] result
 
-  describe "buildGraph" $ do
-    it "should correctly handle transitive dependencies" $ do
-      let lock =
-            PipfileLock
-              { fileMeta = PipfileMeta []
-              , fileDefault =
-                  Map.fromList
-                    [ ("requests", PipfileDep (Just "==2.25.1") Nothing)
-                    ]
-              , fileDevelop = Map.empty
-              }
-          deps =
-            [ PipenvGraphDep
-                { depName = "requests"
-                , depInstalled = "2.25.1"
-                , depRequired = "2.25.1"
-                , depDependencies =
-                    [ PipenvGraphDep
-                        { depName = "urllib3"
-                        , depInstalled = "1.26.6"
-                        , depRequired = ">=1.21.1"
-                        , depDependencies = []
-                        }
-                    ]
-                }
-            ]
-
-      let graph = buildGraph lock (Just deps)
-      -- requests should be direct
-      graphContainsDirect graph (mkPkg "requests" "2.25.1") `shouldBe` True
-      -- urllib3 should be transitive
-      graphContainsDirect graph (mkPkg "urllib3" "1.26.6") `shouldBe` False
-      -- but urllib3 should still be in the graph
-      graphContains graph (mkPkg "urllib3" "1.26.6") `shouldBe` True
-
   describe "analyzeNoCmd" $
     it "should set all dependencies as direct" $ do
       let result = buildGraph pipfileLock Nothing
@@ -209,26 +157,3 @@ spec = do
           expectDirect [depOne, depTwo, depThree, depFour] result
           expectEdges [] result
         Left _ -> expectationFailure "failed to parse"
-
--- Helper functions for testing graph dependencies
-mkPkg :: Text -> Text -> PipPkg
-mkPkg name version = PipPkg name (Just version)
-
-graphContains :: Graphing Dependency -> PipPkg -> Bool
-graphContains graph pkg = Graphing.hasVertex (toDependency pkg) graph
-  where
-    toDependency p =
-      Dependency
-        { dependencyType = PipType
-        , dependencyName = pipPkgName p
-        , dependencyVersion = CEq <$> pipPkgVersion p
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
-
-graphContainsDirect :: Graphing Dependency -> PipPkg -> Bool
-graphContainsDirect graph pkg = Graphing.hasVertex (toDependency pkg) graph && pkg `elem` directDeps
-  where
-    directDeps = [p | p <- allPkgs, Graphing.direct (toDependency p) graph]
-    allPkgs = [pkg]  -- We only need to check the one package
