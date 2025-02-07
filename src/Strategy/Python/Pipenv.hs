@@ -236,8 +236,8 @@ buildNodes PipfileLock{..} = do
       m ()
     addWithEnv env sourcesMap depName dep = do
       let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
-      -- Add the package to the graph (but don't mark as direct)
-      edge pkg pkg -- Add the node to the graph without marking it as direct
+      -- Add the package to the graph and mark as direct
+      direct pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
