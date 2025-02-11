@@ -1,6 +1,7 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.9.46
+- Licensing: Fix a bug where the tzdata debian package copyright was not detected as a public domain license
 - Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error
 
 ## 3.9.45
