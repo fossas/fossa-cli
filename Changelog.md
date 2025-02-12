@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.9.47
+- Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
+
 ## 3.9.46
 - Licensing: Fix a bug where the tzdata debian package copyright was not detected as a public domain license ([#1504](https://github.com/fossas/fossa-cli/pull/1504))
 - Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error ([#1500](https://github.com/fossas/fossa-cli/pull/1500))
