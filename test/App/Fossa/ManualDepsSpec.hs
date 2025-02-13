@@ -72,8 +72,8 @@ theWorksLabeled = ManualDependencies references customs vendors remotes locators
     references =
       [ Managed (ManagedReferenceDependency "one" GemType Nothing (Just [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision]))
       , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") (Just [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject]))
-      , LinuxApkDebDep (LinuxReferenceDependency "libssl" LinuxAPK (Just "3.2.1") "x86_64" "alpine" "3.18" Nothing)
-      , LinuxRpmDep (LinuxReferenceDependency "libcurl" LinuxRPM (Just "7.89.1") "aarch64" "fedora" "38" (Just [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision])) Nothing
+      , LinuxApkDebDep (LinuxReferenceDependency "libssl" LinuxAPK (Just "3.2.1") "x86_64" "alpine" "3.18" (Just [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg]))
+      , LinuxRpmDep (LinuxReferenceDependency "libcurl" LinuxRPM (Just "7.89.1") "aarch64" "fedora" "38" (Just [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision])) (Just "1")
       ]
     customs =
       [ CustomDependency "hello" "1.2.3" "MIT" Nothing (Just [ProvidedPackageLabel "custom-label-hello" ProvidedPackageLabelScopeOrg])
@@ -104,9 +104,9 @@ theWorksLabels org =
   where
     referencedLabels :: [(Text, [ProvidedPackageLabel])]
     referencedLabels =
-      [ ("gem+one", [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision])
-      , ("pypi+two$1.0.0", [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject])
-      , ("apk+libssl#alpine#3.18$x86_64#1.2.3", [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg])
+      [ ("gem+one$", [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision])
+      , ("pip+two$1.0.0", [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject])
+      , ("apk+libssl#alpine#3.18$x86_64#3.2.1", [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg])
       , ("rpm-generic+libcurl#fedora#38$aarch64#1:7.89.1", [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision])
       ]
 
@@ -131,12 +131,12 @@ theWorksLabels org =
 
     urlPrivateLabels :: Maybe OrgId -> [(Text, [ProvidedPackageLabel])]
     urlPrivateLabels Nothing =
-      [ ("url-private+url-dep-one$1.2.3", [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
-      , ("url-private+url-dep-two$1.2.4", [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
+      [ ("url-private+www.url1.tar.gz$1.2.3", [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
+      , ("url-private+www.url2.tar.gz$1.2.4", [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
       ]
     urlPrivateLabels (Just orgId) =
-      [ ("url-private+" <> toText orgId <> "/url-dep-one$1.2.3", [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
-      , ("url-private+" <> toText orgId <> "/url-dep-two$1.2.4", [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
+      [ ("url-private+" <> toText orgId <> "/www.url1.tar.gz$1.2.3", [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
+      , ("url-private+" <> toText orgId <> "/www.url2.tar.gz$1.2.4", [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
       ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation

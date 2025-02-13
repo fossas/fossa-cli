@@ -356,7 +356,7 @@ refToLocator (LinuxRpmDep LinuxReferenceDependency{..} rpmEpoch) =
     version = Just $ locLinuxDepArch <> "#" <> epoch <> (fromMaybe "" locLinuxDepVersion)
 
     epoch :: Text
-    epoch = maybe "" ((<> ":") . toText . show) rpmEpoch
+    epoch = maybe "" ((<> ":") . toText) rpmEpoch
 
 mkLinuxPackage :: Text -> Text -> Text -> Text
 mkLinuxPackage depName os osVersion = depName <> "#" <> os <> "#" <> osVersion
@@ -461,9 +461,7 @@ data RemoteDependency = RemoteDependency
   deriving (Eq, Ord, Show)
 
 instance FromJSON LocatorDependency where
-  parseJSON val = do
-    when (val == Null) $ fail "locator must not be null"
-    parsePlain val <|> parseLabeled val
+  parseJSON val = parseLabeled val <|> parsePlain val
     where
       parsePlain :: Value -> Parser LocatorDependency
       parsePlain = withText "locator" $ pure . LocatorDependencyPlain . parseLocator
