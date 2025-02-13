@@ -60,7 +60,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
@@ -229,17 +229,17 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
 -- | Collect labels from dependencies into one big map.
 -- The key of the map is the locator to which the labels correspond.
 collectInteriorLabels :: Maybe OrgId -> ManualDependencies -> Map Text [ProvidedPackageLabel]
-collectInteriorLabels org ManualDependencies{..} = do
-  let referenced = map refDepToLabel referencedDependencies
-  let vendored = map vendDepToLabel vendoredDependencies
-  let custom = map customDepToLabel customDependencies
-  let remote = map (remoteDepToLabel org) remoteDependencies
-  let locator = map locatorDepToLabel locatorDependencies
-  group . catMaybes $ referenced <> vendored <> custom <> remote <> locator
+collectInteriorLabels org ManualDependencies{..} =
+  group $
+    mapMaybe refDepToLabel referencedDependencies
+      <> mapMaybe vendDepToLabel vendoredDependencies
+      <> mapMaybe customDepToLabel customDependencies
+      <> mapMaybe (remoteDepToLabel org) remoteDependencies
+      <> mapMaybe locatorDepToLabel locatorDependencies
   where
-    liftMaybe :: (a, Maybe b) -> Maybe (a, b)
-    liftMaybe (_, Nothing) = Nothing
-    liftMaybe (a, Just b) = Just (a, b)
+    liftEmpty :: (a, [b]) -> Maybe (a, [b])
+    liftEmpty (_, []) = Nothing
+    liftEmpty (a, xs) = Just (a, xs)
 
     group :: (Ord a) => [(a, [b])] -> Map a [b]
     group = Map.fromListWith (++)
@@ -252,22 +252,22 @@ collectInteriorLabels org ManualDependencies{..} = do
     renderRemoteDepLocator Nothing RemoteDependency{..} = ("url-private+" <> remoteUrl <> "$" <> remoteVersion)
 
     refDepToLabel :: ReferencedDependency -> Maybe (Text, [ProvidedPackageLabel])
-    refDepToLabel dep@(Managed ManagedReferenceDependency{..}) = liftMaybe (toText $ refToLocator dep, locDepLabels)
-    refDepToLabel dep@(LinuxApkDebDep LinuxReferenceDependency{..}) = liftMaybe (toText $ refToLocator dep, locLinuxDepLabels)
-    refDepToLabel dep@(LinuxRpmDep LinuxReferenceDependency{..} _) = liftMaybe (toText $ refToLocator dep, locLinuxDepLabels)
+    refDepToLabel dep@(Managed ManagedReferenceDependency{..}) = liftEmpty (toText $ refToLocator dep, locDepLabels)
+    refDepToLabel dep@(LinuxApkDebDep LinuxReferenceDependency{..}) = liftEmpty (toText $ refToLocator dep, locLinuxDepLabels)
+    refDepToLabel dep@(LinuxRpmDep LinuxReferenceDependency{..} _) = liftEmpty (toText $ refToLocator dep, locLinuxDepLabels)
 
     vendDepToLabel :: VendoredDependency -> Maybe (Text, [ProvidedPackageLabel])
-    vendDepToLabel dep@VendoredDependency{..} = liftMaybe (toText . arcToLocator $ forceVendoredToArchive dep, vendoredLabels)
+    vendDepToLabel dep@VendoredDependency{..} = liftEmpty (toText . arcToLocator $ forceVendoredToArchive dep, vendoredLabels)
 
     customDepToLabel :: CustomDependency -> Maybe (Text, [ProvidedPackageLabel])
-    customDepToLabel dep@CustomDependency{..} = liftMaybe (renderCustomDepLocator dep, customLabels)
+    customDepToLabel dep@CustomDependency{..} = liftEmpty (renderCustomDepLocator dep, customLabels)
 
     remoteDepToLabel :: Maybe OrgId -> RemoteDependency -> Maybe (Text, [ProvidedPackageLabel])
-    remoteDepToLabel orgId dep@RemoteDependency{..} = liftMaybe (renderRemoteDepLocator orgId dep, remoteLabels)
+    remoteDepToLabel orgId dep@RemoteDependency{..} = liftEmpty (renderRemoteDepLocator orgId dep, remoteLabels)
 
     locatorDepToLabel :: LocatorDependency -> Maybe (Text, [ProvidedPackageLabel])
     locatorDepToLabel (LocatorDependencyPlain _) = Nothing
-    locatorDepToLabel (LocatorDependencyStructured locator labels) = liftMaybe (renderLocator locator, labels)
+    locatorDepToLabel (LocatorDependencyStructured locator labels) = liftEmpty (renderLocator locator, labels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::
@@ -408,7 +408,7 @@ data ManualDependencies = ManualDependencies
 
 data LocatorDependency
   = LocatorDependencyPlain Locator
-  | LocatorDependencyStructured Locator (Maybe [ProvidedPackageLabel])
+  | LocatorDependencyStructured Locator [ProvidedPackageLabel]
   deriving (Eq, Ord, Show)
 
 extractLocator :: LocatorDependency -> Locator
@@ -425,7 +425,7 @@ data ManagedReferenceDependency = ManagedReferenceDependency
   { locDepName :: Text
   , locDepType :: DepType
   , locDepVersion :: Maybe Text
-  , locDepLabels :: Maybe [ProvidedPackageLabel]
+  , locDepLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -436,7 +436,7 @@ data LinuxReferenceDependency = LinuxReferenceDependency
   , locLinuxDepArch :: Text
   , locLinuxDepOS :: Text
   , locLinuxDepOSVersion :: Text
-  , locLinuxDepLabels :: Maybe [ProvidedPackageLabel]
+  , locLinuxDepLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -445,7 +445,7 @@ data CustomDependency = CustomDependency
   , customVersion :: Text
   , customLicense :: Text
   , customMetadata :: Maybe DependencyMetadata
-  , customLabels :: Maybe [ProvidedPackageLabel]
+  , customLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -454,7 +454,7 @@ data RemoteDependency = RemoteDependency
   , remoteVersion :: Text
   , remoteUrl :: Text
   , remoteMetadata :: Maybe DependencyMetadata
-  , remoteLabels :: Maybe [ProvidedPackageLabel]
+  , remoteLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -466,7 +466,7 @@ instance FromJSON LocatorDependency where
 
       parseLabeled :: Value -> Parser LocatorDependency
       parseLabeled = withObject "Locator" $ \obj ->
-        LocatorDependencyStructured <$> obj .: "locator" <*> obj .:? "labels"
+        LocatorDependencyStructured <$> obj .: "locator" <*> obj .:? "labels" .!= []
 
 instance FromJSON ManualDependencies where
   parseJSON (Object obj) =
@@ -508,7 +508,7 @@ instance FromJSON ReferencedDependency where
                   <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
-                  <*> obj .:? "labels"
+                  <*> obj .:? "labels" .!= []
                   <* forbidNonRefDepFields obj
                   <* forbidLinuxFields depType obj
                   <* forbidEpoch depType obj
@@ -537,7 +537,7 @@ instance FromJSON ReferencedDependency where
           <*> parseArch obj
           <*> parseOS obj
           <*> parseOSVersion obj
-          <*> obj .:? "labels"
+          <*> obj .:? "labels" .!= []
       parseArch :: Object -> Parser Text
       parseArch obj = requiredFieldMsg "arch" $ obj .: "arch"
 
@@ -592,7 +592,7 @@ instance FromJSON CustomDependency where
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
       <*> obj .:? "metadata"
-      <*> obj .:? "labels"
+      <*> obj .:? "labels" .!= []
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -602,7 +602,7 @@ instance FromJSON RemoteDependency where
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
       <*> obj .:? "metadata"
-      <*> obj .:? "labels"
+      <*> obj .:? "labels" .!= []
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency

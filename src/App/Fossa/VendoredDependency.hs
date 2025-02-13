@@ -25,7 +25,7 @@ import Codec.Compression.GZip qualified as GZip
 import Control.Algebra (Has)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
 import Crypto.Hash (Digest, MD5, hashlazy)
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:?))
+import Data.Aeson (FromJSON (parseJSON), withObject, (.!=), (.:?))
 import Data.Aeson.Extra (TextLike (unTextLike), forbidMembers, neText)
 import Data.ByteString.Lazy qualified as BS
 import Data.Functor.Extra ((<$$>))
@@ -57,7 +57,7 @@ data VendoredDependency = VendoredDependency
   , vendoredPath :: Text
   , vendoredVersion :: Maybe Text
   , vendoredMetadata :: Maybe DependencyMetadata
-  , vendoredLabels :: Maybe [ProvidedPackageLabel]
+  , vendoredLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -69,7 +69,7 @@ instance FromJSON VendoredDependency where
         <*> (obj `neText` "path")
         <*> (unTextLike <$$> obj .:? "version")
         <*> (obj .:? "metadata")
-        <*> (obj .:? "labels")
+        <*> (obj .:? "labels" .!= [])
         <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
     case vendoredVersion vendorDep of
