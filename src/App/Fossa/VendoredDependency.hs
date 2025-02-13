@@ -49,7 +49,7 @@ import Fossa.API.Types (
  )
 import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), vsep)
-import Srclib.Types (Locator (..))
+import Srclib.Types (Locator (..), ProvidedPackageLabel)
 import System.FilePath.Posix (splitDirectories, (</>))
 
 data VendoredDependency = VendoredDependency
@@ -57,6 +57,7 @@ data VendoredDependency = VendoredDependency
   , vendoredPath :: Text
   , vendoredVersion :: Maybe Text
   , vendoredMetadata :: Maybe DependencyMetadata
+  , vendoredLabels :: Maybe [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -68,6 +69,7 @@ instance FromJSON VendoredDependency where
         <*> (obj `neText` "path")
         <*> (unTextLike <$$> obj .:? "version")
         <*> (obj .:? "metadata")
+        <*> (obj .:? "labels")
         <* forbidMembers "vendored dependencies" ["type", "license", "url", "description"] obj
 
     case vendoredVersion vendorDep of

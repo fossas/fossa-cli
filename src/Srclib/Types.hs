@@ -17,6 +17,12 @@ module Srclib.Types (
   LicenseUnitInfo (..),
   LicenseUnitMatchData (..),
   FullSourceUnit (..),
+  ProvidedPackageLabels (..),
+  buildProvidedPackageLabels,
+  ProvidedPackageLabel (..),
+  ProvidedPackageLabelScope (..),
+  renderProvidedPackageLabelScope,
+  parseProvidedPackageLabelScope,
   OriginPath,
   renderLocator,
   parseLocator,
@@ -34,6 +40,8 @@ module Srclib.Types (
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToString (toString), ToText, toText)
@@ -383,6 +391,7 @@ data SourceUnit = SourceUnit
   , sourceUnitGraphBreadth :: GraphBreadth
   , sourceUnitNoticeFiles :: [SourceUnitNoticeFile]
   , sourceUnitOriginPaths :: [OriginPath]
+  , sourceUnitLabels :: Maybe ProvidedPackageLabels
   , additionalData :: Maybe AdditionalDepData
   }
   deriving (Eq, Ord, Show)
@@ -429,6 +438,44 @@ data SourceRemoteDep = SourceRemoteDep
   }
   deriving (Eq, Ord, Show)
 
+-- | Labels are side channel information about dependencies,
+-- used to communicate information about the dependency in some way.
+newtype ProvidedPackageLabels = ProvidedPackageLabels
+  { unProvidedPackageLabels :: Map Text [ProvidedPackageLabel]
+  }
+  deriving (Eq, Ord, Show)
+
+buildProvidedPackageLabels :: Map Text [ProvidedPackageLabel] -> Maybe ProvidedPackageLabels
+buildProvidedPackageLabels labels = if Map.null labels then Nothing else Just $ ProvidedPackageLabels labels
+
+-- | A label provided by the user for a given dependency.
+-- Note that FOSSA Core supports both "user" and "derived" labels;
+-- FOSSA CLI doesn't ever create "derived" labels
+-- (these will be created and inserted in the future by Sparkle).
+data ProvidedPackageLabel = ProvidedPackageLabel
+  { providedPackageLabelContent :: Text
+  , providedPackageLabelScope :: ProvidedPackageLabelScope
+  }
+  deriving (Eq, Ord, Show)
+
+-- | The scope of the provided package label.
+-- Refer to @PackageLabelScope@ in FOSSA Core for details on what these mean.
+data ProvidedPackageLabelScope
+  = ProvidedPackageLabelScopeOrg
+  | ProvidedPackageLabelScopeProject
+  | ProvidedPackageLabelScopeRevision
+  deriving (Eq, Ord, Show)
+
+renderProvidedPackageLabelScope :: ProvidedPackageLabelScope -> Text
+renderProvidedPackageLabelScope ProvidedPackageLabelScopeOrg = "org"
+renderProvidedPackageLabelScope ProvidedPackageLabelScopeProject = "project"
+renderProvidedPackageLabelScope ProvidedPackageLabelScopeRevision = "revision"
+
+parseProvidedPackageLabelScope :: Text -> ProvidedPackageLabelScope
+parseProvidedPackageLabelScope "org" = ProvidedPackageLabelScopeOrg
+parseProvidedPackageLabelScope "project" = ProvidedPackageLabelScopeProject
+parseProvidedPackageLabelScope _ = ProvidedPackageLabelScopeRevision
+
 data Locator = Locator
   { locatorFetcher :: Text
   , locatorProject :: Text
@@ -466,6 +513,7 @@ instance ToJSON SourceUnit where
       , "NoticeFiles" .= sourceUnitNoticeFiles
       , "OriginPaths" .= sourceUnitOriginPaths
       , "AdditionalDependencyData" .= additionalData
+      , "Labels" .= sourceUnitLabels
       ]
 
 instance FromJSON SourceUnit where
@@ -479,6 +527,7 @@ instance FromJSON SourceUnit where
       <*> obj .:? "NoticeFiles" .!= []
       <*> obj .: "OriginPaths"
       <*> obj .:? "AdditionalDependencyData"
+      <*> obj .:? "Labels"
 
 instance ToJSON SourceUnitBuild where
   toJSON SourceUnitBuild{..} =
@@ -563,8 +612,37 @@ instance FromJSON SourceRemoteDep where
       <*> obj .:? "Description"
       <*> obj .:? "Homepage"
 
+instance ToJSON ProvidedPackageLabels where
+  toJSON ProvidedPackageLabels{..} =
+    toJSON unProvidedPackageLabels
+
+instance FromJSON ProvidedPackageLabels where
+  parseJSON = withObject "ProvidedPackageLabels" $ \obj ->
+    ProvidedPackageLabels <$> parseJSON (Object obj)
+
+instance ToJSON ProvidedPackageLabel where
+  toJSON ProvidedPackageLabel{..} =
+    object
+      [ "kind" .= ("user" :: Text)
+      , "content" .= providedPackageLabelContent
+      , "scope" .= providedPackageLabelScope
+      ]
+
+instance FromJSON ProvidedPackageLabel where
+  parseJSON = withObject "ProvidedPackageLabel" $ \obj ->
+    ProvidedPackageLabel
+      <$> obj .: "content"
+      <*> obj .: "scope"
+
+instance ToJSON ProvidedPackageLabelScope where
+  toJSON = toJSON . renderProvidedPackageLabelScope
+
+instance FromJSON ProvidedPackageLabelScope where
+  parseJSON = withText "ProvidedPackageLabelScope" (pure . parseProvidedPackageLabelScope)
+
 instance ToJSON Locator where
   -- render as text
+  toJSON :: Locator -> Value
   toJSON = toJSON . renderLocator
 
 instance FromJSON Locator where

@@ -74,6 +74,7 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     , sourceUnitNoticeFiles = []
     , sourceUnitOriginPaths = originPaths
     , additionalData = Nothing
+    , sourceUnitLabels = Nothing
     }
   where
     filteredGraph :: Graphing Dependency

@@ -10,12 +10,14 @@ module App.Fossa.ManualDeps (
   DependencyMetadata (..),
   VendoredDependency (..),
   ManualDependencies (..),
+  LocatorDependency (..),
   FoundDepsFile (..),
   analyzeFossaDepsFile,
   findAndReadFossaDepsFile,
   findFossaDepsFile,
   readFoundDeps,
   getScanCfg,
+  collectInteriorLabels,
 )
 where
 
@@ -33,6 +35,7 @@ import App.Fossa.VendoredDependency (
   forceVendoredToArchive,
   vendoredDependencyScanModeToDependencyRebuild,
  )
+import Control.Applicative ((<|>))
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Debug (Debug)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errHelp, fatal, fatalText)
@@ -44,6 +47,7 @@ import Data.Aeson (
   FromJSON (parseJSON),
   Value (Null, Object),
   withObject,
+  withText,
   (.!=),
   (.:),
   (.:?),
@@ -54,7 +58,9 @@ import Data.Error (SourceLocation, createEmptyBlock, createErrataWithHeaderOnly,
 import Data.Functor.Extra ((<$$>))
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, isJust)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, toLower)
 import Data.Text qualified as Text
@@ -64,11 +70,11 @@ import Effect.Exec (Exec)
 import Effect.Logger (Logger, indent, pretty, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsJson, readContentsYaml)
 import Errata (Errata (..), errataSimple)
-import Fossa.API.Types (ApiOpts, Organization (..), orgFileUpload)
+import Fossa.API.Types (ApiOpts, OrgId, Organization (..), orgFileUpload)
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), someBaseToOriginPath)
+import Srclib.Types (AdditionalDepData (..), Locator (..), ProvidedPackageLabel, SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), buildProvidedPackageLabels, parseLocator, renderLocator, someBaseToOriginPath)
 import System.FilePath (takeExtension)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
@@ -177,6 +183,16 @@ toSourceUnit ::
 toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendoredDepsOptions = do
   when (hasNoDeps manualDeps) $ fatalText "No dependencies found in fossa-deps file"
 
+  -- Some manual deps, such as remote dependencies in source unit cannot be
+  -- validated without the org data.
+  org <- case maybeApiOpts of
+    Just apiOpts -> Just <$> runFossaApiClient apiOpts getOrganization
+    Nothing -> pure Nothing
+
+  -- Labels are provided by users attached to actual dependencies,
+  -- but are collected into the root of the source unit for reporting to FOSSA.
+  let labels = collectInteriorLabels (organizationId <$> org) manualDeps
+
   archiveLocators <- case (maybeApiOpts, NE.nonEmpty vendoredDependencies) of
     (Just apiOpts, Just vdeps) -> NE.toList <$> runFossaApiClient apiOpts (scanAndUpload root vdeps vendoredDepsOptions)
     (Nothing, Just vdeps) -> pure $ noSourceUnits $ NE.toList vdeps
@@ -187,12 +203,12 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
   -- validated without endpoint interactions.
   rdeps <- case maybeApiOpts of
     Just apiOpts -> runFossaApiClient apiOpts $ do
-      org <- getOrganization
-      traverse (`validateRemoteDep` org) remoteDependencies
+      org' <- maybe getOrganization pure org
+      traverse (`validateRemoteDep` org') remoteDependencies
     Nothing -> pure remoteDependencies
 
   let renderedPath = toText root
-      referenceLocators = locatorDependencies ++ (refToLocator <$> referencedDependencies)
+      referenceLocators = (extractLocator <$> locatorDependencies) ++ (refToLocator <$> referencedDependencies)
       additional = toAdditionalData (NE.nonEmpty customDependencies) (NE.nonEmpty rdeps)
       build = toBuildData <$> NE.nonEmpty (referenceLocators <> archiveLocators)
       originPath = case depsFile of
@@ -209,7 +225,51 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
       , sourceUnitNoticeFiles = []
       , sourceUnitOriginPaths = [someBaseToOriginPath originPath]
       , additionalData = additional
+      , sourceUnitLabels = buildProvidedPackageLabels labels
       }
+
+-- | Collect labels from dependencies into one big map.
+-- The key of the map is the locator to which the labels correspond.
+collectInteriorLabels :: Maybe OrgId -> ManualDependencies -> Map Text [ProvidedPackageLabel]
+collectInteriorLabels org ManualDependencies{..} = do
+  let referenced = map refDepToLabel referencedDependencies
+  let vendored = map vendDepToLabel vendoredDependencies
+  let custom = map customDepToLabel customDependencies
+  let remote = map (remoteDepToLabel org) remoteDependencies
+  let locator = map locatorDepToLabel locatorDependencies
+  group . catMaybes $ referenced <> vendored <> custom <> remote <> locator
+  where
+    liftMaybe :: (a, Maybe b) -> Maybe (a, b)
+    liftMaybe (_, Nothing) = Nothing
+    liftMaybe (a, Just b) = Just (a, b)
+
+    group :: (Ord a) => [(a, [b])] -> Map a [b]
+    group = Map.fromListWith (++)
+
+    renderCustomDepLocator :: CustomDependency -> Text
+    renderCustomDepLocator CustomDependency{..} = depTypeToText UserType <> "+" <> customName <> "$" <> customVersion
+
+    renderRemoteDepLocator :: Maybe OrgId -> RemoteDependency -> Text
+    renderRemoteDepLocator (Just orgId) RemoteDependency{..} = ("url-private+" <> toText orgId <> "/" <> remoteUrl <> "$" <> remoteVersion)
+    renderRemoteDepLocator Nothing RemoteDependency{..} = ("url-private+" <> remoteUrl <> "$" <> remoteVersion)
+
+    refDepToLabel :: ReferencedDependency -> Maybe (Text, [ProvidedPackageLabel])
+    refDepToLabel dep@(Managed ManagedReferenceDependency{..}) = liftMaybe (toText $ refToLocator dep, locDepLabels)
+    refDepToLabel dep@(LinuxApkDebDep LinuxReferenceDependency{..}) = liftMaybe (toText $ refToLocator dep, locLinuxDepLabels)
+    refDepToLabel dep@(LinuxRpmDep LinuxReferenceDependency{..} _) = liftMaybe (toText $ refToLocator dep, locLinuxDepLabels)
+
+    vendDepToLabel :: VendoredDependency -> Maybe (Text, [ProvidedPackageLabel])
+    vendDepToLabel dep@VendoredDependency{..} = liftMaybe (toText . arcToLocator $ forceVendoredToArchive dep, vendoredLabels)
+
+    customDepToLabel :: CustomDependency -> Maybe (Text, [ProvidedPackageLabel])
+    customDepToLabel dep@CustomDependency{..} = liftMaybe (renderCustomDepLocator dep, customLabels)
+
+    remoteDepToLabel :: Maybe OrgId -> RemoteDependency -> Maybe (Text, [ProvidedPackageLabel])
+    remoteDepToLabel orgId dep@RemoteDependency{..} = liftMaybe (renderRemoteDepLocator orgId dep, remoteLabels)
+
+    locatorDepToLabel :: LocatorDependency -> Maybe (Text, [ProvidedPackageLabel])
+    locatorDepToLabel (LocatorDependencyPlain _) = Nothing
+    locatorDepToLabel (LocatorDependencyStructured locator labels) = liftMaybe (renderLocator locator, labels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::
@@ -344,9 +404,18 @@ data ManualDependencies = ManualDependencies
   , customDependencies :: [CustomDependency]
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
-  , locatorDependencies :: [Locator]
+  , locatorDependencies :: [LocatorDependency]
   }
   deriving (Eq, Ord, Show)
+
+data LocatorDependency
+  = LocatorDependencyPlain Locator
+  | LocatorDependencyStructured Locator (Maybe [ProvidedPackageLabel])
+  deriving (Eq, Ord, Show)
+
+extractLocator :: LocatorDependency -> Locator
+extractLocator (LocatorDependencyPlain locator) = locator
+extractLocator (LocatorDependencyStructured locator _) = locator
 
 data ReferencedDependency
   = Managed ManagedReferenceDependency
@@ -358,6 +427,7 @@ data ManagedReferenceDependency = ManagedReferenceDependency
   { locDepName :: Text
   , locDepType :: DepType
   , locDepVersion :: Maybe Text
+  , locDepLabels :: Maybe [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -368,6 +438,7 @@ data LinuxReferenceDependency = LinuxReferenceDependency
   , locLinuxDepArch :: Text
   , locLinuxDepOS :: Text
   , locLinuxDepOSVersion :: Text
+  , locLinuxDepLabels :: Maybe [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -376,6 +447,7 @@ data CustomDependency = CustomDependency
   , customVersion :: Text
   , customLicense :: Text
   , customMetadata :: Maybe DependencyMetadata
+  , customLabels :: Maybe [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -384,8 +456,19 @@ data RemoteDependency = RemoteDependency
   , remoteVersion :: Text
   , remoteUrl :: Text
   , remoteMetadata :: Maybe DependencyMetadata
+  , remoteLabels :: Maybe [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
+
+instance FromJSON LocatorDependency where
+  parseJSON val = parsePlain val <|> parseLabeled val
+    where
+      parsePlain :: Value -> Parser LocatorDependency
+      parsePlain = withText "locator" $ pure . LocatorDependencyPlain . parseLocator
+
+      parseLabeled :: Value -> Parser LocatorDependency
+      parseLabeled = withObject "locator" $ \obj ->
+        LocatorDependencyStructured <$> obj .: "locator" <*> obj .:? "labels"
 
 instance FromJSON ManualDependencies where
   parseJSON (Object obj) =
@@ -427,6 +510,7 @@ instance FromJSON ReferencedDependency where
                   <$> (obj `neText` "name")
                   <*> pure depType
                   <*> (unTextLike <$$> obj .:? "version")
+                  <*> obj .:? "labels"
                   <* forbidNonRefDepFields obj
                   <* forbidLinuxFields depType obj
                   <* forbidEpoch depType obj
@@ -455,7 +539,7 @@ instance FromJSON ReferencedDependency where
           <*> parseArch obj
           <*> parseOS obj
           <*> parseOSVersion obj
-
+          <*> obj .:? "labels"
       parseArch :: Object -> Parser Text
       parseArch obj = requiredFieldMsg "arch" $ obj .: "arch"
 
@@ -509,8 +593,8 @@ instance FromJSON CustomDependency where
       <$> (obj `neText` "name")
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "license")
-      <*> obj
-        .:? "metadata"
+      <*> obj .:? "metadata"
+      <*> obj .:? "labels"
       <* forbidMembers "custom dependencies" ["type", "path", "url"] obj
 
 instance FromJSON RemoteDependency where
@@ -520,6 +604,7 @@ instance FromJSON RemoteDependency where
       <*> (unTextLike <$> obj `neText` "version")
       <*> (obj `neText` "url")
       <*> obj .:? "metadata"
+      <*> obj .:? "labels"
       <* forbidMembers "remote dependencies" ["license", "path", "type"] obj
 
 validateRemoteDep :: (Has Diagnostics sig m) => RemoteDependency -> Organization -> m RemoteDependency
@@ -622,6 +707,7 @@ depTypeToText depType = case depType of
   LinuxAPK -> "apk"
   LinuxDEB -> "deb"
   LinuxRPM -> "rpm"
+  UserType -> "user"
   other -> toText . show $ other
 
 -- | Distro OS supported by FOSSA.

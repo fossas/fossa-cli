@@ -478,6 +478,9 @@ instance Pretty Issues where
 newtype OrgId = OrgId Int
   deriving (Eq, Ord, FromJSON, ToJSON)
 
+instance ToText OrgId where
+  toText (OrgId orgId) = toText orgId
+
 instance Show OrgId where
   show (OrgId orgId) = show orgId
 
