@@ -620,6 +620,9 @@ instance FromJSON ProvidedPackageLabels where
   parseJSON = withObject "ProvidedPackageLabels" $ \obj ->
     ProvidedPackageLabels <$> parseJSON (Object obj)
 
+-- | Note: The ToJSON and FromJSON implementations for this type differ
+-- because ToJSON is used to upload to Core and FromJSON is used to parse
+-- from a fossa-deps file.
 instance ToJSON ProvidedPackageLabel where
   toJSON ProvidedPackageLabel{..} =
     object
@@ -628,10 +631,13 @@ instance ToJSON ProvidedPackageLabel where
       , "scope" .= providedPackageLabelScope
       ]
 
+-- | Note: The ToJSON and FromJSON implementations for this type differ
+-- because ToJSON is used to upload to Core and FromJSON is used to parse
+-- from a fossa-deps file.
 instance FromJSON ProvidedPackageLabel where
   parseJSON = withObject "ProvidedPackageLabel" $ \obj ->
     ProvidedPackageLabel
-      <$> obj .: "content"
+      <$> obj .: "label"
       <*> obj .: "scope"
 
 instance ToJSON ProvidedPackageLabelScope where

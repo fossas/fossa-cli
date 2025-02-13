@@ -461,7 +461,9 @@ data RemoteDependency = RemoteDependency
   deriving (Eq, Ord, Show)
 
 instance FromJSON LocatorDependency where
-  parseJSON val = parsePlain val <|> parseLabeled val
+  parseJSON val = do
+    when (val == Null) $ fail "locator must not be null"
+    parsePlain val <|> parseLabeled val
     where
       parsePlain :: Value -> Parser LocatorDependency
       parsePlain = withText "locator" $ pure . LocatorDependencyPlain . parseLocator
