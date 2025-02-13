@@ -112,7 +112,7 @@ theWorksLabels org =
 
     archiveLabels :: [(Text, [ProvidedPackageLabel])]
     archiveLabels =
-      [ ("archive+vendored", [ProvidedPackageLabel "vendored-dependency-label" ProvidedPackageLabelScopeOrg])
+      [ ("archive+vendored$", [ProvidedPackageLabel "vendored-dependency-label" ProvidedPackageLabelScopeOrg])
       , ("archive+versioned$2.1.0", [ProvidedPackageLabel "versioned-dependency-label" ProvidedPackageLabelScopeProject])
       , ("archive+metadata$1.1.0", [ProvidedPackageLabel "metadata-dependency-label" ProvidedPackageLabelScopeRevision])
       ]
@@ -125,7 +125,7 @@ theWorksLabels org =
 
     locatorLabels :: [(Text, [ProvidedPackageLabel])]
     locatorLabels =
-      [ ("fetcher-1+one", [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
+      [ ("fetcher-1+one$", [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
       , ("fetcher-2+two$1.0.0", [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
       ]
 
