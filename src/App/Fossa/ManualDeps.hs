@@ -201,11 +201,9 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
 
   -- Some manual deps, such as remote dependencies in source unit cannot be
   -- validated without endpoint interactions.
-  rdeps <- case maybeApiOpts of
-    Just apiOpts -> runFossaApiClient apiOpts $ do
-      org' <- maybe getOrganization pure org
-      traverse (`validateRemoteDep` org') remoteDependencies
-    Nothing -> pure remoteDependencies
+  rdeps <- case (maybeApiOpts, org) of
+    (Just apiOpts, Just org') -> runFossaApiClient apiOpts $ traverse (`validateRemoteDep` org') remoteDependencies
+    (_, _) -> pure remoteDependencies
 
   let renderedPath = toText root
       referenceLocators = (extractLocator <$> locatorDependencies) ++ (refToLocator <$> referencedDependencies)
