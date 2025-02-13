@@ -45,21 +45,21 @@ theWorks :: ManualDependencies
 theWorks = ManualDependencies references customs vendors remotes locators
   where
     references =
-      [ Managed (ManagedReferenceDependency "one" GemType Nothing Nothing)
-      , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") Nothing)
+      [ Managed (ManagedReferenceDependency "one" GemType Nothing [])
+      , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") [])
       ]
     customs =
-      [ CustomDependency "hello" "1.2.3" "MIT" Nothing Nothing
-      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom"))) Nothing
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing []
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom"))) []
       ]
     remotes =
-      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url"))) Nothing
-      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing Nothing
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url"))) []
+      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing []
       ]
     vendors =
-      [ VendoredDependency "vendored" "path" Nothing Nothing Nothing
-      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing Nothing
-      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored"))) Nothing
+      [ VendoredDependency "vendored" "path" Nothing Nothing []
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing []
+      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored"))) []
       ]
     locators =
       [ LocatorDependencyPlain (Locator "fetcher-1" "one" Nothing)
@@ -70,27 +70,27 @@ theWorksLabeled :: ManualDependencies
 theWorksLabeled = ManualDependencies references customs vendors remotes locators
   where
     references =
-      [ Managed (ManagedReferenceDependency "one" GemType Nothing (Just [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision]))
-      , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") (Just [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject]))
-      , LinuxApkDebDep (LinuxReferenceDependency "libssl" LinuxAPK (Just "3.2.1") "x86_64" "alpine" "3.18" (Just [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg]))
-      , LinuxRpmDep (LinuxReferenceDependency "libcurl" LinuxRPM (Just "7.89.1") "aarch64" "fedora" "38" (Just [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision])) (Just "1")
+      [ Managed (ManagedReferenceDependency "one" GemType Nothing [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision])
+      , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject])
+      , LinuxApkDebDep (LinuxReferenceDependency "libssl" LinuxAPK (Just "3.2.1") "x86_64" "alpine" "3.18" [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg])
+      , LinuxRpmDep (LinuxReferenceDependency "libcurl" LinuxRPM (Just "7.89.1") "aarch64" "fedora" "38" [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision]) (Just "1")
       ]
     customs =
-      [ CustomDependency "hello" "1.2.3" "MIT" Nothing (Just [ProvidedPackageLabel "custom-label-hello" ProvidedPackageLabelScopeOrg])
-      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom"))) (Just [ProvidedPackageLabel "custom-label-full" ProvidedPackageLabelScopeProject])
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing [ProvidedPackageLabel "custom-label-hello" ProvidedPackageLabelScopeOrg]
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom"))) [ProvidedPackageLabel "custom-label-full" ProvidedPackageLabelScopeProject]
       ]
     remotes =
-      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url"))) (Just [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
-      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing (Just [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url"))) [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg]
+      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision]
       ]
     vendors =
-      [ VendoredDependency "vendored" "path" Nothing Nothing (Just [ProvidedPackageLabel "vendored-dependency-label" ProvidedPackageLabelScopeOrg])
-      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing (Just [ProvidedPackageLabel "versioned-dependency-label" ProvidedPackageLabelScopeProject])
-      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored"))) (Just [ProvidedPackageLabel "metadata-dependency-label" ProvidedPackageLabelScopeRevision])
+      [ VendoredDependency "vendored" "path" Nothing Nothing [ProvidedPackageLabel "vendored-dependency-label" ProvidedPackageLabelScopeOrg]
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing [ProvidedPackageLabel "versioned-dependency-label" ProvidedPackageLabelScopeProject]
+      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored"))) [ProvidedPackageLabel "metadata-dependency-label" ProvidedPackageLabelScopeRevision]
       ]
     locators =
-      [ LocatorDependencyStructured (Locator "fetcher-1" "one" Nothing) (Just [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
-      , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) (Just [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
+      [ LocatorDependencyStructured (Locator "fetcher-1" "one" Nothing) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
+      , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
       ]
 
 theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
@@ -428,7 +428,7 @@ referenced-dependencies:
 linuxRefManualDep :: Text -> Maybe Text -> ManualDependencies
 linuxRefManualDep os epoch =
   ManualDependencies
-    [LinuxRpmDep (LinuxReferenceDependency "pkgName" LinuxRPM (Just "1.1") "x86" os "2.2" Nothing) epoch]
+    [LinuxRpmDep (LinuxReferenceDependency "pkgName" LinuxRPM (Just "1.1") "x86" os "2.2" []) epoch]
     mempty
     mempty
     mempty

@@ -47,7 +47,7 @@ vendoredDep =
     "vendor/foo.tar.gz"
     (Just "0.0.1")
     Nothing
-    Nothing
+    []
 
 -- the contents of the archive look like this. The `FOO_LICENSE` files contain an MIT license.
 -- `bar_apache.rb` and `something.rb` contain an Apache-2.0 license.

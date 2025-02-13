@@ -452,7 +452,7 @@ firstVendoredDep =
     "vendored/foo"
     (Just "0.0.1")
     Nothing
-    Nothing
+    []
 secondVendoredDep :: VendoredDependency
 secondVendoredDep =
   VendoredDependency
@@ -460,7 +460,7 @@ secondVendoredDep =
     "vendored/bar"
     (Just "0.0.1")
     Nothing
-    Nothing
+    []
 vendoredDeps :: NonEmpty VendoredDependency
 vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
 
