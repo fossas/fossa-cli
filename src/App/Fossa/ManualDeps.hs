@@ -462,10 +462,10 @@ instance FromJSON LocatorDependency where
   parseJSON val = parseLabeled val <|> parsePlain val
     where
       parsePlain :: Value -> Parser LocatorDependency
-      parsePlain = withText "locator" $ pure . LocatorDependencyPlain . parseLocator
+      parsePlain = withText "Locator" $ pure . LocatorDependencyPlain . parseLocator
 
       parseLabeled :: Value -> Parser LocatorDependency
-      parseLabeled = withObject "locator" $ \obj ->
+      parseLabeled = withObject "Locator" $ \obj ->
         LocatorDependencyStructured <$> obj .: "locator" <*> obj .:? "labels"
 
 instance FromJSON ManualDependencies where
