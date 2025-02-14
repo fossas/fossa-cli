@@ -15,7 +15,7 @@ Denotes listing of dependencies, which are to be analyzed in conjunction with th
 - `type`: Type of dependency. (Required)
 - `name`: Name of the dependency. It should be the same name as listed in dependencies registry. (Required)
 - `version`: Revision of the dependency. If left unspecified, the latest version discovered from the registry will be used.
-
+- `labels`: An optional list of labels to be added to the dependency.
 ```yaml
 referenced-dependencies:
 - type: gem
@@ -90,6 +90,59 @@ vendored-dependencies:
 > Note: License scanning currently operates by uploading the files at the specified path to a secure S3 bucket. All files that do not contain licenses are then removed after 2 weeks.
 
 For more details, please refer to the [feature](../../features/vendored-dependencies.md) walk through.
+
+## Labels
+
+Each kind of dependency referenced above can have a `labels` field, which is a list of labels to be added to the dependency.
+These labels are **user-defined**; you may choose any labels. What they mean is up to you and/or your organization.
+For more information on labels, refer to the main [FOSSA documentation](https://docs.fossa.com).
+<!-- Note: We should really link to a more specific page here, but these docs don't yet exist. -->
+
+Labels have a `scope` field, which is the scope of the label. The possible scopes are:
+- `org`: The label is scoped to the organization.
+- `revision`: The label is scoped to the revision.
+- `project`: The label is scoped to the project.
+
+You may attach multiple labels to a single dependency.
+For example:
+
+```yaml
+referenced-dependencies:
+- type: pypi
+  name: numpy
+  version: 2.2.0
+  labels:
+  - label: numbers-go-brr
+    scope: org
+  - label: oss-approved
+    scope: revision
+
+custom-dependencies:
+- name: somecorp-api-client
+  version: 1.2.3
+  license: Proprietary
+  metadata:
+    homepage: https://www.partner.somecorp.com/interface/client/wrapper/lib
+    description: Gives access to the SomeCorp API.
+  labels:
+  - label: proprietary
+    scope: version
+  - label: license-paid-2024
+    scope: revision
+
+vendored-dependencies:
+- name: Django
+  path: vendor/Django-3.4.16.zip
+  version: 3.4.16
+  metadata:
+    homepage: https://djangoproject.com
+    description: Django
+  labels:
+  - label: hr-docs
+    scope: project
+  - label: internal-dependency
+    scope: revision
+```
 
 ## Errors in the `fossa-deps` file
 

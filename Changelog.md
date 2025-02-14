@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.10.0
+- Support for user-provided dependency labels in `fossa-deps` ([#1505](https://github.com/fossas/fossa-cli/pull/1505)).
+  For details, see the [`fossa-deps` documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md).
+
 ## 3.9.47
 - Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
 
