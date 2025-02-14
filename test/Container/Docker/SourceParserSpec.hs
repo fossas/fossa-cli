@@ -10,10 +10,11 @@ import Container.Docker.SourceParser (
   defaultRegistry,
   defaultTag,
   parseImageUrl,
+  toRegistryApiHost,
  )
 import Data.Text (Text)
 import Data.Void (Void)
-import Test.Hspec (Expectation, Spec, describe, it)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (
   Parsec,
@@ -126,6 +127,14 @@ spec = do
                               (mkTagRef "9.0.2")
                               fixtureArch
                           )
+
+  describe "toRegistryApiHost" $ do
+    it "should convert Docker Hub registry to API endpoint" $
+      toRegistryApiHost defaultRegistry `shouldBe` "registry-1.docker.io"
+
+    it "should not modify other registry hosts" $ do
+      toRegistryApiHost "ghcr.io" `shouldBe` "ghcr.io"
+      toRegistryApiHost "quay.io" `shouldBe` "quay.io"
 
 fixtureArch :: Text
 fixtureArch = "amd64"

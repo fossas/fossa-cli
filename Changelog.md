@@ -1,10 +1,24 @@
 # FOSSA CLI Changelog
 
-## 3.9.44
+
+## Unreleased
 - NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
 
+## 3.9.47
+- Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
+
+## 3.9.46
+- Licensing: Fix a bug where the tzdata debian package copyright was not detected as a public domain license ([#1504](https://github.com/fossas/fossa-cli/pull/1504))
+- Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error ([#1500](https://github.com/fossas/fossa-cli/pull/1500))
+
+## 3.9.45
+- Preflight: Fix a bug where the preflight checks fail for SBOM team analysis ([#1499](https://github.com/fossas/fossa-cli/pull/1499))
+
+## 3.9.44
+- Preflight: Fix a bug where the preflight check could fail if you ran fossa multiple times simultaneously ([#1498](https://github.com/fossas/fossa-cli/pull/1498))
+
 ## 3.9.43
-- Discovery: Fix a bug where directories in paths.exclude may still be accessed during discovery which causes an error when users don't have permission to read those directories.
+- Discovery: Fix a bug where directories in paths.exclude may still be accessed during discovery which causes an error when users don't have permission to read those directories ([#1493](https://github.com/fossas/fossa-cli/pull/1493))
 
 ## 3.9.42
 - Licensing: Adds support for the Text-Tabs+Wrap License
