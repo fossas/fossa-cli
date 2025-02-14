@@ -1,24 +1,15 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.PackageReference (
-  discover,
-  findProjects,
-  getDeps,
-  mkProject,
   buildGraph,
+  analyze',
   PackageReference (..),
-  PackageReferenceProject (..),
   ItemGroup (..),
   Package (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Effect.Reader (Reader)
-import Data.Aeson (ToJSON)
-import Data.Foldable (find)
-import Data.List qualified as L
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
 import DepTypes (
@@ -26,60 +17,15 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (
-  WalkStep (WalkContinue),
-  fileName,
-  walkWithFilters',
- )
 import Effect.ReadFS (ReadFS, readContentsXML)
-import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML (FromXML (..), attr, child, children)
-import Path (Abs, Dir, File, Path, parent)
+import Path (Abs, File, Path)
 import Types (
   DependencyResults (..),
-  DiscoveredProject (..),
-  DiscoveredProjectType (PackageReferenceProjectType),
   GraphBreadth (Partial),
  )
-
-isPackageRefFile :: Path b File -> Bool
-isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PackageReferenceProject]
-discover = simpleDiscover findProjects mkProject PackageReferenceProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackageReferenceProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
-  case find isPackageRefFile files of
-    Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([PackageReferenceProject file], WalkContinue)
-
-newtype PackageReferenceProject = PackageReferenceProject
-  { packageReferenceFile :: Path Abs File
-  }
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON PackageReferenceProject
-
-instance AnalyzeProject PackageReferenceProject where
-  analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps
-
-mkProject :: PackageReferenceProject -> DiscoveredProject PackageReferenceProject
-mkProject project =
-  DiscoveredProject
-    { projectType = PackageReferenceProjectType
-    , projectBuildTargets = mempty
-    , projectPath = parent $ packageReferenceFile project
-    , projectData = project
-    }
-
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PackageReferenceProject -> m DependencyResults
-getDeps = context "PackageReference" . context "Static analysis" . analyze' . packageReferenceFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do

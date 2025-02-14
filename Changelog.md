@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+
+## Unreleased
+- NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
+
 ## 3.9.47
 - Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
 

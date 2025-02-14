@@ -58,7 +58,7 @@ Supported dependency types:
 
 The following dependency types are also supported but they require `arch`, `os`, and `osVersion` attributes:
 
-- `apk` - Alpine packages. 
+- `apk` - Alpine packages.
 - `deb` - Debian packages.
 - `rpm-generic` - Rpm packages.
 
@@ -180,7 +180,7 @@ If `version` is not provided, the system assumes the version is "latest", and ca
 
 For dependency types that require `arch`, `os`, and `osVersion` attributes, these fields are additionally considered for the cache.
 
-In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency: 
+In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency:
 Click the dependency in the UI and then click "Reanalyze".
 This button enqueues a background job to rebuild the dependency, which should resolve after a few minutes.
 
@@ -192,6 +192,6 @@ This button enqueues a background job to rebuild the dependency, which should re
 
 `remote-dependencies` are cached by their `(name, url, version)` fields, which are all required.
 
-In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency: 
+In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency:
 Click the dependency in the UI and then click "Reanalyze".
 This button enqueues a background job to rebuild the dependency, which should resolve after a few minutes.
