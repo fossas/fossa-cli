@@ -53,8 +53,8 @@ testServiceStackForPkgConfig =
       it "should find targets" $ \(result, _) -> do
         length result `shouldBe` 4
 
-testDotnetCoreTwoExampleForPackageAssetsJson :: Spec
-testDotnetCoreTwoExampleForPackageAssetsJson =
+testDotnetCoreTwoExampleForProjectAssetsJson :: Spec
+testDotnetCoreTwoExampleForProjectAssetsJson =
   aroundAll (withAnalysisOf NonStrict $ dotnetCoreTwoExample NuGet.discover) $ do
     describe "dotnet-core-2.0-example" $ do
       it "should find targets" $ \(result, _) -> do
@@ -69,4 +69,4 @@ spec :: Spec
 spec = do
   testServiceStackForPkgReferences
   testServiceStackForPkgConfig
-  testDotnetCoreTwoExampleForPackageAssetsJson
+  testDotnetCoreTwoExampleForProjectAssetsJson
