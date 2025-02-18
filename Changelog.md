@@ -6,6 +6,7 @@
 
 ## 3.9.47
 - Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
+- NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
 
 ## 3.9.46
 - Licensing: Fix a bug where the tzdata debian package copyright was not detected as a public domain license ([#1504](https://github.com/fossas/fossa-cli/pull/1504))
