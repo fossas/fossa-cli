@@ -198,9 +198,11 @@ Yes.  Missing language extensions are usually compile-time errors, and will be c
 If, for any reason, GHC tells you add an extension, and hlint tells you to remove the extension you just added, keep it there and ignore hlint.  You should also file
 an issue in this repository for that scenario, since we may be able to fix that.
 
+<!-- markdown-link-check-disable -->
 [fourmolu]: https://github.com/fourmolu/fourmolu
 [ghcup]: https://www.haskell.org/ghcup
 [hackage]: https://hackage.haskell.org/
 [hlint]: https://github.com/ndmitchell/hlint
 [hls]: https://github.com/haskell/haskell-language-server
 [hoogle]: https://hoogle.haskell.org/
+<!-- markdown-link-check-enable-->
