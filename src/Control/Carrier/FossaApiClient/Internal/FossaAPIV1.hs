@@ -179,11 +179,13 @@ import Fossa.API.Types (
   SignedURLWithKey (surlwkKey, surlwkSignedURL),
   TokenTypeResponse,
   UploadResponse,
+  chunkArchiveComponents,
   useApiOpts,
  )
 
 import Control.Effect.Reader
 import Data.Foldable (traverse_)
+import Data.List.Extra (chunk)
 import Fossa.API.CoreTypes qualified as CoreTypes
 import Network.HTTP.Client (responseStatus)
 import Network.HTTP.Client qualified as C
@@ -666,7 +668,7 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan =
       ( warnOnErr @Text "Container scan upload to new analysis service failed, falling back to core analysis."
           . errCtx ("Upload to new analysis service at " <> renderUrl sparkleAnalysisUrl)
           $ uploadScan sparkleAnalysisUrl scan
-      )
+        )
         <||> context "Upload to CORE analysis service" (uploadScan (containerUploadUrl Core baseUrl) scan)
 
     pure $ responseBody resp
@@ -1015,8 +1017,9 @@ licenseScanFinalize ::
   ArchiveComponents ->
   m ()
 licenseScanFinalize apiOpts archiveProjects = do
-  _ <- licenseScanFinalize' apiOpts archiveProjects
-  pure ()
+  -- The latency for scans with hundreds of license scans is way too high, leading to spurious error messages.
+  -- https://fossa.atlassian.net/browse/ANE-2272
+  traverse_ (licenseScanFinalize' apiOpts) $ chunkArchiveComponents 100 archiveProjects
 
 licenseScanFinalize' ::
   APIClientEffs sig m =>
@@ -1580,12 +1583,18 @@ finalizePathDependencyScan ::
   m (Maybe ())
 finalizePathDependencyScan apiOpts locators forceRebuild = runEmpty $
   fossaReqAllow401 $ do
+    -- The latency for scans with hundreds of license scans is way too high, leading to spurious error messages.
+    -- Reference: https://fossa.atlassian.net/browse/ANE-2272
+    --
+    -- No similar issue was reported for this method,
+    -- but since it uses the same methodology I decided it was better to go ahead and do it.
     (baseUrl, baseOpts) <- useApiOpts apiOpts
-    let req' = PathDependencyFinalizeReq locators forceRebuild
-    _ <-
+    traverse_ (finalize baseUrl baseOpts) $ chunk 100 locators
+  where
+    mkReq locs = PathDependencyFinalizeReq locs forceRebuild
+    finalize baseUrl baseOpts locs =
       context "Queuing a build for all license scan uploads" $
-        req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson req') ignoreResponse (baseOpts)
-    pure ()
+        req POST (pathDependencyFinalizeUrl baseUrl) (ReqBodyJson (mkReq locs)) ignoreResponse (baseOpts)
 
 alreadyAnalyzedPathRevisionURLEndpoint :: Url 'Https -> Locator -> Url 'Https
 alreadyAnalyzedPathRevisionURLEndpoint baseUrl locator = baseUrl /: "api" /: "cli" /: "path_dependency_scan" /: renderLocator locator /: "analyzed"
