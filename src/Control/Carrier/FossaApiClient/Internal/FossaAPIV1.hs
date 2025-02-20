@@ -654,24 +654,25 @@ uploadNativeContainerScan apiOpts ProjectRevision{..} metadata scan =
     (baseUrl, baseOpts) <- useApiOpts apiOpts
     let locator = renderLocator $ Locator "custom" projectName (Just projectRevision)
         opts =
-          "locator" =: locator
+          baseOpts
+            <> "locator" =: locator
             <> "cliVersion" =: cliVersion
             <> "managedBuild" =: True
             <> maybe mempty ("branch" =:) projectBranch
             <> "scanType" =: ("native" :: Text)
             <> mkMetadataOpts metadata projectName
 
-        uploadScan url containerScan = req POST url (ReqBodyJson containerScan) jsonResponse (baseOpts <> opts)
-        sparkleAnalysisUrl = containerUploadUrl Sparkle baseUrl
-
-    resp <-
-      ( warnOnErr @Text "Container scan upload to new analysis service failed, falling back to core analysis."
-          . errCtx ("Upload to new analysis service at " <> renderUrl sparkleAnalysisUrl)
-          $ uploadScan sparkleAnalysisUrl scan
-        )
-        <||> context "Upload to CORE analysis service" (uploadScan (containerUploadUrl Core baseUrl) scan)
-
+    resp <- uploadToSparkle baseUrl opts <||> uploadToCore baseUrl opts
     pure $ responseBody resp
+  where
+    uploadScan url opts containerScan = req POST url (ReqBodyJson containerScan) jsonResponse opts
+    sparkleAnalysisUrl = containerUploadUrl Sparkle
+    coreAnalysisUrl = containerUploadUrl Core
+    uploadToSparkle baseUrl opts =
+      warnOnErr @Text "Container scan upload to new analysis service failed, falling back to core analysis."
+        . errCtx ("Upload to new analysis service at " <> renderUrl (sparkleAnalysisUrl baseUrl))
+        $ uploadScan (sparkleAnalysisUrl baseUrl) opts scan
+    uploadToCore baseUrl opts = context "Upload to CORE analysis service" $ uploadScan (coreAnalysisUrl baseUrl) opts scan
 
 -- | Replacement for @Data.HTTP.Req.req@ that additionally logs information about a request in a debug bundle.
 req ::
