@@ -3,6 +3,7 @@
 
 ## 3.9.48
 - General: Fix a bug where directory traversal could fail if the user does not have permission to read a directory ([#1508](https://github.com/fossas/fossa-cli/pull/1508)).
+- Performance: Fix timeout issues when uploading large numbers of license scans by processing them in smaller batches ([#1509](https://github.com/fossas/fossa-cli/pull/1509)).
 
 ## 3.9.47
 - Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
