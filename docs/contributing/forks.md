@@ -1,5 +1,7 @@
 # Accepting PRs from a fork
 
+This document is mainly for FOSSA employees. It explains the process that we use to accept PRs from forks, and why we need this process.
+
 Unfortunately, our CI does not work with PRs from forks. This is because we pull in some proprietary executables and CI will only have the right secrets to download those executables if it is run from the main repo.
 
 To accept a PR from a fork, you create a new branch and cherry pick the commits from the forked PR onto the new branch. Then you push that branch to the main repo and create a new PR.
