@@ -251,6 +251,7 @@ sourceUnits = [unit]
         , sourceUnitOriginPaths = []
         , sourceUnitNoticeFiles = []
         , additionalData = Nothing
+        , sourceUnitLabels = Nothing
         }
 
 sourceUnitBuildMaven :: SourceUnitBuild
@@ -318,6 +319,7 @@ vsiSourceUnit =
     , sourceUnitOriginPaths = ["/tmp/one/two"]
     , sourceUnitNoticeFiles = []
     , additionalData = Nothing
+    , sourceUnitLabels = Nothing
     }
 
 -- | A base dir for testing.  This directory is not guaranteed to exist.  If you
@@ -450,7 +452,7 @@ firstVendoredDep =
     "vendored/foo"
     (Just "0.0.1")
     Nothing
-
+    []
 secondVendoredDep :: VendoredDependency
 secondVendoredDep =
   VendoredDependency
@@ -458,7 +460,7 @@ secondVendoredDep =
     "vendored/bar"
     (Just "0.0.1")
     Nothing
-
+    []
 vendoredDeps :: NonEmpty VendoredDependency
 vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
 
