@@ -95,8 +95,6 @@ For more details, please refer to the [feature](../../features/vendored-dependen
 
 Each kind of dependency referenced above can have a `labels` field, which is a list of labels to be added to the dependency.
 These labels are **user-defined**; you may choose any labels. What they mean is up to you and/or your organization.
-For more information on labels, refer to the main [FOSSA documentation](https://docs.fossa.com).
-<!-- Note: We should really link to a more specific page here, but these docs don't yet exist. -->
 
 Labels have a `scope` field, which is the scope of the label. The possible scopes are:
 - `org`: The label is scoped to the organization.
