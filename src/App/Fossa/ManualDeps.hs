@@ -185,9 +185,7 @@ toSourceUnit root depsFile manualDeps@ManualDependencies{..} maybeApiOpts vendor
 
   -- Some manual deps, such as remote dependencies in source unit cannot be
   -- validated without the org data.
-  org <- case maybeApiOpts of
-    Just apiOpts -> Just <$> runFossaApiClient apiOpts getOrganization
-    Nothing -> pure Nothing
+  org <- traverse (`runFossaApiClient` getOrganization) maybeApiOpts
 
   -- Labels are provided by users attached to actual dependencies,
   -- but are collected into the root of the source unit for reporting to FOSSA.
