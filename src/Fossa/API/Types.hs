@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -486,6 +487,7 @@ instance Pretty Issues where
 
 newtype OrgId = OrgId Int
   deriving (Eq, Ord, FromJSON, ToJSON)
+  deriving (ToText) via Int
 
 instance Show OrgId where
   show (OrgId orgId) = show orgId

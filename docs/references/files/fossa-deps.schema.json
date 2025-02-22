@@ -1,310 +1,370 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "fossa-deps",
-    "description": "fossa-deps for dependency specification for FOSSA CLI",
-    "$defs": {
-        "os": {
-            "enum": [
-                "alpine",
-                "centos",
-                "debian",
-                "redhat",
-                "ubuntu",
-                "oraclelinux",
-                "busybox",
-                "sles",
-                "fedora",
-                "rocky"
-            ],
-            "description": "Name of the distribution OS."
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "fossa-deps",
+  "description": "fossa-deps for dependency specification for FOSSA CLI",
+  "$defs": {
+    "label": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "The label to be added to the dependency.",
+          "minLength": 1,
+          "maxLength": 255
         },
-        "referenced-app-dependency": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
-                },
-                "type": {
-                    "enum": [
-                        "bower",
-                        "cargo",
-                        "carthage",
-                        "composer",
-                        "cpan",
-                        "renv",
-                        "gem",
-                        "git",
-                        "go",
-                        "hackage",
-                        "hex",
-                        "maven",
-                        "npm",
-                        "nuget",
-                        "paket",
-                        "pub",
-                        "pypi",
-                        "cocoapods",
-                        "swift",
-                        "url"
-                    ],
-                    "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
-                },
-                "version": {
-                    "type": "string",
-                    "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
-                }
-            },
-            "required": [
-                "name",
-                "type"
-            ],
-            "additionalProperties": false
-        },
-        "referenced-apk-deb-dependency": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
-                },
-                "type": {
-                    "enum": [
-                        "apk",
-                        "deb"
-                    ],
-                    "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
-                },
-                "version": {
-                    "type": "string",
-                    "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
-                },
-                "arch": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Architecture associated with this package"
-                },
-                "os": {
-                    "$ref": "#/$defs/os"
-                },
-                "osVersion": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Version of the distribution OS."
-                }
-            },
-            "required": [
-                "name",
-                "type",
-                "arch",
-                "os",
-                "osVersion"
-            ],
-            "additionalProperties": false
-        },
-        "referenced-rpm-dependency": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
-                  },
-                "type": {
-                    "enum": [
-                        "rpm-generic"
-                    ],
-                    "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
-                },
-                "version": {
-                    "type": "string",
-                    "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
-                },
-                "arch": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Architecture associated with this package"
-                },
-                "epoch": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Epoch associated with version (if any)."
-                },
-                "os": {
-                    "$ref": "#/$defs/os"
-                },
-                "osVersion": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Version of the distribution OS."
-                }
-            },
-            "required": [
-                "name",
-                "type",
-                "arch",
-                "os",
-                "osVersion"
-            ],
-            "additionalProperties": false
-        },
-        "referenced-dependency": {
-            "oneOf": [
-                {
-                    "$ref": "#/$defs/referenced-app-dependency"
-                },
-                {
-                    "$ref": "#/$defs/referenced-apk-deb-dependency"
-                },
-                {
-                    "$ref": "#/$defs/referenced-rpm-dependency"
-                }
-            ]
-        },
-        "custom-dependency": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name of the dependency. This will be the name used in FOSSA's dashboard.",
-                    "minLength": 1
-                },
-                "version": {
-                    "type": "string",
-                    "description": "Version of the dependency. This will be the version used in FOSSA's dashboard.",
-                    "minLength": 1
-                },
-                "license": {
-                    "type": "string",
-                    "description": "License of the dependency. This string will be used to infer license type.",
-                    "minLength": 1
-                },
-                "metadata": {
-                    "type": "object",
-                    "properties": {
-                        "description": {
-                            "type": "string",
-                            "description": "Description of the dependency (if any)"
-                        },
-                        "homepage": {
-                            "type": "string",
-                            "description": "Homepage of the dependency. This should be web address."
-                        }
-                    }
-                }
-            },
-            "required": [
-                "name",
-                "version",
-                "license"
-            ],
-            "additionalProperties": false
-        },
-        "vendored-dependency": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name of the dependency. This will be the name associated with this vendored dependency in FOSSA's dashboard",
-                    "minLength": 1
-                },
-                "path": {
-                    "type": "string",
-                    "description": "Path to directory, which will be archived and upload to provided endpoint for license scanning.",
-                    "minLength": 1
-                },
-                "version": {
-                    "type": "string",
-                    "description": "Version of the dependency. This will be the version associated with this vendored dependency in FOSSA's dashboard"
-                },
-                "metadata": {
-                    "type": "object",
-                    "properties": {
-                        "description": {
-                            "type": "string",
-                            "description": "Description of the dependency (if any)"
-                        },
-                        "homepage": {
-                            "type": "string",
-                            "description": "Homepage of the dependency. This should be web address."
-                        }
-                    }
-                }
-            },
-            "required": [
-                "name",
-                "path"
-            ],
-            "additionalProperties": false
-        },
-        "remote-dependency": {
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Name of the dependency. This will be the version used in FOSSA's dashboard.",
-                    "minLength": 1
-                },
-                "url": {
-                    "type": "string",
-                    "description": "Url of the dependency's source code. This will be the downloaded by FOSSA for scanning with the analysis.",
-                    "minLength": 1
-                },
-                "version": {
-                    "type": "string",
-                    "description": "Version of the dependency."
-                },
-                "metadata": {
-                    "type": "object",
-                    "properties": {
-                        "description": {
-                            "type": "string",
-                            "description": "Description of the dependency (if any)"
-                        },
-                        "homepage": {
-                            "type": "string",
-                            "description": "Homepage of the dependency. This should be web address."
-                        }
-                    }
-                }
-            },
-            "required": [
-                "name",
-                "url",
-                "version"
-            ],
-            "additionalProperties": false
+        "scope": {
+          "type": "string",
+          "description": "The scope of the label.",
+          "enum": [
+            "org",
+            "revision",
+            "project"
+          ]
         }
+      },
+      "required": [
+        "label",
+        "scope"
+      ]
     },
-    "type": "object",
-    "properties": {
+    "os": {
+      "enum": [
+        "alpine",
+        "centos",
+        "debian",
+        "redhat",
+        "ubuntu",
+        "oraclelinux",
+        "busybox",
+        "sles",
+        "fedora",
+        "rocky"
+      ],
+      "description": "Name of the distribution OS."
+    },
+    "referenced-app-dependency": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
+        },
+        "type": {
+          "enum": [
+            "bower",
+            "cargo",
+            "carthage",
+            "composer",
+            "cpan",
+            "renv",
+            "gem",
+            "git",
+            "go",
+            "hackage",
+            "hex",
+            "maven",
+            "npm",
+            "nuget",
+            "paket",
+            "pub",
+            "pypi",
+            "cocoapods",
+            "swift",
+            "url"
+          ],
+          "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+        },
         "version": {
-            "type": "integer"
+          "type": "string",
+          "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
         },
-        "referenced-dependencies": {
-            "type": "array",
-            "description": "Reference dependency to locate from registry and include it project's dependency and license scanning.",
-            "items": {
-                "$ref": "#/$defs/referenced-dependency"
-            }
-        },
-        "custom-dependencies": {
-            "type": "array",
-            "description": "Custom dependency and their license for project",
-            "items": {
-                "$ref": "#/$defs/custom-dependency"
-            }
-        },
-        "vendored-dependencies": {
-            "type": "array",
-            "description": "Local dependencies upload to server for license scanning",
-            "items": {
-                "$ref": "#/$defs/vendored-dependency"
-            }
-        },
-        "remote-dependencies": {
-            "type": "array",
-            "description": "Remote dependencies to license scanning",
-            "items": {
-                "$ref": "#/$defs/remote-dependency"
-            }
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
         }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false
     },
-    "required": []
+    "referenced-apk-deb-dependency": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
+        },
+        "type": {
+          "enum": [
+            "apk",
+            "deb"
+          ],
+          "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
+        },
+        "arch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Architecture associated with this package"
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "osVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Version of the distribution OS."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "arch",
+        "os",
+        "osVersion"
+      ],
+      "additionalProperties": false
+    },
+    "referenced-rpm-dependency": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
+        },
+        "type": {
+          "enum": [
+            "rpm-generic"
+          ],
+          "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
+        },
+        "arch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Architecture associated with this package"
+        },
+        "epoch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Epoch associated with version (if any)."
+        },
+        "os": {
+          "$ref": "#/$defs/os"
+        },
+        "osVersion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Version of the distribution OS."
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "arch",
+        "os",
+        "osVersion"
+      ],
+      "additionalProperties": false
+    },
+    "referenced-dependency": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/referenced-app-dependency"
+        },
+        {
+          "$ref": "#/$defs/referenced-apk-deb-dependency"
+        },
+        {
+          "$ref": "#/$defs/referenced-rpm-dependency"
+        }
+      ]
+    },
+    "custom-dependency": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the dependency. This will be the name used in FOSSA's dashboard.",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the dependency. This will be the version used in FOSSA's dashboard.",
+          "minLength": 1
+        },
+        "license": {
+          "type": "string",
+          "description": "License of the dependency. This string will be used to infer license type.",
+          "minLength": 1
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the dependency (if any)"
+            },
+            "homepage": {
+              "type": "string",
+              "description": "Homepage of the dependency. This should be web address."
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "license"
+      ],
+      "additionalProperties": false
+    },
+    "vendored-dependency": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the dependency. This will be the name associated with this vendored dependency in FOSSA's dashboard",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "description": "Path to directory, which will be archived and upload to provided endpoint for license scanning.",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the dependency. This will be the version associated with this vendored dependency in FOSSA's dashboard"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the dependency (if any)"
+            },
+            "homepage": {
+              "type": "string",
+              "description": "Homepage of the dependency. This should be web address."
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "path"
+      ],
+      "additionalProperties": false
+    },
+    "remote-dependency": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the dependency. This will be the version used in FOSSA's dashboard.",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "description": "Url of the dependency's source code. This will be the downloaded by FOSSA for scanning with the analysis.",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the dependency."
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the dependency (if any)"
+            },
+            "homepage": {
+              "type": "string",
+              "description": "Homepage of the dependency. This should be web address."
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "url",
+        "version"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "integer"
+    },
+    "referenced-dependencies": {
+      "type": "array",
+      "description": "Reference dependency to locate from registry and include it project's dependency and license scanning.",
+      "items": {
+        "$ref": "#/$defs/referenced-dependency"
+      }
+    },
+    "custom-dependencies": {
+      "type": "array",
+      "description": "Custom dependency and their license for project",
+      "items": {
+        "$ref": "#/$defs/custom-dependency"
+      }
+    },
+    "vendored-dependencies": {
+      "type": "array",
+      "description": "Local dependencies upload to server for license scanning",
+      "items": {
+        "$ref": "#/$defs/vendored-dependency"
+      }
+    },
+    "remote-dependencies": {
+      "type": "array",
+      "description": "Remote dependencies to license scanning",
+      "items": {
+        "$ref": "#/$defs/remote-dependency"
+      }
+    }
+  },
+  "required": []
 }
