@@ -33,6 +33,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
+import qualified Data.Maybe as Maybe
 
 -- | Pnpm Lockfile
 --
@@ -130,7 +131,8 @@ data PnpmLockFileVersion
   = PnpmLockLt4 Text
   | PnpmLock4Or5
   | PnpmLock6
-  | PnpmLockGt6 Text
+  | PnpmLockV678 Text
+  | PnpmLockV9
   deriving (Show, Eq, Ord)
 
 instance FromJSON PnpmLockfile where
@@ -165,7 +167,8 @@ instance FromJSON PnpmLockfile where
         (Just '4') -> pure PnpmLock4Or5
         (Just '5') -> pure PnpmLock4Or5
         (Just '6') -> pure PnpmLock6
-        (Just _) -> pure $ PnpmLockGt6 ver
+        (Just x) | x `elem` ['7', '8'] -> pure $ PnpmLockV678 ver
+        (Just '9') -> pure PnpmLockV9
         _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
 
 data ProjectMap = ProjectMap
@@ -218,13 +221,15 @@ data Resolution
   deriving (Show, Eq, Ord)
 
 data GitResolution = GitResolution
-  { gitUrl :: Text
-  , revision :: Text
+  { gitUrl :: Text,
+    revision :: Text
   }
   deriving (Show, Eq, Ord)
 
 newtype TarballResolution = TarballResolution {tarballUrl :: Text} deriving (Show, Eq, Ord)
+
 newtype RegistryResolution = RegistryResolution {integrity :: Text} deriving (Show, Eq, Ord)
+
 newtype DirectoryResolution = DirectoryResolution {directory :: Text} deriving (Show, Eq, Ord)
 
 instance FromJSON Resolution where
@@ -249,7 +254,7 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 
   case lockFileVersion pnpmLockFile of
     PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
-    PnpmLockGt6 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
+    PnpmLockV678 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
     _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
@@ -305,7 +310,8 @@ buildGraph lockFile = withoutLocalPackages $
       PnpmLock4Or5 -> getPkgNameVersionV5
       PnpmLock6 -> getPkgNameVersionV6
       PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
-      PnpmLockGt6 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
+      PnpmLockV678 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
+      PnpmLockV9 -> getPkgNameVersionV9
 
     -- Gets package name and version from package's key.
     --
@@ -323,6 +329,17 @@ buildGraph lockFile = withoutLocalPackages $
         case (Text.stripSuffix "@" nameWithSlash, version) of
           (Just name, v) -> Just (name, v <> peerDepInfo)
           _ -> Nothing
+    -- Pnpm 9.0 registry packages may not have a leading slash, so it is not required.
+    --
+    -- >> getPkgNameVersionV9 "@angular/core@1.0.0(babel@1.0.0) = Just ("@angular/core", "1.0.0(babel@1.0.0")
+    getPkgNameVersionV9 :: Text -> Maybe (Text, Text)
+    getPkgNameVersionV9 pkgKey = do
+      let txt = Maybe.fromMaybe pkgKey (Text.stripPrefix "/" pkgKey)
+          (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
+          (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+      case (Text.stripSuffix "@" nameWithSlash, version) of
+        (Just name, v) -> Just (name, v <> peerDepInfo)
+        _ -> Nothing
 
     -- Gets package name and version from package's key.
     --
@@ -382,7 +399,8 @@ buildGraph lockFile = withoutLocalPackages $
       -- v3 or below are deprecated and are not used in practice, fallback to closest
       PnpmLockLt4 _ -> "/" <> name <> "/" <> version
       -- at the time of writing there is no v7, so default to closest
-      PnpmLockGt6 _ -> "/" <> name <> "@" <> version
+      PnpmLockV678 _ -> "/" <> name <> "@" <> version
+      PnpmLockV9 -> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
