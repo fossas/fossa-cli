@@ -239,6 +239,7 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
             , sourceUnitOriginPaths = [textToOriginPath "package-lock.json"]
             , sourceUnitNoticeFiles = []
             , additionalData = Nothing
+            , sourceUnitLabels = Nothing
             }
 
     Map.lookup otherLayerId srcUnitsMap `shouldBe'` Just [expectedSrcUnit]

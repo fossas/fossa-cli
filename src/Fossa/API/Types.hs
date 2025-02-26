@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -44,6 +45,7 @@ module Fossa.API.Types (
   defaultApiPollDelay,
   blankOrganization,
   orgFileUpload,
+  chunkArchiveComponents,
 ) where
 
 import App.Fossa.Lernie.Types (GrepEntry)
@@ -66,7 +68,7 @@ import Data.Aeson (
 import Data.Coerce (coerce)
 import Data.Function (on)
 import Data.List (sort, sortBy)
-import Data.List.Extra ((!?))
+import Data.List.Extra (chunk, (!?))
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
@@ -148,6 +150,14 @@ data ArchiveComponents = ArchiveComponents
   , archiveComponentsUpload :: FileUpload
   }
   deriving (Eq, Ord, Show)
+
+-- | Split the @ArchiveComponents@ into chunks of the given size.
+-- If chunk size is 0 or lower, returns a single chunk containing the entire list.
+chunkArchiveComponents :: Int -> ArchiveComponents -> [ArchiveComponents]
+chunkArchiveComponents chunkSize ArchiveComponents{..} = map mkComponent $ chunk chunkSize archiveComponentsArchives
+  where
+    mkComponent :: [Archive] -> ArchiveComponents
+    mkComponent as = ArchiveComponents as archiveComponentsRebuild archiveComponentsUpload
 
 instance ToJSON ArchiveComponents where
   toJSON ArchiveComponents{..} =
@@ -477,6 +487,7 @@ instance Pretty Issues where
 
 newtype OrgId = OrgId Int
   deriving (Eq, Ord, FromJSON, ToJSON)
+  deriving (ToText) via Int
 
 instance Show OrgId where
   show (OrgId orgId) = show orgId

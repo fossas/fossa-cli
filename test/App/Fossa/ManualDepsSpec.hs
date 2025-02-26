@@ -10,23 +10,27 @@ import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
   DependencyMetadata (DependencyMetadata),
   LinuxReferenceDependency (..),
+  LocatorDependency (..),
   ManagedReferenceDependency (..),
   ManualDependencies (ManualDependencies),
   ReferencedDependency (..),
   RemoteDependency (RemoteDependency),
   VendoredDependency (VendoredDependency),
+  collectInteriorLabels,
   getScanCfg,
  )
 import App.Fossa.VendoredDependency (VendoredDependencyScanMode (..))
 import Control.Effect.Exception (displayException)
 import Data.Aeson qualified as Json
 import Data.ByteString qualified as BS
-import Data.String.Conversion (encodeUtf8)
+import Data.Map (Map)
+import Data.Map qualified as Map
+import Data.String.Conversion (encodeUtf8, toText)
 import Data.Text (Text)
 import Data.Yaml qualified as Yaml
 import DepTypes (DepType (..))
-import Fossa.API.Types (Organization (..))
-import Srclib.Types (Locator (Locator))
+import Fossa.API.Types (OrgId (OrgId), Organization (..))
+import Srclib.Types (Locator (Locator), ProvidedPackageLabel (..), ProvidedPackageLabelScope (..))
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain)
@@ -41,25 +45,98 @@ theWorks :: ManualDependencies
 theWorks = ManualDependencies references customs vendors remotes locators
   where
     references =
-      [ Managed (ManagedReferenceDependency "one" GemType Nothing)
-      , Managed (ManagedReferenceDependency "two" PipType $ Just "1.0.0")
+      [ Managed (ManagedReferenceDependency "one" GemType Nothing [])
+      , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") [])
       ]
     customs =
-      [ CustomDependency "hello" "1.2.3" "MIT" Nothing
-      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom")))
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing []
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom"))) []
       ]
     remotes =
-      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url")))
-      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url"))) []
+      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing []
       ]
     vendors =
-      [ VendoredDependency "vendored" "path" Nothing Nothing
-      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing
-      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored")))
+      [ VendoredDependency "vendored" "path" Nothing Nothing []
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing []
+      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored"))) []
       ]
     locators =
-      [ Locator "fetcher-1" "one" Nothing
-      , Locator "fetcher-2" "two" $ Just "1.0.0"
+      [ LocatorDependencyPlain (Locator "fetcher-1" "one" Nothing)
+      , LocatorDependencyPlain (Locator "fetcher-2" "two" (Just "1.0.0"))
+      ]
+
+theWorksLabeled :: ManualDependencies
+theWorksLabeled = ManualDependencies references customs vendors remotes locators
+  where
+    references =
+      [ Managed (ManagedReferenceDependency "one" GemType Nothing [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision])
+      , Managed (ManagedReferenceDependency "two" PipType (Just "1.0.0") [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject])
+      , LinuxApkDebDep (LinuxReferenceDependency "libssl" LinuxAPK (Just "3.2.1") "x86_64" "alpine" "3.18" [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg])
+      , LinuxRpmDep (LinuxReferenceDependency "libcurl" LinuxRPM (Just "7.89.1") "aarch64" "fedora" "38" [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision]) (Just "1")
+      ]
+    customs =
+      [ CustomDependency "hello" "1.2.3" "MIT" Nothing [ProvidedPackageLabel "custom-label-hello" ProvidedPackageLabelScopeOrg]
+      , CustomDependency "full" "3.2.1" "GPL-3.0" (Just (DependencyMetadata (Just "description for full custom") (Just "we don't validate homepages - custom"))) [ProvidedPackageLabel "custom-label-full" ProvidedPackageLabelScopeProject]
+      ]
+    remotes =
+      [ RemoteDependency "url-dep-one" "1.2.3" "www.url1.tar.gz" (Just (DependencyMetadata (Just "description for url") (Just "we don't validate homepages - url"))) [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg]
+      , RemoteDependency "url-dep-two" "1.2.4" "www.url2.tar.gz" Nothing [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision]
+      ]
+    vendors =
+      [ VendoredDependency "vendored" "path" Nothing Nothing [ProvidedPackageLabel "vendored-dependency-label" ProvidedPackageLabelScopeOrg]
+      , VendoredDependency "versioned" "path/to/dep" (Just "2.1.0") Nothing [ProvidedPackageLabel "versioned-dependency-label" ProvidedPackageLabelScopeProject]
+      , VendoredDependency "metadata" "path" (Just "1.1.0") (Just (DependencyMetadata (Just "description for vendored") (Just "we don't validate homepages - vendored"))) [ProvidedPackageLabel "metadata-dependency-label" ProvidedPackageLabelScopeRevision]
+      ]
+    locators =
+      [ LocatorDependencyStructured (Locator "fetcher-1" "one" Nothing) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
+      , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
+      ]
+
+theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
+theWorksLabels org =
+  Map.fromList $
+    referencedLabels
+      <> archiveLabels
+      <> userLabels
+      <> locatorLabels
+      <> urlPrivateLabels org
+  where
+    referencedLabels :: [(Text, [ProvidedPackageLabel])]
+    referencedLabels =
+      [ ("gem+one$", [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision])
+      , ("pip+two$1.0.0", [ProvidedPackageLabel "pypi-label" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "pypi-label-2" ProvidedPackageLabelScopeProject])
+      , ("apk+libssl#alpine#3.18$x86_64#3.2.1", [ProvidedPackageLabel "alpine-container" ProvidedPackageLabelScopeOrg])
+      , ("rpm-generic+libcurl#fedora#38$aarch64#1:7.89.1", [ProvidedPackageLabel "fedora-container" ProvidedPackageLabelScopeRevision])
+      ]
+
+    archiveLabels :: [(Text, [ProvidedPackageLabel])]
+    archiveLabels =
+      [ ("archive+vendored$", [ProvidedPackageLabel "vendored-dependency-label" ProvidedPackageLabelScopeOrg])
+      , ("archive+versioned$2.1.0", [ProvidedPackageLabel "versioned-dependency-label" ProvidedPackageLabelScopeProject])
+      , ("archive+metadata$1.1.0", [ProvidedPackageLabel "metadata-dependency-label" ProvidedPackageLabelScopeRevision])
+      ]
+
+    userLabels :: [(Text, [ProvidedPackageLabel])]
+    userLabels =
+      [ ("user+hello$1.2.3", [ProvidedPackageLabel "custom-label-hello" ProvidedPackageLabelScopeOrg])
+      , ("user+full$3.2.1", [ProvidedPackageLabel "custom-label-full" ProvidedPackageLabelScopeProject])
+      ]
+
+    locatorLabels :: [(Text, [ProvidedPackageLabel])]
+    locatorLabels =
+      [ ("fetcher-1+one$", [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
+      , ("fetcher-2+two$1.0.0", [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg])
+      ]
+
+    urlPrivateLabels :: Maybe OrgId -> [(Text, [ProvidedPackageLabel])]
+    urlPrivateLabels Nothing =
+      [ ("url-private+www.url1.tar.gz$1.2.3", [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
+      , ("url-private+www.url2.tar.gz$1.2.4", [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
+      ]
+    urlPrivateLabels (Just orgId) =
+      [ ("url-private+" <> toText orgId <> "/www.url1.tar.gz$1.2.3", [ProvidedPackageLabel "url-dep-one-label" ProvidedPackageLabelScopeOrg])
+      , ("url-private+" <> toText orgId <> "/www.url2.tar.gz$1.2.4", [ProvidedPackageLabel "url-dep-two-label" ProvidedPackageLabelScopeRevision])
       ]
 
 exceptionContains :: BS.ByteString -> String -> Expectation
@@ -76,6 +153,28 @@ spec = do
       case Json.eitherDecodeStrict' theWorksBS of
         Left err -> expectationFailure err
         Right jsonDeps -> jsonDeps `shouldBe` theWorks
+
+  describe "fossa-deps labeled" $ do
+    theWorksLabeledBS <- getTestDataFile "the-works-labeled.yml"
+    it "should successfully parse all possible inputs" $
+      case Yaml.decodeEither' theWorksLabeledBS of
+        Left err -> expectationFailure $ displayException err
+        Right yamlDeps -> yamlDeps `shouldBe` theWorksLabeled
+
+    it "should extract nested labels with orgId" $
+      case Yaml.decodeEither' theWorksLabeledBS of
+        Left err -> expectationFailure $ displayException err
+        Right yamlDeps -> do
+          let orgId = OrgId 1234
+          let extracted = collectInteriorLabels (Just orgId) yamlDeps
+          extracted `shouldBe` theWorksLabels (Just orgId)
+
+    it "should extract nested labels without orgId" $
+      case Yaml.decodeEither' theWorksLabeledBS of
+        Left err -> expectationFailure $ displayException err
+        Right yamlDeps -> do
+          let extracted = collectInteriorLabels Nothing yamlDeps
+          extracted `shouldBe` theWorksLabels Nothing
 
   describe "fossa-deps yaml parser" $ do
     theWorksBS <- getTestDataFile "the-works.yml"
@@ -329,7 +428,7 @@ referenced-dependencies:
 linuxRefManualDep :: Text -> Maybe Text -> ManualDependencies
 linuxRefManualDep os epoch =
   ManualDependencies
-    [LinuxRpmDep (LinuxReferenceDependency "pkgName" LinuxRPM (Just "1.1") "x86" os "2.2") epoch]
+    [LinuxRpmDep (LinuxReferenceDependency "pkgName" LinuxRPM (Just "1.1") "x86" os "2.2" []) epoch]
     mempty
     mempty
     mempty

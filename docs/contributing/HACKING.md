@@ -61,6 +61,8 @@ If you build without these binaries, a compiler warning will be emitted.  If ghc
 
 There is no supported way for Non-FOSSA users to obtain these binaries, though we are working on a solution to allow this in the future.  As a result, **we cannot accept pull requests from any forked repository**, since those builds will fail in CI.  This means that outside contributions are possible, but a FOSSA employee needs to cherry pick the commits and create a new PR with them.
 
+Here's a document that explains [how we do this](./forks.md) while making sure that you get credit for your PR.
+
 ### Running tests
 
 > You will need to run `git lfs pull` to retrieve testdata stored in git lfs. If you do not have git-lfs installed on your system,
@@ -198,9 +200,11 @@ Yes.  Missing language extensions are usually compile-time errors, and will be c
 If, for any reason, GHC tells you add an extension, and hlint tells you to remove the extension you just added, keep it there and ignore hlint.  You should also file
 an issue in this repository for that scenario, since we may be able to fix that.
 
+<!-- markdown-link-check-disable -->
 [fourmolu]: https://github.com/fourmolu/fourmolu
 [ghcup]: https://www.haskell.org/ghcup
 [hackage]: https://hackage.haskell.org/
 [hlint]: https://github.com/ndmitchell/hlint
 [hls]: https://github.com/haskell/haskell-language-server
 [hoogle]: https://hoogle.haskell.org/
+<!-- markdown-link-check-enable-->

@@ -1,0 +1,99 @@
+referenced-dependencies:
+- name: one
+  type: gem
+  labels:
+  - label: gem-label
+    scope: revision
+- type: pypi
+  name: two
+  version: 1.0.0
+  labels:
+  - label: pypi-label
+    scope: org
+  - label: pypi-label-2
+    scope: project
+- type: apk
+  name: libssl
+  version: 3.2.1
+  arch: x86_64
+  os: alpine
+  osVersion: 3.18
+  labels:
+  - label: alpine-container
+    scope: org
+- type: rpm-generic
+  name: libcurl
+  version: 7.89.1
+  arch: aarch64
+  os: fedora
+  osVersion: 38
+  epoch: 1
+  labels:
+  - label: fedora-container
+    scope: revision
+
+vendored-dependencies:
+- name: vendored
+  path: path
+  labels:
+  - label: vendored-dependency-label
+    scope: org
+- name: versioned
+  path: path/to/dep
+  version: 2.1.0
+  labels:
+  - label: versioned-dependency-label
+    scope: project
+- name: metadata
+  path: path
+  version: 1.1.0
+  metadata:
+    description: description for vendored
+    homepage: we don't validate homepages - vendored
+  labels:
+  - label: metadata-dependency-label
+    scope: revision
+
+custom-dependencies:
+- name: hello
+  version: 1.2.3
+  license: MIT
+  labels:
+  - label: custom-label-hello
+    scope: org
+- name: full
+  version: 3.2.1
+  license: GPL-3.0
+  metadata:
+    description: description for full custom
+    homepage: we don't validate homepages - custom
+  labels:
+  - label: custom-label-full
+    scope: project
+
+remote-dependencies:
+- name: url-dep-one
+  version: 1.2.3
+  url: www.url1.tar.gz
+  metadata:
+    description: description for url
+    homepage: we don't validate homepages - url
+  labels:
+  - label: url-dep-one-label
+    scope: org
+- name: url-dep-two
+  version: 1.2.4
+  url: www.url2.tar.gz
+  labels:
+  - label: url-dep-two-label
+    scope: revision
+
+locator-dependencies:
+- locator: "fetcher-1+one"
+  labels:
+  - label: locator-dependency-label
+    scope: org
+- locator: "fetcher-2+two$1.0.0"
+  labels:
+  - label: locator-dependency-label
+    scope: org

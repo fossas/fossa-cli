@@ -27,11 +27,10 @@ import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
 import Strategy.Nim qualified as Nim
 import Strategy.Node qualified as Node
+import Strategy.NuGet qualified as NuGet
 import Strategy.NuGet.Nuspec qualified as Nuspec
-import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Strategy.NuGet.Paket qualified as Paket
-import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
 import Strategy.Perl qualified as Perl
 import Strategy.Pub qualified as Pub
@@ -65,15 +64,14 @@ discoverFuncs =
   , DiscoverFunc Mix.discover
   , DiscoverFunc Nim.discover
   , DiscoverFunc Node.discover
+  , DiscoverFunc NuGet.discover
   , DiscoverFunc Nuspec.discover
-  , DiscoverFunc PackageReference.discover
   , DiscoverFunc PackagesConfig.discover
   , DiscoverFunc Paket.discover
   , DiscoverFunc Pdm.discover
   , DiscoverFunc Perl.discover
   , DiscoverFunc Pipenv.discover
   , DiscoverFunc Poetry.discover
-  , DiscoverFunc ProjectAssetsJson.discover
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover
   , DiscoverFunc R.discover

@@ -183,7 +183,7 @@ conanToVendoredDepSpec =
   describe "conanToVendoredDep" $ do
     it "should transforms conan to vendor dep, when dep has location" $ do
       let res = conanDepToVendorDep conanDepFoo
-      res `shouldBe` Right (conanDepFoo, VendoredDependency "foo" "vendored/foo" (Just "0.0.1") Nothing)
+      res `shouldBe` Right (conanDepFoo, VendoredDependency "foo" "vendored/foo" (Just "0.0.1") Nothing [])
 
     it "should not transforms conan to vendor dep, when dep does not have location" $ do
       let dep = conanDepFoo{dependencyLocations = []}
