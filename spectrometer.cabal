@@ -24,6 +24,7 @@ extra-source-files:
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
+  vendor-bins/circe
 
 common lang
   build-depends:      base >=4.15 && <5
@@ -566,6 +567,7 @@ test-suite unit-tests
     App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.CirceSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.ReleaseGroup.CreateSpec
     App.Fossa.Config.TestSpec
