@@ -153,8 +153,8 @@ parseRubySymbol =
   Symbol
     <$> ( char ':'
             *> ( doubleQuoteSymbol
-                   <|> singleQuoteSymbol
-                   <|> simpleSymbol
+                  <|> singleQuoteSymbol
+                  <|> simpleSymbol
                )
         )
   where
