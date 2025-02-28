@@ -66,7 +66,7 @@ case "$(uname -s)" in
         ASSET_POSTFIX="linux"
         THEMIS_ASSET_POSTFIX="linux-amd64"
         LERNIE_ASSET_POSTFIX="x86_64-linux"
-        CIRCE_ASSET_POSTFIX="x86_64-unknown-linux-gnu"
+        CIRCE_ASSET_POSTFIX="x86_64-unknown-linux-musl"
         ;;
     esac
     ;;
