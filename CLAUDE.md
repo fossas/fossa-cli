@@ -11,6 +11,12 @@
 - Lint Code: `make lint` (runs both linters)
 - Analyze Project: `make analyze`
 
+## Code Quality Standards
+- Compiler warnings should be treated as errors and fixed, not ignored
+- Linter warnings should be treated as errors and fixed, not ignored
+- All tests must pass before submitting code
+- Code should be thoroughly tested with appropriate unit tests
+
 ## Code Style Guidelines - Haskell
 - GHC Version: 9.8
 - Formatting: `fourmolu` with 2 spaces, leading commas
