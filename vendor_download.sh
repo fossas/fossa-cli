@@ -159,13 +159,13 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; t
   CIRCE_ARCHIVE_NAME="circe-$CIRCE_ASSET_POSTFIX.zip"
   echo "Downloading Windows $CIRCE_ARCHIVE_NAME"
   CIRCE_DOWNLOAD_URL="https://github.com/fossas/circe/releases/download/$CIRCE_TAG/$CIRCE_ARCHIVE_NAME"
-  
+
   # Create a temporary directory for extraction
   TEMP_DIR=$(mktemp -d)
   TEMP_ZIP="$TEMP_DIR/$CIRCE_ARCHIVE_NAME"
-  
+
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -o "$TEMP_ZIP" "$CIRCE_DOWNLOAD_URL"
-  
+
   # Extract the binary and copy to vendor-bins
   # For Windows, the binaries are directly in the archive (not in a subdirectory)
   unzip -j "$TEMP_ZIP" "circe.exe" -d "$TEMP_DIR" > /dev/null
@@ -176,13 +176,13 @@ else
   CIRCE_ARCHIVE_NAME="circe-$CIRCE_ASSET_POSTFIX.tar.xz"
   echo "Downloading $CIRCE_ARCHIVE_NAME"
   CIRCE_DOWNLOAD_URL="https://github.com/fossas/circe/releases/download/$CIRCE_TAG/$CIRCE_ARCHIVE_NAME"
-  
+
   # Create a temporary directory for extraction
   TEMP_DIR=$(mktemp -d)
   TEMP_TAR="$TEMP_DIR/$CIRCE_ARCHIVE_NAME"
-  
+
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -o "$TEMP_TAR" "$CIRCE_DOWNLOAD_URL"
-  
+
   # Extract the binary and copy to vendor-bins - circe files are in a subdirectory
   tar -xf "$TEMP_TAR" -C "$TEMP_DIR"
   cp "$TEMP_DIR/circe-$CIRCE_ASSET_POSTFIX/circe" vendor-bins/circe
@@ -204,3 +204,11 @@ xz vendor-bins/index.gob
 
 echo "Vendored binaries are ready for use"
 ls -lh vendor-bins/
+
+echo "Checking binary versions"
+for binary in vendor-bins/*; do
+  if [ -x "$binary" ] && [[ "$binary" != *".xz" ]]; then
+    echo -n "$(basename "$binary"): "
+    "$binary" --version || echo "failed to get version information"
+  fi
+done
