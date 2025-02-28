@@ -21,10 +21,10 @@ extra-source-files:
   target/release/berkeleydb.exe
   target/release/millhone
   target/release/millhone.exe
+  vendor-bins/circe
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
-  vendor-bins/circe
 
 common lang
   build-depends:      base >=4.15 && <5
