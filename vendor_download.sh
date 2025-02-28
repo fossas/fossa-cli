@@ -33,6 +33,7 @@ mkdir -p vendor-bins
 ASSET_POSTFIX=""
 THEMIS_ASSET_POSTFIX=""
 LERNIE_ASSET_POSTFIX=""
+CIRCE_ASSET_POSTFIX=""
 case "$(uname -s)" in
   Darwin)
     case "$(uname -m)" in
@@ -40,12 +41,14 @@ case "$(uname -s)" in
         ASSET_POSTFIX="darwin-arm64"
         LERNIE_ASSET_POSTFIX="aarch64-macos"
         THEMIS_ASSET_POSTFIX="darwin-arm64"
+        CIRCE_ASSET_POSTFIX="aarch64-apple-darwin"
         ;;
 
       *)
         ASSET_POSTFIX="darwin-amd64"
         LERNIE_ASSET_POSTFIX="x86_64-macos"
         THEMIS_ASSET_POSTFIX="darwin-amd64"
+        CIRCE_ASSET_POSTFIX="x86_64-apple-darwin"
         ;;
     esac
     ;;
@@ -56,12 +59,14 @@ case "$(uname -s)" in
         ASSET_POSTFIX="linux"
         THEMIS_ASSET_POSTFIX="linux-arm64"
         LERNIE_ASSET_POSTFIX="aarch64-linux"
+        CIRCE_ASSET_POSTFIX="aarch64-unknown-linux-gnu"
       ;;
 
       *)
         ASSET_POSTFIX="linux"
         THEMIS_ASSET_POSTFIX="linux-amd64"
         LERNIE_ASSET_POSTFIX="x86_64-linux"
+        CIRCE_ASSET_POSTFIX="x86_64-unknown-linux-gnu"
         ;;
     esac
     ;;
@@ -70,6 +75,7 @@ case "$(uname -s)" in
     ASSET_POSTFIX="windows.exe"
     THEMIS_ASSET_POSTFIX="windows-amd64"
     LERNIE_ASSET_POSTFIX="x86_64-windows.exe"
+    CIRCE_ASSET_POSTFIX="x86_64-pc-windows-msvc"
     ;;
 esac
 
@@ -135,6 +141,57 @@ done
 echo "Lernie download successful"
 
 rm $LERNIE_RELEASE_JSON
+
+# Download latest release of Circe
+
+echo "Downloading circe binary from latest release"
+CIRCE_RELEASE_JSON=vendor-bins/circe-release.json
+curl -sSL \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    https://api.github.com/repos/fossas/circe/releases/latest > $CIRCE_RELEASE_JSON
+
+CIRCE_TAG=$(jq -cr ".tag_name" $CIRCE_RELEASE_JSON)
+echo "Using circe release: $CIRCE_TAG"
+
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+  # Windows uses .zip files
+  CIRCE_ARCHIVE_NAME="circe-$CIRCE_ASSET_POSTFIX.zip"
+  echo "Downloading Windows $CIRCE_ARCHIVE_NAME"
+  CIRCE_DOWNLOAD_URL="https://github.com/fossas/circe/releases/download/$CIRCE_TAG/$CIRCE_ARCHIVE_NAME"
+  
+  # Create a temporary directory for extraction
+  TEMP_DIR=$(mktemp -d)
+  TEMP_ZIP="$TEMP_DIR/$CIRCE_ARCHIVE_NAME"
+  
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -o "$TEMP_ZIP" "$CIRCE_DOWNLOAD_URL"
+  
+  # Extract the binary and copy to vendor-bins
+  # For Windows, the binaries are directly in the archive (not in a subdirectory)
+  unzip -j "$TEMP_ZIP" "circe.exe" -d "$TEMP_DIR" > /dev/null
+  cp "$TEMP_DIR/circe.exe" vendor-bins/circe
+  rm -rf "$TEMP_DIR"
+else
+  # Linux and macOS use .tar.xz files
+  CIRCE_ARCHIVE_NAME="circe-$CIRCE_ASSET_POSTFIX.tar.xz"
+  echo "Downloading $CIRCE_ARCHIVE_NAME"
+  CIRCE_DOWNLOAD_URL="https://github.com/fossas/circe/releases/download/$CIRCE_TAG/$CIRCE_ARCHIVE_NAME"
+  
+  # Create a temporary directory for extraction
+  TEMP_DIR=$(mktemp -d)
+  TEMP_TAR="$TEMP_DIR/$CIRCE_ARCHIVE_NAME"
+  
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -o "$TEMP_TAR" "$CIRCE_DOWNLOAD_URL"
+  
+  # Extract the binary and copy to vendor-bins - circe files are in a subdirectory
+  tar -xf "$TEMP_TAR" -C "$TEMP_DIR"
+  cp "$TEMP_DIR/circe-$CIRCE_ASSET_POSTFIX/circe" vendor-bins/circe
+  rm -rf "$TEMP_DIR"
+fi
+
+echo "Circe download successful"
+
+rm $CIRCE_RELEASE_JSON
 
 # Finished downloading
 
