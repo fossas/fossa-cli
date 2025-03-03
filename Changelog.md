@@ -1,7 +1,6 @@
 # FOSSA CLI Changelog
 
 ## 3.10.1
-
 - Swift: Add support for parsing path dependencies with names ([#1515](https://github.com/fossas/fossa-cli/pull/1515))
 
 ## 3.10.0
