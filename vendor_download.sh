@@ -172,8 +172,8 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; t
   cp "$TEMP_DIR/circe.exe" vendor-bins/circe
   rm -rf "$TEMP_DIR"
 else
-  # Linux and macOS use .tar.xz files
-  CIRCE_ARCHIVE_NAME="circe-$CIRCE_ASSET_POSTFIX.tar.xz"
+  # Linux and macOS use .tar.gz files
+  CIRCE_ARCHIVE_NAME="circe-$CIRCE_ASSET_POSTFIX.tar.gz"
   echo "Downloading $CIRCE_ARCHIVE_NAME"
   CIRCE_DOWNLOAD_URL="https://github.com/fossas/circe/releases/download/$CIRCE_TAG/$CIRCE_ARCHIVE_NAME"
 
@@ -183,8 +183,8 @@ else
 
   curl -sL -H "Authorization: token $GITHUB_TOKEN" -o "$TEMP_TAR" "$CIRCE_DOWNLOAD_URL"
 
-  # Extract the binary and copy to vendor-bins - circe files are in a subdirectory
-  tar -xf "$TEMP_TAR" -C "$TEMP_DIR"
+  # Extract the binary and copy to vendor-bins
+  tar -xzf "$TEMP_TAR" -C "$TEMP_DIR"
   cp "$TEMP_DIR/circe-$CIRCE_ASSET_POSTFIX/circe" vendor-bins/circe
   rm -rf "$TEMP_DIR"
 fi
