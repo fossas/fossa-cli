@@ -72,6 +72,7 @@ expectedSwiftPackage =
         gitDepWithRhsHalfOpenInterval "https://github.com/LeoNatan/LNPopupController.git" "2.5.0" "2.5.6"
       , gitDepWithClosedRange "https://github.com/Polidea/RxBluetoothKit.git" "3.0.5" "3.0.7"
       ]
+    ++ [PathSource "../..", PathSource "../.."]
 
 spec :: Spec
 spec = do

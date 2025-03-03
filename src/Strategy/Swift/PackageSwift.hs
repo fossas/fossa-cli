@@ -140,8 +140,16 @@ isGitRefConstraint _ = False
 parsePackageDep :: Parser SwiftPackageDep
 parsePackageDep = try parsePathDep <|> parseGitDep
   where
+    -- A path dependency must have a path and may have a name
     parsePathDep :: Parser SwiftPackageDep
-    parsePathDep = PathSource <$> (symbol ".package" *> betweenBrackets (parseKeyValue "path" parseQuotedText))
+    parsePathDep = do
+      _ <- symbol ".package" <* symbol "("
+      -- As of Swift 5.2+ you can optionally specify a name for a path dependency
+      -- https://developer.apple.com/documentation/packagedescription/package/dependency/package(name:path:)
+      _ <- optionallyTry (parseKeyValue "name" parseQuotedText)
+      path <- parseKeyValue "path" parseQuotedText
+      _ <- symbol ")"
+      pure $ PathSource path
 
     parseRequirement :: Text -> Parser Text
     parseRequirement t =
