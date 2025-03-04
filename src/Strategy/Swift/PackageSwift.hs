@@ -143,12 +143,12 @@ parsePackageDep = try parsePathDep <|> parseGitDep
     -- A path dependency must have a path and may have a name
     parsePathDep :: Parser SwiftPackageDep
     parsePathDep = do
-      _ <- symbol ".package" <* symbol "("
+      void $ symbol ".package" <* symbol "("
       -- As of SwiftPM 5.2+ you can optionally specify a name for a path dependency
       -- https://developer.apple.com/documentation/packagedescription/package/dependency/package(name:path:)
-      _ <- optionallyTry (parseKeyValue "name" parseQuotedText)
+      void $ optionallyTry (parseKeyValue "name" parseQuotedText)
       path <- parseKeyValue "path" parseQuotedText
-      _ <- symbol ")"
+      void $ symbol ")"
       pure $ PathSource path
 
     parseRequirement :: Text -> Parser Text
