@@ -347,8 +347,7 @@ analyze ::
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
 analyze (CargoProject manifestDir manifestFile) = do
-  let lockfile = manifestDir </> $(mkRelFile "Cargo.lock")
-  exists <- doesFileExist lockfile
+  exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
   unless exists $ void $
     context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
