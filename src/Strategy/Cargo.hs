@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedRecordDot #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Cargo (
   discover,
@@ -71,11 +72,11 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.ReadFS (ReadFS, readContentsToml)
+import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
-import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>), mkRelFile)
 import Text.Megaparsec (
   Parsec,
   choice,
@@ -103,6 +104,7 @@ import Types (
   VerConstraint (CEq),
   insertEnvironment,
  )
+import Control.Monad (unless)
 
 newtype CargoLabel
   = CargoDepKind DepEnvironment
@@ -311,7 +313,7 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m) => CargoProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m) => CargoProject -> m DependencyResults
 getDeps project = do
   (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze $ project
   pure $
@@ -338,11 +340,17 @@ cargoMetadataCmd =
     }
 
 analyze ::
-  (Has Exec sig m, Has Diagnostics sig m) =>
+  ( Has Exec sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
 analyze (CargoProject manifestDir manifestFile) = do
-  _ <- context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
+  let lockfile = manifestDir </> $(mkRelFile "Cargo.lock")
+  exists <- doesFileExist lockfile
+  unless exists $ void $
+    context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
   graph <- context "Building dependency graph" $ pure (buildGraph meta)
   pure (graph, Complete)
