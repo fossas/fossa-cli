@@ -39,7 +39,7 @@ Not directly, but `mvn` itself has an [environment variable](https://maven.apach
 For example, to set a custom `settings.xml` file you can use an invocation like this:
 
 ```sh
-export MAVEN_ARGS="/foo/bar/settings.xml" fossa analyze
+export MAVEN_ARGS="--settings /foo/bar/settings.xml" fossa analyze
 ```
 
 ## Filtering by Maven Dependency Scope 
