@@ -21,6 +21,7 @@ extra-source-files:
   target/release/berkeleydb.exe
   target/release/millhone
   target/release/millhone.exe
+  vendor-bins/circe
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
@@ -566,6 +567,7 @@ test-suite unit-tests
     App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.CirceSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.ReleaseGroup.CreateSpec
     App.Fossa.Config.TestSpec
