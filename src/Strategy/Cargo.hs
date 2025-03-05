@@ -32,6 +32,7 @@ import Control.Effect.Diagnostics (
   warn,
  )
 import Control.Effect.Reader (Reader)
+import Control.Monad (unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -76,7 +77,7 @@ import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, stripRoot)
-import Path (Abs, Dir, File, Path, parent, parseRelFile, toFilePath, (</>), mkRelFile)
+import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
 import Text.Megaparsec (
   Parsec,
   choice,
@@ -104,7 +105,6 @@ import Types (
   VerConstraint (CEq),
   insertEnvironment,
  )
-import Control.Monad (unless)
 
 newtype CargoLabel
   = CargoDepKind DepEnvironment
@@ -348,8 +348,11 @@ analyze ::
   m (Graphing Dependency, GraphBreadth)
 analyze (CargoProject manifestDir manifestFile) = do
   exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
-  unless exists $ void $
-    context "Generating lockfile" $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
+  unless exists $
+    void $
+      context "Generating lockfile" $
+        errCtx (FailedToGenLockFile manifestFile) $
+          execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
   graph <- context "Building dependency graph" $ pure (buildGraph meta)
   pure (graph, Complete)
