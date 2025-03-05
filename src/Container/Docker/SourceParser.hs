@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 -- | Parses RegistryImageSource.
 --
 -- This module parses "NAME[:TAG|@DIGEST]" format passed
@@ -48,6 +50,7 @@ module Container.Docker.SourceParser (
   showReferenceWithSep,
   toRepoNameWithRegistry,
   toRegistryApiHost,
+  toCirceReference,
 ) where
 
 import Control.Monad (unless, void)
@@ -113,6 +116,19 @@ data RegistryImageSource = RegistryImageSource
   , platformArchitecture :: Text
   }
   deriving (Show, Eq, Ord)
+
+toCirceReference :: RegistryImageSource -> Text
+toCirceReference RegistryImageSource{..} =
+  circeHost
+    <> "/"
+    <> registryContainerRepository
+    <> showReferenceWithSep registryContainerRepositoryReference
+  where
+    circeHost :: Text
+    circeHost
+      -- Circe expects 'docker.io' as the "default host for docker".
+      | registryHost == defaultRegistry = "docker.io"
+      | otherwise = registryHost
 
 instance Pretty RegistryImageSource where
   pretty (RegistryImageSource host scheme cred repo ref _) =
