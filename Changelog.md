@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.10.2
+
+- Cargo: Do not create Cargo.lock if it already exists ([#1516](https://github.com/fossas/fossa-cli/pull/1516))
+
 ## 3.10.1
 - Swift: Add support for parsing path dependencies with names ([#1515](https://github.com/fossas/fossa-cli/pull/1515))
 
