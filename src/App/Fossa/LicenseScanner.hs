@@ -139,7 +139,7 @@ recursivelyScanArchives ::
 recursivelyScanArchives pathPrefix licenseScanPathFilters uploadKind dir = flip walk' dir $
   \_ _ files -> do
     let process file unpackedDir = do
-          let updatedPathPrefix = pathPrefix <> getPathPrefix dir (parent file)
+          let updatedPathPrefix = pathPrefix <> getPathPrefix dir file
           currentDirResults <- withThemisAndIndex $ themisRunner updatedPathPrefix licenseScanPathFilters uploadKind unpackedDir
           recursiveResults <- recursivelyScanArchives updatedPathPrefix licenseScanPathFilters uploadKind unpackedDir
           pure $ currentDirResults <> recursiveResults
@@ -264,7 +264,7 @@ scanArchive baseDir licenseScanPathFilters uploadKind file = runFinally $ do
       Just units -> pure units
   where
     pathPrefix :: Text
-    pathPrefix = getPathPrefix baseDir (parent $ scanFile file)
+    pathPrefix = getPathPrefix baseDir $ scanFile file
 
 scanDirectory ::
   ( Has Exec sig m
