@@ -71,7 +71,7 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
  )
-import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
+import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, toFilePath, (</>))
 import Path.Extra (SomePath (..), tryMakeRelative)
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (
@@ -80,6 +80,7 @@ import Srclib.Types (
   LicenseUnit (..),
   Locator (..),
  )
+import System.FilePath qualified as FP
 import Types (LicenseScanPathFilters (licenseScanPathFilterFileExclude))
 
 data LicenseScanErr
@@ -139,7 +140,7 @@ recursivelyScanArchives ::
 recursivelyScanArchives pathPrefix licenseScanPathFilters uploadKind dir = flip walk' dir $
   \_ _ files -> do
     let process file unpackedDir = do
-          let updatedPathPrefix = pathPrefix <> getPathPrefix dir (parent file)
+          let updatedPathPrefix = pathPrefix <> getPathPrefix dir file
           currentDirResults <- withThemisAndIndex $ themisRunner updatedPathPrefix licenseScanPathFilters uploadKind unpackedDir
           recursiveResults <- recursivelyScanArchives updatedPathPrefix licenseScanPathFilters uploadKind unpackedDir
           pure $ currentDirResults <> recursiveResults
@@ -240,7 +241,7 @@ getPathPrefix :: Path Abs Dir -> Path Abs t -> Text
 getPathPrefix baseDir scanPath = do
   case tryMakeRelative baseDir scanPath of
     Path.Abs _ -> Text.empty
-    Path.Rel path -> toText path
+    Path.Rel path -> toText $ FP.addTrailingPathSeparator $ toFilePath path
 
 scanArchive ::
   ( Has Diagnostics sig m
@@ -264,7 +265,7 @@ scanArchive baseDir licenseScanPathFilters uploadKind file = runFinally $ do
       Just units -> pure units
   where
     pathPrefix :: Text
-    pathPrefix = getPathPrefix baseDir (parent $ scanFile file)
+    pathPrefix = getPathPrefix baseDir $ scanFile file
 
 scanDirectory ::
   ( Has Exec sig m

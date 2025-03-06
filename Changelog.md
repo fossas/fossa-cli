@@ -1,4 +1,7 @@
 # FOSSA CLI Changelog
+## 3.10.3
+
+License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
 
 ## 3.10.2
 
