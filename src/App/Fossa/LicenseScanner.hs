@@ -71,7 +71,7 @@ import Fossa.API.Types (
   OrgId,
   Organization (organizationId),
  )
-import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, parent, (</>))
+import Path (Abs, Dir, File, Path, SomeBase (Abs, Rel), fileExtension, (</>))
 import Path.Extra (SomePath (..), tryMakeRelative)
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (
