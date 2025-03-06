@@ -44,7 +44,7 @@ analyzeWithCirce ::
 analyzeWithCirce systemDepsOnly filters withoutDefaultFilters img =
   withSystemTempDir "fossa-circe-tmp" $ \tmp -> do
     withCirceBinary $ \paths -> do
-      _ <- execThrow' $ circeCommand tmp img CirceLayerModeBase paths
+      _ <- execThrow' $ circeCommand tmp img paths
 
       -- TODO: get these from Circe itself
       let imageDigest = "circedigest"
@@ -61,27 +61,22 @@ analyzeWithCirce systemDepsOnly filters withoutDefaultFilters img =
       -- TODO: Implement the analysis using the temporary directory
       undefined
 
-data CirceLayerMode
-  = CirceLayerModeBase
-  | CirceLayerModeOther
-
-circeCommand :: Path Abs Dir -> RegistryImageSource -> CirceLayerMode -> BinaryPaths -> Command
-circeCommand tmp img mode bin =
+circeCommand :: Path Abs Dir -> RegistryImageSource -> BinaryPaths -> Command
+circeCommand tmp img bin =
   Command
     { cmdName = toText $ toPath bin
-    , cmdArgs = extract <> layers <> auth <> ref
+    , cmdArgs = extract <> auth <> ref
     , cmdAllowErr = Never
     }
   where
     ref = [toCirceReference img]
     extract =
       [ "extract"
+      , "--layers"
+      , "base-and-squash-other"
       , "--output"
       , toText tmp
       ]
-    layers = case mode of
-      CirceLayerModeBase -> ["--layers", "base"]
-      CirceLayerModeOther -> ["--layers", "squash-other"]
     auth = case registryCred img of
       Just (username, password) ->
         [ "--username"
