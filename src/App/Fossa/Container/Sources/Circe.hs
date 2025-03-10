@@ -2,6 +2,7 @@
 
 module App.Fossa.Container.Sources.Circe (
   analyzeWithCirce,
+  circeAuthArgs,
 )
 where
 
@@ -61,27 +62,32 @@ analyzeWithCirce systemDepsOnly filters withoutDefaultFilters img =
       -- TODO: Implement the analysis using the temporary directory
       undefined
 
+-- | Creates a command to execute circe
 circeCommand :: Path Abs Dir -> RegistryImageSource -> BinaryPaths -> Command
 circeCommand tmp img bin =
   Command
     { cmdName = toText $ toPath bin
-    , cmdArgs = extract <> auth <> ref
+    , cmdArgs = command <> auth <> ref
     , cmdAllowErr = Never
     }
   where
     ref = [toCirceReference img]
-    extract =
+    command =
       [ "extract"
       , "--layers"
       , "base-and-squash-other"
       , "--output"
       , toText tmp
       ]
-    auth = case registryCred img of
-      Just (username, password) ->
-        [ "--username"
-        , username
-        , "--password"
-        , password
-        ]
-      Nothing -> []
+    auth = circeAuthArgs img
+
+-- | Extract authentication arguments for circe commands
+circeAuthArgs :: RegistryImageSource -> [Text]
+circeAuthArgs img = case registryCred img of
+  Just (username, password) ->
+    [ "--username"
+    , username
+    , "--password"
+    , password
+    ]
+  Nothing -> []
