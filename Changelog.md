@@ -1,4 +1,14 @@
 # FOSSA CLI Changelog
+## 3.10.3
+
+License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
+
+## 3.10.2
+
+- Cargo: Do not create Cargo.lock if it already exists ([#1516](https://github.com/fossas/fossa-cli/pull/1516))
+
+## 3.10.1
+- Swift: Add support for parsing path dependencies with names ([#1515](https://github.com/fossas/fossa-cli/pull/1515))
 
 ## 3.10.0
 - Support for user-provided dependency labels in `fossa-deps` ([#1505](https://github.com/fossas/fossa-cli/pull/1505)).
