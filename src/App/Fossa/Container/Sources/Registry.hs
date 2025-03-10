@@ -8,11 +8,11 @@ module App.Fossa.Container.Sources.Registry (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
-import App.Fossa.Container.Sources.Circe (circeAuthArgs)
+import App.Fossa.Container.Sources.Circe (circeReexportCommand)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
-import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withCirceBinary)
+import App.Fossa.EmbeddedBinary (withCirceBinary)
 import Container.Docker.Credentials (useCredentialFromConfig)
-import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry, toCirceReference)
+import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
 import Container.Types (ContainerScan)
 import Control.Carrier.ContainerRegistryApi (runContainerRegistryApi)
 import Control.Carrier.Lift (Lift)
@@ -27,7 +27,7 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters)
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow')
+import Effect.Exec (Exec, execThrow')
 import Effect.Logger (Logger, logDebug, logInfo, pretty)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
@@ -46,7 +46,6 @@ runFromRegistry imgSrc f = do
   imgSrc' <- enrichCreds
   withSystemTempDir "fossa-container-registry-tmp" $ \dir -> do
     logInfo $ "Inferred registry source: " <> pretty imgSrc'
-    -- Use circe reexport if available, falling back to regular export
     tempTarFile <- runWithCirceReexport imgSrc' dir
     logInfo . pretty $ "Analyzing exported docker archive: " <> toText tempTarFile
     f tempTarFile
@@ -101,22 +100,6 @@ runWithCirceReexport imgSrc tempDir = do
     Nothing -> do
       logInfo "Falling back to registry API for plain container image"
       runContainerRegistryApi $ exportImage imgSrc tempDir
-
--- | Build the command to run circe reexport
-circeReexportCommand ::
-  BinaryPaths ->
-  RegistryImageSource ->
-  Text ->
-  Command
-circeReexportCommand paths imgSrc outputPath =
-  Command
-    { cmdName = toText $ toPath paths
-    , cmdArgs = ["reexport"] <> ref <> auth <> ["--output", outputPath]
-    , cmdAllowErr = Never
-    }
-  where
-    ref = [toCirceReference imgSrc]
-    auth = circeAuthArgs imgSrc
 
 analyzeFromRegistry ::
   ( Has Diagnostics sig m
