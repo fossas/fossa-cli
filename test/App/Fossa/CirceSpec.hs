@@ -42,8 +42,6 @@ spec = do
 
     describe "Circe reference formatting" $ do
       it "should format registry references correctly" $ do
-        -- This test only checks that the test registry image source is properly formatted
-        -- We don't test the actual circe reexport command since our test binary doesn't support it yet
         let imgSrc = testRegistryImageSource
             ref = toCirceReference imgSrc
         ref `shouldBe` "docker.io/library/nginx:latest"
