@@ -21,6 +21,7 @@ module App.Fossa.Snippets (
 import App.Fossa.Config.Snippets (SnippetsCommand, SnippetsConfig (..), mkSubCommand)
 import App.Fossa.Snippets.Analyze (analyzeWithMillhone)
 import App.Fossa.Snippets.Commit (commitWithMillhone)
+import App.Fossa.Snippets.GenerateFingerprints (generateFingerprints)
 import App.Fossa.Subcommand (SubCommand)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -44,3 +45,4 @@ snippetsMain subcommand = do
   case subcommand of
     Analyze cfg -> analyzeWithMillhone cfg
     Commit cfg -> commitWithMillhone cfg
+    GenerateFingerprints cfg -> generateFingerprints cfg
