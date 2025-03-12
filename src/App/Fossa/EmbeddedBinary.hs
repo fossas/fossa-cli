@@ -15,6 +15,7 @@ module App.Fossa.EmbeddedBinary (
   allBins,
   dumpEmbeddedBinary,
   themisVersion,
+  withScanossPyBinary,
 ) where
 
 import App.Version.TH (themisVersionQ)
@@ -58,6 +59,7 @@ data PackagedBinary
   | BerkeleyDB
   | Lernie
   | Millhone
+  | ScanossPy
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -143,6 +145,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   BerkeleyDB -> embeddedBinaryBerkeleyDB
   Lernie -> embeddedBinaryLernie
   Millhone -> embeddedBinaryMillhone
+  ScanossPy -> embeddedBinaryScanossPy
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -157,6 +160,7 @@ extractedPath bin = case bin of
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
+  ScanossPy -> $(mkRelFile "scanoss-py")
 
 -- | Extract to @$TMP/fossa-vendor-<uuid>/
 --
@@ -216,3 +220,14 @@ embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb.exe")
 embeddedBinaryBerkeleyDB :: ByteString
 embeddedBinaryBerkeleyDB = $(embedFileIfExists "target/release/berkeleydb")
 #endif
+
+#ifdef mingw32_HOST_OS
+embeddedBinaryScanossPy :: ByteString
+embeddedBinaryScanossPy = $(embedFileIfExists "vendor-bins/scanoss-py.exe")
+#else
+embeddedBinaryScanossPy :: ByteString
+embeddedBinaryScanossPy = $(embedFileIfExists "vendor-bins/scanoss-py")
+#endif
+
+withScanossPyBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m a) -> m a
+withScanossPyBinary = withEmbeddedBinary ScanossPy

@@ -8,6 +8,7 @@ module App.Fossa.Config.Snippets (
   SnippetTransform (..),
   AnalyzeConfig (..),
   CommitConfig (..),
+  GenerateFingerprintsConfig (..),
   labelForKind,
   labelForTarget,
   labelForTransform,
@@ -54,6 +55,11 @@ data SnippetsCommand
       [SnippetTarget]
       [SnippetKind]
       [SnippetTransform]
+  | CommandGenerateFingerprints
+      FilePath -- Scan root
+      Bool -- Debug
+      FilePath -- Output WFP file
+      Bool -- Whether to overwrite output file
 
 snippetsInfo :: InfoMod a
 snippetsInfo = progDescDoc $ formatStringToDoc "FOSSA snippet scanning"
@@ -68,6 +74,7 @@ instance GetSeverity SnippetsCommand where
   getSeverity :: SnippetsCommand -> Severity
   getSeverity (CommandAnalyze _ analyzeDebug _ _ _ _ _ _ _) = if analyzeDebug then SevDebug else SevInfo
   getSeverity (CommandCommit _ commitDebug _ _ _ _ _ _ _ _) = if commitDebug then SevDebug else SevInfo
+  getSeverity (CommandGenerateFingerprints _ debug _ _) = if debug then SevDebug else SevInfo
 
 instance GetCommonOpts SnippetsCommand
 
@@ -77,7 +84,7 @@ mkSubCommand = SubCommand "snippets" snippetsInfo cliParser noLoadConfig mergeOp
     noLoadConfig = const $ pure Nothing
 
 cliParser :: Parser SnippetsCommand
-cliParser = analyze <|> commit
+cliParser = analyze <|> commit <|> generateFingerprints
   where
     analyze = subparser . command "analyze" $ info analyzeOpts snippetsAnalyzeInfo
     analyzeOpts =
@@ -104,6 +111,13 @@ cliParser = analyze <|> commit
         <*> many (option (eitherReader parseTarget) (applyFossaStyle <> long "target" <> stringToHelpDoc "Commit this combination of targets" <> metavar "TARGET"))
         <*> many (option (eitherReader parseKind) (applyFossaStyle <> long "kind" <> stringToHelpDoc "Commit this combination of kinds" <> metavar "KIND"))
         <*> many (option (eitherReader parseTransform) (applyFossaStyle <> long "transform" <> stringToHelpDoc "Commit this combination of transforms" <> metavar "TRANSFORM"))
+    generateFingerprints = subparser . command "generate-fingerprints" $ info generateFingerprintsOpts snippetsGenerateFingerprintsInfo
+    generateFingerprintsOpts =
+      CommandGenerateFingerprints
+        <$> baseDirArg
+        <*> switch (applyFossaStyle <> long "debug" <> stringToHelpDoc "Enable debug logging")
+        <*> strOption (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "The file to output fingerprints to (WFP format)")
+        <*> switch (applyFossaStyle <> long "overwrite" <> stringToHelpDoc "If specified, overwrites the output file if it exists")
 
 mergeOpts ::
   ( Has Diagnostics sig m
@@ -122,10 +136,14 @@ mergeOpts _ _ (CommandCommit path debug _ _ analyzeOutput overwrite format targe
   root <- collectBaseDir path
   analyzeOutput' <- sendIO $ Path.resolveDir' analyzeOutput
   pure . Commit $ CommitConfig root debug analyzeOutput' overwrite format targets kinds transforms
+mergeOpts _ _ (CommandGenerateFingerprints path debug output overwrite) = do
+  root <- collectBaseDir path
+  pure . GenerateFingerprints $ GenerateFingerprintsConfig root debug output overwrite
 
 data SnippetsConfig
   = Analyze AnalyzeConfig
   | Commit CommitConfig
+  | GenerateFingerprints GenerateFingerprintsConfig
   deriving (Show, Generic)
 
 instance ToJSON SnippetsConfig where
@@ -279,3 +297,17 @@ optionsCommitOutputFormat = enumFromTo minBound maxBound
 
 generateParseError :: String -> [String] -> String
 generateParseError input options = "'" <> input <> "' is not a valid option; expected one of: " <> List.intercalate ", " options
+
+data GenerateFingerprintsConfig = GenerateFingerprintsConfig
+  { fingerprintsScanDir :: BaseDir,
+    fingerprintsDebug :: Bool,
+    fingerprintsOutput :: FilePath,
+    fingerprintsOverwrite :: Bool
+  }
+  deriving (Show, Generic)
+
+instance ToJSON GenerateFingerprintsConfig where
+  toEncoding = genericToEncoding defaultOptions
+
+snippetsGenerateFingerprintsInfo :: InfoMod a
+snippetsGenerateFingerprintsInfo = progDescDoc $ formatStringToDoc "Generate WFP fingerprints for snippet scanning"
