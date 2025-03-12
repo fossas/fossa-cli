@@ -12,7 +12,7 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Lift)
 import Data.String.Conversion (toText)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, argFromPath, execEffectful)
-import Effect.Logger (Logger, logInfo)
+import Effect.Logger (Logger, logInfo, logStdout)
 import Path (Abs, Dir, Path)
 
 generateFingerprints ::
@@ -25,12 +25,14 @@ generateFingerprints ::
   m ()
 generateFingerprints conf = do
   logInfo "Generating WFP fingerprints for snippet scanning"
-  withScanossPyBinary $ \bin -> execEffectful root $ mkCmd bin root conf
+  let outputFile = fingerprintsOutput conf
+  withScanossPyBinary $ \bin -> execEffectful root $ mkCmd bin root conf outputFile
+  logStdout $ "WFP fingerprints written to: " <> toText outputFile <> " (relative to current directory)"
   where
     root = unBaseDir $ fingerprintsScanDir conf
 
-mkCmd :: BinaryPaths -> Path Abs Dir -> GenerateFingerprintsConfig -> Command
-mkCmd bin root GenerateFingerprintsConfig{..} =
+mkCmd :: BinaryPaths -> Path Abs Dir -> GenerateFingerprintsConfig -> FilePath -> Command
+mkCmd bin root GenerateFingerprintsConfig{..} outputFile =
   Command
     { cmdName = toText $ toPath bin
     , cmdArgs = concat [wfpCmd, debug, output, overwriteFlag, dir]
@@ -40,5 +42,5 @@ mkCmd bin root GenerateFingerprintsConfig{..} =
     wfpCmd = ["wfp"]
     dir = [argFromPath root]
     debug = if fingerprintsDebug then ["--debug"] else []
-    output = ["-o", toText fingerprintsOutput]
+    output = ["-o", toText outputFile]
     overwriteFlag = if fingerprintsOverwrite then ["--overwrite"] else [] 
