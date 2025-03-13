@@ -257,24 +257,22 @@ requirementParser = specification
           ]
     marker_var :: Parser Text
     marker_var = label "marker_var" $ whitespace *> (env_var <|> fmap toText python_str)
-    marker_expr =
-      label "marker_expr" $
-        MarkerExpr <$> marker_var <*> marker_op <*> marker_var
-          <|> whitespace *> char '(' *> marker_or <* char ')'
+    marker_expr :: Parser Marker
+    marker_expr = label "marker_expr" $
+      MarkerExpr <$> marker_var <*> marker_op <*> marker_var
+        <|> whitespace *> char '(' *> marker_or <* char ')'
 
-    marker_and =
-      label "marker_and" $
-        try (MarkerAnd <$> marker_expr <* whitespace <* string "and" <*> marker_expr)
-          <|> marker_expr
+    marker_and :: Parser Marker
+    marker_and = label "marker_and" $ do
+      first <- marker_expr
+      rest <- many (try $ whitespace *> string "and" *> whitespace *> marker_expr)
+      pure $ foldl MarkerAnd first rest
 
     marker_or :: Parser Marker
-    marker_or =
-      label "marker_or" $ do
-        first <- marker_and
-        rest <- many (whitespace *> string "or" *> whitespace *> marker_or)
-        pure $ case rest of
-          [] -> first
-          xs -> foldr MarkerOr first xs
+    marker_or = label "marker_or" $ do
+      first <- marker_and
+      rest <- many (try $ whitespace *> string "or" *> whitespace *> marker_and)
+      pure $ foldl MarkerOr first rest
 
     marker = label "marker" marker_or
     quoted_marker = label "quoted_marker" $ char ';' *> whitespace *> marker
