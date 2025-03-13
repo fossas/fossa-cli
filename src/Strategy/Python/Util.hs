@@ -15,6 +15,7 @@ import Control.Monad (join)
 import Control.Monad.Identity (Identity)
 import Data.Char qualified as C
 import Data.Foldable (asum, find, for_)
+import Data.List (foldl')
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -266,13 +267,13 @@ requirementParser = specification
     marker_and = label "marker_and" $ do
       first <- marker_expr
       rest <- many (try $ whitespace *> string "and" *> whitespace *> marker_expr)
-      pure $ foldl MarkerAnd first rest
+      pure $ foldl' MarkerAnd first rest
 
     marker_or :: Parser Marker
     marker_or = label "marker_or" $ do
       first <- marker_and
       rest <- many (try $ whitespace *> string "or" *> whitespace *> marker_and)
-      pure $ foldl MarkerOr first rest
+      pure $ foldl' MarkerOr first rest
 
     marker = label "marker" marker_or
     quoted_marker = label "quoted_marker" $ char ';' *> whitespace *> marker
