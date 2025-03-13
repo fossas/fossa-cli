@@ -259,7 +259,7 @@ requirementParser = specification
     marker_var :: Parser Text
     marker_var = label "marker_var" $ whitespace *> (env_var <|> fmap toText python_str)
     marker_expr :: Parser Marker
-    marker_expr = 
+    marker_expr =
       label "marker_expr" $
         MarkerExpr <$> marker_var <*> marker_op <*> marker_var
           <|> whitespace *> char '(' *> marker_or <* char ')'
