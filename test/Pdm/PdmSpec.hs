@@ -181,4 +181,4 @@ colorama :: Dependency
 colorama = mkPipDevDep "colorama@0.4.6"
 
 greenlet :: Dependency
-greenlet = mkPipDevDep "greenlet@3.1.1"
+greenlet = mkPipProdDep "greenlet@3.1.1"
