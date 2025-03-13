@@ -71,6 +71,7 @@ spec = do
       -- > └── pluggy 1.0.0 [ required: <2.0,>=0.12 ]
       -- > requests 2.25.1 [ required: ==2.25.1 ]
       -- > ├── certifi 2023.5.7 [ required: >=2017.4.17 ]
+      -- > ├── greenlet 3.1.1 [ required: !=0.4.17 ]
       -- > ├── chardet 4.0.0 [ required: <5,>=3.0.2 ]
       -- > ├── idna 2.10 [ required: <3,>=2.5 ]
       -- > └── urllib3 1.26.16 [ required: <1.27,>=1.21.1 ]
@@ -92,6 +93,7 @@ spec = do
         , iniconfig
         , packaging
         , pluggy
+        , greenlet
         , requests
         , certifi
         , chardet
@@ -104,8 +106,9 @@ spec = do
         , (pytest, iniconfig)
         , (pytest, packaging)
         , (pytest, pluggy)
-        , (requests, certifi)
         , (requests, chardet)
+        , (requests, greenlet)
+        , (requests, certifi)
         , (requests, idna)
         , (requests, urllib3)
         ]
@@ -176,3 +179,6 @@ urllib3 = mkPipProdDep "urllib3@1.26.16"
 
 colorama :: Dependency
 colorama = mkPipDevDep "colorama@0.4.6"
+
+greenlet :: Dependency
+greenlet = mkPipDevDep "greenlet@3.1.1"

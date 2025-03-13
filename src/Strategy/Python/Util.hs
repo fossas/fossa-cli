@@ -269,9 +269,12 @@ requirementParser = specification
 
     marker_or :: Parser Marker
     marker_or =
-      label "marker_or" $
-        try (MarkerOr <$> marker_and <* whitespace <* string "or" <*> marker_and)
-          <|> marker_and
+      label "marker_or" $ do
+        first <- marker_and
+        rest <- many (whitespace *> string "or" *> whitespace *> marker_and)
+        pure $ case rest of
+          [] -> first
+          xs -> foldr MarkerOr first xs
 
     marker = label "marker" marker_or
     quoted_marker = label "quoted_marker" $ char ';' *> whitespace *> marker
