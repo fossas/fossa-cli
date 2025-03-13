@@ -271,7 +271,7 @@ requirementParser = specification
     marker_or =
       label "marker_or" $ do
         first <- marker_and
-        rest <- many (whitespace *> string "or" *> whitespace *> marker_and)
+        rest <- many (whitespace *> string "or" *> whitespace *> marker_or)
         pure $ case rest of
           [] -> first
           xs -> foldr MarkerOr first xs
