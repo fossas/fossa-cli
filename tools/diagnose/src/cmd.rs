@@ -27,7 +27,7 @@ pub struct Opts {
     /// Generally spans correlate to functions; in other words when a function is entered a span is also entered.
     /// There are some exceptions to this (not all functions generate spans, and not all spans are in functions)
     /// but in general this is a reasonable way to think of it for most users.
-    #[clap(long, global = true, default_value_t = Span::Full)]
+    #[clap(long, global = true, default_value_t = Span::Active)]
     #[getset(get_copy = "pub")]
     trace_spans: Span,
 
@@ -40,6 +40,11 @@ pub struct Opts {
     #[clap(short, long, default_value_t = Format::Text, global = true)]
     #[getset(get_copy = "pub")]
     format: Format,
+
+    /// Control the interaction mode for the program.
+    #[clap(long, default_value_t = Mode::Log, global = true)]
+    #[getset(get_copy = "pub")]
+    mode: Mode,
 
     /// Run a number of subcommands.
     #[clap(subcommand)]
@@ -136,7 +141,7 @@ pub enum Span {
     #[strum(serialize = "close")]
     Close,
 
-    /// spans are ignored (this is the default)
+    /// spans are ignored
     #[strum(serialize = "none")]
     None,
 
@@ -161,6 +166,18 @@ impl From<Span> for FmtSpan {
             Span::Full => FmtSpan::FULL,
         }
     }
+}
+
+/// The output mode for the tool.
+#[derive(Debug, Clone, Copy, ValueEnum, Display)]
+pub enum Mode {
+    /// Log messages are emitted as files are walked.
+    #[strum(serialize = "log")]
+    Log,
+
+    /// Displays a TUI with information about the walk.
+    #[strum(serialize = "tui")]
+    Tui,
 }
 
 #[derive(Clone, Debug, Subcommand)]
