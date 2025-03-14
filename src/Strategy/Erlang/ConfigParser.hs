@@ -175,14 +175,14 @@ lexeme = L.lexeme scn
 
 parseMap :: Parser ErlValue
 parseMap = do
-    _ <- symbol "#"
-    -- Parse map contents between curly braces
-    _ <- symbol "{"
-    -- Parse key-value pairs separated by commas
-    _ <- parseMapPairs `sepBy` symbol ","
-    _ <- symbol "}"
-    -- Return an empty tuple as a placeholder since we don't need the map contents
-    pure $ ErlTuple []
+  _ <- symbol "#"
+  -- Parse map contents between curly braces
+  _ <- symbol "{"
+  -- Parse key-value pairs separated by commas
+  _ <- parseMapPairs `sepBy` symbol ","
+  _ <- symbol "}"
+  -- Return an empty tuple as a placeholder since we don't need the map contents
+  pure $ ErlTuple []
   where
     parseMapPairs :: Parser ()
     parseMapPairs = do
@@ -197,9 +197,9 @@ parseMap = do
 -- Parse Erlang binary syntax << ... >>
 parseBinary :: Parser ErlValue
 parseBinary = do
-    _ <- symbol "<<"
-    -- Parse binary contents separated by commas
-    _ <- parseErlValue `sepBy` symbol ","
-    _ <- symbol ">>"
-    -- Return an empty tuple as placeholder since we don't need the binary contents
-    pure $ ErlTuple []
+  _ <- symbol "<<"
+  -- Parse binary contents separated by commas
+  _ <- parseErlValue `sepBy` symbol ","
+  _ <- symbol ">>"
+  -- Return an empty tuple as placeholder since we don't need the binary contents
+  pure $ ErlTuple []
