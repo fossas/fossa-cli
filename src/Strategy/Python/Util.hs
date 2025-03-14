@@ -15,6 +15,7 @@ import Control.Monad (join)
 import Control.Monad.Identity (Identity)
 import Data.Char qualified as C
 import Data.Foldable (asum, find, for_)
+import Data.List (foldl')
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -257,21 +258,23 @@ requirementParser = specification
           ]
     marker_var :: Parser Text
     marker_var = label "marker_var" $ whitespace *> (env_var <|> fmap toText python_str)
+    marker_expr :: Parser Marker
     marker_expr =
       label "marker_expr" $
         MarkerExpr <$> marker_var <*> marker_op <*> marker_var
           <|> whitespace *> char '(' *> marker_or <* char ')'
 
-    marker_and =
-      label "marker_and" $
-        try (MarkerAnd <$> marker_expr <* whitespace <* string "and" <*> marker_expr)
-          <|> marker_expr
+    marker_and :: Parser Marker
+    marker_and = label "marker_and" $ do
+      first <- marker_expr
+      rest <- many (try $ whitespace *> string "and" *> whitespace *> marker_expr)
+      pure $ foldl' MarkerAnd first rest
 
     marker_or :: Parser Marker
-    marker_or =
-      label "marker_or" $
-        try (MarkerOr <$> marker_and <* whitespace <* string "or" <*> marker_and)
-          <|> marker_and
+    marker_or = label "marker_or" $ do
+      first <- marker_and
+      rest <- many (try $ whitespace *> string "or" *> whitespace *> marker_and)
+      pure $ foldl' MarkerOr first rest
 
     marker = label "marker" marker_or
     quoted_marker = label "quoted_marker" $ char ';' *> whitespace *> marker
