@@ -12,14 +12,15 @@ import App.Fossa.Config.LinkUserBinaries (
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AssertUserDefinedBinariesChecks), guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
+import App.Fossa.VSIDeps (userEnabledMsb, userEnabledMsbErrorMsg)
 import App.Types (BaseDir (..))
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient qualified as API
 import Control.Effect.Lift (Lift)
-import Control.Monad (void)
+import Control.Monad (unless, void)
 import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS)
 
@@ -35,6 +36,9 @@ assertUserDefinedBinaries ::
   LinkUserBinsConfig ->
   m ()
 assertUserDefinedBinaries LinkUserBinsConfig{..} = do
+  msbEnabled <- userEnabledMsb
+  unless msbEnabled $ fatalText userEnabledMsbErrorMsg
+
   void $ guardWithPreflightChecks apiOpts AssertUserDefinedBinariesChecks
 
   logInfo "Fingerprinting directory contents"

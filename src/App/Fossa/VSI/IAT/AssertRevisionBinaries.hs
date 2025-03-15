@@ -3,10 +3,12 @@ module App.Fossa.VSI.IAT.AssertRevisionBinaries (
 ) where
 
 import App.Fossa.VSI.Fingerprint (fingerprintContentsRaw)
+import App.Fossa.VSIDeps (userEnabledMsb, userEnabledMsbErrorMsg)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.FossaApiClient qualified as API
 import Control.Effect.Lift (Lift)
+import Control.Monad (unless)
 import Effect.Logger (Logger, logInfo)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path)
@@ -23,6 +25,9 @@ assertRevisionBinaries ::
   Locator ->
   m ()
 assertRevisionBinaries dir locator = do
+  msbEnabled <- userEnabledMsb
+  unless msbEnabled $ fatalText userEnabledMsbErrorMsg
+
   logInfo "Fingerprinting assertion directory contents"
   fingerprints <- fingerprintContentsRaw dir
 

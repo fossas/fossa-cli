@@ -1,5 +1,12 @@
 ## Multi Stage Builds
 
+> [!WARNING]
+> The Multi Stage Builds functionality is deprecated; usage of this functionality results in an error.
+>
+> Temporarily, you can set `FOSSA_MSB_ENABLED` to `true` to re-enable it,
+> but this functionality will be removed in another release.
+> If you wish to keep this functionality in FOSSA CLI, please contact support to let us know.
+
 The _Multi-stage builds_ feature allows users give FOSSA metadata attached to a binary ahead of time (for example, a team working on an internal library can tell FOSSA about that library as part of that CI process).
 FOSSA then can detect binaries that are registered as dependencies in downstream projects that include that binary in their source tree when [detecting vendored dependencies](../../subcommands/analyze/detect-vendored.md).
 
