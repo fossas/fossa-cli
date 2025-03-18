@@ -277,6 +277,7 @@ library
     App.Fossa.Snippets
     App.Fossa.Snippets.Analyze
     App.Fossa.Snippets.Commit
+    App.Fossa.Snippets.GenerateFingerprints
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
