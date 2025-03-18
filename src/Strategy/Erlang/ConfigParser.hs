@@ -32,6 +32,7 @@ import GHC.Generics (Generic)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
+import Control.Monad (void)
 
 type Parser = Parsec Void Text
 
@@ -175,12 +176,12 @@ lexeme = L.lexeme scn
 
 parseMap :: Parser ErlValue
 parseMap = do
-  _ <- symbol "#"
+  void $ symbol "#"
   -- Parse map contents between curly braces
-  _ <- symbol "{"
+  void $ symbol "{"
   -- Parse key-value pairs separated by commas
-  _ <- parseMapPairs `sepBy` symbol ","
-  _ <- symbol "}"
+  void $ parseMapPairs `sepBy` symbol ","
+  void $ symbol "}"
   -- Return an empty tuple as a placeholder since we don't need the map contents
   pure $ ErlTuple []
   where
@@ -195,6 +196,7 @@ parseMap = do
       pure ()
 
 -- Parse Erlang binary syntax << ... >>
+-- https://www.erlang.org/doc/system/bit_syntax.html
 parseBinary :: Parser ErlValue
 parseBinary = do
   _ <- symbol "<<"
