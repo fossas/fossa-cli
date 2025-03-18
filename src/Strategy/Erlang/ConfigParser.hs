@@ -20,6 +20,7 @@ module Strategy.Erlang.ConfigParser (
   alphaNumToInt,
 ) where
 
+import Control.Monad (void)
 import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Char qualified as C
 import Data.Functor (($>))
@@ -32,7 +33,6 @@ import GHC.Generics (Generic)
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
-import Control.Monad (void)
 
 type Parser = Parsec Void Text
 
