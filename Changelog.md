@@ -1,7 +1,7 @@
 # FOSSA CLI Changelog
 
 ## 3.10.4
-- Erlang: Rebar config parsing bug fixes ([#1522](https://github.com/fossas/fossa-cli/pull/1522))
+- Erlang: Rebar config parsing bug fixes ([#1524](https://github.com/fossas/fossa-cli/pull/1522))
 
 ## 3.10.3
 - PDM Parser: Proper parsing for PDM platform_machine line ([#1521](https://github.com/fossas/fossa-cli/pull/1521))
