@@ -17,7 +17,7 @@ import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisi
 import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage, revisionFromPodman)
 import App.Fossa.Container.Sources.Registry (analyzeFromRegistry, revisionFromRegistry, runWithCirceReexport)
 import App.Types (OverrideProject (..), ProjectRevision (ProjectRevision))
-import Container.Docker.SourceParser (RegistryImageSource (..), parseImageUrl, showReferenceWithSep)
+import Container.Docker.SourceParser (RegistryImageSource (..), parseImageUrl)
 import Container.Types (ContainerScan (..))
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Effect.Debug (Debug)
@@ -172,12 +172,7 @@ correctCirceTag src tag = case src of
         . splitExtension
         $ filename path
     maybe (pure tag) (pure . toText . fst) split
-  Registry RegistryImageSource{..} ->
-    pure $
-      registryHost
-        <> "/"
-        <> registryContainerRepository
-        <> showReferenceWithSep registryContainerRepositoryReference
+  Registry RegistryImageSource{..} -> pure $ registryHost <> "/" <> registryContainerRepository
   _ -> pure tag
 
 data DetermineFileNameFailure = DetermineFileNameFailure (Path Abs File) SomeException
