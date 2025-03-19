@@ -7,7 +7,7 @@ module App.Fossa.Container.Sources.DockerEngine (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromNormalizedDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Carrier.Lift (Lift)
@@ -64,7 +64,7 @@ analyzeFromDockerEngine systemDepsOnly filters withoutDefaultFilters engineHost 
   runFromDockerEngine
     engineHost
     imgTag
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromNormalizedDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromDockerEngine ::
   ( Has Diagnostics sig m

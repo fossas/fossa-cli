@@ -8,7 +8,7 @@ module App.Fossa.Container.Sources.Podman (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromNormalizedDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
 import Control.Effect.Debug (Debug, Has)
@@ -80,7 +80,9 @@ analyzeFromPodman ::
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img =
+  runFromPodman img $
+    analyzeFromNormalizedDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m

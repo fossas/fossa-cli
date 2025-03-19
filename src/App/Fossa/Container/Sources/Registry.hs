@@ -8,8 +8,9 @@ module App.Fossa.Container.Sources.Registry (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Container.Common (ImageText, unImageText)
 import App.Fossa.Container.Sources.Circe (circeReexportCommand)
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromNormalizedDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import App.Fossa.EmbeddedBinary (withCirceBinary)
 import Container.Docker.Credentials (useCredentialFromConfig)
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
@@ -46,7 +47,7 @@ runFromRegistry imgSrc f = do
   imgSrc' <- enrichCreds
   withSystemTempDir "fossa-container-registry-tmp" $ \dir -> do
     logInfo $ "Inferred registry source: " <> pretty imgSrc'
-    tempTarFile <- runWithCirceReexport imgSrc' dir
+    tempTarFile <- runContainerRegistryApi $ exportImage imgSrc' dir
     logInfo . pretty $ "Analyzing exported docker archive: " <> toText tempTarFile
     f tempTarFile
   where
@@ -73,7 +74,8 @@ runFromRegistry imgSrc f = do
           pure $ fromMaybe imgSrc imgSrcEnriched
 
 -- | Attempts to use circe reexport for container image export.
--- Falls back to the standard registry @exportImage@ if circe fails.
+-- Returns the path on disk to the normalized tarball exported by Circe.
+-- If Circe could not fetch the image, warns and returns @Nothing@.
 runWithCirceReexport ::
   ( Has Diagnostics sig m
   , Has Exec sig m
@@ -81,25 +83,18 @@ runWithCirceReexport ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
-  RegistryImageSource ->
+  ImageText ->
   Path Abs Dir ->
-  m (Path Abs File)
-runWithCirceReexport imgSrc tempDir = do
-  let tarballPath = tempDir </> $(mkRelFile "image.tar")
-
-  circeResult <- context "Using circe reexport" $
+  m (Maybe (Path Abs File))
+runWithCirceReexport img dir = do
+  let tarballPath = dir </> $(mkRelFile "image.tar")
+  context "Using circe reexport" $
     warnThenRecover @Text "Failed to use circe reexport, falling back to direct registry API" $ do
       withCirceBinary $ \paths -> do
-        logInfo "Exporting normalized container image"
-        _ <- execThrow' $ circeReexportCommand paths imgSrc (toText tarballPath)
+        logInfo . pretty $ "Exporting normalized container image for: " <> unImageText img
+        _ <- execThrow' $ circeReexportCommand paths img (toText tarballPath)
         logDebug $ "Circe reexport completed successfully to: " <> pretty (toText tarballPath)
         pure tarballPath
-
-  case circeResult of
-    Just path -> pure path
-    Nothing -> do
-      logInfo "Falling back to registry API for plain container image"
-      runContainerRegistryApi $ exportImage imgSrc tempDir
 
 analyzeFromRegistry ::
   ( Has Diagnostics sig m
@@ -118,7 +113,7 @@ analyzeFromRegistry ::
 analyzeFromRegistry systemDepsOnly filters withoutDefaultFilters img =
   runFromRegistry
     img
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromNormalizedDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromRegistry ::
   ( Has Diagnostics sig m
