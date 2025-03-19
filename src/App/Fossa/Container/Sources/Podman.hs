@@ -80,9 +80,7 @@ analyzeFromPodman ::
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img =
-  runFromPodman img $
-    analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m

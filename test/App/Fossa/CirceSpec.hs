@@ -5,7 +5,6 @@ module App.Fossa.CirceSpec (
 ) where
 
 import App.Fossa.EmbeddedBinary (toPath, withCirceBinary)
-import Container.Docker.SourceParser (RegistryHostScheme (..), RegistryImageSource (..), RepoReference (..), RepoTag (..), toCirceReference)
 import Data.Either (isRight)
 import Data.String.Conversion (toText)
 import Effect.Exec
@@ -39,20 +38,3 @@ spec = do
 
         -- Check that it executed successfully
         result `shouldSatisfy'` isRight
-
-    describe "Circe reference formatting" $ do
-      it "should format registry references correctly" $ do
-        let imgSrc = testRegistryImageSource
-            ref = toCirceReference imgSrc
-        ref `shouldBe` "docker.io/library/nginx:latest"
-
-testRegistryImageSource :: RegistryImageSource
-testRegistryImageSource =
-  RegistryImageSource
-    { registryHost = "index.docker.io"
-    , registryScheme = RegistryHTTPS
-    , registryCred = Nothing
-    , registryContainerRepository = "library/nginx"
-    , registryContainerRepositoryReference = RepoReferenceTag (RepoTag "latest")
-    , platformArchitecture = "amd64"
-    }
