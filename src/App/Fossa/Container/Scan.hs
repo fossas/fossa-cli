@@ -12,7 +12,7 @@ module App.Fossa.Container.Scan (
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromNormalizedDockerArchive, revisionFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, revisionFromDockerArchive)
 import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisionFromDockerEngine)
 import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage, revisionFromPodman)
 import App.Fossa.Container.Sources.Registry (analyzeFromRegistry, revisionFromRegistry, runWithCirceReexport)
@@ -95,7 +95,7 @@ scanImage filters withoutDefaultFilters systemDepsOnly imgText dockerHost imageA
     join <$> traverse (recover . analyzeTarball) tarball
   maybe legacyScan pure circePoweredScan
   where
-    analyzeTarball = context "Analyzing docker archive" . analyzeFromNormalizedDockerArchive systemDepsOnly filters withoutDefaultFilters
+    analyzeTarball = context "Analyzing docker archive" . analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
     legacyScan = do
       parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
       case parsedSource of

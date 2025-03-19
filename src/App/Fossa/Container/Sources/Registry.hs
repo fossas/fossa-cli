@@ -10,7 +10,7 @@ module App.Fossa.Container.Sources.Registry (
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
 import App.Fossa.Config.Container.Common (ImageText, unImageText)
 import App.Fossa.Container.Sources.Circe (circeReexportCommand)
-import App.Fossa.Container.Sources.DockerArchive (analyzeFromNormalizedDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
+import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import App.Fossa.EmbeddedBinary (withCirceBinary)
 import Container.Docker.Credentials (useCredentialFromConfig)
 import Container.Docker.SourceParser (RegistryImageSource (RegistryImageSource), defaultRegistry)
@@ -113,7 +113,7 @@ analyzeFromRegistry ::
 analyzeFromRegistry systemDepsOnly filters withoutDefaultFilters img =
   runFromRegistry
     img
-    $ analyzeFromNormalizedDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromRegistry ::
   ( Has Diagnostics sig m

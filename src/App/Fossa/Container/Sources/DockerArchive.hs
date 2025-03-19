@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module App.Fossa.Container.Sources.DockerArchive (
-  analyzeFromNormalizedDockerArchive,
+  analyzeFromDockerArchive,
   listTargetsFromDockerArchive,
   revisionFromDockerArchive,
 ) where
@@ -89,7 +89,7 @@ import Types (DiscoveredProject (..))
 
 -- | Analyzes a Docker archive that has been normalized through Circe,
 -- or is already in a format that can be directly analyzed.
-analyzeFromNormalizedDockerArchive ::
+analyzeFromDockerArchive ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Exec sig m -- May not exec dynamic strategies. TODO: Remove this and convert the BerkeleyDB driver to FFI.
@@ -102,7 +102,7 @@ analyzeFromNormalizedDockerArchive ::
   Flag WithoutDefaultFilters ->
   Path Abs File ->
   m ContainerScan
-analyzeFromNormalizedDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = do
+analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
