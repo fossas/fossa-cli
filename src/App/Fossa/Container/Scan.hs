@@ -19,12 +19,12 @@ import App.Fossa.Container.Sources.Registry (analyzeFromRegistry, revisionFromRe
 import App.Types (OverrideProject (..), ProjectRevision (ProjectRevision))
 import Container.Docker.SourceParser (RegistryImageSource (..), parseImageUrl, showReferenceWithSep)
 import Container.Types (ContainerScan (..))
-import Control.Carrier.Diagnostics (recover)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatal, fatalText, fromEitherShow, fromMaybeText, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, errCtx, fatal, fatalText, fromEitherShow, fromMaybeText, recover, warnOnSomeException, (<||>))
 import Control.Effect.DockerEngineApi (DockerEngineApi, getDockerImageSize, isDockerEngineAccessible)
-import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Exception (SomeException)
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (join, unless)
@@ -46,11 +46,15 @@ import Effect.Exec (Exec, execThrow')
 import Effect.Logger (
   Logger,
   Pretty (pretty),
+  hsep,
   logInfo,
+  renderIt,
+  viaShow,
+  vsep,
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir)
 import Errata (Errata (..))
-import Path (Abs, File, Path, SomeBase (Abs, Rel), parseSomeFile, (</>))
+import Path (Abs, File, Path, SomeBase (Abs, Rel), filename, parseSomeFile, splitExtension, (</>))
 import Text.Megaparsec (errorBundlePretty, parse)
 
 data ContainerImageSource
@@ -93,8 +97,9 @@ scanImage filters withoutDefaultFilters systemDepsOnly imgText dockerHost imageA
   parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
   circePoweredScan <- withSystemTempDir "fossa-container-export-tmp" $ \dir -> do
     tarball <- runWithCirceReexport imgText dir
-    join <$> traverse (recover . analyzeTarball) tarball
-  maybe (legacyScan parsedSource) (pure . correctCirceSource parsedSource) circePoweredScan
+    scan <- join <$> traverse (recover . analyzeTarball) tarball
+    traverse (correctCirceSource parsedSource) scan
+  maybe (legacyScan parsedSource) pure circePoweredScan
   where
     analyzeTarball = context "Analyzing docker archive" . analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
     legacyScan src = do
@@ -125,10 +130,13 @@ scanImageNoAnalysis imgText dockerHost imageArch = do
   parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
   circePoweredScan <- withSystemTempDir "fossa-container-export-tmp" $ \dir -> do
     tarball <- runWithCirceReexport imgText dir
-    join <$> traverse (recover . analyzeTarball) tarball
-  maybe (legacyScan parsedSource) (pure . correctTag parsedSource) circePoweredScan
+    meta <- join <$> traverse (recover . analyzeTarball) tarball
+    traverse (correctTag parsedSource) meta
+  maybe (legacyScan parsedSource) pure circePoweredScan
   where
-    correctTag src (tag, digest) = (correctCirceTag src tag, digest)
+    correctTag src (tag, digest) = do
+      tag' <- correctCirceTag src tag
+      pure (tag', digest)
     analyzeTarball = context "Analyzing docker archive" . revisionFromDockerArchive
     legacyScan src = do
       case src of
@@ -143,22 +151,47 @@ scanImageNoAnalysis imgText dockerHost imageArch = do
           context "Retrieving revision information via registry" $
             revisionFromRegistry registrySrc
 
-correctCirceSource :: ContainerImageSource -> ContainerScan -> ContainerScan
-correctCirceSource src scan =
-  ContainerScan
-    { imageData = (imageData scan)
-    , imageDigest = (imageDigest scan)
-    , imageTag = correctCirceTag src $ imageTag scan
-    }
+-- | Circe re-exports the image as a plain tarball, which means that the typical FOSSA CLI operations for choosing the image tag
+-- don't get to run if we use Circe. This function adds them back in.
+correctCirceSource :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ContainerImageSource -> ContainerScan -> m ContainerScan
+correctCirceSource src scan = do
+  imageTag' <- correctCirceTag src $ imageTag scan
+  pure
+    ContainerScan
+      { imageData = (imageData scan)
+      , imageDigest = (imageDigest scan)
+      , imageTag = imageTag'
+      }
 
-correctCirceTag :: ContainerImageSource -> Text -> Text
+correctCirceTag :: (Has Diagnostics sig m, Has (Lift IO) sig m) => ContainerImageSource -> Text -> m Text
 correctCirceTag src tag = case src of
+  DockerArchive path -> do
+    split <-
+      warnOnSomeException (DetermineFileNameFailure path) "Determine file name without extension"
+        . sendIO
+        . splitExtension
+        $ filename path
+    maybe (pure tag) (pure . toText . fst) split
   Registry RegistryImageSource{..} ->
-    registryHost
-      <> "/"
-      <> registryContainerRepository
-      <> showReferenceWithSep registryContainerRepositoryReference
-  _ -> tag
+    pure $
+      registryHost
+        <> "/"
+        <> registryContainerRepository
+        <> showReferenceWithSep registryContainerRepositoryReference
+  _ -> pure tag
+
+data DetermineFileNameFailure = DetermineFileNameFailure (Path Abs File) SomeException
+
+instance ToDiagnostic DetermineFileNameFailure where
+  renderDiagnostic (DetermineFileNameFailure file exc) = do
+    let header = "An error occurred while attempting to determine the name of the file."
+        body =
+          renderIt $
+            vsep
+              [ hsep ["File path:", pretty $ toText file]
+              , hsep ["Error text:", viaShow exc]
+              ]
+    Errata (Just header) [] (Just body)
 
 parseContainerImageSource ::
   ( Has (Lift IO) sig m
