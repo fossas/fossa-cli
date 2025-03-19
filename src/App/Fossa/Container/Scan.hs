@@ -17,7 +17,7 @@ import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisi
 import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage, revisionFromPodman)
 import App.Fossa.Container.Sources.Registry (analyzeFromRegistry, revisionFromRegistry, runWithCirceReexport)
 import App.Types (OverrideProject (..), ProjectRevision (ProjectRevision))
-import Container.Docker.SourceParser (RegistryImageSource, parseImageUrl)
+import Container.Docker.SourceParser (RegistryImageSource (..), parseImageUrl, showReferenceWithSep)
 import Container.Types (ContainerScan (..))
 import Control.Carrier.Diagnostics (recover)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
@@ -90,15 +90,15 @@ scanImage ::
   Text ->
   m ContainerScan
 scanImage filters withoutDefaultFilters systemDepsOnly imgText dockerHost imageArch = do
+  parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
   circePoweredScan <- withSystemTempDir "fossa-container-export-tmp" $ \dir -> do
     tarball <- runWithCirceReexport imgText dir
     join <$> traverse (recover . analyzeTarball) tarball
-  maybe legacyScan pure circePoweredScan
+  maybe (legacyScan parsedSource) (pure . correctCirceSource parsedSource) circePoweredScan
   where
     analyzeTarball = context "Analyzing docker archive" . analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
-    legacyScan = do
-      parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
-      case parsedSource of
+    legacyScan src = do
+      case src of
         DockerArchive tarball -> context "Analyzing tarball" $ analyzeTarball tarball
         DockerEngine imgTag ->
           context "Analyzing via Docker engine API" $
@@ -122,15 +122,16 @@ scanImageNoAnalysis ::
   Text ->
   m (Text, Text)
 scanImageNoAnalysis imgText dockerHost imageArch = do
+  parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
   circePoweredScan <- withSystemTempDir "fossa-container-export-tmp" $ \dir -> do
     tarball <- runWithCirceReexport imgText dir
     join <$> traverse (recover . analyzeTarball) tarball
-  maybe legacyScan pure circePoweredScan
+  maybe (legacyScan parsedSource) (pure . correctTag parsedSource) circePoweredScan
   where
+    correctTag src (tag, digest) = (correctCirceTag src tag, digest)
     analyzeTarball = context "Analyzing docker archive" . revisionFromDockerArchive
-    legacyScan = do
-      parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
-      case parsedSource of
+    legacyScan src = do
+      case src of
         DockerArchive tarball -> context "Retrieving revision information from tarball" $ analyzeTarball tarball
         DockerEngine imgTag ->
           context "Retrieving revision information via Docker engine API" $
@@ -141,6 +142,23 @@ scanImageNoAnalysis imgText dockerHost imageArch = do
         Registry registrySrc ->
           context "Retrieving revision information via registry" $
             revisionFromRegistry registrySrc
+
+correctCirceSource :: ContainerImageSource -> ContainerScan -> ContainerScan
+correctCirceSource src scan =
+  ContainerScan
+    { imageData = (imageData scan)
+    , imageDigest = (imageDigest scan)
+    , imageTag = correctCirceTag src $ imageTag scan
+    }
+
+correctCirceTag :: ContainerImageSource -> Text -> Text
+correctCirceTag src tag = case src of
+  Registry RegistryImageSource{..} ->
+    registryHost
+      <> "/"
+      <> registryContainerRepository
+      <> showReferenceWithSep registryContainerRepositoryReference
+  _ -> tag
 
 parseContainerImageSource ::
   ( Has (Lift IO) sig m
