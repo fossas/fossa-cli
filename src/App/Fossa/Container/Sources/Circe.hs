@@ -18,8 +18,6 @@ circeReexportCommand ::
 circeReexportCommand paths img outputPath =
   Command
     { cmdName = toText $ toPath paths
-    , cmdArgs = ["reexport"] <> ref <> [outputPath]
+    , cmdArgs = ["reexport"] <> [unImageText img] <> [outputPath]
     , cmdAllowErr = Never
     }
-  where
-    ref = [unImageText img]
