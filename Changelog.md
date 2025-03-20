@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## 3.10.4
+## 3.10.5
 
 Container scanning: Resolved a large number of issues with scanning containers ([#1514](https://github.com/fossas/fossa-cli/pull/1514), [#1521](https://github.com/fossas/fossa-cli/pull/1521))
 - Pulling containers from recent versions of Docker are properly supported.
@@ -13,12 +13,14 @@ Container scanning: Resolved a large number of issues with scanning containers (
 > FOSSA built a separate binary to handle pulling images; refer to [its repository](https://github.com/fossas/circe) for details.
 > This binary is bundled into FOSSA CLI, you don't need to do anything special to use it.
 
-## 3.10.3
+## 3.10.4
+- Erlang: Rebar config parsing bug fixes ([#1524](https://github.com/fossas/fossa-cli/pull/1522))
 
-License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
+## 3.10.3
+- PDM Parser: Proper parsing for PDM platform_machine line ([#1521](https://github.com/fossas/fossa-cli/pull/1521))
+- License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
 
 ## 3.10.2
-
 - Cargo: Do not create Cargo.lock if it already exists ([#1516](https://github.com/fossas/fossa-cli/pull/1516))
 
 ## 3.10.1

@@ -30,6 +30,8 @@ examples =
   , "name; os_name=='a' or os_name=='b'"
   , "name; os_name=='a' and os_name=='b' or os_name=='c'"
   , "name; os_name=='a' and (os_name=='b' or os_name=='c')"
+  , "name; os_name=='a' and (os_name=='b' or os_name=='c' and os_name=='d')"
+  , "name; (os_name=='b' or os_name=='c' and os_name=='d') and os_name=='a'"
   , "name; os_name=='a' or os_name=='b' and os_name=='c'"
   , "name; (os_name=='a' or os_name=='b') and os_name=='c'"
   ]
