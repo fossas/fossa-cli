@@ -234,6 +234,7 @@ library
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.ListTargets
     App.Fossa.Container.Scan
+    App.Fossa.Container.Sources.Circe
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
