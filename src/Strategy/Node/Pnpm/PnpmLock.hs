@@ -290,7 +290,7 @@ buildGraph lockFile = withoutLocalPackages $
   run . evalGrapher $ do
     for_ (toList $ importers lockFile) $ \(_, projectSnapshot) -> do
       -- Track which packages are dev dependencies from the importers section
-      let prodDeps = Set.fromList $ map fst $ toList (directDependencies projectSnapshot)
+      -- let prodDeps = Set.fromList $ map fst $ toList (directDependencies projectSnapshot)
       let devDeps = Set.fromList $ map fst $ toList (directDevDependencies projectSnapshot)
       let allDirectDependencies =
             toList (directDependencies projectSnapshot)
@@ -366,7 +366,7 @@ buildGraph lockFile = withoutLocalPackages $
       let txt = Maybe.fromMaybe pkgKey (Text.stripPrefix "/" pkgKey)
       case Text.breakOn "@" txt of
         (name, ver) | not (Text.null ver) ->
-          let peerDepInfo = Text.takeWhile (/= ' ') $ Text.dropWhile (/= '(') ver
+          let -- peerDepInfo = Text.takeWhile (/= ' ') $ Text.dropWhile (/= '(') ver
               version = Text.drop 1 ver
            in case (Text.null name, Text.null version) of
                 (False, False) -> Just (name, version)
