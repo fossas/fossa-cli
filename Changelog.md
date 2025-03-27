@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.10.6
+- Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
+
 ## 3.10.5
 
 Container scanning: Resolved a large number of issues with scanning containers ([#1514](https://github.com/fossas/fossa-cli/pull/1514), [#1521](https://github.com/fossas/fossa-cli/pull/1521))
