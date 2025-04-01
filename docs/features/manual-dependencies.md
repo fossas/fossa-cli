@@ -11,7 +11,13 @@ FOSSA CLI supports 3 types of manual dependencies:
 2. Custom dependencies: Used to add a unique dependency to your dependency graph and the metadata you wish to associate with it.
 3. Remote dependencies: Used when all you have is the URL to an archive.
 
-Referenced dependencies are the only type that supports vulnerabilities, custom and remote dependencies do not.
+| Manual Dependency Type | Supports Licenses | Supports Vulnerabilities | Performance |
+|----------------------|----------------|----------------------|-------------|
+| [Referenced](#referenced-dependencies) | Yes | Yes* | Caches by (type, name, version) |
+| [Remote](#remote-dependencies) | Yes | No | Caches by (name, url, version) |
+| [Custom](#custom-dependencies) | Yes | No | No caching |
+
+*Referenced dependencies are the only type that supports vulnerabilities, custom and remote dependencies do not. Reference dependencies of type `url` also do not support vulnerabilities.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
