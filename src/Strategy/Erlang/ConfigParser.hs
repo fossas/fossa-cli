@@ -20,6 +20,7 @@ module Strategy.Erlang.ConfigParser (
   alphaNumToInt,
 ) where
 
+import Control.Monad (void)
 import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Char qualified as C
 import Data.Functor (($>))
@@ -66,7 +67,7 @@ parseConfig :: Parser ConfigValues
 parseConfig = ConfigValues <$ scn <*> parseTuple `endBy1` symbol "."
 
 parseErlValue :: Parser ErlValue
-parseErlValue = parseErlArray <|> parseTuple <|> parseNumber <|> parseErlString <|> parseAtom
+parseErlValue = parseErlArray <|> parseTuple <|> parseMap <|> parseBinary <|> parseNumber <|> parseErlString <|> parseAtom
 
 parseNumber :: Parser ErlValue
 parseNumber = try parseRadixLiteral <|> parseCharNum <|> try parseFloatLiteral <|> parseIntLiteral
@@ -172,3 +173,35 @@ scn = L.space space1 (L.skipLineComment "%") empty
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme scn
+
+parseMap :: Parser ErlValue
+parseMap = do
+  void $ symbol "#"
+  -- Parse map contents between curly braces
+  void $ symbol "{"
+  -- Parse key-value pairs separated by commas
+  void $ parseMapPairs `sepBy` symbol ","
+  void $ symbol "}"
+  -- Return an empty tuple as a placeholder since we don't need the map contents
+  pure $ ErlTuple []
+  where
+    parseMapPairs :: Parser ()
+    parseMapPairs = do
+      -- Parse key (any ErlValue)
+      _ <- parseErlValue
+      -- Parse the arrow operator '=>'
+      _ <- symbol "=>"
+      -- Parse value (any ErlValue)
+      _ <- parseErlValue
+      pure ()
+
+-- Parse Erlang binary syntax << ... >>
+-- https://www.erlang.org/doc/system/bit_syntax.html
+parseBinary :: Parser ErlValue
+parseBinary = do
+  _ <- symbol "<<"
+  -- Parse binary contents separated by commas
+  _ <- parseErlValue `sepBy` symbol ","
+  _ <- symbol ">>"
+  -- Return an empty tuple as placeholder since we don't need the binary contents
+  pure $ ErlTuple []

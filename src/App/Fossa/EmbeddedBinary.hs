@@ -12,6 +12,7 @@ module App.Fossa.EmbeddedBinary (
   withBerkeleyBinary,
   withLernieBinary,
   withMillhoneBinary,
+  withCirceBinary,
   allBins,
   dumpEmbeddedBinary,
   themisVersion,
@@ -58,6 +59,7 @@ data PackagedBinary
   | BerkeleyDB
   | Lernie
   | Millhone
+  | Circe
   deriving (Show, Eq, Enum, Bounded)
 
 allBins :: [PackagedBinary]
@@ -74,6 +76,8 @@ data ThemisBinary
 data ThemisIndex
 
 data Lernie
+
+data Circe
 
 data ThemisBins = ThemisBins
   { themisBinaryPaths :: Tagged ThemisBinary BinaryPaths
@@ -115,6 +119,9 @@ withLernieBinary = withEmbeddedBinary Lernie
 withMillhoneBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withMillhoneBinary = withEmbeddedBinary Millhone
 
+withCirceBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
+withCirceBinary = withEmbeddedBinary Circe
+
 withEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> (BinaryPaths -> m c) -> m c
 withEmbeddedBinary bin = bracket (extractEmbeddedBinary bin) cleanupExtractedBinaries
 
@@ -143,6 +150,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   BerkeleyDB -> embeddedBinaryBerkeleyDB
   Lernie -> embeddedBinaryLernie
   Millhone -> embeddedBinaryMillhone
+  Circe -> embeddedBinaryCirce
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -157,6 +165,7 @@ extractedPath bin = case bin of
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
+  Circe -> $(mkRelFile "circe")
 
 -- | Extract to @$TMP/fossa-vendor-<uuid>/
 --
@@ -198,6 +207,9 @@ themisVersion = $$(themisVersionQ)
 
 embeddedBinaryLernie :: ByteString
 embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
+
+embeddedBinaryCirce :: ByteString
+embeddedBinaryCirce = $(embedFileIfExists "vendor-bins/circe")
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS

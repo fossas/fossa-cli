@@ -1,5 +1,34 @@
 # FOSSA CLI Changelog
 
+## 3.10.6
+- Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
+
+## 3.10.5
+
+Container scanning: Resolved a large number of issues with scanning containers ([#1514](https://github.com/fossas/fossa-cli/pull/1514), [#1521](https://github.com/fossas/fossa-cli/pull/1521))
+- Pulling containers from recent versions of Docker are properly supported.
+- OCI container hosts are better supported.
+- Scanning exported containers from recent versions of Docker are properly supported.
+- Authentication is better supported overall, it now integrates with native Docker authentication providers.
+- The old container scanning functionality still exists in FOSSA CLI as a fallback if the new functionality fails.
+
+> [!NOTE]
+> FOSSA built a separate binary to handle pulling images; refer to [its repository](https://github.com/fossas/circe) for details.
+> This binary is bundled into FOSSA CLI, you don't need to do anything special to use it.
+
+## 3.10.4
+- Erlang: Rebar config parsing bug fixes ([#1524](https://github.com/fossas/fossa-cli/pull/1522))
+
+## 3.10.3
+- PDM Parser: Proper parsing for PDM platform_machine line ([#1521](https://github.com/fossas/fossa-cli/pull/1521))
+- License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
+
+## 3.10.2
+- Cargo: Do not create Cargo.lock if it already exists ([#1516](https://github.com/fossas/fossa-cli/pull/1516))
+
+## 3.10.1
+- Swift: Add support for parsing path dependencies with names ([#1515](https://github.com/fossas/fossa-cli/pull/1515))
+
 ## 3.10.0
 - Support for user-provided dependency labels in `fossa-deps` ([#1505](https://github.com/fossas/fossa-cli/pull/1505)).
   For details, see the [`fossa-deps` documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md).

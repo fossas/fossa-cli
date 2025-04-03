@@ -33,6 +33,15 @@ The mavenplugin and treecmd tactic can result in transitive dependencies which d
 ```
 `httpclient` will appear as a transitive dependency in the FOSSA UI, but it will not have any paths. There are a few things that contribute to this happening. `httpclient`'s only listed parent is `restassured` which is a `test` dependency, however, `httpclient` is a `compile`. This tells us that `httpclient` has another parent in the graph, but we are unable to determine where.
 
+### I need to set some custom command line arguments for Maven, does FOSSA support that?
+
+Not directly, but `mvn` itself has an [environment variable](https://maven.apache.org/configure.html) which you can use. 
+For example, to set a custom `settings.xml` file you can use an invocation like this:
+
+```sh
+export MAVEN_ARGS="--settings /foo/bar/settings.xml" fossa analyze
+```
+
 ## Filtering by Maven Dependency Scope 
 
 You can use [configuration file](../../../files/fossa-yml.md) to provide maven dependency scopes that you would like to filter. You can filter by either inclusion or exclusion. When both scope-only and scope-exclude are provided, scope-only will take precedence and be used for filtering.
