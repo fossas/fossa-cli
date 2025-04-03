@@ -411,12 +411,26 @@ buildGraph lockFile = withoutLocalPackages $
     --
     toResolvedDependency :: Text -> Text -> Bool -> Maybe Dependency
     toResolvedDependency depName depVersion isImporterDevDep = do
+      -- First try to find the package directly by its version string
       let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
-      let maybeRegistrySrcPackage = Map.lookup (mkPkgKey depName depVersion) (packages lockFile)
+      
+      -- If the version is just "catalog:", try to resolve it from the catalog
+      let resolvedVersion = if depVersion == "catalog:" 
+                            then do
+                              defaultCatalog <- Map.lookup "default" (catalogs lockFile)
+                              entry <- Map.lookup depName (catalogEntries defaultCatalog)
+                              Just $ catalogVersion entry
+                            else Just depVersion
+      
+      -- Then try to find the package by constructing a package key
+      let maybeRegistrySrcPackage = case resolvedVersion of
+                                     Nothing -> Nothing
+                                     Just ver -> Map.lookup (mkPkgKey depName ver) (packages lockFile)
+      
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
         (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg isImporterDevDep
-        (Nothing, Just registryPkg) -> Just $ toDependency depName (Just depVersion) registryPkg isImporterDevDep
+        (Nothing, Just registryPkg) -> Just $ toDependency depName resolvedVersion registryPkg isImporterDevDep
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
@@ -437,6 +451,8 @@ buildGraph lockFile = withoutLocalPackages $
     getPackageVersion name version = 
       if "catalog:" `Text.isPrefixOf` version
         then do
+          -- Handle both full catalog references (catalog:default/pkg) and 
+          -- shortened ones (catalog:) by always checking the default catalog
           defaultCatalog <- Map.lookup "default" (catalogs lockFile)
           entry <- Map.lookup name (catalogEntries defaultCatalog)
           Just $ catalogVersion entry
