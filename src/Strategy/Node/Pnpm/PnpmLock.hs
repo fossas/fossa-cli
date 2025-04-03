@@ -1,7 +1,9 @@
 module Strategy.Node.Pnpm.PnpmLock (
+  -- | Analyzes a pnpm lockfile and returns a graph of dependencies.
   analyze,
 
   -- * for testing
+  -- | Builds a graph of dependencies from a pnpm lockfile.
   buildGraph,
 ) where
 
@@ -36,7 +38,6 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
-import qualified Data.Maybe as Maybe
 
 -- | Pnpm Lockfile
 --
@@ -437,16 +438,16 @@ buildGraph lockFile = withoutLocalPackages $
 
     -- | Build a map of package names to their actual versions from the catalogs section
     buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
-    buildCatalogVersionMap pnpmLockFile = 
+    buildCatalogVersionMap pnpmLockFile =
       case Map.lookup "default" (catalogs pnpmLockFile) of
         Nothing -> Map.empty
-        Just defaultCatalog -> 
+        Just defaultCatalog ->
           Map.map catalogVersion (catalogEntries defaultCatalog)
 
     -- | Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
     getPackageVersion catalogMap name version
-      | "catalog:" `Text.isPrefixOf` version || version == "catalog:" = 
+      | "catalog:" `Text.isPrefixOf` version || version == "catalog:" =
           Map.lookup name catalogMap <|> Just version
       | "workspace:" `Text.isPrefixOf` version = do
           -- Handle workspace:* and workspace:^x.x.x formats
