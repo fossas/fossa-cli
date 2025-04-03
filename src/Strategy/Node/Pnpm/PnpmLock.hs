@@ -25,7 +25,7 @@ import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, NodeJSType, URLType, UserType),
+  DepType (GitType, NodeJSType, RegistryType, URLType, UserType),
   Dependency (Dependency, dependencyType),
   VerConstraint (CEq),
  )
@@ -293,6 +293,7 @@ buildGraph lockFile = withoutLocalPackages $
     -- First, build a map of all catalog references to their actual versions
     let catalogVersionMap = buildCatalogVersionMap lockFile
     
+    -- Process direct dependencies from importers
     for_ (toList $ importers lockFile) $ \(_, projectSnapshot) -> do
       -- Track which packages are dev dependencies from the importers section
       -- let prodDeps = Set.fromList $ map fst $ toList (directDependencies projectSnapshot)
@@ -301,12 +302,14 @@ buildGraph lockFile = withoutLocalPackages $
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
 
+      -- Process direct dependencies, skipping bare "catalog:" references
+      let processedDeps = Set.empty
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
         -- Skip bare "catalog:" references completely
         when (depVersion /= "catalog:") $
           maybe (pure ()) direct $
             toResolvedDependency catalogVersionMap depName depVersion (Set.member depName devDeps)
-    
+
     -- Add edges and deep dependencies by iterating over all packages.
     --
     -- Use `dev` to infer if this is production or non-production dependency.
@@ -327,7 +330,6 @@ buildGraph lockFile = withoutLocalPackages $
     -- @
     for_ (toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
       let deepDependencies = toList $ dependencies pkgMeta
-
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
@@ -411,6 +413,7 @@ buildGraph lockFile = withoutLocalPackages $
     --
     --   - /${depName}/${depVersion} -- for v5 fmt
     --   - /${depName}@${depVersion} -- for v6 fmt
+    --   - ${depName}@${depVersion} -- for v9 fmt
     --
     -- For dependency resolved via non-registry resolvers,
     -- it will use the dependency's version value for its `packages` key:
@@ -420,35 +423,42 @@ buildGraph lockFile = withoutLocalPackages $
     --
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
     toResolvedDependency catalogMap depName depVersion isImporterDevDep = do
-      -- First try to find the package directly by its version string
-      let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
+      -- Skip bare "catalog:" references completely - they should be handled by their
+      -- proper references from the packages section
+      if depVersion == "catalog:"
+        then Nothing
+        else do
+          -- First try to find the package directly by its version string
+          let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
 
-      -- Resolve the version if it's a catalog or workspace reference
-      let resolvedVersion = getPackageVersion catalogMap depName depVersion
+          -- Resolve the version if it's a catalog or workspace reference
+          let resolvedVersion = getPackageVersion catalogMap depName depVersion
 
-      -- Then try to find the package by constructing a package key
-      let maybeRegistrySrcPackage = case resolvedVersion of
-            Nothing -> Nothing
-            Just ver -> Map.lookup (mkPkgKey depName ver) (packages lockFile)
+          -- Then try to find the package by constructing a package key
+          let maybeRegistrySrcPackage = case resolvedVersion of
+                Nothing -> Nothing
+                Just ver -> 
+                  let key = mkPkgKey depName ver
+                  in Map.lookup key (packages lockFile)
 
-      case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
-        (Nothing, Nothing) -> Nothing
-        (Just nonRegistryPkg, _) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
-        (Nothing, Just registryPkg) -> Just $ toDependency catalogMap depName resolvedVersion registryPkg isImporterDevDep
-
-    -- | Build a map of package names to their actual versions from the catalogs section
-    buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
-    buildCatalogVersionMap pnpmLockFile =
-      case Map.lookup "default" (catalogs pnpmLockFile) of
-        Nothing -> Map.empty
-        Just defaultCatalog ->
-          Map.map catalogVersion (catalogEntries defaultCatalog)
+          case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
+            (Nothing, Nothing) -> 
+              -- If we can't find the package in the packages section, but we have a resolved version,
+              -- create a dependency with the resolved version to avoid PackageNotFoundError
+              case resolvedVersion of
+                Just ver | ver /= "catalog:" && not ("catalog:" `Text.isPrefixOf` ver) -> 
+                  Just $ toDep RegistryType depName (Just ver) isImporterDevDep
+                _ -> Nothing
+            (Just nonRegistryPkg, _) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
+            (Nothing, Just registryPkg) -> Just $ toDependency catalogMap depName resolvedVersion registryPkg isImporterDevDep
 
     -- | Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
     getPackageVersion catalogMap name version
-      | "catalog:" `Text.isPrefixOf` version || version == "catalog:" =
-          Map.lookup name catalogMap <|> Just version
+      | "catalog:" `Text.isPrefixOf` version = 
+          Map.lookup name catalogMap
+      | version == "catalog:" =
+          Map.lookup name catalogMap
       | "workspace:" `Text.isPrefixOf` version = do
           -- Handle workspace:* and workspace:^x.x.x formats
           let versionPart = Text.drop 10 version
@@ -463,13 +473,20 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a/1.0.0" -- for v5 fmt
     -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a@1.0.0" -- for v6 fmt
     -- >> mkPkgKey "pkg-a" "1.0.0(babal@1.0.0)" = "/pkg-a@1.0.0(babal@1.0.0)" -- for v6 fmt
+    -- >> mkPkgKey "pkg-a" "1.0.0" = "pkg-a@1.0.0" -- for v9 fmt
     mkPkgKey :: Text -> Text -> Text
     mkPkgKey name version = case lockFileVersion lockFile of
       PnpmLock4Or5 -> "/" <> name <> "/" <> version
       PnpmLock6 -> "/" <> name <> "@" <> version
       PnpmLockLt4 _ -> "/" <> name <> "/" <> version
       PnpmLockV678 _ -> "/" <> name <> "@" <> version
-      PnpmLockV9 -> name <> "@" <> version
+      -- For PNPM v9, we need to handle both formats: with and without leading slash
+      PnpmLockV9 -> 
+        let keyWithoutSlash = name <> "@" <> version
+            keyWithSlash = "/" <> keyWithoutSlash
+        in if Map.member keyWithSlash (packages lockFile)
+           then keyWithSlash
+           else keyWithoutSlash
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.
@@ -499,7 +516,7 @@ buildGraph lockFile = withoutLocalPackages $
 
     toDependency :: Map Text Text -> Text -> Maybe Text -> PackageData -> Bool -> Dependency
     toDependency catalogMap name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) isImporterDevDep =
-      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> (maybeVersion >>= getPackageVersion catalogMap name)) (isDev || isImporterDevDep)
+      toDep RegistryType name (withoutPeerDepSuffix . withoutSymConstraint <$> (maybeVersion >>= getPackageVersion catalogMap name)) (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
       toDep GitType url (Just rev) (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) isImporterDevDep =
@@ -508,3 +525,11 @@ buildGraph lockFile = withoutLocalPackages $
       toDep UserType name Nothing (isDev || isImporterDevDep)
     toDependency _ name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) isImporterDevDep =
       toDep UserType name Nothing (isDev || isImporterDevDep)
+
+    -- | Build a map of package names to their actual versions from the catalogs section
+    buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
+    buildCatalogVersionMap pnpmLockFile =
+      case Map.lookup "default" (catalogs pnpmLockFile) of
+        Nothing -> Map.empty
+        Just defaultCatalog ->
+          Map.map catalogVersion (catalogEntries defaultCatalog)
