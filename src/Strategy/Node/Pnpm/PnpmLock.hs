@@ -14,8 +14,7 @@ import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
-import Data.Maybe (listToMaybe)
-import Data.Maybe qualified as Maybe
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -371,7 +370,7 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> getPkgNameVersionV9 "pkg-b@workspace:^1.0.0" = Just ("pkg-b", "workspace:^1.0.0")
     getPkgNameVersionV9 :: Text -> Maybe (Text, Text)
     getPkgNameVersionV9 pkgKey = do
-      let txt = Maybe.fromMaybe pkgKey (Text.stripPrefix "/" pkgKey)
+      let txt = fromMaybe pkgKey (Text.stripPrefix "/" pkgKey)
       case Text.breakOn "@" txt of
         (name, ver)
           | not (Text.null ver) ->
@@ -442,7 +441,7 @@ buildGraph lockFile = withoutLocalPackages $
       case Map.lookup "default" (catalogs pnpmLockFile) of
         Nothing -> Map.empty
         Just defaultCatalog -> 
-          Map.mapWithKey (\k v -> catalogVersion v) (catalogEntries defaultCatalog)
+          Map.map catalogVersion (catalogEntries defaultCatalog)
 
     -- | Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
