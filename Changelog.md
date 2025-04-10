@@ -2,6 +2,7 @@
 
 ## 3.10.6
 - Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
+- Licensing: Adds support for the NREL disclaimer
 
 ## 3.10.5
 
