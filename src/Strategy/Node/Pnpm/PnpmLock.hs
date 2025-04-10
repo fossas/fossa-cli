@@ -493,9 +493,7 @@ buildGraph lockFile = withoutLocalPackages $
             keyWithSlash = "/" <> keyWithoutSlash
          in if Map.member keyWithSlash (packages lockFile)
               then keyWithSlash
-              else if Map.member keyWithoutSlash (packages lockFile)
-                then keyWithoutSlash
-                else keyWithoutSlash -- Default to key without slash for PNPM v9
+              else keyWithoutSlash -- Default to key without slash for PNPM v9
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.
