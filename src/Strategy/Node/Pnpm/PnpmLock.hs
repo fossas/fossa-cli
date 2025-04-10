@@ -332,15 +332,22 @@ buildGraph lockFile = withoutLocalPackages $
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
     toResolvedDependency catalogMap depName depVersion isImporterDevDep = do
       -- First try to resolve through catalog map if it's a catalog reference
-      let resolvedVersion =
-            if Text.pack "catalog:" `Text.isPrefixOf` depVersion || depVersion == Text.pack "catalog:"
+      let isCatalogRef = Text.pack "catalog:" `Text.isPrefixOf` depVersion
+      let cleanVersion = withoutPeerDepSuffix . withoutSymConstraint $ 
+            if isCatalogRef 
+              then Text.drop (Text.length "catalog:") depVersion
+              else depVersion
+      
+      -- For catalog references, look up in the catalog map
+      let resolvedVersion = 
+            if isCatalogRef
               then Map.lookup depName catalogMap
-              else Just depVersion
+              else Just cleanVersion
 
       case resolvedVersion of
         Just ver -> do
           -- Try to find the package in the packages section
-          let maybeNonRegistrySrcPackage = Map.lookup (withoutPeerDepSuffix . withoutSymConstraint $ depVersion) (packages lockFile)
+          let maybeNonRegistrySrcPackage = Map.lookup cleanVersion (packages lockFile)
           let maybeRegistrySrcPackage =
                 let key = mkPkgKey depName (withoutPeerDepSuffix . withoutSymConstraint $ ver)
                  in Map.lookup key (packages lockFile)
@@ -379,10 +386,10 @@ buildGraph lockFile = withoutLocalPackages $
       let resolvedVersion = case maybeVersion of
             Nothing -> Nothing
             Just ver -> 
-              let catalogEntries = Map.mapWithKey (\k v -> CatalogEntry v v) catalogMap
-                  catalog = CatalogMap catalogEntries
-              in case getPackageVersion catalog name ver of
-                Just resolved -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ resolved
+              -- Try to find the version in the default catalog first
+              case Map.lookup (Text.pack "default") (catalogs lockFile) >>= \defaultCatalog ->
+                   Map.lookup (name <> "/" <> ver) (catalogEntries defaultCatalog) of
+                Just entry -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ catalogVersion entry
                 Nothing -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver
        in toDep NodeJSType name resolvedVersion (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
