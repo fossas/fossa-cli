@@ -429,13 +429,13 @@ buildGraph lockFile = withoutLocalPackages $
         then do
           -- For catalog references, look up the actual version in the catalog map
           case getPackageVersion catalogMap depName depVersion of
-            Just ver -> Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
+            Just ver -> Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) isImporterDevDep
             Nothing -> Nothing
         else do
           -- For non-catalog references, try to find the package in the packages section
           let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
           let maybeRegistrySrcPackage =
-                let key = mkPkgKey depName depVersion
+                let key = mkPkgKey depName (withoutPeerDepSuffix . withoutSymConstraint $ depVersion)
                  in Map.lookup key (packages lockFile)
 
           -- If we have both a non-registry and registry package, prefer the registry one
@@ -444,9 +444,9 @@ buildGraph lockFile = withoutLocalPackages $
             (Nothing, Nothing) ->
               -- If we can't find the package in the packages section, create a dependency
               -- with the version we have (it might be a workspace reference)
-              Just $ toDep NodeJSType depName (Just depVersion) isImporterDevDep
+              Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ depVersion) isImporterDevDep
             (Just nonRegistryPkg, Nothing) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
-            (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just depVersion) registryPkg isImporterDevDep
+            (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ depVersion) registryPkg isImporterDevDep
 
     -- \| Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
@@ -515,7 +515,9 @@ buildGraph lockFile = withoutLocalPackages $
       -- For registry packages, resolve any catalog/workspace references first
       let resolvedVersion = case maybeVersion of
             Nothing -> Nothing
-            Just ver -> getPackageVersion catalogMap name ver
+            Just ver -> case getPackageVersion catalogMap name ver of
+              Just resolved -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ resolved
+              Nothing -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver
        in toDep NodeJSType name resolvedVersion (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
       toDep GitType url (Just rev) (isDev || isImporterDevDep)
