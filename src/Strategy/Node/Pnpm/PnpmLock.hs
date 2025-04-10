@@ -428,7 +428,7 @@ buildGraph lockFile = withoutLocalPackages $
       if depVersion == "catalog:" || "catalog:" `Text.isPrefixOf` depVersion
         then do
           -- For catalog references, look up the actual version in the catalog map
-          case Map.lookup depName catalogMap of
+          case getPackageVersion catalogMap depName depVersion of
             Just ver -> Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
             Nothing -> Nothing
         else do
@@ -515,10 +515,7 @@ buildGraph lockFile = withoutLocalPackages $
       -- For registry packages, resolve any catalog/workspace references first
       let resolvedVersion = case maybeVersion of
             Nothing -> Nothing
-            Just ver ->
-              if "catalog:" `Text.isPrefixOf` ver || ver == "catalog:"
-                then Map.lookup name catalogMap
-                else Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver
+            Just ver -> getPackageVersion catalogMap name ver
        in toDep NodeJSType name resolvedVersion (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
       toDep GitType url (Just rev) (isDev || isImporterDevDep)
