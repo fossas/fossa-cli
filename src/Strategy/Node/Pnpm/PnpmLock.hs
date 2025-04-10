@@ -296,7 +296,6 @@ buildGraph lockFile = withoutLocalPackages $
     -- Process direct dependencies from importers
     for_ (toList $ importers lockFile) $ \(_, projectSnapshot) -> do
       -- Track which packages are dev dependencies from the importers section
-      -- let prodDeps = Set.fromList $ map fst $ toList (directDependencies projectSnapshot)
       let devDeps = Set.fromList $ map fst $ toList (directDevDependencies projectSnapshot)
       let allDirectDependencies =
             toList (directDependencies projectSnapshot)
@@ -334,12 +333,14 @@ buildGraph lockFile = withoutLocalPackages $
             Just (name, version) -> (name, Just version)
       let parentDep = toDependency catalogVersionMap depName depVersion pkgMeta False -- Not a direct dependency, use package's isDev
 
-      -- It is ok, if this dependency was already graphed as direct
-      -- @direct 1 <> deep 1 = direct 1@
+      -- Only add deep dependency if it hasn't been added as a direct dependency
+      -- This prevents duplicates in the graph
       deep parentDep
 
       for_ deepDependencies $ \(deepName, deepVersion) -> do
-        maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
+        -- Skip catalog references in deep dependencies
+        when (deepVersion /= "catalog:") $
+          maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
   where
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion = case lockFileVersion lockFile of
@@ -427,30 +428,36 @@ buildGraph lockFile = withoutLocalPackages $
       if depVersion == "catalog:"
         then Nothing
         else do
-          -- First try to find the package directly by its version string
-          let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
-
-          -- Resolve the version if it's a catalog or workspace reference
+          -- First try to resolve the version if it's a catalog or workspace reference
           let resolvedVersion = getPackageVersion catalogMap depName depVersion
 
-          -- Then try to find the package by constructing a package key
-          let maybeRegistrySrcPackage = case resolvedVersion of
-                Nothing -> Nothing
-                Just ver ->
-                  let key = mkPkgKey depName ver
-                   in Map.lookup key (packages lockFile)
+          -- For catalog references, we should only use the resolved version
+          if "catalog:" `Text.isPrefixOf` depVersion || depVersion == "catalog:"
+            then case resolvedVersion of
+              Just ver -> Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
+              Nothing -> Nothing
+            else do
+              -- For non-catalog references, try to find the package in the packages section
+              let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
+              let maybeRegistrySrcPackage = case resolvedVersion of
+                    Nothing -> Nothing
+                    Just ver ->
+                      let key = mkPkgKey depName ver
+                       in Map.lookup key (packages lockFile)
 
-          case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
-            (Nothing, Nothing) ->
-              -- If we can't find the package in the packages section, but we have a resolved version,
-              -- create a dependency with the resolved version to avoid PackageNotFoundError
-              case resolvedVersion of
-                Just ver
-                  | ver /= "catalog:" && not ("catalog:" `Text.isPrefixOf` ver) ->
-                      Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
-                _ -> Nothing
-            (Just nonRegistryPkg, _) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
-            (Nothing, Just registryPkg) -> Just $ toDependency catalogMap depName resolvedVersion registryPkg isImporterDevDep
+              -- If we have both a non-registry and registry package, prefer the registry one
+              -- to avoid duplicates
+              case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
+                (Nothing, Nothing) ->
+                  -- If we can't find the package in the packages section, but we have a resolved version,
+                  -- create a dependency with the resolved version to avoid PackageNotFoundError
+                  case resolvedVersion of
+                    Just ver
+                      | ver /= "catalog:" && not ("catalog:" `Text.isPrefixOf` ver) ->
+                          Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
+                    _ -> Nothing
+                (Just nonRegistryPkg, Nothing) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
+                (_, Just registryPkg) -> Just $ toDependency catalogMap depName resolvedVersion registryPkg isImporterDevDep
 
     -- \| Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
@@ -486,7 +493,9 @@ buildGraph lockFile = withoutLocalPackages $
             keyWithSlash = "/" <> keyWithoutSlash
          in if Map.member keyWithSlash (packages lockFile)
               then keyWithSlash
-              else keyWithoutSlash
+              else if Map.member keyWithoutSlash (packages lockFile)
+                then keyWithoutSlash
+                else keyWithoutSlash -- Default to key without slash for PNPM v9
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.
