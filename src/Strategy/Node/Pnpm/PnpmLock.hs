@@ -362,7 +362,7 @@ buildGraph lockFile = withoutLocalPackages $
             (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) registryPkg isImporterDevDep
         Nothing -> Nothing  -- Skip if we can't resolve the version at all
 
-    -- \| Build a map of package names to their actual versions from the catalogs section
+    -- Build a map of package names to their actual versions from the catalogs section
     buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
     buildCatalogVersionMap pnpmLockFile =
       case Map.lookup "default" (catalogs pnpmLockFile) of
