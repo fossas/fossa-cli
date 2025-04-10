@@ -303,10 +303,8 @@ buildGraph lockFile = withoutLocalPackages $
 
       -- Process direct dependencies
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
-        -- Skip any catalog references - they will be handled by their resolved versions
-        when (not ("catalog:" `Text.isPrefixOf` depVersion)) $
-          maybe (pure ()) direct $
-            toResolvedDependency catalogVersionMap depName depVersion (Set.member depName devDeps)
+        maybe (pure ()) direct $
+          toResolvedDependency catalogVersionMap depName depVersion (Set.member depName devDeps)
 
     -- Add edges and deep dependencies by iterating over all packages.
     for_ (toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
@@ -314,16 +312,14 @@ buildGraph lockFile = withoutLocalPackages $
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
-      let parentDep = toDependency catalogMap depName depVersion pkgMeta False -- Not a direct dependency, use package's isDev
+      let parentDep = toDependency catalogVersionMap depName depVersion pkgMeta False -- Not a direct dependency, use package's isDev
 
       -- Only add deep dependency if it hasn't been added as a direct dependency
       -- This prevents duplicates in the graph
       deep parentDep
 
-      for_ deepDependencies $ \(deepName, deepVersion) -> do
-        -- Skip any catalog references in deep dependencies
-        when (not ("catalog:" `Text.isPrefixOf` deepVersion)) $
-          maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
+      for_ deepDependencies $ \(deepName, deepVersion) ->
+        maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
 
     -- \| Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
@@ -342,16 +338,17 @@ buildGraph lockFile = withoutLocalPackages $
 
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
     toResolvedDependency catalogMap depName depVersion isImporterDevDep = do
-      -- For catalog references, look up the actual version in the catalog map
-      if "catalog:" `Text.isPrefixOf` depVersion || depVersion == "catalog:"
-        then case Map.lookup depName catalogMap of
-          Just ver -> Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) isImporterDevDep
-          Nothing -> Nothing  -- Skip catalog references that can't be resolved
-        else do
-          -- For non-catalog references, try to find the package in the packages section
+      -- First try to resolve through catalog map if it's a catalog reference
+      let resolvedVersion = if "catalog:" `Text.isPrefixOf` depVersion || depVersion == "catalog:"
+            then Map.lookup depName catalogMap
+            else Just depVersion
+
+      case resolvedVersion of
+        Just ver -> do
+          -- Try to find the package in the packages section
           let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
           let maybeRegistrySrcPackage =
-                let key = mkPkgKey depName (withoutPeerDepSuffix . withoutSymConstraint $ depVersion)
+                let key = mkPkgKey depName (withoutPeerDepSuffix . withoutSymConstraint $ ver)
                  in Map.lookup key (packages lockFile)
 
           -- If we have both a non-registry and registry package, prefer the registry one
@@ -359,10 +356,11 @@ buildGraph lockFile = withoutLocalPackages $
           case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
             (Nothing, Nothing) ->
               -- If we can't find the package in the packages section, create a dependency
-              -- with the version we have (it might be a workspace reference)
-              Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ depVersion) isImporterDevDep
+              -- with the version we have
+              Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) isImporterDevDep
             (Just nonRegistryPkg, Nothing) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
-            (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ depVersion) registryPkg isImporterDevDep
+            (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) registryPkg isImporterDevDep
+        Nothing -> Nothing  -- Skip if we can't resolve the version at all
 
     -- \| Build a map of package names to their actual versions from the catalogs section
     buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
