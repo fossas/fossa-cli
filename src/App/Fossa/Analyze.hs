@@ -47,6 +47,7 @@ import App.Fossa.Config.Analyze (
   ScanDestination (..),
   UnpackArchives (UnpackArchives),
   WithoutDefaultFilters (..),
+  AutoDetectProjectUrl (..),
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
@@ -89,7 +90,7 @@ import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Diagnostics (recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
-import Control.Effect.Git (Git)
+import Control.Effect.Git (Git, getRemoteUrl)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
@@ -102,7 +103,7 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, isNothing, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Diag.Diagnostic as DI
@@ -278,24 +279,37 @@ analyze ::
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
+  -- Get project URL from Git if enabled and not manually specified
+  projectUrl <- case (Config.projectUrl cfg, fromFlag AutoDetectProjectUrl $ Config.autoDetectProjectUrl cfg) of
+    (Just url, _) -> pure (Just url)  -- Use manually specified URL if provided
+    (Nothing, True) -> do
+      maybeUrl <- getRemoteUrl
+      when (isJust maybeUrl) $
+        logInfo "Using Git remote URL as project URL"
+      when (isNothing maybeUrl) $
+        logDebug "No Git remote URL detected, continuing without project URL"
+      pure maybeUrl
+    (Nothing, False) -> pure Nothing
+
   let maybeApiOpts = case destination of
         OutputStdout -> Nothing
-        UploadScan opts _ -> Just opts
-      BaseDir basedir = Config.baseDir cfg
-      destination = Config.scanDestination cfg
-      filters = Config.filterSet cfg
-      iatAssertion = Config.iatAssertion $ Config.vsiOptions cfg
-      includeAll = Config.includeAllDeps cfg
-      jsonOutput = Config.jsonOutput cfg
-      noDiscoveryExclusion = Config.noDiscoveryExclusion cfg
-      revision = Config.projectRevision cfg
-      skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
-      vendoredDepsOptions = Config.vendoredDeps cfg
-      grepOptions = Config.grepOptions cfg
-      customFossaDepsFile = Config.customFossaDepsFile cfg
-      shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
-      allowedTactics = Config.allowedTacticTypes cfg
-      withoutDefaultFilters = Config.withoutDefaultFilters cfg
+        UploadScan opts metadata -> Just $ opts { metaProjectUrl = projectUrl <|> metaProjectUrl metadata }
+
+  BaseDir basedir = Config.baseDir cfg
+  destination = Config.scanDestination cfg
+  filters = Config.filterSet cfg
+  iatAssertion = Config.iatAssertion $ Config.vsiOptions cfg
+  includeAll = Config.includeAllDeps cfg
+  jsonOutput = Config.jsonOutput cfg
+  noDiscoveryExclusion = Config.noDiscoveryExclusion cfg
+  revision = Config.projectRevision cfg
+  skipResolutionSet = Config.vsiSkipSet $ Config.vsiOptions cfg
+  vendoredDepsOptions = Config.vendoredDeps cfg
+  grepOptions = Config.grepOptions cfg
+  customFossaDepsFile = Config.customFossaDepsFile cfg
+  shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
+  allowedTactics = Config.allowedTacticTypes cfg
+  withoutDefaultFilters = Config.withoutDefaultFilters cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
