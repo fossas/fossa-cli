@@ -326,12 +326,11 @@ buildGraph lockFile = withoutLocalPackages $
     getPackageVersion catalogMap name version
       | "catalog:" `Text.isPrefixOf` version = Map.lookup name catalogMap
       | version == "catalog:" = Map.lookup name catalogMap
-      | "workspace:" `Text.isPrefixOf` version = do
-          -- Handle workspace:* and workspace:^x.x.x formats
+      | "workspace:" `Text.isPrefixOf` version =
           let versionPart = Text.drop 10 version
-          if versionPart == "*" || Text.isPrefixOf "^" versionPart
-            then Map.lookup name catalogMap
-            else Just versionPart
+          in if versionPart == "*" || Text.isPrefixOf "^" versionPart
+               then Map.lookup name catalogMap
+               else Just versionPart
       | otherwise = Just version
 
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
