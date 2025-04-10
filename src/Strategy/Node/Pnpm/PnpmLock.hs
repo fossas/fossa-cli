@@ -425,39 +425,28 @@ buildGraph lockFile = withoutLocalPackages $
     toResolvedDependency catalogMap depName depVersion isImporterDevDep = do
       -- Skip bare "catalog:" references completely - they should be handled by their
       -- proper references from the packages section
-      if depVersion == "catalog:"
-        then Nothing
+      if depVersion == "catalog:" || "catalog:" `Text.isPrefixOf` depVersion
+        then do
+          -- For catalog references, look up the actual version in the catalog map
+          case Map.lookup depName catalogMap of
+            Just ver -> Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
+            Nothing -> Nothing
         else do
-          -- First try to resolve the version if it's a catalog or workspace reference
-          let resolvedVersion = getPackageVersion catalogMap depName depVersion
+          -- For non-catalog references, try to find the package in the packages section
+          let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
+          let maybeRegistrySrcPackage = 
+                let key = mkPkgKey depName depVersion
+                 in Map.lookup key (packages lockFile)
 
-          -- For catalog references, we should only use the resolved version
-          if "catalog:" `Text.isPrefixOf` depVersion || depVersion == "catalog:"
-            then case resolvedVersion of
-              Just ver -> Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
-              Nothing -> Nothing
-            else do
-              -- For non-catalog references, try to find the package in the packages section
-              let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
-              let maybeRegistrySrcPackage = case resolvedVersion of
-                    Nothing -> Nothing
-                    Just ver ->
-                      let key = mkPkgKey depName ver
-                       in Map.lookup key (packages lockFile)
-
-              -- If we have both a non-registry and registry package, prefer the registry one
-              -- to avoid duplicates
-              case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
-                (Nothing, Nothing) ->
-                  -- If we can't find the package in the packages section, but we have a resolved version,
-                  -- create a dependency with the resolved version to avoid PackageNotFoundError
-                  case resolvedVersion of
-                    Just ver
-                      | ver /= "catalog:" && not ("catalog:" `Text.isPrefixOf` ver) ->
-                          Just $ toDep NodeJSType depName (Just ver) isImporterDevDep
-                    _ -> Nothing
-                (Just nonRegistryPkg, Nothing) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
-                (_, Just registryPkg) -> Just $ toDependency catalogMap depName resolvedVersion registryPkg isImporterDevDep
+          -- If we have both a non-registry and registry package, prefer the registry one
+          -- to avoid duplicates
+          case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
+            (Nothing, Nothing) ->
+              -- If we can't find the package in the packages section, create a dependency
+              -- with the version we have (it might be a workspace reference)
+              Just $ toDep NodeJSType depName (Just depVersion) isImporterDevDep
+            (Just nonRegistryPkg, Nothing) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
+            (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just depVersion) registryPkg isImporterDevDep
 
     -- \| Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
@@ -523,7 +512,13 @@ buildGraph lockFile = withoutLocalPackages $
 
     toDependency :: Map Text Text -> Text -> Maybe Text -> PackageData -> Bool -> Dependency
     toDependency catalogMap name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) isImporterDevDep =
-      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> (maybeVersion >>= getPackageVersion catalogMap name)) (isDev || isImporterDevDep)
+      -- For registry packages, resolve any catalog/workspace references first
+      let resolvedVersion = case maybeVersion of
+            Nothing -> Nothing
+            Just ver -> if "catalog:" `Text.isPrefixOf` ver || ver == "catalog:"
+              then Map.lookup name catalogMap
+              else Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver
+      in toDep NodeJSType name resolvedVersion (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
       toDep GitType url (Just rev) (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) isImporterDevDep =
