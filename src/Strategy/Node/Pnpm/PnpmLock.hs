@@ -303,7 +303,6 @@ buildGraph lockFile = withoutLocalPackages $
               <> toList (directDevDependencies projectSnapshot)
 
       -- Process direct dependencies, skipping bare "catalog:" references
-      let processedDeps = Set.empty
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
         -- Skip bare "catalog:" references completely
         when (depVersion /= "catalog:") $
