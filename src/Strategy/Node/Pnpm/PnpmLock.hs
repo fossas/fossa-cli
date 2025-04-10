@@ -325,8 +325,8 @@ buildGraph lockFile = withoutLocalPackages $
     getPackageVersion :: CatalogMap -> Text -> Text -> Maybe Text
     getPackageVersion catalog name version =
       let cleanVersion = withoutPeerDepSuffix $ withoutSymConstraint version
-      in case Map.lookup (name <> "/" <> cleanVersion) catalog of
-        Just entry -> Just $ catalogEntryVersion entry
+      in case Map.lookup (name <> "/" <> cleanVersion) (catalogEntries catalog) of
+        Just entry -> Just $ catalogVersion entry
         Nothing -> Just cleanVersion
 
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
@@ -378,9 +378,12 @@ buildGraph lockFile = withoutLocalPackages $
       -- For registry packages, resolve any catalog/workspace references first
       let resolvedVersion = case maybeVersion of
             Nothing -> Nothing
-            Just ver -> case getPackageVersion catalogMap name ver of
-              Just resolved -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ resolved
-              Nothing -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver
+            Just ver -> 
+              let catalogEntries = Map.mapWithKey (\k v -> CatalogEntry v v) catalogMap
+                  catalog = CatalogMap catalogEntries
+              in case getPackageVersion catalog name ver of
+                Just resolved -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ resolved
+                Nothing -> Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver
        in toDep NodeJSType name resolvedVersion (isDev || isImporterDevDep)
     toDependency _ _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) isImporterDevDep =
       toDep GitType url (Just rev) (isDev || isImporterDevDep)
