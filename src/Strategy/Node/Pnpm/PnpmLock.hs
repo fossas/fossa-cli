@@ -324,10 +324,8 @@ buildGraph lockFile = withoutLocalPackages $
     -- Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
     getPackageVersion catalogMap name version
-      | "catalog:" `Text.isPrefixOf` version =
-          Map.lookup name catalogMap
-      | version == "catalog:" =
-          Map.lookup name catalogMap
+      | "catalog:" `Text.isPrefixOf` version = Map.lookup name catalogMap
+      | version == "catalog:" = Map.lookup name catalogMap
       | "workspace:" `Text.isPrefixOf` version = do
           -- Handle workspace:* and workspace:^x.x.x formats
           let versionPart = Text.drop 10 version
