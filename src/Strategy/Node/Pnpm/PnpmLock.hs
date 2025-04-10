@@ -10,7 +10,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Monad (when)
+import Control.Monad (when, guard)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -322,16 +322,12 @@ buildGraph lockFile = withoutLocalPackages $
         maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
   where
     -- Get the actual version for a package, checking catalogs if needed
-    getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
-    getPackageVersion catalogMap name version
-      | Text.pack "catalog:" `Text.isPrefixOf` version = Map.lookup name catalogMap
-      | version == Text.pack "catalog:" = Map.lookup name catalogMap
-      | Text.pack "workspace:" `Text.isPrefixOf` version =
-          let versionPart = Text.drop 10 version
-           in if versionPart == Text.pack "*" || Text.pack "^" `Text.isPrefixOf` versionPart
-                then Map.lookup name catalogMap
-                else Just versionPart
-      | otherwise = Just version
+    getPackageVersion :: CatalogMap -> Text -> Text -> Maybe Text
+    getPackageVersion catalog name version =
+      let cleanVersion = withoutPeerDepSuffix $ withoutSymConstraint version
+      in case Map.lookup (name <> "/" <> cleanVersion) catalog of
+        Just entry -> Just $ catalogEntryVersion entry
+        Nothing -> Just cleanVersion
 
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
     toResolvedDependency catalogMap depName depVersion isImporterDevDep = do
@@ -344,7 +340,7 @@ buildGraph lockFile = withoutLocalPackages $
       case resolvedVersion of
         Just ver -> do
           -- Try to find the package in the packages section
-          let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
+          let maybeNonRegistrySrcPackage = Map.lookup (withoutPeerDepSuffix . withoutSymConstraint $ depVersion) (packages lockFile)
           let maybeRegistrySrcPackage =
                 let key = mkPkgKey depName (withoutPeerDepSuffix . withoutSymConstraint $ ver)
                  in Map.lookup key (packages lockFile)
@@ -411,6 +407,28 @@ buildGraph lockFile = withoutLocalPackages $
     -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
     withoutPeerDepSuffix :: Text -> Text
     withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
+
+    -- Parse a package key into its name and version components
+    getPkgNameVersion :: Text -> Maybe (Text, Text)
+    getPkgNameVersion pkgKey = case lockFileVersion lockFile of
+      PnpmLock4Or5 -> parseSlashFormat pkgKey
+      PnpmLock6 -> parseAtFormat pkgKey
+      PnpmLockLt4 _ -> parseSlashFormat pkgKey
+      PnpmLockV678 _ -> parseAtFormat pkgKey
+      PnpmLockV9 -> parseAtFormat pkgKey <|> parseSlashFormat pkgKey
+      where
+        parseSlashFormat key = do
+          let parts = Text.splitOn "/" key
+          guard $ length parts >= 3
+          let name = parts !! 1
+          let version = parts !! 2
+          pure (name, version)
+        parseAtFormat key = do
+          let parts = Text.splitOn "@" key
+          guard $ length parts >= 2
+          let name = Text.dropWhile (== '/') $ parts !! 0
+          let version = fst $ Text.breakOn "(" $ parts !! 1
+          pure (name, version)
 
     mkPkgKey :: Text -> Text -> Text
     mkPkgKey name version = case lockFileVersion lockFile of
