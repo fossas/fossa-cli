@@ -301,136 +301,52 @@ buildGraph lockFile = withoutLocalPackages $
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
 
-      -- Process direct dependencies, skipping bare "catalog:" references
+      -- Process direct dependencies
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
-        -- Skip bare "catalog:" references completely
-        when (depVersion /= "catalog:") $
+        -- Skip any catalog references - they will be handled by their resolved versions
+        when (not ("catalog:" `Text.isPrefixOf` depVersion)) $
           maybe (pure ()) direct $
             toResolvedDependency catalogVersionMap depName depVersion (Set.member depName devDeps)
 
     -- Add edges and deep dependencies by iterating over all packages.
-    --
-    -- Use `dev` to infer if this is production or non-production dependency.
-    -- Use `dependencies` to infer the edge from this dependency (aws-sdk@2.1148.0)
-    --   to its children. If the child entry cannot be found in `packages`,
-    --   do not provision an edge.
-    --
-    -- @
-    -- > packages:
-    -- >
-    -- >  /aws-sdk/2.1148.0:
-    -- >    resolution: {integrity: sha512-FUYAyveKmS5eq..==}
-    -- >    engines: {node: '>= 10.0.0'}
-    -- >    dependencies:
-    -- >      buffer: 4.9.2
-    -- >      events: 1.1.1
-    -- >    dev: false
-    -- @
     for_ (toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
       let deepDependencies = toList $ dependencies pkgMeta
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
-      let parentDep = toDependency catalogVersionMap depName depVersion pkgMeta False -- Not a direct dependency, use package's isDev
+      let parentDep = toDependency catalogMap depName depVersion pkgMeta False -- Not a direct dependency, use package's isDev
 
       -- Only add deep dependency if it hasn't been added as a direct dependency
       -- This prevents duplicates in the graph
       deep parentDep
 
       for_ deepDependencies $ \(deepName, deepVersion) -> do
-        -- Skip catalog references in deep dependencies
-        when (deepVersion /= "catalog:") $
+        -- Skip any catalog references in deep dependencies
+        when (not ("catalog:" `Text.isPrefixOf` deepVersion)) $
           maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
-  where
-    getPkgNameVersion :: Text -> Maybe (Text, Text)
-    getPkgNameVersion = case lockFileVersion lockFile of
-      PnpmLock4Or5 -> getPkgNameVersionV5
-      PnpmLock6 -> getPkgNameVersionV6
-      PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
-      PnpmLockV678 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
-      PnpmLockV9 -> getPkgNameVersionV9
 
-    -- Gets package name and version from package's key.
-    --
-    -- >> getPkgNameVersionV6 "" = Nothing
-    -- >> getPkgNameVersionV6 "github.com/something" = Nothing
-    -- >> getPkgNameVersionV6 "/pkg-a@1.0.0" = Just ("pkg-a", "1.0.0")
-    -- >> getPkgNameVersionV6 "/@angular/core@1.0.0" = Just ("@angular/core", "1.0.0")
-    -- >> getPkgNameVersionV6 "/@angular/core@1.0.0(babel@1.0.0)" = Just ("@angular/core", "1.0.0(babel@1.0.0)")
-    getPkgNameVersionV6 :: Text -> Maybe (Text, Text)
-    getPkgNameVersionV6 pkgKey = case (Text.stripPrefix "/" pkgKey) of
-      Nothing -> Nothing
-      Just txt -> do
-        let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
-        let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
-        case (Text.stripSuffix "@" nameWithSlash, version) of
-          (Just name, v) -> Just (name, v <> peerDepInfo)
-          _ -> Nothing
-    -- Pnpm 9.0 registry packages may not have a leading slash, so it is not required.
-    --
-    -- >> getPkgNameVersionV9 "@angular/core@1.0.0(babel@1.0.0)" = Just ("@angular/core", "1.0.0(babel@1.0.0)")
-    -- >> getPkgNameVersionV9 "pkg-a@workspace:*" = Just ("pkg-a", "workspace:*")
-    -- >> getPkgNameVersionV9 "pkg-b@workspace:^1.0.0" = Just ("pkg-b", "workspace:^1.0.0")
-    getPkgNameVersionV9 :: Text -> Maybe (Text, Text)
-    getPkgNameVersionV9 pkgKey = do
-      let txt = fromMaybe pkgKey (Text.stripPrefix "/" pkgKey)
-      case Text.breakOn "@" txt of
-        (name, ver)
-          | not (Text.null ver) ->
-              let -- peerDepInfo = Text.takeWhile (/= ' ') $ Text.dropWhile (/= '(') ver
-                  version = Text.drop 1 ver
-               in case (Text.null name, Text.null version) of
-                    (False, False) -> Just (name, version)
-                    _ -> Nothing
-        _ -> Nothing
+    -- \| Get the actual version for a package, checking catalogs if needed
+    getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
+    getPackageVersion catalogMap name version
+      | "catalog:" `Text.isPrefixOf` version =
+          Map.lookup name catalogMap
+      | version == "catalog:" =
+          Map.lookup name catalogMap
+      | "workspace:" `Text.isPrefixOf` version = do
+          -- Handle workspace:* and workspace:^x.x.x formats
+          let versionPart = Text.drop 10 version
+          if versionPart == "*" || Text.isPrefixOf "^" versionPart
+            then Map.lookup name catalogMap
+            else Just versionPart
+      | otherwise = Just version
 
-    -- Gets package name and version from package's key.
-    --
-    -- >> getPkgNameVersionV5 "" = Nothing
-    -- >> getPkgNameVersionV5 "github.com/something" = Nothing
-    -- >> getPkgNameVersionV5 "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
-    -- >> getPkgNameVersionV5 "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
-    getPkgNameVersionV5 :: Text -> Maybe (Text, Text)
-    getPkgNameVersionV5 pkgKey = case (Text.stripPrefix "/" pkgKey) of
-      Nothing -> Nothing
-      Just txt -> do
-        let (nameWithSlash, version) = Text.breakOnEnd "/" txt
-        case (Text.stripSuffix "/" nameWithSlash, version) of
-          (Just name, v) -> Just (name, v)
-          _ -> Nothing
-
-    -- Non-registry resolvers (tarball, git, directory) use non-version identifier
-    -- as version value in dependencies map, as well as for it's `packages` key.
-    --
-    -- @
-    -- >  dependencies:
-    -- >    chokidar: 1.0.0 # resolved with registry
-    -- >    some-other-project: file:../local-package # resolved with non-registry resolver
-    -- @
-    -- -
-    -- For any dependency resolved via registry resolver, it will use
-    -- the following format for its `packages` key:
-    --
-    --   - /${depName}/${depVersion} -- for v5 fmt
-    --   - /${depName}@${depVersion} -- for v6 fmt
-    --   - ${depName}@${depVersion} -- for v9 fmt
-    --
-    -- For dependency resolved via non-registry resolvers,
-    -- it will use the dependency's version value for its `packages` key:
-    --
-    --    e.g.
-    --      file:../local-package
-    --
     toResolvedDependency :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
     toResolvedDependency catalogMap depName depVersion isImporterDevDep = do
-      -- Skip bare "catalog:" references completely - they should be handled by their
-      -- proper references from the packages section
-      if depVersion == "catalog:" || "catalog:" `Text.isPrefixOf` depVersion
-        then do
-          -- For catalog references, look up the actual version in the catalog map
-          case getPackageVersion catalogMap depName depVersion of
-            Just ver -> Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) isImporterDevDep
-            Nothing -> Nothing
+      -- For catalog references, look up the actual version in the catalog map
+      if "catalog:" `Text.isPrefixOf` depVersion || depVersion == "catalog:"
+        then case Map.lookup depName catalogMap of
+          Just ver -> Just $ toDep NodeJSType depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ ver) isImporterDevDep
+          Nothing -> Nothing  -- Skip catalog references that can't be resolved
         else do
           -- For non-catalog references, try to find the package in the packages section
           let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
@@ -448,58 +364,13 @@ buildGraph lockFile = withoutLocalPackages $
             (Just nonRegistryPkg, Nothing) -> Just $ toDependency catalogMap depName Nothing nonRegistryPkg isImporterDevDep
             (_, Just registryPkg) -> Just $ toDependency catalogMap depName (Just $ withoutPeerDepSuffix . withoutSymConstraint $ depVersion) registryPkg isImporterDevDep
 
-    -- \| Get the actual version for a package, checking catalogs if needed
-    getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
-    getPackageVersion catalogMap name version
-      | "catalog:" `Text.isPrefixOf` version =
-          Map.lookup name catalogMap
-      | version == "catalog:" =
-          Map.lookup name catalogMap
-      | "workspace:" `Text.isPrefixOf` version = do
-          -- Handle workspace:* and workspace:^x.x.x formats
-          let versionPart = Text.drop 10 version
-          if versionPart == "*" || Text.isPrefixOf "^" versionPart
-            then Map.lookup name catalogMap <|> Just version
-            else Just versionPart
-      | otherwise = Just version
-
-    -- Makes representative key if the package was
-    -- resolved via registry resolver.
-    --
-    -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a/1.0.0" -- for v5 fmt
-    -- >> mkPkgKey "pkg-a" "1.0.0" = "/pkg-a@1.0.0" -- for v6 fmt
-    -- >> mkPkgKey "pkg-a" "1.0.0(babal@1.0.0)" = "/pkg-a@1.0.0(babal@1.0.0)" -- for v6 fmt
-    -- >> mkPkgKey "pkg-a" "1.0.0" = "pkg-a@1.0.0" -- for v9 fmt
-    mkPkgKey :: Text -> Text -> Text
-    mkPkgKey name version = case lockFileVersion lockFile of
-      PnpmLock4Or5 -> "/" <> name <> "/" <> version
-      PnpmLock6 -> "/" <> name <> "@" <> version
-      PnpmLockLt4 _ -> "/" <> name <> "/" <> version
-      PnpmLockV678 _ -> "/" <> name <> "@" <> version
-      -- For PNPM v9, we need to handle both formats: with and without leading slash
-      PnpmLockV9 ->
-        let keyWithoutSlash = name <> "@" <> version
-            keyWithSlash = "/" <> keyWithoutSlash
-         in if Map.member keyWithSlash (packages lockFile)
-              then keyWithSlash
-              else keyWithoutSlash -- Default to key without slash for PNPM v9
-
-    -- Sometimes package versions include symlinked paths
-    -- of sibling dependencies used for resolution.
-    --
-    -- >> withoutSymConstraint "1.2.0" = "1.2.0"
-    -- >> withoutSymConstraint "1.2.0_vue@3.0" = "1.2.0"
-    withoutSymConstraint :: Text -> Text
-    withoutSymConstraint version = fst $ Text.breakOn "_" version
-
-    -- Sometimes package versions include resolved peer dependency version
-    -- in parentheses. This is used by pnpm for dependency resolution, we do
-    -- not care about them, as they do not represent package version.
-    --
-    -- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
-    -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
-    withoutPeerDepSuffix :: Text -> Text
-    withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
+    -- \| Build a map of package names to their actual versions from the catalogs section
+    buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
+    buildCatalogVersionMap pnpmLockFile =
+      case Map.lookup "default" (catalogs pnpmLockFile) of
+        Nothing -> Map.empty
+        Just defaultCatalog ->
+          Map.map catalogVersion (catalogEntries defaultCatalog)
 
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
@@ -528,10 +399,33 @@ buildGraph lockFile = withoutLocalPackages $
     toDependency _ name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) isImporterDevDep =
       toDep UserType name Nothing (isDev || isImporterDevDep)
 
-    -- \| Build a map of package names to their actual versions from the catalogs section
-    buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
-    buildCatalogVersionMap pnpmLockFile =
-      case Map.lookup "default" (catalogs pnpmLockFile) of
-        Nothing -> Map.empty
-        Just defaultCatalog ->
-          Map.map catalogVersion (catalogEntries defaultCatalog)
+    -- Sometimes package versions include symlinked paths
+    -- of sibling dependencies used for resolution.
+    --
+    -- >> withoutSymConstraint "1.2.0" = "1.2.0"
+    -- >> withoutSymConstraint "1.2.0_vue@3.0" = "1.2.0"
+    withoutSymConstraint :: Text -> Text
+    withoutSymConstraint version = fst $ Text.breakOn "_" version
+
+    -- Sometimes package versions include resolved peer dependency version
+    -- in parentheses. This is used by pnpm for dependency resolution, we do
+    -- not care about them, as they do not represent package version.
+    --
+    -- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
+    -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
+    withoutPeerDepSuffix :: Text -> Text
+    withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
+
+    mkPkgKey :: Text -> Text -> Text
+    mkPkgKey name version = case lockFileVersion lockFile of
+      PnpmLock4Or5 -> "/" <> name <> "/" <> version
+      PnpmLock6 -> "/" <> name <> "@" <> version
+      PnpmLockLt4 _ -> "/" <> name <> "/" <> version
+      PnpmLockV678 _ -> "/" <> name <> "@" <> version
+      -- For PNPM v9, we need to handle both formats: with and without leading slash
+      PnpmLockV9 ->
+        let keyWithoutSlash = name <> "@" <> version
+            keyWithSlash = "/" <> keyWithoutSlash
+         in if Map.member keyWithSlash (packages lockFile)
+              then keyWithSlash
+              else keyWithoutSlash -- Default to key without slash for PNPM v9
