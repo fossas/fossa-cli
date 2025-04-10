@@ -321,7 +321,7 @@ buildGraph lockFile = withoutLocalPackages $
       for_ deepDependencies $ \(deepName, deepVersion) ->
         maybe (pure ()) (edge parentDep) (toResolvedDependency catalogVersionMap deepName deepVersion False)
 
-    -- \| Get the actual version for a package, checking catalogs if needed
+    -- Get the actual version for a package, checking catalogs if needed
     getPackageVersion :: Map Text Text -> Text -> Text -> Maybe Text
     getPackageVersion catalogMap name version
       | "catalog:" `Text.isPrefixOf` version =
