@@ -135,18 +135,71 @@ spec = do
     currentDir' <- runIO getCurrentDir
     let v6LockfilePath = currentDir' </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
     let v9LockfilePath = currentDir' </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
+    let v9TestLockfilePath = currentDir' </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9-test.yaml")
 
     checkGraph v6LockfilePath $ \graph ->
       it "parses v6 lockfile" $
-        expectDirect [colors, mkDevDep "lodash@4.17.21", mkDevDep "typescript@5.3.3"] graph
+        expectDirect
+          [ mkProdDep "@babel/core@7.26.10"
+          , mkProdDep "@babel/preset-typescript@7.26.0"
+          , mkProdDep "@babel/types@7.26.10"
+          , mkProdDep "@changesets/cli@2.28.1"
+          ]
+          graph
 
     checkGraph v9LockfilePath $ \graph ->
-      it "parses v9 lockfile" $
+      it "parses v9 lockfile from real-world pnpm repo" $
         expectDirect
-          [ mkProdDep "@gwhitney/detect-indent@7.0.1"
-          , mkProdDep "@pnpm/builder.policy@3.0.1"
-          , mkProdDep "@pnpm/byline@1.0.0"
-          , mkProdDep "@pnpm/colorize-semver-diff@1.0.1"
+          [ mkProdDep "@babel/core@7.26.10"
+          , mkProdDep "@babel/preset-typescript@7.26.0"
+          , mkProdDep "@babel/types@7.26.10"
+          , mkDevDep "@changesets/cli@2.28.1"
+          ]
+          graph
+
+    checkGraph v9TestLockfilePath $ \graph ->
+      it "parses v9 lockfile with test dependencies (colors, lodash, react)" $
+        expectDirect
+          [ Dependency
+              { dependencyType = NodeJSType
+              , dependencyName = "aws-sdk"
+              , dependencyVersion = Just $ CEq "2.1148.0"
+              , dependencyLocations = []
+              , dependencyEnvironments = fromList [EnvProduction]
+              , dependencyTags = fromList []
+              }
+          , Dependency
+              { dependencyType = NodeJSType
+              , dependencyName = "chalk"
+              , dependencyVersion = Just $ CEq "5.3.0"
+              , dependencyLocations = []
+              , dependencyEnvironments = fromList [EnvProduction]
+              , dependencyTags = fromList []
+              }
+          , Dependency
+              { dependencyType = URLType
+              , dependencyName = "https://codeload.github.com/Marak/colors.js/tar.gz/6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26"
+              , dependencyVersion = Nothing
+              , dependencyLocations = []
+              , dependencyEnvironments = fromList [EnvProduction]
+              , dependencyTags = fromList []
+              }
+          , Dependency
+              { dependencyType = URLType
+              , dependencyName = "https://github.com/lodash/lodash/archive/refs/heads/master.tar.gz"
+              , dependencyVersion = Nothing
+              , dependencyLocations = []
+              , dependencyEnvironments = fromList [EnvProduction]
+              , dependencyTags = fromList []
+              }
+          , Dependency
+              { dependencyType = NodeJSType
+              , dependencyName = "react"
+              , dependencyVersion = Just $ CEq "18.1.0"
+              , dependencyLocations = []
+              , dependencyEnvironments = fromList [EnvDevelopment]
+              , dependencyTags = fromList []
+              }
           ]
           graph
 
@@ -429,15 +482,16 @@ pnpmLockV9GraphSpec graph = do
 
     it "should include the correct edges between dependencies" $ do
       -- Test a few representative dependency relationships
-      hasEdge (mkProdDep "chalk@5.3.0") (mkProdDep "ansi-styles@6.1.1")
-      hasEdge (mkProdDep "strip-ansi@7.1.0") (mkProdDep "ansi-regex@6.0.1")
+      hasEdge (mkProdDep "@pnpm/npm-lifecycle@1000.0.2") (mkProdDep "@pnpm/npm-conf@3.0.0")
+      hasEdge (mkProdDep "@pnpm/npm-conf@3.0.0") (mkProdDep "@pnpm/nopt@0.2.1")
 
     it "should correctly handle catalog references" $ do
       -- Check that dependencies from the catalogs section are correctly resolved
-      -- We'll check a few from the downloaded v9 lockfile
       expectDirect
-        [ mkProdDep "@gar/promisify@1.1.3"
-        , mkProdDep "@npmcli/fs@2.1.2"
+        [ mkProdDep "@pnpm/exec@2.0.0"
+        , mkProdDep "@pnpm/fs.packlist@2.0.0"
+        , mkProdDep "@pnpm/log.group@3.0.1"
+        , mkProdDep "@pnpm/meta-updater@2.0.5"
         ]
         graph
 
@@ -471,4 +525,8 @@ pnpmLockV9TestGraphSpec graph = do
 
     it "should include all relevant edges for react" $ do
       hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
+      hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
+
+    it "should include all relevant edges for changesets/cli" $ do
+      hasEdge (mkDevDep "@changesets/cli@2.28.1") (mkDevDep "loose-envify@1.4.0")
       hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
