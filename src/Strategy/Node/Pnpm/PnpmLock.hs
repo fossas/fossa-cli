@@ -504,20 +504,20 @@ buildGraph lockFile = withoutLocalPackages $
               -- Regular packages like 'safe-execa@0.1.2'
               let parts = Text.splitOn "@" trimmedKey
               guard $ length parts >= 2
-              
+
               -- Get the complete name (everything before the last @)
               let mName = if null parts then Nothing else safeInit parts
               -- Get just the version (everything after the last @)
               let mVersion = if null parts then Nothing else listToMaybe (reverse parts)
-              
+
               case (mName, mVersion) of
-                (Just nameParts, Just version) -> 
+                (Just nameParts, Just version) ->
                   pure (Text.intercalate "@" nameParts, cleanupVersion version)
                 _ -> Nothing
-              where
-                safeInit :: [a] -> Maybe [a]
-                safeInit [] = Nothing
-                safeInit xs = Just (init xs)
+          where
+            safeInit :: [a] -> Maybe [a]
+            safeInit [] = Nothing
+            safeInit xs = Just (init xs)
 
     -- Helper for finding the position of a substring in text
     textIndexOf :: Text -> Text -> Int
@@ -551,5 +551,5 @@ buildGraph lockFile = withoutLocalPackages $
         mkPkgKeyFormat :: Text -> Text -> Text -> Text
         mkPkgKeyFormat nm ver format = case format of
           "slash" -> "/" <> nm <> "/" <> ver
-          "at" -> "/" <> nm <> "@" <> ver    -- Both scoped and regular packages use same format
-          _ -> "/" <> nm <> "@" <> ver       -- Default to at format
+          "at" -> "/" <> nm <> "@" <> ver -- Both scoped and regular packages use same format
+          _ -> "/" <> nm <> "@" <> ver -- Default to at format
