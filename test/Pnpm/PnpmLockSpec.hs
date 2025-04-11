@@ -99,10 +99,10 @@ spec = do
   describe "can work with v6.0 format" $ do
     checkGraph pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
     checkGraph pnpmLockV6 pnpmLockV6GraphSpec
-    
+
   -- v9 format
   let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
-  
+
   describe "can work with v9.0 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
 
@@ -387,7 +387,7 @@ pnpmLockV9GraphSpec graph = do
       -- Test a few representative dependency relationships
       hasEdge (mkProdDep "chalk@5.3.0") (mkProdDep "ansi-styles@6.1.1")
       hasEdge (mkProdDep "strip-ansi@7.1.0") (mkProdDep "ansi-regex@6.0.1")
-      
+
     it "should correctly handle catalog references" $ do
       -- Check that dependencies from the catalogs section are correctly resolved
       -- We'll check a few from the downloaded v9 lockfile

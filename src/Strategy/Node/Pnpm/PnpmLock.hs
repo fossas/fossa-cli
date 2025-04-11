@@ -330,11 +330,12 @@ buildGraph lockFile = withoutLocalPackages $
     -- Build a map of package names to their resolved versions from the catalogs section
     buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
     buildCatalogVersionMap pnpmLockFile =
-      let defaultCatalog = Map.findWithDefault 
-                             Map.empty 
-                             "default" 
-                             (Map.map catalogEntriesMap (catalogs pnpmLockFile))
-      in Map.map cleanupVersion defaultCatalog
+      let defaultCatalog =
+            Map.findWithDefault
+              Map.empty
+              "default"
+              (Map.map catalogEntriesMap (catalogs pnpmLockFile))
+       in Map.map cleanupVersion defaultCatalog
       where
         catalogEntriesMap :: CatalogMap -> Map Text Text
         catalogEntriesMap = Map.map catalogVersion . catalogEntries
@@ -344,29 +345,29 @@ buildGraph lockFile = withoutLocalPackages $
     resolveDepFromImporter catalogMap depName depVersion isDev = do
       -- Skip any workspace links or dependencies with link: prefix
       if "link:" `Text.isPrefixOf` depVersion
-        then Nothing  -- Skip workspace links
+        then Nothing -- Skip workspace links
         else do
           let isCatalogRef = "catalog:" `Text.isPrefixOf` depVersion
           let cleanVersion = cleanupVersion depVersion
-          
+
           -- Handle catalog references
-          let resolvedVersion = 
+          let resolvedVersion =
                 if isCatalogRef
                   then Map.lookup depName catalogMap
                   else Just cleanVersion
-          
+
           case resolvedVersion of
             Nothing -> Nothing
-            Just ver -> 
+            Just ver ->
               -- Don't try to lookup empty versions (like those from links)
-              if Text.null ver 
+              if Text.null ver
                 then Nothing
                 else do
                   let pkgKey = mkPkgKey depName ver
                   let maybePackage = Map.lookup pkgKey (packages lockFile)
                   pure $ case maybePackage of
-                      Nothing -> createDep NodeJSType depName (Just ver) isDev
-                      Just pkg -> resolveDependency catalogMap depName (Just ver) pkg isDev
+                    Nothing -> createDep NodeJSType depName (Just ver) isDev
+                    Just pkg -> resolveDependency catalogMap depName (Just ver) pkg isDev
 
     -- Resolve a dependency from the packages section (for edges)
     resolveDepFromPackage :: Map Text Text -> Text -> Text -> Bool -> Maybe Dependency
@@ -378,14 +379,13 @@ buildGraph lockFile = withoutLocalPackages $
           -- Handle special case where the "version" might actually be a separate package
           -- This happens with dependencies like "safe-execa@0.1.2" where the value should be
           -- treated as a separate package name + version, not a version of the parent package
-          let (actualDepName, actualVersion) = 
+          let (actualDepName, actualVersion) =
                 if "@" `Text.isInfixOf` depVersion && not ("/" `Text.isInfixOf` depVersion)
-                  then 
-                    case Text.splitOn "@" depVersion of
-                      [name, ver] -> (name, ver)  -- Format: "safe-execa@0.1.2"
-                      _ -> (depName, cleanupVersion depVersion)
+                  then case Text.splitOn "@" depVersion of
+                    [name, ver] -> (name, ver) -- Format: "safe-execa@0.1.2"
+                    _ -> (depName, cleanupVersion depVersion)
                   else (depName, cleanupVersion depVersion)
-          
+
           -- Skip empty versions (like those from links)
           if Text.null actualVersion
             then Nothing
@@ -393,7 +393,7 @@ buildGraph lockFile = withoutLocalPackages $
               -- Try to find the package in packages section
               let pkgKey = mkPkgKey actualDepName actualVersion
               let maybePackage = Map.lookup pkgKey (packages lockFile)
-              
+
               -- Either use the package if we found it, or create a simple dependency
               pure $ case maybePackage of
                 Nothing -> createDep NodeJSType actualDepName (Just actualVersion) isDev
@@ -418,13 +418,13 @@ buildGraph lockFile = withoutLocalPackages $
     resolveVersionFromCatalog :: Map Text Text -> Text -> Text -> Maybe Text
     resolveVersionFromCatalog catalogMap name version =
       let isCatalogRef = "catalog:" `Text.isPrefixOf` version
-          cleanVersion = 
-            if isCatalogRef 
-              then Text.drop (Text.length "catalog:") version 
+          cleanVersion =
+            if isCatalogRef
+              then Text.drop (Text.length "catalog:") version
               else version
        in if isCatalogRef
-          then Map.lookup name catalogMap
-          else Just $ cleanupVersion cleanVersion
+            then Map.lookup name catalogMap
+            else Just $ cleanupVersion cleanVersion
 
     -- Helper to create a dependency object
     createDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
@@ -445,21 +445,21 @@ buildGraph lockFile = withoutLocalPackages $
       where
         withoutSymConstraint :: Text -> Text
         withoutSymConstraint = fst . Text.breakOn "_"
-        
+
         withoutPeerDepSuffix :: Text -> Text
         withoutPeerDepSuffix = fst . Text.breakOn "("
-        
+
         -- Remove any namespace prefixes from version strings (e.g., @pnpm/hosted-git-info@1.0.0 -> 1.0.0)
         removePrefixes :: Text -> Text
         removePrefixes version
-          | "@" `Text.isInfixOf` version && Text.count "@" version > 1 = 
+          | "@" `Text.isInfixOf` version && Text.count "@" version > 1 =
               -- For scoped packages with a version, extract just the version part
               let parts = Text.splitOn "@" version
                in if length parts >= 3
-                    then last parts  -- Take just the version number at the end
+                    then maybe version id (listToMaybe (reverse parts)) -- Safe replacement for last
                     else version
           | otherwise = version
-        
+
         -- Handle link: prefixes by removing them entirely (links are handled separately)
         removeLinks :: Text -> Text
         removeLinks version
@@ -479,14 +479,17 @@ buildGraph lockFile = withoutLocalPackages $
         parseSlashFormat key = do
           let parts = Text.splitOn "/" key
           guard $ length parts >= 3
-          let name = parts !! 1
-          let version = parts !! 2
+          name <- parts `atMay` 1
+          version <- parts `atMay` 2
           pure (name, version)
+          where
+            atMay :: [a] -> Int -> Maybe a
+            atMay xs i = if i >= 0 && i < length xs then Just (xs !! i) else Nothing
 
         parseAtFormat :: Text -> Maybe (Text, Text)
         parseAtFormat key = do
           let trimmedKey = Text.dropWhile (== '/') key
-          
+
           -- Handle scoped packages first (those starting with @)
           if "@" `Text.isPrefixOf` trimmedKey && Text.count "@" trimmedKey >= 2
             then do
@@ -503,18 +506,26 @@ buildGraph lockFile = withoutLocalPackages $
               guard $ length parts >= 2
               
               -- Get the complete name (everything before the last @)
-              let name = Text.intercalate "@" (init parts)
+              let mName = if null parts then Nothing else safeInit parts
               -- Get just the version (everything after the last @)
-              let version = last parts
-              pure (name, cleanupVersion version)
+              let mVersion = if null parts then Nothing else listToMaybe (reverse parts)
+              
+              case (mName, mVersion) of
+                (Just nameParts, Just version) -> 
+                  pure (Text.intercalate "@" nameParts, cleanupVersion version)
+                _ -> Nothing
+              where
+                safeInit :: [a] -> Maybe [a]
+                safeInit [] = Nothing
+                safeInit xs = Just (init xs)
 
     -- Helper for finding the position of a substring in text
     textIndexOf :: Text -> Text -> Int
-    textIndexOf haystack needle = 
+    textIndexOf haystack needle =
       case Text.breakOn needle haystack of
-        (prefix, suffix) -> 
-          if Text.null suffix 
-            then -1 
+        (prefix, suffix) ->
+          if Text.null suffix
+            then -1
             else Text.length prefix
 
     -- Create a package key based on name and version according to lockfile version
@@ -540,8 +551,5 @@ buildGraph lockFile = withoutLocalPackages $
         mkPkgKeyFormat :: Text -> Text -> Text -> Text
         mkPkgKeyFormat nm ver format = case format of
           "slash" -> "/" <> nm <> "/" <> ver
-          "at" ->
-            if not (Text.null nm) && Text.head nm == '@'
-              then "/" <> nm <> "@" <> ver -- Scoped package
-              else "/" <> nm <> "@" <> ver -- Regular package
-          _ -> "/" <> nm <> "@" <> ver -- Default to at format
+          "at" -> "/" <> nm <> "@" <> ver    -- Both scoped and regular packages use same format
+          _ -> "/" <> nm <> "@" <> ver       -- Default to at format
