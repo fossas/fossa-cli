@@ -456,7 +456,7 @@ buildGraph lockFile = withoutLocalPackages $
               -- For scoped packages with a version, extract just the version part
               let parts = Text.splitOn "@" version
                in if length parts >= 3
-                    then maybe version id (listToMaybe (reverse parts)) -- Safe replacement for last
+                    then fromMaybe version (listToMaybe (reverse parts)) -- Safe replacement for last
                     else version
           | otherwise = version
 
@@ -479,12 +479,16 @@ buildGraph lockFile = withoutLocalPackages $
         parseSlashFormat key = do
           let parts = Text.splitOn "/" key
           guard $ length parts >= 3
-          name <- parts `atMay` 1
-          version <- parts `atMay` 2
+          name <- safeIndex parts 1
+          version <- safeIndex parts 2
           pure (name, version)
           where
-            atMay :: [a] -> Int -> Maybe a
-            atMay xs i = if i >= 0 && i < length xs then Just (xs !! i) else Nothing
+            safeIndex :: [a] -> Int -> Maybe a
+            safeIndex [] _ = Nothing
+            safeIndex (x:xs) 0 = Just x
+            safeIndex (_:xs) i
+              | i > 0 = safeIndex xs (i-1)
+              | otherwise = Nothing
 
         parseAtFormat :: Text -> Maybe (Text, Text)
         parseAtFormat key = do
@@ -504,20 +508,20 @@ buildGraph lockFile = withoutLocalPackages $
               -- Regular packages like 'safe-execa@0.1.2'
               let parts = Text.splitOn "@" trimmedKey
               guard $ length parts >= 2
-
+              
               -- Get the complete name (everything before the last @)
               let mName = if null parts then Nothing else safeInit parts
               -- Get just the version (everything after the last @)
               let mVersion = if null parts then Nothing else listToMaybe (reverse parts)
-
+              
               case (mName, mVersion) of
-                (Just nameParts, Just version) ->
+                (Just nameParts, Just version) -> 
                   pure (Text.intercalate "@" nameParts, cleanupVersion version)
                 _ -> Nothing
           where
             safeInit :: [a] -> Maybe [a]
             safeInit [] = Nothing
-            safeInit xs = Just (init xs)
+            safeInit xs = Just (take (length xs - 1) xs) -- Safe replacement for init
 
     -- Helper for finding the position of a substring in text
     textIndexOf :: Text -> Text -> Int
