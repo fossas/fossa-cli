@@ -4,8 +4,7 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
-import Data.ByteString qualified as BS
-import Data.Either (fromRight, isRight)
+import Data.Either (fromRight)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -24,15 +23,13 @@ import GraphUtil (
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (analyze, buildGraph)
+import Strategy.Node.Pnpm.PnpmLock (buildGraph)
 import Test.Hspec (
   Spec,
   describe,
   expectationFailure,
   it,
   runIO,
-  shouldMatchList,
-  shouldSatisfy,
  )
 
 -- | A dependency value used as a default in case of parsing errors in tests
@@ -135,9 +132,9 @@ spec = do
       checkGraph pnpmLockV9Test pnpmLockV9TestGraphSpec
 
   describe "parsePnpmLock" $ do
-    currentDir <- runIO getCurrentDir
-    let v6LockfilePath = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
-    let v9LockfilePath = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
+    currentDir' <- runIO getCurrentDir
+    let v6LockfilePath = currentDir' </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
+    let v9LockfilePath = currentDir' </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
 
     checkGraph v6LockfilePath $ \graph ->
       it "parses v6 lockfile" $
@@ -423,10 +420,10 @@ pnpmLockV9GraphSpec graph = do
     it "should correctly parse dependencies and include catalog references" $ do
       -- Just check a handful of representative direct dependencies
       expectDirect
-        [ mkProdDep "ansi-regex@6.0.1"
-        , mkProdDep "ansi-styles@6.1.1"
-        , mkProdDep "balanced-match@1.0.2"
-        , mkProdDep "chalk@5.3.0"
+        [ mkProdDep "@gwhitney/detect-indent@7.0.1"
+        , mkProdDep "@pnpm/builder.policy@3.0.1"
+        , mkProdDep "@pnpm/byline@1.0.0"
+        , mkProdDep "@pnpm/colorize-semver-diff@1.0.1"
         ]
         graph
 
