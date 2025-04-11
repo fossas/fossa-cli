@@ -485,9 +485,9 @@ buildGraph lockFile = withoutLocalPackages $
           where
             safeIndex :: [a] -> Int -> Maybe a
             safeIndex [] _ = Nothing
-            safeIndex (x:xs) 0 = Just x
-            safeIndex (_:xs) i
-              | i > 0 = safeIndex xs (i-1)
+            safeIndex (x : _) 0 = Just x
+            safeIndex (_ : xs) i
+              | i > 0 = safeIndex xs (i - 1)
               | otherwise = Nothing
 
         parseAtFormat :: Text -> Maybe (Text, Text)
@@ -508,14 +508,14 @@ buildGraph lockFile = withoutLocalPackages $
               -- Regular packages like 'safe-execa@0.1.2'
               let parts = Text.splitOn "@" trimmedKey
               guard $ length parts >= 2
-              
+
               -- Get the complete name (everything before the last @)
               let mName = if null parts then Nothing else safeInit parts
               -- Get just the version (everything after the last @)
               let mVersion = if null parts then Nothing else listToMaybe (reverse parts)
-              
+
               case (mName, mVersion) of
-                (Just nameParts, Just version) -> 
+                (Just nameParts, Just version) ->
                   pure (Text.intercalate "@" nameParts, cleanupVersion version)
                 _ -> Nothing
           where
