@@ -4,6 +4,7 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
+import Data.Either (fromRight)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -30,26 +31,40 @@ import Test.Hspec (
   it,
   runIO,
  )
+import Test.Hspec.Core.QuickCheck (shouldSatisfy)
+import Test.Hspec.Expectations (shouldMatchList)
+
+-- | A dependency value used as a default in case of parsing errors in tests
+invalidDependency :: Dependency
+invalidDependency =
+  Dependency
+    NodeJSType
+    "INVALID_PACKAGE_NAME"
+    Nothing
+    mempty
+    mempty
+    mempty
 
 mkProdDep :: Text -> Dependency
-mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
+mkProdDep nameAtVersion = fromRight invalidDependency $ mkDep nameAtVersion (Just EnvProduction)
 
 mkDevDep :: Text -> Dependency
-mkDevDep nameAtVersion = mkDep nameAtVersion (Just EnvDevelopment)
+mkDevDep nameAtVersion = fromRight invalidDependency $ mkDep nameAtVersion (Just EnvDevelopment)
 
-mkDep :: Text -> Maybe DepEnvironment -> Dependency
+mkDep :: Text -> Maybe DepEnvironment -> Either String Dependency
 mkDep nameAtVersion env = do
   let nameAndVersionSplit = Text.splitOn "@" nameAtVersion
   case nameAndVersionSplit of
     [name, version] ->
-      Dependency
-        NodeJSType
-        name
-        (CEq <$> (Just version))
-        mempty
-        (maybe mempty Set.singleton env)
-        mempty
-    _ -> error $ "Invalid package name format: " ++ toString nameAtVersion
+      Right $
+        Dependency
+          NodeJSType
+          name
+          (CEq <$> (Just version))
+          mempty
+          (maybe mempty Set.singleton env)
+          mempty
+    _ -> Left $ "Invalid package name format: " ++ toString nameAtVersion
 
 colors :: Dependency
 colors =
@@ -112,6 +127,21 @@ spec = do
 
   describe "can work with v9.0 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
+
+  describe "parsePnpmLock" $ do
+    it "parses v6 lockfile" $ do
+      lockfile <- readFileBS "test/Pnpm/fixtures/pnpm-lock-v6.yaml"
+      let result = parsePnpmLock lockfile
+      result `shouldSatisfy` isRight
+      let Right deps = result
+      deps `shouldMatchList` [colors, mkDevDep "lodash@4.17.21", mkDevDep "typescript@5.3.3"]
+
+    it "parses v9 lockfile" $ do
+      lockfile <- readFileBS "test/Pnpm/fixtures/pnpm-lock-v9.yaml"
+      let result = parsePnpmLock lockfile
+      result `shouldSatisfy` isRight
+      let Right deps = result
+      deps `shouldMatchList` [colors, mkDevDep "lodash@4.17.21", mkDevDep "typescript@5.3.3"]
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -403,3 +433,11 @@ pnpmLockV9GraphSpec graph = do
         , mkProdDep "@npmcli/fs@2.1.2"
         ]
         graph
+
+    it "should include Babel plugin dependencies" $ do
+      -- Test a few representative Babel plugin dependencies
+      hasEdge (mkProdDep "@babel/helper-create-class-features-plugin@7.26.9") (mkProdDep "@babel/core@^7.0.0")
+      hasEdge (mkProdDep "@babel/helper-module-transforms@7.26.0") (mkProdDep "@babel/core@^7.0.0")
+      hasEdge (mkProdDep "@babel/helper-replace-supers@7.26.5") (mkProdDep "@babel/core@^7.0.0")
+      hasEdge (mkProdDep "@babel/parser@7.23.0") (mkProdDep "@babel/types@*")
+      hasEdge (mkProdDep "@babel/parser@7.26.10") (mkProdDep "@babel/types@*")
