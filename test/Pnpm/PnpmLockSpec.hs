@@ -4,11 +4,10 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
-import Data.Either (fromRight)
+import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Yaml (decodeFileEither, prettyPrintParseException)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -33,36 +32,49 @@ import Test.Hspec (
  )
 
 -- | A dependency value used as a default in case of parsing errors in tests
-invalidDependency :: Dependency
-invalidDependency =
-  Dependency
-    NodeJSType
-    "INVALID_PACKAGE_NAME"
-    Nothing
-    mempty
-    mempty
-    mempty
+-- invalidDependency :: Text -> Dependency
+-- invalidDependency name =
+--   Dependency
+--     { dependencyType = NodeJSType
+--     , dependencyName = name
+--     , dependencyVersion = Just $ CEq "0.0.0"
+--     , dependencyLocations = []
+--     , dependencyTags = Map.empty
+--     , dependencyEnvironments = mempty
+--     }
+
+-- productionDependency :: Text -> Dependency
+-- productionDependency name =
+--   Dependency
+--     { dependencyType = NodeJSType
+--     , dependencyName = name
+--     , dependencyVersion = Just $ CEq "0.0.0"
+--     , dependencyLocations = []
+--     , dependencyTags = Map.empty
+--     , dependencyEnvironments = Set.singleton EnvProduction
+--     }
 
 mkProdDep :: Text -> Dependency
-mkProdDep nameAtVersion = fromRight invalidDependency $ mkDep nameAtVersion (Just EnvProduction)
+mkProdDep name =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = name
+    , dependencyVersion = Just $ CEq name
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.fromList [EnvProduction]
+    , dependencyTags = Map.empty
+    }
 
 mkDevDep :: Text -> Dependency
-mkDevDep nameAtVersion = fromRight invalidDependency $ mkDep nameAtVersion (Just EnvDevelopment)
-
-mkDep :: Text -> Maybe DepEnvironment -> Either String Dependency
-mkDep nameAtVersion env = do
-  let nameAndVersionSplit = Text.splitOn "@" nameAtVersion
-  case nameAndVersionSplit of
-    [name, version] ->
-      Right $
-        Dependency
-          NodeJSType
-          name
-          (CEq <$> (Just version))
-          mempty
-          (maybe mempty Set.singleton env)
-          mempty
-    _ -> Left $ "Invalid package name format: " ++ toString nameAtVersion
+mkDevDep name =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = name
+    , dependencyVersion = Just $ CEq name
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.fromList [EnvDevelopment]
+    , dependencyTags = Map.empty
+    }
 
 colors :: Dependency
 colors =
@@ -165,40 +177,40 @@ spec = do
               , dependencyName = "aws-sdk"
               , dependencyVersion = Just $ CEq "2.1148.0"
               , dependencyLocations = []
-              , dependencyEnvironments = fromList [EnvProduction]
-              , dependencyTags = fromList []
+              , dependencyEnvironments = Set.fromList [EnvProduction]
+              , dependencyTags = Map.empty
               }
           , Dependency
               { dependencyType = NodeJSType
               , dependencyName = "chalk"
               , dependencyVersion = Just $ CEq "5.3.0"
               , dependencyLocations = []
-              , dependencyEnvironments = fromList [EnvProduction]
-              , dependencyTags = fromList []
+              , dependencyEnvironments = Set.fromList [EnvProduction]
+              , dependencyTags = Map.empty
               }
           , Dependency
               { dependencyType = URLType
               , dependencyName = "https://codeload.github.com/Marak/colors.js/tar.gz/6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26"
               , dependencyVersion = Nothing
               , dependencyLocations = []
-              , dependencyEnvironments = fromList [EnvProduction]
-              , dependencyTags = fromList []
+              , dependencyEnvironments = Set.fromList [EnvProduction]
+              , dependencyTags = Map.empty
               }
           , Dependency
               { dependencyType = URLType
               , dependencyName = "https://github.com/lodash/lodash/archive/refs/heads/master.tar.gz"
               , dependencyVersion = Nothing
               , dependencyLocations = []
-              , dependencyEnvironments = fromList [EnvProduction]
-              , dependencyTags = fromList []
+              , dependencyEnvironments = Set.fromList [EnvProduction]
+              , dependencyTags = Map.empty
               }
           , Dependency
               { dependencyType = NodeJSType
               , dependencyName = "react"
               , dependencyVersion = Just $ CEq "18.1.0"
               , dependencyLocations = []
-              , dependencyEnvironments = fromList [EnvDevelopment]
-              , dependencyTags = fromList []
+              , dependencyEnvironments = Set.fromList [EnvDevelopment]
+              , dependencyTags = Map.empty
               }
           ]
           graph
