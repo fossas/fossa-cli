@@ -4,7 +4,8 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
-import Data.Either (fromRight)
+import Data.ByteString qualified as BS
+import Data.Either (fromRight, isRight)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -23,16 +24,16 @@ import GraphUtil (
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (buildGraph)
+import Strategy.Node.Pnpm.PnpmLock (analyze, buildGraph)
 import Test.Hspec (
   Spec,
   describe,
   expectationFailure,
   it,
   runIO,
+  shouldMatchList,
+  shouldSatisfy,
  )
-import Test.Hspec.Core.QuickCheck (shouldSatisfy)
-import Test.Hspec.Expectations (shouldMatchList)
 
 -- | A dependency value used as a default in case of parsing errors in tests
 invalidDependency :: Dependency
@@ -124,24 +125,33 @@ spec = do
 
   -- v9 format
   let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
+  let pnpmLockV9Test = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9-test.yaml")
 
   describe "can work with v9.0 format" $ do
-    checkGraph pnpmLockV9 pnpmLockV9GraphSpec
+    describe "with real-world pnpm repo lockfile" $
+      checkGraph pnpmLockV9 pnpmLockV9GraphSpec
+
+    describe "with test dependencies" $
+      checkGraph pnpmLockV9Test pnpmLockV9TestGraphSpec
 
   describe "parsePnpmLock" $ do
-    it "parses v6 lockfile" $ do
-      lockfile <- readFileBS "test/Pnpm/fixtures/pnpm-lock-v6.yaml"
-      let result = parsePnpmLock lockfile
-      result `shouldSatisfy` isRight
-      let Right deps = result
-      deps `shouldMatchList` [colors, mkDevDep "lodash@4.17.21", mkDevDep "typescript@5.3.3"]
+    currentDir <- runIO getCurrentDir
+    let v6LockfilePath = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
+    let v9LockfilePath = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
 
-    it "parses v9 lockfile" $ do
-      lockfile <- readFileBS "test/Pnpm/fixtures/pnpm-lock-v9.yaml"
-      let result = parsePnpmLock lockfile
-      result `shouldSatisfy` isRight
-      let Right deps = result
-      deps `shouldMatchList` [colors, mkDevDep "lodash@4.17.21", mkDevDep "typescript@5.3.3"]
+    checkGraph v6LockfilePath $ \graph ->
+      it "parses v6 lockfile" $
+        expectDirect [colors, mkDevDep "lodash@4.17.21", mkDevDep "typescript@5.3.3"] graph
+
+    checkGraph v9LockfilePath $ \graph ->
+      it "parses v9 lockfile" $
+        expectDirect
+          [ mkProdDep "ansi-regex@6.0.1"
+          , mkProdDep "ansi-styles@6.1.1"
+          , mkProdDep "balanced-match@1.0.2"
+          , mkProdDep "chalk@5.3.0"
+          ]
+          graph
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -441,3 +451,27 @@ pnpmLockV9GraphSpec graph = do
       hasEdge (mkProdDep "@babel/helper-replace-supers@7.26.5") (mkProdDep "@babel/core@^7.0.0")
       hasEdge (mkProdDep "@babel/parser@7.23.0") (mkProdDep "@babel/types@*")
       hasEdge (mkProdDep "@babel/parser@7.26.10") (mkProdDep "@babel/types@*")
+
+pnpmLockV9TestGraphSpec :: Graphing Dependency -> Spec
+pnpmLockV9TestGraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> IO ()
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with test dependencies" $ do
+    it "should include git, url and dev dependencies" $ do
+      expectDirect
+        [ colorsTarball
+        , lodash
+        , mkDevDep "react@18.1.0"
+        ]
+        graph
+
+    it "should include all relevant edges for aws-sdk" $ do
+      hasEdge (mkProdDep "aws-sdk@2.1148.0") (mkProdDep "buffer@4.9.2")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "base64-js@1.5.1")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "ieee754@1.1.13")
+      hasEdge (mkProdDep "buffer@4.9.2") (mkProdDep "isarray@1.0.0")
+
+    it "should include all relevant edges for react" $ do
+      hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
+      hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
