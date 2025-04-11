@@ -23,7 +23,16 @@ import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
+import Test.Hspec
+  ( Spec,
+    describe,
+    it,
+    shouldBe,
+    shouldMatchList,
+    shouldSatisfy,
+    expectationFailure,
+    runIO,
+  )
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -108,7 +117,7 @@ spec = do
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> Expectation
+  let hasEdge :: Dependency -> Dependency -> IO ()
       hasEdge = expectEdge graph
 
   describe "buildGraph with workspaces" $ do
@@ -214,7 +223,7 @@ pnpmLockGraphSpec graph = do
 
 pnpmLockGraphWithoutWorkspaceSpec :: Graphing Dependency -> Spec
 pnpmLockGraphWithoutWorkspaceSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> Expectation
+  let hasEdge :: Dependency -> Dependency -> IO ()
       hasEdge = expectEdge graph
 
   describe "buildGraph without workspaces" $ do
@@ -230,7 +239,7 @@ pnpmLockGraphWithoutWorkspaceSpec graph = do
 
 pnpmLockV6WithWorkspaceGraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6WithWorkspaceGraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> Expectation
+  let hasEdge :: Dependency -> Dependency -> IO ()
       hasEdge = expectEdge graph
 
   describe "buildGraph with workspaces" $ do
@@ -307,7 +316,7 @@ pnpmLockV6WithWorkspaceGraphSpec graph = do
 
 pnpmLockV6GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6GraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> Expectation
+  let hasEdge :: Dependency -> Dependency -> IO ()
       hasEdge = expectEdge graph
 
   describe "buildGraph" $ do
@@ -369,7 +378,7 @@ pnpmLockV6GraphSpec graph = do
 
 pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV9GraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> Expectation
+  let hasEdge :: Dependency -> Dependency -> IO ()
       hasEdge = expectEdge graph
 
   describe "buildGraph for v9 lockfile" $ do
