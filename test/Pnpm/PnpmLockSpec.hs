@@ -143,10 +143,10 @@ spec = do
     checkGraph v9LockfilePath $ \graph ->
       it "parses v9 lockfile" $
         expectDirect
-          [ mkProdDep "ansi-regex@6.0.1"
-          , mkProdDep "ansi-styles@6.1.1"
-          , mkProdDep "balanced-match@1.0.2"
-          , mkProdDep "chalk@5.3.0"
+          [ mkProdDep "@gwhitney/detect-indent@7.0.1"
+          , mkProdDep "@pnpm/builder.policy@3.0.1"
+          , mkProdDep "@pnpm/byline@1.0.0"
+          , mkProdDep "@pnpm/colorize-semver-diff@1.0.1"
           ]
           graph
 
