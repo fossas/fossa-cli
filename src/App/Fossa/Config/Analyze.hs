@@ -30,6 +30,7 @@ module App.Fossa.Config.Analyze (
   mergeOpts,
   branchHelp,
   withoutDefaultFilterParser,
+  AutoDetectProjectUrl (..),
 ) where
 
 import App.Docs (fossaAnalyzeDefaultFilterDocUrl)
@@ -269,6 +270,7 @@ data AnalyzeConfig = AnalyzeConfig
   , reachabilityConfig :: ReachabilityConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
+  , autoDetectProjectUrl :: Flag AutoDetectProjectUrl
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -284,6 +286,9 @@ data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
 
 instance ToJSON ExperimentalAnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
+
+newtype AutoDetectProjectUrl = AutoDetectProjectUrl Bool
+  deriving (Eq, Show)
 
 mkSubCommand :: (AnalyzeConfig -> EffStack ()) -> SubCommand AnalyzeCliOpts AnalyzeConfig
 mkSubCommand = SubCommand ("analyze") analyzeInfo cliParser loadConfig mergeOpts
@@ -339,6 +344,11 @@ cliParser =
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
+    <*> flag (AutoDetectProjectUrl True)
+            (AutoDetectProjectUrl False)
+            ( long "no-auto-project-url"
+            <> help "Disable automatic detection of project URL from Git remote"
+            )
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -553,6 +563,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> resolveReachabilityOptions reachabilityConfig
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
+    <*> pure (AutoDetectProjectUrl False)
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
