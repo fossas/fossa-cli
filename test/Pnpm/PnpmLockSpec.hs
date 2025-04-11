@@ -23,16 +23,13 @@ import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph)
-import Test.Hspec
-  ( Spec,
-    describe,
-    it,
-    shouldBe,
-    shouldMatchList,
-    shouldSatisfy,
-    expectationFailure,
-    runIO,
-  )
+import Test.Hspec (
+  Spec,
+  describe,
+  expectationFailure,
+  it,
+  runIO,
+ )
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -43,15 +40,16 @@ mkDevDep nameAtVersion = mkDep nameAtVersion (Just EnvDevelopment)
 mkDep :: Text -> Maybe DepEnvironment -> Dependency
 mkDep nameAtVersion env = do
   let nameAndVersionSplit = Text.splitOn "@" nameAtVersion
-      name = head nameAndVersionSplit
-      version = last nameAndVersionSplit
-  Dependency
-    NodeJSType
-    name
-    (CEq <$> (Just version))
-    mempty
-    (maybe mempty Set.singleton env)
-    mempty
+  case nameAndVersionSplit of
+    [name, version] ->
+      Dependency
+        NodeJSType
+        name
+        (CEq <$> (Just version))
+        mempty
+        (maybe mempty Set.singleton env)
+        mempty
+    _ -> error $ "Invalid package name format: " ++ toString nameAtVersion
 
 colors :: Dependency
 colors =
