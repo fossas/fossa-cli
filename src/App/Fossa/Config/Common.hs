@@ -48,6 +48,7 @@ module App.Fossa.Config.Common (
   titleHelp,
   -- Deprecation
   applyReleaseGroupDeprecationWarning,
+  disambiguateSBOMFlag,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -126,6 +127,7 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
+  help,
   long,
   metavar,
   option,
@@ -268,6 +270,13 @@ baseDirArg = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc baseDirDo
           [ "Set the base directory for scanning"
           , boldItalicized "Default: " <> "Current directory"
           ]
+
+disambiguateSBOMFlag :: Parser Bool
+disambiguateSBOMFlag =
+  switch $
+    applyFossaStyle
+      <> long "sbom"
+      <> help "Disambiguate that the report should be for an SBOM project."
 
 collectBaseDir ::
   ( Has Diagnostics sig m

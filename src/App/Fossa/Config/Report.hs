@@ -19,6 +19,7 @@ import App.Fossa.Config.Common (
   collectRevisionData',
   commonOpts,
   defaultTimeoutDuration,
+  disambiguateSBOMFlag,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -147,6 +148,7 @@ parser =
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> stringToHelpDoc "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
     <*> baseDirArg
+    <*> disambiguateSBOMFlag
   where
     jsonHelp :: Maybe (Doc AnsiStyle)
     jsonHelp =
@@ -179,6 +181,7 @@ data ReportCliOptions = ReportCliOptions
   , cliReportTimeout :: Maybe Int
   , cliReportType :: ReportType
   , cliReportBaseDir :: FilePath
+  , cliForceSBOM :: Bool
   }
   deriving (Eq, Ord, Show)
 
