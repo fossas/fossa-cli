@@ -227,6 +227,7 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> pure timeoutduration
     <*> pure cliReportType
     <*> revision
+    <*> pure cliForceSBOM
 
 newtype NoFormatProvided = NoFormatProvided SourceLocation
 instance ToDiagnostic NoFormatProvided where
@@ -260,6 +261,7 @@ data ReportConfig = ReportConfig
   , timeoutDuration :: Duration
   , reportType :: ReportType
   , revision :: ProjectRevision
+  , fetchSBOMReport :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 

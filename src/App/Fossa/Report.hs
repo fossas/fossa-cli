@@ -17,11 +17,12 @@ import App.Types (LocatorType (..), ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Monad (void, when)
 import Control.Timeout (timeout')
+import Data.Functor (($>))
 import Data.String.Conversion (toText)
 import Data.Text.Extra (showT)
 import Effect.Logger (
@@ -81,11 +82,21 @@ fetchReport ReportConfig{..} =
 
       logSticky "[ Waiting for build completion... ]"
 
-      waitForScanCompletion revision LocatorTypeCustom cancelToken
+      let locatorWaitSBOM = waitForScanCompletion revision LocatorTypeSBOM cancelToken $> LocatorTypeSBOM
+          locatorWaitCustom = waitForScanCompletion revision LocatorTypeCustom cancelToken $> LocatorTypeCustom
+
+      locatorType <-
+        if fetchSBOMReport
+          then
+            locatorWaitSBOM
+          else
+            locatorWaitCustom <||> locatorWaitSBOM
+
       logSticky "[ Waiting for scan completion... ]"
 
-      waitForReportReadiness revision cancelToken
+      waitForReportReadiness revision cancelToken locatorType
+
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 
-      renderedReport <- getAttribution revision outputFormat
+      renderedReport <- getAttribution revision outputFormat locatorType
       logStdout renderedReport

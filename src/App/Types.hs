@@ -24,6 +24,7 @@ module App.Types (
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))
 import Data.Aeson.Types (toJSON)
 import Data.Map (Map)
+import Data.String (IsString)
 import Data.String.Conversion (ToText (..), showText)
 import Data.Text (Text)
 import DepTypes (DepType)
@@ -92,13 +93,16 @@ data ProjectRevision = ProjectRevision
 data LocatorType = LocatorTypeCustom | LocatorTypeSBOM
   deriving (Eq, Ord, Show, Generic)
 
+-- | How to output a 'LocatorType' when interacting with FOSSA APIs.
+locatorAPIText :: IsString a => LocatorType -> a
+locatorAPIText LocatorTypeCustom = "custom"
+locatorAPIText LocatorTypeSBOM = "sbom"
+
 instance ToText LocatorType where
-  toText LocatorTypeCustom = "custom"
-  toText LocatorTypeSBOM = "sbom"
+  toText = locatorAPIText
 
 instance ToJSON LocatorType where
-  toEncoding LocatorTypeCustom = "custom"
-  toEncoding LocatorTypeSBOM = "sbom"
+  toEncoding = locatorAPIText
 
 instance ToJSON ProjectRevision where
   toEncoding = genericToEncoding defaultOptions

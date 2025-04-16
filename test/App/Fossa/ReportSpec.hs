@@ -24,6 +24,7 @@ reportConfig = do
       , timeoutDuration = MilliSeconds 100
       , reportType = Attribution
       , revision = Fixtures.projectRevision
+      , fetchSBOMReport = False
       }
 
 spec :: Spec
@@ -104,17 +105,17 @@ expectFetchIssuesError =
 
 expectFetchReportSuccess :: (Has MockApi sig m) => m ()
 expectFetchReportSuccess =
-  (GetAttribution Fixtures.projectRevision ReportJson)
+  (GetAttribution Fixtures.projectRevision ReportJson LocatorTypeCustom)
     `returnsOnce` Fixtures.attributionReportAsSerializedJson
 
 expectFetchReportError :: (Has MockApi sig m) => m ()
 expectFetchReportError =
-  (GetAttribution Fixtures.projectRevision ReportJson)
+  (GetAttribution Fixtures.projectRevision ReportJson LocatorTypeCustom)
     `fails` "Mock failure: GetAttribution"
 
 expectFetchRevisionDependencyCacheSuccess :: (Has MockApi sig m) => m ()
 expectFetchRevisionDependencyCacheSuccess =
-  (GetRevisionDependencyCacheStatus Fixtures.projectRevision)
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision LocatorTypeCustom)
     `returnsOnce` RevisionDependencyCache Ready
 
 expectGetOrganization :: Has MockApi sig m => m ()

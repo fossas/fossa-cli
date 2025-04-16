@@ -112,7 +112,7 @@ spec =
         expectIssuesAvailable
         expectGetRevisionCache Ready
         runWithTimeout $
-          waitForReportReadiness Fixtures.projectRevision
+          \c -> waitForReportReadiness Fixtures.projectRevision c LocatorTypeCustom
 
       it' "should retry periodically if the revision's dependency cache is in waiting state" $ do
         expectGetApiOpts
@@ -123,7 +123,7 @@ spec =
         expectGetRevisionCache Waiting
         expectGetRevisionCache Ready
         runWithTimeout $
-          waitForReportReadiness Fixtures.projectRevision
+          \c -> waitForReportReadiness Fixtures.projectRevision c LocatorTypeCustom
 
       it' "should cancel when the timeout expires" $ do
         expectGetApiOpts
@@ -131,7 +131,7 @@ spec =
         expectIssuesAvailable
         expectRevisionDependencyCacheAlwaysWaiting
         expectFatal' . runWithTimeout $
-          waitForReportReadiness Fixtures.projectRevision
+          \c -> waitForReportReadiness Fixtures.projectRevision c LocatorTypeCustom
 
 expectGetApiOpts :: Has MockApi sig m => m ()
 expectGetApiOpts =
@@ -150,7 +150,7 @@ expectGetLatestBuild status =
 
 expectGetRevisionCache :: Has MockApi sig m => RevisionDependencyCacheStatus -> m ()
 expectGetRevisionCache status =
-  (GetRevisionDependencyCacheStatus Fixtures.projectRevision)
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision LocatorTypeCustom)
     `returnsOnce` (RevisionDependencyCache status)
 
 expectIssuesAvailable :: Has MockApi sig m => m ()
@@ -175,7 +175,7 @@ expectBuildAlwaysRunning =
 
 expectRevisionDependencyCacheAlwaysWaiting :: Has MockApi sig m => m ()
 expectRevisionDependencyCacheAlwaysWaiting =
-  (GetRevisionDependencyCacheStatus Fixtures.projectRevision)
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision LocatorTypeCustom)
     `alwaysReturns` RevisionDependencyCache Waiting
 
 expectIssuesAlwaysWaiting :: Has MockApi sig m => m ()
