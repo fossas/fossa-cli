@@ -18,17 +18,22 @@ import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
+import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Monad (void, when)
 import Control.Timeout (timeout')
 import Data.Functor (($>))
+import Data.Maybe (isNothing)
 import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Diag.Result qualified as Result
 import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
+  logDebug,
   logInfo,
   logStdout,
   logWarn,
@@ -89,8 +94,10 @@ fetchReport ReportConfig{..} =
         if fetchSBOMReport
           then
             locatorWaitSBOM
-          else
-            locatorWaitCustom <||> locatorWaitSBOM
+          else do
+            res <- Diag.warnThenRecover ("Trying 'custom+' locator." :: Text) locatorWaitCustom
+            let sbomWaitAction = Diag.errCtx ("Tried 'custom+' locator and that failed too." :: Text) locatorWaitSBOM
+            maybe sbomWaitAction pure res
 
       logSticky "[ Waiting for scan completion... ]"
 

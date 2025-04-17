@@ -11,6 +11,7 @@ import Fossa.API.Types (RevisionDependencyCache (RevisionDependencyCache), Revis
 import Test.Effect (expectFatal', it')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec.Core.Spec (fdescribe)
 import Test.MockApi (MockApi, alwaysReturns, fails, returnsOnce)
 
 reportConfig :: IO ReportConfig
@@ -30,41 +31,89 @@ reportConfig = do
 spec :: Spec
 spec =
   describe "Report" $ do
-    config <- runIO reportConfig
-    it' "should timeout if build-completion doesn't complete" $ do
-      expectGetOrganization
-      expectBuildPending
-      expectFatal' $ fetchReport config
-    it' "should timeout if issue-generation doesn't complete" $ do
-      expectGetOrganization
-      expectBuildSuccess
-      expectFetchIssuesPending
-      expectFatal' $ fetchReport config
-    it' "should fetch a report when the build and issues are ready" $ do
-      expectGetOrganization
-      expectBuildSuccess
-      expectFetchIssuesSuccess
-      expectFetchRevisionDependencyCacheSuccess
-      expectFetchReportSuccess
-      fetchReport config
-    it' "should die if fetching the build fails" $ do
-      expectGetOrganization
-      expectBuildError
-      expectFatal' $ fetchReport config
-    it' "should die if fetching issues fails" $ do
-      expectGetOrganization
-      expectBuildSuccess
-      expectFetchIssuesError
-      expectFatal' $ fetchReport config
-    it' "should die if fetching the report fails" $ do
-      expectGetOrganization
-      expectBuildSuccess
-      expectFetchIssuesSuccess
-      expectFetchRevisionDependencyCacheSuccess
-      expectFetchReportError
-      expectFatal' $ fetchReport config
+    baseConfig <- runIO reportConfig
+    customBuildSpec baseConfig
+    sbomBuildSpec baseConfig
 
-    parseReportOutputSpec
+customBuildSpec :: ReportConfig -> Spec
+customBuildSpec config = describe "Custom build" $ do
+  let buildType = LocatorTypeCustom
+  it' "should timeout if build-completion doesn't complete" $ do
+    expectGetOrganization
+    expectBuildPending buildType
+    expectBuildPending LocatorTypeSBOM
+    expectFatal' $ fetchReport config
+  it' "should timeout if issue-generation doesn't complete" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesPending buildType
+    expectFatal' $ fetchReport config
+  it' "should fetch a report when the build and issues are ready" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesSuccess buildType
+    expectFetchRevisionDependencyCacheSuccess buildType
+    expectFetchReportSuccess buildType
+    fetchReport config
+  it' "should die if fetching the build fails" $ do
+    expectGetOrganization
+    expectBuildError buildType
+    -- It will try to see if there's an SBOM with that name, so this failure happens too.
+    expectBuildError LocatorTypeSBOM
+    expectFatal' $ fetchReport config
+  it' "should die if fetching issues fails" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesError buildType
+    expectFatal' $ fetchReport config
+  it' "should die if fetching the report fails" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesSuccess buildType
+    expectFetchRevisionDependencyCacheSuccess buildType
+    expectFetchReportError buildType
+    expectFatal' $ fetchReport config
+
+  parseReportOutputSpec
+
+sbomBuildSpec :: ReportConfig -> Spec
+sbomBuildSpec config = describe "Custom build" $ do
+  let config' = config{fetchSBOMReport = True}
+      buildType = LocatorTypeSBOM
+  it' "should timeout if build-completion doesn't complete" $ do
+    expectGetOrganization
+    expectBuildPending buildType
+    expectFatal' $ fetchReport config'
+  it' "should timeout if issue-generation doesn't complete" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesPending buildType
+    expectFatal' $ fetchReport config'
+  it' "should fetch a report when the build and issues are ready" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesSuccess buildType
+    expectFetchRevisionDependencyCacheSuccess buildType
+    expectFetchReportSuccess buildType
+    fetchReport config'
+  it' "should die if fetching the build fails" $ do
+    expectGetOrganization
+    expectBuildError buildType
+    expectFatal' $ fetchReport config'
+  it' "should die if fetching issues fails" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesError buildType
+    expectFatal' $ fetchReport config'
+  it' "should die if fetching the report fails" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesSuccess buildType
+    expectFetchRevisionDependencyCacheSuccess buildType
+    expectFetchReportError buildType
+    expectFatal' $ fetchReport config'
+
+  parseReportOutputSpec
 
 parseReportOutputSpec :: Spec
 parseReportOutputSpec =
@@ -74,48 +123,48 @@ parseReportOutputSpec =
         let fmt = show reportFmt
          in it ("Parses \"" <> fmt <> "\"") $ (parseReportOutputFormat fmt) `shouldBe` Just reportFmt
 
-expectBuildSuccess :: (Has MockApi sig m) => m ()
-expectBuildSuccess = do
-  (GetProject Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.project
-  (GetLatestBuild Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.successfulBuild
+expectBuildSuccess :: (Has MockApi sig m) => LocatorType -> m ()
+expectBuildSuccess locType = do
+  (GetProject Fixtures.projectRevision locType) `returnsOnce` Fixtures.project
+  (GetLatestBuild Fixtures.projectRevision locType) `returnsOnce` Fixtures.successfulBuild
 
-expectBuildPending :: (Has MockApi sig m) => m ()
-expectBuildPending = do
+expectBuildPending :: (Has MockApi sig m) => LocatorType -> m ()
+expectBuildPending locType = do
   GetApiOpts `alwaysReturns` Fixtures.apiOpts -- It needs to fetch the poll delay
-  (GetProject Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.project
-  (GetLatestBuild Fixtures.projectRevision LocatorTypeCustom) `alwaysReturns` Fixtures.pendingBuild
+  (GetProject Fixtures.projectRevision locType) `returnsOnce` Fixtures.project
+  (GetLatestBuild Fixtures.projectRevision locType) `alwaysReturns` Fixtures.pendingBuild
 
-expectBuildError :: (Has MockApi sig m) => m ()
-expectBuildError = do
-  (GetProject Fixtures.projectRevision LocatorTypeCustom) `returnsOnce` Fixtures.project
-  (GetLatestBuild Fixtures.projectRevision LocatorTypeCustom) `fails` "Mock failure: GetLatestBuild"
+expectBuildError :: (Has MockApi sig m) => LocatorType -> m ()
+expectBuildError locType = do
+  (GetProject Fixtures.projectRevision locType) `returnsOnce` Fixtures.project
+  (GetLatestBuild Fixtures.projectRevision locType) `fails` "Mock failure: GetLatestBuild"
 
-expectFetchIssuesSuccess :: (Has MockApi sig m) => m ()
-expectFetchIssuesSuccess =
-  (GetIssues Fixtures.projectRevision Nothing LocatorTypeCustom) `returnsOnce` Fixtures.issuesAvailable
+expectFetchIssuesSuccess :: (Has MockApi sig m) => LocatorType -> m ()
+expectFetchIssuesSuccess locType =
+  (GetIssues Fixtures.projectRevision Nothing locType) `returnsOnce` Fixtures.issuesAvailable
 
-expectFetchIssuesPending :: (Has MockApi sig m) => m ()
-expectFetchIssuesPending = do
+expectFetchIssuesPending :: (Has MockApi sig m) => LocatorType -> m ()
+expectFetchIssuesPending locType = do
   GetApiOpts `alwaysReturns` Fixtures.apiOpts -- It needs to fetch the poll delay
-  (GetIssues Fixtures.projectRevision Nothing LocatorTypeCustom) `alwaysReturns` Fixtures.issuesPending
+  (GetIssues Fixtures.projectRevision Nothing locType) `alwaysReturns` Fixtures.issuesPending
 
-expectFetchIssuesError :: (Has MockApi sig m) => m ()
-expectFetchIssuesError =
-  (GetIssues Fixtures.projectRevision Nothing LocatorTypeCustom) `fails` "Mock failure: GetIssues"
+expectFetchIssuesError :: (Has MockApi sig m) => LocatorType -> m ()
+expectFetchIssuesError locType =
+  (GetIssues Fixtures.projectRevision Nothing locType) `fails` "Mock failure: GetIssues"
 
-expectFetchReportSuccess :: (Has MockApi sig m) => m ()
-expectFetchReportSuccess =
-  (GetAttribution Fixtures.projectRevision ReportJson LocatorTypeCustom)
+expectFetchReportSuccess :: (Has MockApi sig m) => LocatorType -> m ()
+expectFetchReportSuccess locType =
+  (GetAttribution Fixtures.projectRevision ReportJson locType)
     `returnsOnce` Fixtures.attributionReportAsSerializedJson
 
-expectFetchReportError :: (Has MockApi sig m) => m ()
-expectFetchReportError =
-  (GetAttribution Fixtures.projectRevision ReportJson LocatorTypeCustom)
+expectFetchReportError :: (Has MockApi sig m) => LocatorType -> m ()
+expectFetchReportError locType =
+  (GetAttribution Fixtures.projectRevision ReportJson locType)
     `fails` "Mock failure: GetAttribution"
 
-expectFetchRevisionDependencyCacheSuccess :: (Has MockApi sig m) => m ()
-expectFetchRevisionDependencyCacheSuccess =
-  (GetRevisionDependencyCacheStatus Fixtures.projectRevision LocatorTypeCustom)
+expectFetchRevisionDependencyCacheSuccess :: (Has MockApi sig m) => LocatorType -> m ()
+expectFetchRevisionDependencyCacheSuccess locType =
+  (GetRevisionDependencyCacheStatus Fixtures.projectRevision locType)
     `returnsOnce` RevisionDependencyCache Ready
 
 expectGetOrganization :: Has MockApi sig m => m ()

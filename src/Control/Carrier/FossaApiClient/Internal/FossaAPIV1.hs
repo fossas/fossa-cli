@@ -1219,8 +1219,6 @@ getIssues apiOpts ProjectRevision{..} diffRevision locatorType = fossaReq $ do
       jsonResponse
       opts
 
-  -- this function works!
-
   pure (responseBody response)
 
 newtype EndpointDoesNotSupportIssueDiffing = EndpointDoesNotSupportIssueDiffing SourceLocation
