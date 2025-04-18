@@ -25,7 +25,7 @@ reportConfig =
     pure
       ReportConfig
         { apiOpts = Fixtures.apiOpts
-        , reportBase = CustomBase Fixtures.absDir
+        , reportBase = DirectoryBase Fixtures.absDir
         , outputFormat = ReportJson
         , timeoutDuration = MilliSeconds 100
         , reportType = Attribution
@@ -38,7 +38,6 @@ spec =
     baseConfig <- runIO reportConfig
     customBuildSpec baseConfig
     sbomBuildSpec baseConfig
-    fallbackBuildSpec baseConfig
 
 customBuildSpec :: ReportConfig -> Spec
 customBuildSpec config = describe "Custom build" $ do
@@ -46,6 +45,7 @@ customBuildSpec config = describe "Custom build" $ do
   it' "should timeout if build-completion doesn't complete" $ do
     expectGetOrganization
     expectBuildPending buildType
+    expectBuildPending LocatorTypeSBOM
     expectFatal' $ fetchReport config
   it' "should timeout if issue-generation doesn't complete" $ do
     expectGetOrganization
@@ -62,6 +62,7 @@ customBuildSpec config = describe "Custom build" $ do
   it' "should die if fetching the build fails" $ do
     expectGetOrganization
     expectBuildError buildType
+    expectBuildError LocatorTypeSBOM
     expectFatal' $ fetchReport config
   it' "should die if fetching issues fails" $ do
     expectGetOrganization
@@ -79,7 +80,7 @@ customBuildSpec config = describe "Custom build" $ do
   parseReportOutputSpec
 
 sbomBuildSpec :: ReportConfig -> Spec
-sbomBuildSpec config = describe "Custom build" $ do
+sbomBuildSpec config = describe "SBOM build" $ do
   let config' = config{reportBase = SBOMBase Fixtures.absFile}
       buildType = LocatorTypeSBOM
   it' "should timeout if build-completion doesn't complete" $ do
@@ -113,47 +114,6 @@ sbomBuildSpec config = describe "Custom build" $ do
     expectFetchIssuesSuccess buildType
     expectFetchRevisionDependencyCacheSuccess buildType
     expectFetchReportError buildType
-    expectFatal' $ fetchReport config'
-
-  parseReportOutputSpec
-
-fallbackBuildSpec :: ReportConfig -> Spec
-fallbackBuildSpec config = describe "Custom build" $ do
-  let config' = config{reportBase = CurrentDir Fixtures.absDir}
-      initialBuildType = LocatorTypeCustom
-  it' "should timeout if build-completion doesn't complete" $ do
-    expectGetOrganization
-    expectBuildPending initialBuildType
-    expectBuildPending LocatorTypeSBOM
-    expectFatal' $ fetchReport config'
-  it' "should timeout if issue-generation doesn't complete" $ do
-    expectGetOrganization
-    expectBuildSuccess initialBuildType
-    expectFetchIssuesPending initialBuildType
-    expectFatal' $ fetchReport config'
-  it' "should fetch a report when the build and issues are ready" $ do
-    expectGetOrganization
-    expectBuildSuccess initialBuildType
-    expectFetchIssuesSuccess initialBuildType
-    expectFetchRevisionDependencyCacheSuccess initialBuildType
-    expectFetchReportSuccess initialBuildType
-    fetchReport config'
-  it' "should die if fetching the build fails" $ do
-    expectGetOrganization
-    expectBuildError initialBuildType
-    expectBuildError LocatorTypeSBOM
-    expectFatal' $ fetchReport config'
-  it' "should die if fetching issues fails" $ do
-    expectGetOrganization
-    expectBuildSuccess initialBuildType
-    expectFetchIssuesError initialBuildType
-    expectFatal' $ fetchReport config'
-  it' "should die if fetching the report fails" $ do
-    expectGetOrganization
-    expectBuildSuccess initialBuildType
-    expectFetchIssuesSuccess initialBuildType
-    expectFetchRevisionDependencyCacheSuccess initialBuildType
-    expectFetchReportError initialBuildType
     expectFatal' $ fetchReport config'
 
   parseReportOutputSpec

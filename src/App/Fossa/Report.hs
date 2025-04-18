@@ -18,14 +18,12 @@ import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Effect.Diagnostics (Diagnostics, (<||>))
-import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Monad (void, when)
 import Control.Timeout (timeout')
 import Data.Functor (($>))
 import Data.String.Conversion (toText)
-import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Effect.Logger (
   Logger,
