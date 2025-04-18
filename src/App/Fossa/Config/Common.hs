@@ -127,7 +127,6 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
-  help,
   long,
   metavar,
   option,
