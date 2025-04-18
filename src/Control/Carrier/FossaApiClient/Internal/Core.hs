@@ -199,20 +199,22 @@ getAttribution ::
   ) =>
   ProjectRevision ->
   ReportOutputFormat ->
+  LocatorType ->
   m Text
-getAttribution revision format = do
+getAttribution revision format locatorType = do
   apiOpts <- ask
-  API.getAttribution apiOpts revision format
+  API.getAttribution apiOpts revision format locatorType
 
 getRevisionDependencyCacheStatus ::
   ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
+  LocatorType ->
   m RevisionDependencyCache
-getRevisionDependencyCacheStatus rev = do
+getRevisionDependencyCacheStatus rev locatorType = do
   apiOpts <- ask
-  API.getRevisionDependencyCacheStatus apiOpts rev
+  API.getRevisionDependencyCacheStatus apiOpts rev locatorType
 
 getSignedUploadUrl ::
   ( API.APIClientEffs sig m
