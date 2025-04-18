@@ -108,13 +108,14 @@ import Path (
   mkAbsFile,
   mkRelDir,
   parseAbsDir,
-  (</>),
+  (</>), parseAbsFile,
  )
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
+import Data.Maybe (fromMaybe)
 
 apiOpts :: API.ApiOpts
 apiOpts =
@@ -637,11 +638,11 @@ mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
 -- | Arbitrary absolute directory path for tests that require one.
 absDir :: Path Abs Dir
-absDir = $(mkAbsDir "/")
+absDir = fromMaybe $(mkAbsDir "/") (Path.parseAbsDir "C:\\")
 
 -- | Arbitrary absolute file path for tests that require one.
 absFile :: Path Abs File
-absFile = $(mkAbsFile "/file.txt")
+absFile = fromMaybe $(mkAbsFile "/file.txt") (Path.parseAbsFile "C:\\file.txt")
 
 standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
