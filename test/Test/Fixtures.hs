@@ -637,7 +637,7 @@ mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
 #ifdef mingw32_HOST_OS
 -- | Arbitrary absolute directory path for tests that require one.
- absDir :: Path Abs Dir
+absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
 #else
 absDir :: Path Abs Dir
