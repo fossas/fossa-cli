@@ -10,7 +10,7 @@ import App.Fossa.API.BuildWait (
   waitForReportReadiness,
   waitForScanCompletion,
  )
-import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
+import App.Fossa.Config.Report (ReportBase (..), ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (ReportChecks), guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (LocatorType (..), ProjectRevision (..))
@@ -24,16 +24,13 @@ import Control.Effect.Lift (Has, Lift)
 import Control.Monad (void, when)
 import Control.Timeout (timeout')
 import Data.Functor (($>))
-import Data.Maybe (isNothing)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
-import Diag.Result qualified as Result
 import Effect.Logger (
   Logger,
   Pretty (pretty),
   Severity (SevInfo),
-  logDebug,
   logInfo,
   logStdout,
   logWarn,
@@ -85,19 +82,17 @@ fetchReport ReportConfig{..} =
       when (outputFormat /= ReportJson) $
         logWarn (pretty $ "\"" <> toText outputFormat <> "\" format may change independent of CLI version: it is sourced from the FOSSA service.")
 
+      let waitForSbomCompletion = waitForScanCompletion revision LocatorTypeSBOM cancelToken $> LocatorTypeSBOM
+          waitForCustomCompletion = waitForScanCompletion revision LocatorTypeCustom cancelToken $> LocatorTypeCustom
+
       logSticky "[ Waiting for build completion... ]"
-
-      let locatorWaitSBOM = waitForScanCompletion revision LocatorTypeSBOM cancelToken $> LocatorTypeSBOM
-          locatorWaitCustom = waitForScanCompletion revision LocatorTypeCustom cancelToken $> LocatorTypeCustom
-
       locatorType <-
-        if fetchSBOMReport
-          then
-            locatorWaitSBOM
-          else do
-            res <- Diag.warnThenRecover ("Trying 'custom+' locator." :: Text) locatorWaitCustom
-            let sbomWaitAction = Diag.errCtx ("Tried 'custom+' locator and that failed too." :: Text) locatorWaitSBOM
-            maybe sbomWaitAction pure res
+        case reportBase of
+          SBOMBase _ -> waitForSbomCompletion
+          CustomBase _ -> waitForCustomCompletion
+          CurrentDir _ ->
+            waitForCustomCompletion
+              <||> (Diag.errCtx ("Tried custom+ locator as well." :: Text) waitForSbomCompletion)
 
       logSticky "[ Waiting for scan completion... ]"
 

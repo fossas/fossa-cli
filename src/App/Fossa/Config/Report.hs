@@ -5,6 +5,7 @@ module App.Fossa.Config.Report (
   ReportCliOptions,
   ReportOutputFormat (..),
   ReportType (..),
+  ReportBase (..),
   mkSubCommand,
   -- Exported for testing
   parseReportOutputFormat,
@@ -16,25 +17,31 @@ import App.Fossa.Config.Common (
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
+  collectBaseFile,
   collectRevisionData',
   commonOpts,
   defaultTimeoutDuration,
-  disambiguateSBOMFlag,
  )
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
+import App.Fossa.Config.SBOM.Common qualified as SBOMCfg
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
-import App.Types (BaseDir, OverrideProject (OverrideProject), ProjectRevision)
+import App.Types (BaseDir (..), LocatorType (..), OverrideProject (OverrideProject), ProjectRevision)
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), errHelp, fatal, fromMaybe)
+import Control.Effect.Diagnostics qualified as Diag
 import Control.Effect.Lift (Has, Lift)
 import Control.Timeout (Duration (Seconds))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.List (intercalate)
 import Data.String.Conversion (ToText, toText)
+import Data.String.Conversion qualified as Conv
+import Data.Text (Text)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..), vsep)
 import Effect.ReadFS (ReadFS)
+import Effect.ReadFS qualified as FS
 import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -53,6 +60,7 @@ import Options.Applicative (
   switch,
  )
 import Options.Applicative.Builder (helpDoc)
+import Path
 import Prettyprinter (Doc, comma, hardline, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc, styledDivider)
@@ -147,9 +155,11 @@ parser =
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc formatHelp))
     <*> optional (option auto (applyFossaStyle <> long "timeout" <> stringToHelpDoc "Duration to wait for build completion (in seconds)"))
     <*> reportTypeArg
-    <*> baseDirArg
-    <*> disambiguateSBOMFlag
+    <*> basePath
   where
+    basePath :: Parser Text
+    basePath = (Conv.toText <$> baseDirArg) <|> (SBOMCfg.unSBOMFile <$> SBOMCfg.sbomFileArg)
+
     jsonHelp :: Maybe (Doc AnsiStyle)
     jsonHelp =
       Just . formatDoc $
@@ -180,8 +190,7 @@ data ReportCliOptions = ReportCliOptions
   , cliReportOutputFormat :: Maybe String
   , cliReportTimeout :: Maybe Int
   , cliReportType :: ReportType
-  , cliReportBaseDir :: FilePath
-  , cliForceSBOM :: Bool
+  , cliReportBase :: Text
   }
   deriving (Eq, Ord, Show)
 
@@ -214,20 +223,60 @@ mergeOpts ::
   m ReportConfig
 mergeOpts cfgfile envvars ReportCliOptions{..} = do
   let apiOpts = collectApiOpts cfgfile envvars commons
-      basedir = collectBaseDir cliReportBaseDir
       outputformat = validateOutputFormat cliReportJsonOutput cliReportOutputFormat
       timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
-      revision =
-        collectRevisionData' basedir cfgfile ReadOnly $
-          OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
+      projectOverride = OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
+
+  (revision, reportBase) <-
+    case cliReportBase of
+      "." -> generateDefault projectOverride
+      path -> generateDirOrSBOMBase path projectOverride
+
   ReportConfig
     <$> apiOpts
-    <*> basedir
+    <*> pure reportBase
     <*> outputformat
     <*> pure timeoutduration
     <*> pure cliReportType
-    <*> revision
-    <*> pure cliForceSBOM
+    <*> pure revision
+  where
+    generateDefault ::
+      ( Has Exec sig m
+      , Has Logger sig m
+      , Has (Lift IO) sig m
+      , Has ReadFS sig m
+      , Has Diagnostics sig m
+      ) =>
+      OverrideProject -> m (ProjectRevision, ReportBase)
+    generateDefault projectOverride = do
+      currDir <- FS.getCurrentDir
+      (,)
+        <$> collectRevisionData' (pure (BaseDir currDir)) cfgfile ReadOnly projectOverride
+        <*> pure (CurrentDir currDir)
+
+    generateDirOrSBOMBase ::
+      ( Has Exec sig m
+      , Has Logger sig m
+      , Has (Lift IO) sig m
+      , Has ReadFS sig m
+      , Has Diagnostics sig m
+      ) =>
+      Text -> OverrideProject -> m (ProjectRevision, ReportBase)
+    generateDirOrSBOMBase path projectOverride = do
+      basedir <- Diag.recover $ collectBaseDir (Conv.toString path)
+      case basedir of
+        Just dir ->
+          (,)
+            <$> collectRevisionData' (pure dir) cfgfile ReadOnly projectOverride
+            <*> pure (CustomBase . unBaseDir $ dir)
+        Nothing -> do
+          baseFile <- Diag.recover $ collectBaseFile (Conv.toString path)
+          case baseFile of
+            Just file ->
+              (,)
+                <$> SBOMCfg.getProjectRevision (SBOMCfg.SBOMFile (toText file)) projectOverride ReadOnly
+                <*> pure (SBOMBase file)
+            Nothing -> Diag.fatalText $ "No such file or directory " <> path
 
 newtype NoFormatProvided = NoFormatProvided SourceLocation
 instance ToDiagnostic NoFormatProvided where
@@ -256,14 +305,23 @@ validateOutputFormat False (Just format) = errHelp ReportErrorHelp $ fromMaybe (
 
 data ReportConfig = ReportConfig
   { apiOpts :: ApiOpts
-  , baseDir :: BaseDir
+  , reportBase :: ReportBase
   , outputFormat :: ReportOutputFormat
   , timeoutDuration :: Duration
   , reportType :: ReportType
   , revision :: ProjectRevision
-  , fetchSBOMReport :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
+
+data ReportBase
+  = SBOMBase (Path Abs File)
+  | CustomBase (Path Abs Dir)
+  | -- | Special case for the default.
+    CurrentDir (Path Abs Dir)
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON ReportBase where
+  toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON ReportConfig where
   toEncoding = genericToEncoding defaultOptions

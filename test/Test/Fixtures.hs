@@ -58,6 +58,8 @@ module Test.Fixtures (
   policy,
   team,
   excludePath,
+  absFile,
+  absDir,
 )
 where
 
@@ -96,7 +98,18 @@ import Fossa.API.Types (
   Subscription (..),
  )
 import Fossa.API.Types qualified as API
-import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, parseAbsDir, (</>))
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  mkAbsDir,
+  mkAbsFile,
+  mkRelDir,
+  parseAbsDir,
+  (</>),
+ )
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
@@ -622,8 +635,13 @@ customFossaDepsFile = Nothing
 mavenScopeFilterSet :: MavenScopeFilters
 mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
+-- | Arbitrary absolute directory path for tests that require one.
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "/")
+
+-- | Arbitrary absolute file path for tests that require one.
+absFile :: Path Abs File
+absFile = $(mkAbsFile "/file.txt")
 
 standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
