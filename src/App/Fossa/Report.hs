@@ -89,10 +89,7 @@ fetchReport ReportConfig{..} =
       locatorType <-
         case reportBase of
           SBOMBase _ -> waitForSbomCompletion
-          CustomBase _ -> waitForCustomCompletion
-          CurrentDir _ ->
-            waitForCustomCompletion
-              <||> (Diag.errCtx ("Tried custom+ locator as well." :: Text) waitForSbomCompletion)
+          DirectoryBase _ -> waitForCustomCompletion <||> waitForSbomCompletion
 
       logSticky "[ Waiting for scan completion... ]"
 

@@ -26,7 +26,7 @@ import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.SBOM.Common qualified as SBOMCfg
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
-import App.Types (BaseDir (..), LocatorType (..), OverrideProject (OverrideProject), ProjectRevision)
+import App.Types (BaseDir (..), OverrideProject (OverrideProject), ProjectRevision)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), errHelp, fatal, fromMaybe)
 import Control.Effect.Diagnostics qualified as Diag
@@ -41,7 +41,6 @@ import Data.Text (Text)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, Severity (..), vsep)
 import Effect.ReadFS (ReadFS)
-import Effect.ReadFS qualified as FS
 import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -227,10 +226,7 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
       timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout
       projectOverride = OverrideProject (optProjectName commons) (optProjectRevision commons) Nothing
 
-  (revision, reportBase) <-
-    case cliReportBase of
-      "." -> generateDefault projectOverride
-      path -> generateDirOrSBOMBase path projectOverride
+  (revision, reportBase) <- generateDirOrSBOMBase cliReportBase projectOverride
 
   ReportConfig
     <$> apiOpts
@@ -240,20 +236,6 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
     <*> pure cliReportType
     <*> pure revision
   where
-    generateDefault ::
-      ( Has Exec sig m
-      , Has Logger sig m
-      , Has (Lift IO) sig m
-      , Has ReadFS sig m
-      , Has Diagnostics sig m
-      ) =>
-      OverrideProject -> m (ProjectRevision, ReportBase)
-    generateDefault projectOverride = do
-      currDir <- FS.getCurrentDir
-      (,)
-        <$> collectRevisionData' (pure (BaseDir currDir)) cfgfile ReadOnly projectOverride
-        <*> pure (CurrentDir currDir)
-
     generateDirOrSBOMBase ::
       ( Has Exec sig m
       , Has Logger sig m
@@ -268,7 +250,7 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
         Just dir ->
           (,)
             <$> collectRevisionData' (pure dir) cfgfile ReadOnly projectOverride
-            <*> pure (CustomBase . unBaseDir $ dir)
+            <*> pure (DirectoryBase . unBaseDir $ dir)
         Nothing -> do
           baseFile <- Diag.recover $ collectBaseFile (Conv.toString path)
           case baseFile of
@@ -315,9 +297,7 @@ data ReportConfig = ReportConfig
 
 data ReportBase
   = SBOMBase (Path Abs File)
-  | CustomBase (Path Abs Dir)
-  | -- | Special case for the default.
-    CurrentDir (Path Abs Dir)
+  | DirectoryBase (Path Abs Dir)
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON ReportBase where
