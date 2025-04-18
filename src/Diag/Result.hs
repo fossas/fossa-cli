@@ -34,7 +34,6 @@ module Diag.Result (
   renderFailure,
   renderSuccess,
   renderFailureWithoutWarnings,
-  isFailure,
 ) where
 
 import Data.Error (DiagnosticStyle (..), applyDiagnosticStyle, combineErrataHeaders, renderErrataStack)
@@ -68,10 +67,6 @@ import Prettyprinter.Render.Terminal
 -- on the first Failure.
 data Result a = Failure [EmittedWarn] ErrGroup | Success [EmittedWarn] a
   deriving (Show)
-
-isFailure :: Result a -> Bool
-isFailure (Failure _ _) = True
-isFailure _ = False
 
 -- | A warning emitted during a computation
 --

@@ -48,7 +48,6 @@ module App.Fossa.Config.Common (
   titleHelp,
   -- Deprecation
   applyReleaseGroupDeprecationWarning,
-  disambiguateSBOMFlag,
   collectBaseFile,
 ) where
 
@@ -273,13 +272,6 @@ baseDirArg = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc baseDirDo
           [ "Set the base directory for scanning"
           , boldItalicized "Default: " <> "Current directory"
           ]
-
-disambiguateSBOMFlag :: Parser Bool
-disambiguateSBOMFlag =
-  switch $
-    applyFossaStyle
-      <> long "sbom"
-      <> help "Disambiguate that the report should be for an SBOM project."
 
 collectBaseDir ::
   ( Has Diagnostics sig m

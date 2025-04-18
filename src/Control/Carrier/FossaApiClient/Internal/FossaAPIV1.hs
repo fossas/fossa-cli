@@ -109,6 +109,7 @@ import App.Types (
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
   ReleaseGroupReleaseRevision,
+  locatorAPIText,
   uploadFileTypeToFetcherName,
  )
 import App.Version (versionNumber)
@@ -1269,7 +1270,7 @@ getAttributionJson apiOpts ProjectRevision{..} locatorType = fossaReq $ do
           -- Large reports can take over a minute to generate, so increase the timeout to 10 minutes
           <> responseTimeoutSeconds 600
   orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator (toText locatorType) projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator (locatorAPIText locatorType) projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 getAttribution ::
@@ -1288,7 +1289,7 @@ getAttribution apiOpts ProjectRevision{..} format locatorType = fossaReq $ do
   let opts = baseOpts <> responseTimeoutSeconds 600
 
   orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator (toText locatorType) projectName (Just projectRevision)) format) NoReqBody bsResponse opts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator (locatorAPIText locatorType) projectName (Just projectRevision)) format) NoReqBody bsResponse opts
   pure (decodeUtf8 $ responseBody response)
 
 ----------

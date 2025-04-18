@@ -19,6 +19,7 @@ module App.Types (
   ComponentUploadFileType (..),
   Mode (..),
   uploadFileTypeToFetcherName,
+  locatorAPIText,
 ) where
 
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toEncoding), defaultOptions, genericToEncoding, object, withObject, (.:), (.=))

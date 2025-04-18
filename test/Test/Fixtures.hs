@@ -105,17 +105,16 @@ import Path (
   Path,
   Rel,
   mkAbsDir,
-  mkAbsFile,
   mkRelDir,
+  mkRelFile,
   parseAbsDir,
-  (</>), parseAbsFile,
+  (</>),
  )
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
 import Text.URI.QQ (uri)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
-import Data.Maybe (fromMaybe)
 
 apiOpts :: API.ApiOpts
 apiOpts =
@@ -636,13 +635,18 @@ customFossaDepsFile = Nothing
 mavenScopeFilterSet :: MavenScopeFilters
 mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
+#ifdef mingw32_HOST_OS
 -- | Arbitrary absolute directory path for tests that require one.
+ absDir :: Path Abs Dir
+absDir = $(mkAbsDir "C:/")
+#else
 absDir :: Path Abs Dir
-absDir = fromMaybe $(mkAbsDir "/") (Path.parseAbsDir "C:\\")
+absDir = $(mkAbsDir "/")
+#endif
 
 -- | Arbitrary absolute file path for tests that require one.
 absFile :: Path Abs File
-absFile = fromMaybe $(mkAbsFile "/file.txt") (Path.parseAbsFile "C:\\file.txt")
+absFile = absDir </> $(Path.mkRelFile "file.txt")
 
 standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
