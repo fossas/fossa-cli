@@ -39,7 +39,7 @@ With no final path, FOSSA will try to fetch a report for the current directory's
 
 #### SBOM Files
 
-You can specify an SBOM that you would like to generate a report for by listing its filename:
+After using [`fossa sbom analyze`](./sbom.md), you can specify an SBOM that you would like to generate a report for using its file:
 
 ```
 fossa report attribution --format json ~/my-project-sbom.txt
