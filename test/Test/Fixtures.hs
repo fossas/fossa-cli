@@ -58,7 +58,10 @@ module Test.Fixtures (
   policy,
   team,
   excludePath,
-) where
+  absFile,
+  absDir,
+)
+where
 
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
@@ -88,9 +91,25 @@ import Discovery.Filters (
  )
 import Effect.Logger (Severity (..))
 import Fossa.API.CoreTypes qualified as CoreAPI
-import Fossa.API.Types (Archive (..))
+import Fossa.API.Types (
+  Archive (..),
+  OrgId (OrgId),
+  Organization (..),
+  Subscription (..),
+ )
 import Fossa.API.Types qualified as API
-import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, parseAbsDir, (</>))
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  mkAbsDir,
+  mkRelDir,
+  mkRelFile,
+  parseAbsDir,
+  (</>),
+ )
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
@@ -106,13 +125,67 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free
+organization =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = False
+    , orgSubscription = Free
+    }
 
 organizationWithPreflightChecks :: API.Organization
-organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free
+organizationWithPreflightChecks =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = True
+    , orgSubscription = Free
+    }
 
 organizationWithPremiumSubscription :: API.Organization
-organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium
+organizationWithPremiumSubscription =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = True
+    , orgSubscription = Premium
+    }
 
 pushToken :: API.TokenTypeResponse
 pushToken = API.TokenTypeResponse API.Push
@@ -453,6 +526,7 @@ firstVendoredDep =
     (Just "0.0.1")
     Nothing
     []
+
 secondVendoredDep :: VendoredDependency
 secondVendoredDep =
   VendoredDependency
@@ -461,6 +535,7 @@ secondVendoredDep =
     (Just "0.0.1")
     Nothing
     []
+
 vendoredDeps :: NonEmpty VendoredDependency
 vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
 
@@ -561,12 +636,17 @@ mavenScopeFilterSet :: MavenScopeFilters
 mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
 #ifdef mingw32_HOST_OS
+-- | Arbitrary absolute directory path for tests that require one.
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
 #else
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "/")
 #endif
+
+-- | Arbitrary absolute file path for tests that require one.
+absFile :: Path Abs File
+absFile = absDir </> $(Path.mkRelFile "file.txt")
 
 standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =

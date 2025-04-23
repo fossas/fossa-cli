@@ -24,6 +24,41 @@ fossa report attribution --timeout 60
 
 Where `60` is the maximum number of seconds to wait for the report to be downloaded.
 
+### Valid Report Targets
+
+#### Project Directory
+
+You can specify a project directly like you would with `fossa analyze` to generate a report.
+For example:
+
+```
+fossa report attribution --format json ~/my-project
+```
+
+With no final path, FOSSA will try to fetch a report for the current directory's project.
+
+#### SBOM Files
+
+After using [`fossa sbom analyze`](./sbom.md), you can specify an SBOM that you would like to generate a report for using its file:
+
+```
+fossa report attribution --format json ~/my-project-sbom.txt
+```
+
+#### Project Arguments
+
+All `fossa` commands support the following FOSSA-project-related flags:
+
+| Name                               | Short | Description                                                                                                                                            |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                                     |
+| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                                |
+| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                                            |
+| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                                                                                 |
+| `--config /path/to/file`           | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in base working directory. |
+
+In this case, FOSSA will attempt to fetch any report it can find matching the `project` and `revision` criteria.
+
 ### Specifying a report format
 
 `fossa report` supports customizing the format used to render a report via the `--format` flag.
@@ -59,15 +94,3 @@ To use this compatibility script:
 2. Run `fossa report attribution --format json`, piping its output to `compat-attribution`.
    For example, `fossa report attribution --format json | compat-attribution`
 3. Parse the resulting output as you would have from FOSSAv1.
-
-## Common FOSSA Project Flags
-
-All `fossa` commands support the following FOSSA-project-related flags:
-
-| Name                               | Short | Description                                                                                                                                            |
-| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                                     |
-| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                                |
-| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                                            |
-| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                                                                                 |
-| `--config /path/to/file`           | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in base working directory. |
