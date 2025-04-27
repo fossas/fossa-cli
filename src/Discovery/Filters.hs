@@ -210,6 +210,8 @@ ignoredPaths =
   [ "dist-newstyle"
   , "doc/"
   , "docs/"
+  , "Documentation/"
+  , "documentation/"
   , "test/"
   , "tests/"
   , "example/"
