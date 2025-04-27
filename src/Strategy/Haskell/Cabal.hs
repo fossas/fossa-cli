@@ -96,6 +96,7 @@ data InstallPlan = InstallPlan
 
 data PlanStyle
   = Local
+  | Inplace
   | Global
   deriving (Eq, Ord, Show)
 
@@ -135,6 +136,7 @@ isDirectDep InstallPlan{..} = planStyle == Just Local && planType == Configured
 parsePlanStyle :: MonadFail f => Text -> f PlanStyle
 parsePlanStyle style = case Text.toLower style of
   "global" -> pure Global
+  "inplace" -> pure Inplace
   "local" -> pure Local
   _ -> fail $ "unknown install plan style" ++ toString style
 
