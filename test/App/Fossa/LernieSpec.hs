@@ -26,6 +26,7 @@ import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (alwaysReturns)
+import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
 
 customLicenseLernieMatchData :: LernieMatchData
 customLicenseLernieMatchData =
@@ -259,11 +260,21 @@ keywordSearchGrepEntry =
     , grepEntryName = "Keyword Search"
     }
 
+expectedLicenseScanPathFilters :: Maybe LicenseScanPathFilters
+expectedLicenseScanPathFilters =
+  Just
+    LicenseScanPathFilters
+      { licenseScanPathFiltersOnly = [GlobFilter "/*", GlobFilter "/**"]
+      , licenseScanPathFiltersExclude = [GlobFilter "/*", GlobFilter "/**"]
+      , licenseScanPathFilterFileExclude = []
+      }
+
 expectedLernieConfig :: LernieConfig
 expectedLernieConfig =
   LernieConfig
     { rootDir = absDir
     , regexes = [customLicenseLernieRegex, keywordSearchLernieRegex]
+    , licenseScanPathFilters = expectedLicenseScanPathFilters
     , fullFiles = False
     }
 
@@ -307,7 +318,7 @@ spec = do
 
   describe "grepOptionsToLernieConfig" $ do
     it "should create a lernie config" $ do
-      grepOptionsToLernieConfig absDir grepOptions FileUploadMatchData `shouldBe` Just expectedLernieConfig
+      grepOptionsToLernieConfig absDir grepOptions expectedLicenseScanPathFilters FileUploadMatchData `shouldBe` Just expectedLernieConfig
 
   describe "analyzeWithLernie" $ do
     currDir <- runIO getCurrentDir
@@ -320,7 +331,7 @@ spec = do
     let fixedOnePath = fromMaybe onePath (Text.stripSuffix (toText pathSeparator) onePath)
 
     it' "should analyze a directory with the provided config if no API keys are passed in" $ do
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions{configFilePath = (Just $ scanDir </> $(mkRelFile ".fossa.yml"))}
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions{configFilePath = (Just $ scanDir </> $(mkRelFile ".fossa.yml"))} Nothing
       -- Fix the paths in the expected data. We need to do this here because they include the full path to the file
       let actualUnitData =
             expectedUnitData
@@ -352,7 +363,7 @@ spec = do
 
     it' "should include the file contents if the org has the full-files flag on" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = True}
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions Nothing
       case result of
         Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
         Just res -> do
@@ -375,7 +386,7 @@ spec = do
 
     it' "should not include the file contents if the org has the full-files flag off" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = False}
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions Nothing
       case result of
         Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
         Just res -> do
@@ -391,7 +402,7 @@ spec = do
 
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions Nothing
       case result of
         Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
         Just res -> do
