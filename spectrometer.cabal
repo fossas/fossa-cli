@@ -506,6 +506,8 @@ library
     Strategy.Python.Poetry.Common
     Strategy.Python.Poetry.PoetryLock
     Strategy.Python.Poetry.PyProject
+    Strategy.Python.PyProjectGeneric
+    Strategy.Python.PyProjectGeneric.Types
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
@@ -696,6 +698,7 @@ test-suite unit-tests
     Python.Poetry.PoetryLockSpec
     Python.Poetry.PyProjectSpec
     Python.PoetrySpec
+    Python.PyProjectGenericSpec
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec

@@ -1,0 +1,11 @@
+[project]
+name = "example-project"
+version = "0.1.0"
+description = "Mixed format project"
+dependencies = ["requests>=2.25.1"]
+
+[poetry]
+name = "example-project-poetry"
+version = "0.1.0"
+
+[pdm]

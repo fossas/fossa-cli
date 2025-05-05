@@ -1,0 +1,28 @@
+[project]
+name = "complex-dependencies-pdm"
+version = "0.1.0"
+description = "PDM project with complex dependency specifications"
+dependencies = [
+    "simple>=1.2.3",
+    "exact==1.2.3",
+    "range>=1.0.0,<2.0.0",
+    "git+https://github.com/example/repo.git",
+    "git+https://github.com/example/repo.git@v1.0.0",
+    "git+https://github.com/example/repo.git@main",
+    "git+https://github.com/example/repo.git@abcd1234",
+    "https://example.com/package-1.0.0.tar.gz",
+    "file:../local/package/",
+    "requests>=2.0.0; python_version >= '3.6'",
+    "package[dev,test]>=1.0.0"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=6.2.5", "black>=21.5b2; python_version >= '3.6'"]
+test = ["pytest-cov>=2.12.0", "coverage[toml]>=5.5"]
+
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+docs = [
+    "sphinx>=4.0.0",
+    "git+https://github.com/example/sphinx-theme.git@main"
+]

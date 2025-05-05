@@ -1,0 +1,16 @@
+[project]
+name = "example-project"
+version = "0.1.0"
+description = "PDM example project"
+dependencies = ["requests>=2.25.1", "flask>=2.0.0", "sqlalchemy>=1.4.0,<2.0.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=6.2.5", "black>=21.5b2"]
+docs = ["sphinx>=4.0.0", "mkdocs>=1.2.0"]
+
+[tool.pdm]
+[tool.pdm.dev-dependencies]
+lint = [
+    "flake8>=4.0.0",
+    "pylint>=2.12.0"
+]

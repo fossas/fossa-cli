@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "example-project"
+version = "0.1.0"
+description = "Poetry example project"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.25.1"
+django = {version = "^3.2", extras = ["rest"]}
+custom = {git = "https://github.com/example/custom.git", tag = "v1.0.0"}
+pathlib = {path = "../local-package"}
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+black = "^21.5b2"
+mypy = ">=0.910"
