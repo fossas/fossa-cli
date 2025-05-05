@@ -506,6 +506,7 @@ library
     Strategy.Python.Poetry.Common
     Strategy.Python.Poetry.PoetryLock
     Strategy.Python.Poetry.PyProject
+    Strategy.Python.Dependency
     Strategy.Python.PyProjectGeneric
     Strategy.Python.PyProjectGeneric.Types
     Strategy.Python.ReqTxt
