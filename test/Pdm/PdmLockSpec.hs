@@ -6,7 +6,7 @@ module Pdm.PdmLockSpec (
 
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (..))
-import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), toDependency)
+import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), lockPackageToDependency)
 import Strategy.Python.Util (Req (..))
 import Test.Hspec (
   Spec,
@@ -74,9 +74,9 @@ spec = do
               ]
       Toml.decode lockWithFileUrlEntry `shouldBe` (Toml.Success [] expected)
 
-  describe "toDependency" $
+  describe "lockPackageToDependency" $
     it "should handle pdm's local dependency correctly" $ do
-      let dep = toDependency mempty mempty lockWithFilePathEntryPackage
+      let dep = lockPackageToDependency mempty mempty lockWithFilePathEntryPackage
       dep `shouldBe` lockWithFilePathEntryDependency
 
 lockNoContent :: Text
