@@ -24,7 +24,7 @@ import Strategy.Python.Util (Req (..))
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Data.Maybe (isNothing)
+import Data.Maybe (isJust, isNothing)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
@@ -49,9 +49,30 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \dir _ files -> do
   let pyprojectFile = findFileNamed "pyproject.toml" files
   let pdmlockFile = findFileNamed "pdm.lock" files
-  case pyprojectFile of
-    Just pyprojectToml -> pure ([PdmProject pyprojectToml pdmlockFile dir], WalkSkipSome [".venv"])
-    Nothing -> pure ([], WalkContinue)
+  
+  case (pyprojectFile, pdmlockFile) of
+    -- If both pyproject.toml and pdm.lock are present, it's definitely a PDM project
+    (Just pyprojectToml, Just pdmlock) -> 
+      pure ([PdmProject pyprojectToml (Just pdmlock) dir], WalkSkipSome [".venv"])
+    
+    -- If only pyproject.toml is present, check if it contains PDM-specific markers
+    (Just pyprojectToml, Nothing) -> do
+      -- Try to read and parse the pyproject.toml
+      pyproject <- readContentsToml pyprojectToml
+      -- Only include this project if it has PDM sections
+      if isPdmProject pyproject
+        then pure ([PdmProject pyprojectToml Nothing dir], WalkSkipSome [".venv"])
+        else pure ([], WalkContinue)
+    
+    -- No pyproject.toml, no PDM project
+    _ -> pure ([], WalkContinue)
+  
+  where
+    -- Check if a PyProject contains PDM-specific markers
+    isPdmProject :: PyProject -> Bool
+    isPdmProject pyproject = case pyprojectTool pyproject of
+      Just (PyProjectTool{pyprojectPdm}) -> isJust pyprojectPdm
+      Nothing -> False
 
 data PdmProject = PdmProject
   { pyproject :: Path Abs File
