@@ -13,6 +13,7 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PipType, URLType, UnresolvedPathType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing, gmap)
+import Strategy.Python.Dependency (determineEnvironmentFromDirect)
 import Strategy.Python.Util (Req (..))
 import Toml.Schema qualified
 
@@ -114,12 +115,12 @@ toDependency prodReqs devReqs pkg =
     depEnv :: Set DepEnvironment
     depEnv = case (gitUrl pkg, matchedProdReq, matchedDevReq) of
       (_, Nothing, Nothing) -> mempty
-      (_, Nothing, Just _) -> singleton EnvDevelopment
+      (_, Nothing, Just _) -> determineEnvironmentFromDirect False -- Dev dependency
       (Just _, Just r', _) ->
         if isUrlReq r'
-          then singleton EnvProduction
+          then determineEnvironmentFromDirect True -- Prod dependency
           else mempty
-      (_, Just _, _) -> singleton EnvProduction
+      (_, Just _, _) -> determineEnvironmentFromDirect True -- Prod dependency
 
     matchedProdReq :: Maybe Req
     matchedProdReq = find (\pr -> reqName pr == name pkg) prodReqs
@@ -136,7 +137,10 @@ reqName (NameReq rname _ _ _) = rname
 reqName (UrlReq rname _ _ _) = rname
 
 buildGraph :: [Req] -> [Req] -> PdmLock -> Graphing Dependency
-buildGraph prodReqs devReqs pdmLock = hydrateDepEnvs $
+buildGraph prodReqs devReqs pdmLock = 
+  -- Do NOT hydrate environments for PDM, as it correctly assigns environments
+  -- based on the package's source in requirements. This prevents environments from
+  -- being propagated to deep dependencies.
   gmap (toDependency prodReqs devReqs) $
     run . evalGrapher $ do
       for_ allDeps $ \resolvedDep -> do

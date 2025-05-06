@@ -14,6 +14,8 @@ module Strategy.Python.Dependency (
   urlDependency,
   pathDependency,
   complexDependency,
+  mapCategoryToEnvironment,
+  determineEnvironmentFromDirect,
 ) where
 
 import Data.Map.Strict qualified as Map
@@ -24,7 +26,7 @@ import Data.Text qualified as Text
 import Text.URI qualified as URI
 
 import DepTypes (
-  DepEnvironment,
+  DepEnvironment(..),
   DepType (..),
   Dependency (..),
   VerConstraint (..),
@@ -487,3 +489,24 @@ versionToConstraint (Version op ver) =
     OpLt -> PythonVersionLt ver
     OpGt -> PythonVersionGt ver
     OpArbitrary -> PythonVersionArbitrary
+
+-- | Map a package category to a dependency environment
+-- This function provides consistent environment mapping across different package managers
+mapCategoryToEnvironment :: Text -> DepEnvironment
+mapCategoryToEnvironment category = case category of
+  "dev" -> DepTypes.EnvDevelopment
+  "development" -> DepTypes.EnvDevelopment
+  "main" -> DepTypes.EnvProduction
+  "prod" -> DepTypes.EnvProduction
+  "production" -> DepTypes.EnvProduction
+  "test" -> DepTypes.EnvTesting
+  other -> DepTypes.EnvOther other
+
+-- | Determine environment based on whether a dependency is direct in production
+-- If the package is in the direct production dependencies, mark as production
+-- Otherwise, consider it a development dependency
+determineEnvironmentFromDirect :: Bool -> Set.Set DepEnvironment
+determineEnvironmentFromDirect isProductionDirect =
+  if isProductionDirect 
+  then Set.singleton DepTypes.EnvProduction 
+  else Set.singleton DepTypes.EnvDevelopment
