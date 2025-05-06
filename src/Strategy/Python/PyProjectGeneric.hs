@@ -17,6 +17,7 @@ module Strategy.Python.PyProjectGeneric
   , parseComplexDependency
   ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject(..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover)
 import Control.Effect.Reader (Reader)
@@ -132,6 +133,11 @@ data PyProjectProject = PyProjectProject
   deriving (Eq, Ord, Show, Generic)
 
 instance ToJSON PyProjectProject
+
+-- | Instance for AnalyzeProject
+instance AnalyzeProject PyProjectProject where
+  analyzeProject _ = analyze . pyprojectFile
+  analyzeProjectStaticOnly _ = analyze . pyprojectFile
 
 -- | Create a DiscoveredProject from PyProjectProject with the provided project type
 mkProject :: DiscoveredProjectType -> PyProjectProject -> DiscoveredProject PyProjectProject
