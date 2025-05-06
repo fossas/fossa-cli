@@ -5,6 +5,7 @@ module Strategy.Python.Dependency (
   PythonVersionConstraint(..),
   toDependency,
   fromPoetryDependency,
+  fromPoetryDependencyPyProject,
   fromPDMDependency,
   fromPEP621Dependency,
   fromReq,
@@ -28,31 +29,19 @@ import DepTypes (
   Dependency (..),
   VerConstraint (..),
  )
-import qualified DepTypes
+-- Import instances from DepTypes
+import DepTypes()
 
 import Strategy.Python.Util (
   Marker(..), 
   MarkerOp(..),
   Operator(..), 
   Req(..), 
-  Version(..),
-  toConstraint,
+  Version(..)
  )
 
-import Strategy.Python.PyProjectGeneric.Types (
-  PoetryDependency(..),
-  PyProjectDetailedVersionDependency(..),
-  PyProjectGitDependency(..),
-  PyProjectPathDependency(..),
-  PyProjectUrlDependency(..),
-  gitUrl,
-  gitBranch,
-  gitTag,
-  gitRev,
-  dependencyVersion,
-  sourcePath,
-  sourceUrl
-  )
+import qualified Strategy.Python.PyProjectGeneric.Types as PyProjectGeneric
+import qualified Strategy.Python.Poetry.PyProject as Poetry
 
 -- | Source of the Python dependency
 data PythonDependencySource
@@ -99,22 +88,30 @@ data PythonDependency = PythonDependency
 
 -- | Convert a Python dependency to the general FOSSA Dependency type
 toDependency :: PythonDependency -> Dependency
-toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMarkers} =
+toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMarkers, pyDepSource} =
   Dependency
     { dependencyType = depType
-    , dependencyName = pyDepName
+    , dependencyName = dependencyName
     , DepTypes.dependencyVersion = versionVal
     , dependencyLocations = locations
     , dependencyEnvironments = pyDepEnvironments
     , dependencyTags = maybe Map.empty toTags pyDepMarkers
     }
   where
-    (depType, versionVal, locations) = case pyDepType of
+    (depType, dependencyName, versionVal, locations) = case pyDepType of
       SimpleVersion v -> 
-        (PipType, convertVersionText v, [])
+        -- Special case for the legacy source type from Poetry lock file
+        -- where we need to store the URL in the locations
+        case pyDepSource of
+          FromLockFile -> 
+            -- Check if this is a legacy source from Poetry
+            if "https://" `Text.isPrefixOf` pyDepName || "http://" `Text.isPrefixOf` pyDepName
+              then (PipType, pyDepName, convertVersionText v, [pyDepName]) 
+              else (PipType, pyDepName, convertVersionText v, [])
+          _ -> (PipType, pyDepName, convertVersionText v, [])
       
       VersionConstraint vc -> 
-        (PipType, Just $ convertVersionConstraint vc, [])
+        (PipType, pyDepName, Just $ convertVersionConstraint vc, [])
       
       GitDependency url branch rev tag -> 
         let 
@@ -125,14 +122,21 @@ toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMark
                       (_, Just t, _) -> "@" <> t
                       (_, _, Just r) -> "@" <> r
                       _ -> ""
+          -- Get version from revision if available
+          version = case rev of
+                      Just r -> Just $ DepTypes.CEq r
+                      Nothing -> Nothing
         in 
-          (GitType, Nothing, [baseUrl <> refInfo])
+          (GitType, url, version, [baseUrl <> refInfo])
       
       PathDependency path -> 
-        (UnresolvedPathType, Nothing, [path])
+        -- For path dependencies, preserve the path as both name and location
+        -- Version value will come from a lock file if available
+        -- Otherwise use the path as a version
+        (UnresolvedPathType, path, Just (DepTypes.CEq path), [path])
       
       URLDependency url -> 
-        (URLType, Just (DepTypes.CURI url), [url])
+        (URLType, pyDepName, Just (DepTypes.CURI url), [url])
     
     -- Convert simple version text to VerConstraint
     convertVersionText :: Text -> Maybe VerConstraint
@@ -187,10 +191,10 @@ toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMark
             MarkerNotIn -> [(lhs, "not (" <> rhs <> ")")]
             MarkerOperator _ -> [(lhs, rhs)]
 
--- | Convert a Poetry dependency to unified PythonDependency
-fromPoetryDependency :: Text -> DepEnvironment -> PoetryDependency -> PythonDependency
+-- | Convert a PyProjectGeneric Poetry dependency to unified PythonDependency
+fromPoetryDependency :: Text -> DepEnvironment -> PyProjectGeneric.PoetryDependency -> PythonDependency
 fromPoetryDependency name env = \case
-  PoetryTextVersion v -> 
+  PyProjectGeneric.PoetryTextVersion v -> 
     PythonDependency
       { pyDepName = name
       , pyDepType = SimpleVersion v
@@ -200,40 +204,93 @@ fromPoetryDependency name env = \case
       , pyDepSource = FromPyProject
       }
   
-  PoetryDetailedVersion d -> 
+  PyProjectGeneric.PoetryDetailedVersion d -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = SimpleVersion (Strategy.Python.PyProjectGeneric.Types.dependencyVersion d)
+      , pyDepType = SimpleVersion (PyProjectGeneric.dependencyVersion d)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  PoetryGitDependency g -> 
+  PyProjectGeneric.PoetryGitDependency g -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = GitDependency (gitUrl g) (gitBranch g) (gitRev g) (gitTag g)
+      , pyDepType = GitDependency (PyProjectGeneric.gitUrl g) (PyProjectGeneric.gitBranch g) (PyProjectGeneric.gitRev g) (PyProjectGeneric.gitTag g)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  PoetryPathDependency p -> 
+  PyProjectGeneric.PoetryPathDependency p -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = PathDependency (sourcePath p)
+      , pyDepType = PathDependency (PyProjectGeneric.sourcePath p)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  PoetryUrlDependency u -> 
+  PyProjectGeneric.PoetryUrlDependency u -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = URLDependency (sourceUrl u)
+      , pyDepType = URLDependency (PyProjectGeneric.sourceUrl u)
+      , pyDepEnvironments = Set.singleton env
+      , pyDepExtras = []
+      , pyDepMarkers = Nothing
+      , pyDepSource = FromPyProject
+      }
+
+-- | Convert a Poetry.PyProject Poetry dependency to unified PythonDependency
+fromPoetryDependencyPyProject :: Text -> DepEnvironment -> Poetry.PoetryDependency -> PythonDependency
+fromPoetryDependencyPyProject name env = \case
+  Poetry.PoetryTextVersion v -> 
+    PythonDependency
+      { pyDepName = name
+      , pyDepType = SimpleVersion v
+      , pyDepEnvironments = Set.singleton env
+      , pyDepExtras = []
+      , pyDepMarkers = Nothing
+      , pyDepSource = FromPyProject
+      }
+  
+  Poetry.PyProjectPoetryDetailedVersionDependencySpec d -> 
+    PythonDependency
+      { pyDepName = name
+      , pyDepType = SimpleVersion (Poetry.poetryDependencyVersion d)
+      , pyDepEnvironments = Set.singleton env
+      , pyDepExtras = []
+      , pyDepMarkers = Nothing
+      , pyDepSource = FromPyProject
+      }
+  
+  Poetry.PyProjectPoetryGitDependencySpec g -> 
+    PythonDependency
+      { pyDepName = name
+      , pyDepType = GitDependency (Poetry.gitUrl g) (Poetry.gitBranch g) (Poetry.gitRev g) (Poetry.gitTag g)
+      , pyDepEnvironments = Set.singleton env
+      , pyDepExtras = []
+      , pyDepMarkers = Nothing
+      , pyDepSource = FromPyProject
+      }
+  
+  Poetry.PyProjectPoetryPathDependencySpec p -> 
+    PythonDependency
+      { pyDepName = name
+      , pyDepType = PathDependency (Poetry.sourcePath p)
+      , pyDepEnvironments = Set.singleton env
+      , pyDepExtras = []
+      , pyDepMarkers = Nothing
+      , pyDepSource = FromPyProject
+      }
+  
+  Poetry.PyProjectPoetryUrlDependencySpec u -> 
+    PythonDependency
+      { pyDepName = name
+      , pyDepType = URLDependency (Poetry.sourceUrl u)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
@@ -348,7 +405,7 @@ urlDependency text =
                                 Nothing -> "unknown"
                                 Just fn -> case Text.splitOn "." fn of
                                              [] -> fn
-                                             nameParts -> head nameParts
+                                             (firstPart:_) -> firstPart
       in Just $ Dependency
            { dependencyType = URLType
            , dependencyName = fileName

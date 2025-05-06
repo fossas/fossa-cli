@@ -5,21 +5,21 @@ module Strategy.Python.PDM.Pdm (
 
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.Map qualified as Map
-import Data.Set qualified as Set
-import Data.Text (Text, isPrefixOf)
+import Data.Text (Text)
 import DepTypes (
   DepEnvironment (..),
-  DepType (PipType, URLType, UnresolvedPathType),
-  Dependency (..),
-  VerConstraint,
+  Dependency (..)
  )
 import Effect.ReadFS (Has, ReadFS, readContentsToml)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path)
+import Strategy.Python.Dependency (
+  fromPDMDependency,
+  toDependency
+ )
 import Strategy.Python.PDM.PdmLock (buildGraph)
 import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectMetadata (..), PyProjectPdm (..), PyProjectTool (..))
-import Strategy.Python.Util (Req (..), toConstraint)
-import Text.URI qualified as URI
+import Strategy.Python.Util (Req (..))
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Reader (Reader)
@@ -109,41 +109,14 @@ analyze pyProjectToml pdmLockFile = do
   case pdmLockFile of
     Nothing ->
       pure . directs $
-        (toDependency EnvProduction <$> prodReqs)
-          ++ (toDependency EnvDevelopment <$> devReqs)
+        (reqToDependency EnvProduction <$> prodReqs)
+          ++ (reqToDependency EnvDevelopment <$> devReqs)
     Just pdmLockFile' -> do
       pdmLock <- readContentsToml pdmLockFile'
       pure $ buildGraph prodReqs devReqs pdmLock
 
-toDependency :: DepEnvironment -> Req -> Dependency
-toDependency env req =
-  Dependency
-    { dependencyType = reqDepType req
-    , dependencyName = reqDepName req
-    , dependencyVersion = reqDepVersion req
-    , dependencyLocations = mempty
-    , dependencyEnvironments = Set.singleton env
-    , dependencyTags = mempty
-    }
-
-reqDepName :: Req -> Text
-reqDepName (NameReq name _ _ _) = name
-reqDepName (UrlReq name _ url _) =
-  if "file://" `isPrefixOf` URI.render url
-    then name
-    else URI.render url
-
-reqDepType :: Req -> DepType
-reqDepType (NameReq{}) = PipType
-reqDepType (UrlReq _ _ url _) =
-  if "file://" `isPrefixOf` URI.render url
-    then UnresolvedPathType
-    else URLType
-
-reqDepVersion :: Req -> Maybe VerConstraint
-reqDepVersion (UrlReq{}) = Nothing
-reqDepVersion (NameReq _ _ Nothing _) = Nothing
-reqDepVersion (NameReq _ _ (Just ver) _) = Just . toConstraint $ ver
+reqToDependency :: DepEnvironment -> Req -> Dependency
+reqToDependency env req = Strategy.Python.Dependency.toDependency $ fromPDMDependency env req
 
 reqsFromPdmMetadata :: PyProject -> [Req]
 reqsFromPdmMetadata pr = case pyprojectTool pr of

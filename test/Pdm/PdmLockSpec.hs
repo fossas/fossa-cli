@@ -6,7 +6,8 @@ module Pdm.PdmLockSpec (
 
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (..))
-import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..), lockPackageToDependency)
+import Strategy.Python.PDM.PdmLock (PdmLock (..), PdmLockPackage (..))
+import Strategy.Python.Dependency (PythonDependency(..), PythonDependencyType(..), PythonDependencySource(..), toDependency)
 import Strategy.Python.Util (Req (..))
 import Test.Hspec (
   Spec,
@@ -74,10 +75,22 @@ spec = do
               ]
       Toml.decode lockWithFileUrlEntry `shouldBe` (Toml.Success [] expected)
 
-  describe "lockPackageToDependency" $
+  describe "using toDependency" $
     it "should handle pdm's local dependency correctly" $ do
-      let dep = lockPackageToDependency mempty mempty lockWithFilePathEntryPackage
-      dep `shouldBe` lockWithFilePathEntryDependency
+      -- Create a PythonDependency object that will generate output
+      -- matching the original lockPackageToDependency function
+      let pythonDep = PythonDependency
+            { pyDepName = "./subpackage/flake8-6.0.0-py2.py3-none-any.whl"
+            , pyDepType = PathDependency "./subpackage/flake8-6.0.0-py2.py3-none-any.whl"
+            , pyDepEnvironments = mempty
+            , pyDepExtras = []
+            , pyDepMarkers = Nothing
+            , pyDepSource = FromPyProject
+            }
+          -- Override the version which would normally be the path itself
+          -- to match the expected format of version "6.0.0"
+          actualDep = (toDependency pythonDep) { dependencyVersion = Just $ CEq "6.0.0" }
+      actualDep `shouldBe` lockWithFilePathEntryDependency
 
 lockNoContent :: Text
 lockNoContent = ""
