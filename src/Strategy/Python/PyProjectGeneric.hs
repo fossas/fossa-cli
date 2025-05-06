@@ -33,8 +33,7 @@ import DepTypes
   , Dependency (..)
   , VerConstraint (..)
   )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
+import Discovery.Filters (AllFilters, withToolFilter)
 import Discovery.Walk
   ( WalkStep (WalkContinue, WalkSkipSome)
   , findFileNamed
@@ -79,7 +78,7 @@ import Toml qualified
 import Types
   ( DependencyResults (..)
   , DiscoveredProject (..)
-  , DiscoveredProjectType (GenericPyProjectType)
+  , DiscoveredProjectType (GenericPyProjectType, PdmProjectType, PoetryProjectType)
   , GraphBreadth (Partial)
   )
 import Text.URI qualified as URI
@@ -92,7 +91,24 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject PyProjectProject]
-discover = simpleDiscover findProjects mkProject GenericPyProjectType
+discover dir = withToolFilter GenericPyProjectType $ do
+  -- Find all PyProject.toml files
+  projects <- findProjects dir
+  -- Process each project to determine its type and create DiscoveredProject
+  discoveredProjects <- mapM processProject projects
+  pure discoveredProjects
+  where
+    processProject :: (Has ReadFS sig m, Has Diagnostics sig m) => PyProjectProject -> m (DiscoveredProject PyProjectProject)
+    processProject project = do
+      -- Parse the file to determine project type
+      pyProject <- parseGenericPyProject (pyprojectFile project)
+      -- Create a DiscoveredProject with the appropriate type
+      let projectType = Strategy.Python.PyProjectGeneric.Types.projectType pyProject
+      let discoveredType = case projectType of
+            PoetryProject -> PoetryProjectType  -- Use Poetry type for Poetry projects 
+            PDMProject -> PdmProjectType        -- Use PDM type for PDM projects
+            _ -> GenericPyProjectType           -- Use Generic type for others (PEP621, Unknown)
+      pure $ mkProject discoveredType project
 
 -- | Find PyProject.toml files
 findProjects :: 
@@ -117,11 +133,11 @@ data PyProjectProject = PyProjectProject
 
 instance ToJSON PyProjectProject
 
--- | Create a DiscoveredProject from PyProjectProject
-mkProject :: PyProjectProject -> DiscoveredProject PyProjectProject
-mkProject project =
+-- | Create a DiscoveredProject from PyProjectProject with the provided project type
+mkProject :: DiscoveredProjectType -> PyProjectProject -> DiscoveredProject PyProjectProject
+mkProject projectType project =
   DiscoveredProject
-    { Types.projectType = GenericPyProjectType
+    { Types.projectType = projectType  -- Use the provided project type
     , projectBuildTargets = mempty
     , projectPath = projectDir project
     , projectData = project
