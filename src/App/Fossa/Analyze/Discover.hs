@@ -69,11 +69,10 @@ discoverFuncs =
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackagesConfig.discover
   , DiscoverFunc Paket.discover
-  , DiscoverFunc Pdm.discover
+  -- Remove PDM and Poetry discoverers - they're now handled by PyProjectGeneric
   , DiscoverFunc Perl.discover
   , DiscoverFunc Pipenv.discover
-  , DiscoverFunc Poetry.discover
-  , DiscoverFunc PyProjectGeneric.discover  -- Add Generic PyProject handler
+  , DiscoverFunc PyProjectGeneric.discover  -- Generic PyProject handler for all pyproject.toml projects
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover
   , DiscoverFunc R.discover

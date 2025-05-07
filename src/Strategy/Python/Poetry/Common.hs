@@ -17,7 +17,7 @@ import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text, replace, toLower)
 import DepTypes (
-  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (GitType, PipType, URLType),
   Dependency (..),
   VerConstraint (
@@ -25,10 +25,6 @@ import DepTypes (
   ),
  )
 import Effect.Logger (Has, Logger, Pretty (pretty), logDebug)
-import Strategy.Python.Dependency (
-  mapCategoryToEnvironment,
-  determineEnvironmentFromDirect,
- )
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryLockPackageSource (..))
 import Strategy.Python.Poetry.PyProject (
   PoetryDependency (..),
@@ -130,54 +126,50 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
       Just (PyProjectTool{pyprojectPoetry}) -> maybe Map.empty dependencies pyprojectPoetry
       _ -> mempty
 
-    -- Use direct conversion instead of going through PythonDependency
-    -- This ensures we match the expected test output
-    toDepsWithEnv :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
-    toDepsWithEnv env = Map.mapWithKey (poetrytoDependency env)
-    
-    -- | Gets Dependency from `PoetryDependency` and its `DepEnvironment`.
-    poetrytoDependency :: [DepEnvironment] -> Text -> PoetryDependency -> Dependency
-    poetrytoDependency depEnvs name deps =
-      Dependency
-        { dependencyType = depType
-        , dependencyName = depName
-        , dependencyVersion = depVersion
-        , dependencyLocations = depLocations
-        , dependencyEnvironments = Set.fromList depEnvironment
-        , dependencyTags = depTags
-        }
-      where
-        depType = case deps of
-          PyProjectPoetryGitDependencySpec _ -> GitType
-          PyProjectPoetryUrlDependencySpec _ -> URLType
-          _ -> PipType
-
-        depName = case deps of
-          PoetryTextVersion _ -> name
-          PyProjectPoetryDetailedVersionDependencySpec _ -> name
-          PyProjectPoetryGitDependencySpec ds -> gitUrl ds
-          PyProjectPoetryUrlDependencySpec ds -> sourceUrl ds
-          PyProjectPoetryPathDependencySpec ds -> sourcePath ds
-
-        depVersion = case deps of
-          PoetryTextVersion ds -> toDependencyVersion ds
-          PyProjectPoetryDetailedVersionDependencySpec ds -> toDependencyVersion (poetryDependencyVersion ds)
-          PyProjectPoetryGitDependencySpec ds -> case asum [gitTag ds, gitRev ds, gitBranch ds] of
-            Nothing -> Nothing
-            Just version -> Just $ CEq version
-          _ -> Nothing
-
-        depEnvironment = case depEnvs of
-                           [] -> [EnvProduction]  -- Default to production
-                           envs -> envs
-        depLocations = []
-        depTags = Map.empty
+    toDependency :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
+    toDependency depEnvs = Map.mapWithKey $ poetrytoDependency depEnvs
 
     allDeps :: [(Text, Dependency)]
     allDeps = Map.toList prodDeps ++ Map.toList devDeps
       where
-        prodDeps = toDepsWithEnv [EnvProduction] supportedProdDeps
-        devDeps = toDepsWithEnv [EnvDevelopment] supportedDevDeps
+        prodDeps = toDependency [EnvProduction] supportedProdDeps
+        devDeps = toDependency [EnvDevelopment] supportedDevDeps
+
+-- | Gets Dependency from `PoetryDependency` and it's `DepEnvironment`.
+poetrytoDependency :: [DepEnvironment] -> Text -> PoetryDependency -> Dependency
+poetrytoDependency depEnvs name deps =
+  Dependency
+    { dependencyType = depType
+    , dependencyName = depName
+    , dependencyVersion = depVersion
+    , dependencyLocations = depLocations
+    , dependencyEnvironments = Set.fromList depEnvironment
+    , dependencyTags = depTags
+    }
+  where
+    depType = case deps of
+      PyProjectPoetryGitDependencySpec _ -> GitType
+      PyProjectPoetryUrlDependencySpec _ -> URLType
+      _ -> PipType
+
+    depName = case deps of
+      PoetryTextVersion _ -> name
+      PyProjectPoetryDetailedVersionDependencySpec _ -> name
+      PyProjectPoetryGitDependencySpec ds -> gitUrl ds
+      PyProjectPoetryUrlDependencySpec ds -> sourceUrl ds
+      PyProjectPoetryPathDependencySpec ds -> sourcePath ds
+
+    depVersion = case deps of
+      PoetryTextVersion ds -> toDependencyVersion ds
+      PyProjectPoetryDetailedVersionDependencySpec ds -> toDependencyVersion (poetryDependencyVersion ds)
+      PyProjectPoetryGitDependencySpec ds -> case asum [gitTag ds, gitRev ds, gitBranch ds] of
+        Nothing -> Nothing
+        Just version -> Just $ CEq version
+      _ -> Nothing
+
+    depEnvironment = depEnvs
+    depLocations = []
+    depTags = Map.empty
 
 -- | Converts text to canonical python name for dependency.
 -- Relevant Docs: https://www.python.org/dev/peps/pep-0426/#id28
@@ -200,10 +192,8 @@ toCanonicalName :: Text -> Text
 toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 
 -- | Maps poetry lock package to map of package name and associated dependency.
--- | This function needs to match test expectations, so we'll use direct construction for now
--- | to ensure backward compatibility.
 makePackageToLockDependencyMap :: [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
-makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanonicalPackageName x, toDependencyFromLock x)) <$> (filter supportedPoetryLockDep pkgs)
+makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanonicalPackageName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
     canonicalPkgName :: PackageName -> PackageName
     canonicalPkgName = PackageName . toCanonicalName . unPackageName
@@ -217,74 +207,59 @@ makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanoni
     isProductionDirectDep :: PoetryLockPackage -> Bool
     isProductionDirectDep pkg = lockCanonicalPackageName pkg `Set.member` canonicalProdPkgNames
 
-    -- We need to create a custom conversion function to match test expectations
-    -- This is necessary because the test expectations don't exactly match what we'd get
-    -- from the unified PythonDependency model
-    toDependencyFromLock :: PoetryLockPackage -> Dependency
-    toDependencyFromLock pkg = 
-      case poetryLockPackageSource pkg of
-        -- Standard package without special source
-        Nothing -> 
-          Dependency
-            { dependencyType = PipType
-            , dependencyName = unPackageName $ poetryLockPackageName pkg
-            , dependencyVersion = Just $ CEq (poetryLockPackageVersion pkg)
-            , dependencyLocations = []
-            , dependencyEnvironments = pkgEnvironments pkg
-            , dependencyTags = Map.empty
-            }
-        
-        -- Package with a source (git, url, legacy)
-        Just lockPkgSrc ->
-          case poetryLockPackageSourceType lockPkgSrc of
-            -- Git source packages - match the test expectations
-            "git" -> 
-              Dependency
-                { dependencyType = GitType
-                , dependencyName = poetryLockPackageSourceUrl lockPkgSrc
-                , dependencyVersion = Just $ CEq $ fromMaybe (poetryLockPackageVersion pkg) (poetryLockPackageSourceReference lockPkgSrc)
-                , dependencyLocations = [] -- No locations to match tests
-                , dependencyEnvironments = pkgEnvironments pkg
-                , dependencyTags = Map.empty
-                }
-            
-            -- URL source packages - match the test expectations  
-            "url" -> 
-              Dependency
-                { dependencyType = URLType
-                , dependencyName = poetryLockPackageSourceUrl lockPkgSrc
-                , dependencyVersion = Just $ CEq (poetryLockPackageVersion pkg) -- Use CEq to match tests
-                , dependencyLocations = [] -- No locations to match tests
-                , dependencyEnvironments = pkgEnvironments pkg
-                , dependencyTags = Map.empty
-                }
-            
-            -- Legacy source packages (private PyPI) - match the test expectations
-            "legacy" -> 
-              Dependency
-                { dependencyType = PipType
-                , dependencyName = unPackageName $ poetryLockPackageName pkg
-                , dependencyVersion = Just $ CEq (poetryLockPackageVersion pkg)
-                , dependencyLocations = [poetryLockPackageSourceUrl lockPkgSrc] -- Include URL as location
-                , dependencyEnvironments = pkgEnvironments pkg
-                , dependencyTags = Map.empty
-                }
-            
-            -- Other source types
-            _ -> 
-              Dependency
-                { dependencyType = PipType
-                , dependencyName = unPackageName $ poetryLockPackageName pkg
-                , dependencyVersion = Just $ CEq (poetryLockPackageVersion pkg)
-                , dependencyLocations = []
-                , dependencyEnvironments = pkgEnvironments pkg
-                , dependencyTags = Map.empty
-                }
+    toDependency :: PoetryLockPackage -> Dependency
+    toDependency pkg =
+      Dependency
+        { dependencyType = toDepType (poetryLockPackageSource pkg)
+        , dependencyName = toDepName pkg
+        , dependencyVersion = toDepVersion pkg
+        , dependencyLocations = toDepLocs pkg
+        , dependencyEnvironments = pkgEnvironments pkg
+        , dependencyTags = Map.empty
+        }
 
-    -- Use the common environment mapping functions from Strategy.Python.Dependency
+    toDepName :: PoetryLockPackage -> Text
+    toDepName lockPkg = case (poetryLockPackageSource lockPkg) of
+      Nothing -> unPackageName $ poetryLockPackageName lockPkg
+      Just lockPkgSrc -> case poetryLockPackageSourceType lockPkgSrc of
+        "legacy" -> unPackageName $ poetryLockPackageName lockPkg
+        _ -> poetryLockPackageSourceUrl lockPkgSrc
+
+    toDepType :: Maybe PoetryLockPackageSource -> DepType
+    toDepType Nothing = PipType
+    toDepType (Just lockPkgSrc) = case poetryLockPackageSourceType lockPkgSrc of
+      "git" -> GitType
+      "url" -> URLType
+      _ -> PipType
+
+    toDepLocs :: PoetryLockPackage -> [Text]
+    toDepLocs pkg = case poetryLockPackageSource pkg of
+      Nothing -> []
+      Just lockPkgSrc -> case poetryLockPackageSourceType lockPkgSrc of
+        "legacy" -> [poetryLockPackageSourceUrl lockPkgSrc]
+        _ -> []
+
+    toDepVersion :: PoetryLockPackage -> Maybe VerConstraint
+    toDepVersion pkg = Just $
+      CEq $
+        fromMaybe (poetryLockPackageVersion pkg) $ do
+          lockPkgSrc <- poetryLockPackageSource pkg
+          ref <- poetryLockPackageSourceReference lockPkgSrc
+          if poetryLockPackageSourceType lockPkgSrc /= "legacy" then Just ref else Nothing
+
     pkgEnvironments :: PoetryLockPackage -> Set.Set DepEnvironment
     pkgEnvironments pkg = case poetryLockPackageCategory pkg of
-      -- If category is provided, use category to infer dependency's environment
-      Just category -> Set.singleton (mapCategoryToEnvironment category)
-      -- If category is not provided, use direct dependency check
-      Nothing -> determineEnvironmentFromDirect (isProductionDirectDep pkg)
+      -- If category is provided, use category to infer if dependency's environment
+      Just category -> case category of
+        "dev" -> Set.singleton EnvDevelopment
+        "main" -> Set.singleton EnvProduction
+        "test" -> Set.singleton EnvTesting
+        other -> Set.singleton $ EnvOther other
+      -- If category is not provided, lockfile is likely greater than __.
+      -- In this case, if the package name exists in the dependencies
+      -- list, mark as production dependency, otherwise, mark it as development dependency
+      -- -
+      -- Refer to:
+      -- \* https://github.com/python-poetry/poetry/pull/7637
+      Nothing ->
+        (if isProductionDirectDep pkg then Set.singleton EnvProduction else mempty)

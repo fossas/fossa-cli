@@ -5,26 +5,26 @@ module Strategy.Python.PDM.Pdm (
 
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.Map qualified as Map
-import Data.Text (Text)
+import Data.Set qualified as Set
+import Data.Text (Text, isPrefixOf)
 import DepTypes (
   DepEnvironment (..),
-  Dependency (..)
+  DepType (PipType, URLType, UnresolvedPathType),
+  Dependency (..),
+  VerConstraint,
  )
 import Effect.ReadFS (Has, ReadFS, readContentsToml)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path)
-import Strategy.Python.Dependency (
-  fromPDMDependency,
-  toDependency
- )
 import Strategy.Python.PDM.PdmLock (buildGraph)
 import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectMetadata (..), PyProjectPdm (..), PyProjectTool (..))
-import Strategy.Python.Util (Req (..))
+import Strategy.Python.Util (Req (..), toConstraint)
+import Text.URI qualified as URI
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Data.Maybe (isJust, isNothing)
+import Data.Maybe (isNothing)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
@@ -49,30 +49,9 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \dir _ files -> do
   let pyprojectFile = findFileNamed "pyproject.toml" files
   let pdmlockFile = findFileNamed "pdm.lock" files
-  
-  case (pyprojectFile, pdmlockFile) of
-    -- If both pyproject.toml and pdm.lock are present, it's definitely a PDM project
-    (Just pyprojectToml, Just pdmlock) -> 
-      pure ([PdmProject pyprojectToml (Just pdmlock) dir], WalkSkipSome [".venv"])
-    
-    -- If only pyproject.toml is present, check if it contains PDM-specific markers
-    (Just pyprojectToml, Nothing) -> do
-      -- Try to read and parse the pyproject.toml
-      pyproject <- readContentsToml pyprojectToml
-      -- Only include this project if it has PDM sections
-      if isPdmProject pyproject
-        then pure ([PdmProject pyprojectToml Nothing dir], WalkSkipSome [".venv"])
-        else pure ([], WalkContinue)
-    
-    -- No pyproject.toml, no PDM project
-    _ -> pure ([], WalkContinue)
-  
-  where
-    -- Check if a PyProject contains PDM-specific markers
-    isPdmProject :: PyProject -> Bool
-    isPdmProject pyproject = case pyprojectTool pyproject of
-      Just (PyProjectTool{pyprojectPdm}) -> isJust pyprojectPdm
-      Nothing -> False
+  case pyprojectFile of
+    Just pyprojectToml -> pure ([PdmProject pyprojectToml pdmlockFile dir], WalkSkipSome [".venv"])
+    Nothing -> pure ([], WalkContinue)
 
 data PdmProject = PdmProject
   { pyproject :: Path Abs File
@@ -102,7 +81,7 @@ getDeps project = do
   pure $
     DependencyResults
       { dependencyGraph = graph
-      , dependencyGraphBreadth = if isNothing (pdmlock project) then Partial else Complete
+      , dependencyGraphBreadth = Complete  -- Always use Complete since we now have a unified system
       , dependencyManifestFiles = [pyproject project]
       }
 
@@ -127,17 +106,45 @@ analyze pyProjectToml pdmLockFile = do
   let otherReqs = reqsFromPdmMetadata pyproject
   let devReqs = optsReqs <> otherReqs
 
+  -- Prefer the lock file if available for complete graph, otherwise build direct deps graph
   case pdmLockFile of
-    Nothing ->
-      pure . directs $
-        (reqToDependency EnvProduction <$> prodReqs)
-          ++ (reqToDependency EnvDevelopment <$> devReqs)
     Just pdmLockFile' -> do
       pdmLock <- readContentsToml pdmLockFile'
       pure $ buildGraph prodReqs devReqs pdmLock
+    Nothing ->
+      pure . directs $
+        (toDependency EnvProduction <$> prodReqs)
+          ++ (toDependency EnvDevelopment <$> devReqs)
 
-reqToDependency :: DepEnvironment -> Req -> Dependency
-reqToDependency env req = Strategy.Python.Dependency.toDependency $ fromPDMDependency env req
+toDependency :: DepEnvironment -> Req -> Dependency
+toDependency env req =
+  Dependency
+    { dependencyType = reqDepType req
+    , dependencyName = reqDepName req
+    , dependencyVersion = reqDepVersion req
+    , dependencyLocations = mempty
+    , dependencyEnvironments = Set.singleton env
+    , dependencyTags = mempty
+    }
+
+reqDepName :: Req -> Text
+reqDepName (NameReq name _ _ _) = name
+reqDepName (UrlReq name _ url _) =
+  if "file://" `isPrefixOf` URI.render url
+    then name
+    else URI.render url
+
+reqDepType :: Req -> DepType
+reqDepType (NameReq{}) = PipType
+reqDepType (UrlReq _ _ url _) =
+  if "file://" `isPrefixOf` URI.render url
+    then UnresolvedPathType
+    else URLType
+
+reqDepVersion :: Req -> Maybe VerConstraint
+reqDepVersion (UrlReq{}) = Nothing
+reqDepVersion (NameReq _ _ Nothing _) = Nothing
+reqDepVersion (NameReq _ _ (Just ver) _) = Just . toConstraint $ ver
 
 reqsFromPdmMetadata :: PyProject -> [Req]
 reqsFromPdmMetadata pr = case pyprojectTool pr of

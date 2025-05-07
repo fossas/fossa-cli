@@ -13,7 +13,6 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PipType, URLType, UnresolvedPathType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing, gmap)
-import Strategy.Python.Dependency (fixHydratedEnvironments)
 import Strategy.Python.Util (Req (..))
 import Toml.Schema qualified
 
@@ -137,21 +136,18 @@ reqName (NameReq rname _ _ _) = rname
 reqName (UrlReq rname _ _ _) = rname
 
 buildGraph :: [Req] -> [Req] -> PdmLock -> Graphing Dependency
-buildGraph prodReqs devReqs pdmLock = 
-  -- First hydrate environments, then fix any conflicts by prioritizing production over development
-  Graphing.gmap fixHydratedEnvironments $
-    hydrateDepEnvs $
-      gmap (toDependency prodReqs devReqs) $
-        run . evalGrapher $ do
-          for_ allDeps $ \resolvedDep -> do
-            if isDirect resolvedDep
-              then direct resolvedDep
-              else deep resolvedDep
+buildGraph prodReqs devReqs pdmLock = hydrateDepEnvs $
+  gmap (toDependency prodReqs devReqs) $
+    run . evalGrapher $ do
+      for_ allDeps $ \resolvedDep -> do
+        if isDirect resolvedDep
+          then direct resolvedDep
+          else deep resolvedDep
 
-            let transitives = getTransitives resolvedDep
-            for_ transitives $ \childDep -> do
-              deep childDep
-              edge resolvedDep childDep
+        let transitives = getTransitives resolvedDep
+        for_ transitives $ \childDep -> do
+          deep childDep
+          edge resolvedDep childDep
   where
     allDeps :: [PdmLockPackage]
     allDeps = pdmLockPackages pdmLock

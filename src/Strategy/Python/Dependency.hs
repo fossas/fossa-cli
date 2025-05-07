@@ -139,6 +139,8 @@ toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMark
         (UnresolvedPathType, path, Just (DepTypes.CEq path), [path])
       
       URLDependency url -> 
+        -- For URL dependencies, the name has already been set correctly
+        -- in fromReq to match the expected behavior (URL as the name)
         (URLType, pyDepName, Just (DepTypes.CURI url), [url])
     
     -- Convert simple version text to VerConstraint
@@ -325,9 +327,10 @@ fromReq env req source =
         }
     
     UrlReq nm extras uri marker ->
-      PythonDependency
-        { pyDepName = nm
-        , pyDepType = URLDependency (URI.render uri)
+      let url = URI.render uri
+      in PythonDependency
+        { pyDepName = url -- Always use the URL as the name for all URL dependencies to match master branch behavior
+        , pyDepType = URLDependency url
         , pyDepEnvironments = Set.singleton env
         , pyDepExtras = fromMaybe [] extras
         , pyDepMarkers = marker
