@@ -66,6 +66,11 @@ projectTypePriority = \case
 
 -- | Priority-based project type selection
 -- When multiple project types are detected, choose the highest priority one
+-- Note: While a pyproject.toml file can contain configuration for multiple build systems,
+-- in practice, developers typically choose one primary build system per project. This
+-- prioritization logic ensures we select the most likely active build system when
+-- multiple configurations are present, avoiding confusion and duplicate analysis results.
+-- Currently, we don't add special handling for truly mixed build systems.
 prioritizeProjectType :: [PyProjectType] -> PyProjectType
 prioritizeProjectType candidates =
   case sortOn (negate . projectTypePriority) candidates of
