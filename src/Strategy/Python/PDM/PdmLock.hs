@@ -13,7 +13,7 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PipType, URLType, UnresolvedPathType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing, gmap)
-import Strategy.Python.Dependency (determineEnvironmentFromDirect)
+import Strategy.Python.Dependency (fixHydratedEnvironments)
 import Strategy.Python.Util (Req (..))
 import Toml.Schema qualified
 
@@ -115,12 +115,12 @@ toDependency prodReqs devReqs pkg =
     depEnv :: Set DepEnvironment
     depEnv = case (gitUrl pkg, matchedProdReq, matchedDevReq) of
       (_, Nothing, Nothing) -> mempty
-      (_, Nothing, Just _) -> determineEnvironmentFromDirect False -- Dev dependency
+      (_, Nothing, Just _) -> singleton EnvDevelopment
       (Just _, Just r', _) ->
         if isUrlReq r'
-          then determineEnvironmentFromDirect True -- Prod dependency
+          then singleton EnvProduction
           else mempty
-      (_, Just _, _) -> determineEnvironmentFromDirect True -- Prod dependency
+      (_, Just _, _) -> singleton EnvProduction
 
     matchedProdReq :: Maybe Req
     matchedProdReq = find (\pr -> reqName pr == name pkg) prodReqs
@@ -138,20 +138,20 @@ reqName (UrlReq rname _ _ _) = rname
 
 buildGraph :: [Req] -> [Req] -> PdmLock -> Graphing Dependency
 buildGraph prodReqs devReqs pdmLock = 
-  -- Do NOT hydrate environments for PDM, as it correctly assigns environments
-  -- based on the package's source in requirements. This prevents environments from
-  -- being propagated to deep dependencies.
-  gmap (toDependency prodReqs devReqs) $
-    run . evalGrapher $ do
-      for_ allDeps $ \resolvedDep -> do
-        if isDirect resolvedDep
-          then direct resolvedDep
-          else deep resolvedDep
+  -- First hydrate environments, then fix any conflicts by prioritizing production over development
+  Graphing.gmap fixHydratedEnvironments $
+    hydrateDepEnvs $
+      gmap (toDependency prodReqs devReqs) $
+        run . evalGrapher $ do
+          for_ allDeps $ \resolvedDep -> do
+            if isDirect resolvedDep
+              then direct resolvedDep
+              else deep resolvedDep
 
-        let transitives = getTransitives resolvedDep
-        for_ transitives $ \childDep -> do
-          deep childDep
-          edge resolvedDep childDep
+            let transitives = getTransitives resolvedDep
+            for_ transitives $ \childDep -> do
+              deep childDep
+              edge resolvedDep childDep
   where
     allDeps :: [PdmLockPackage]
     allDeps = pdmLockPackages pdmLock

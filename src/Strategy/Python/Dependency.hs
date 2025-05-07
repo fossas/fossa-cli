@@ -16,6 +16,7 @@ module Strategy.Python.Dependency (
   complexDependency,
   mapCategoryToEnvironment,
   determineEnvironmentFromDirect,
+  fixHydratedEnvironments,
 ) where
 
 import Data.Map.Strict qualified as Map
@@ -510,3 +511,35 @@ determineEnvironmentFromDirect isProductionDirect =
   if isProductionDirect 
   then Set.singleton DepTypes.EnvProduction 
   else Set.singleton DepTypes.EnvDevelopment
+
+-- | Resolves environment conflicts after environment hydration.
+-- When a dependency belongs to both production and development environments,
+-- prioritize production over development.
+--
+-- After environment hydration, transitive dependencies may inherit environments from
+-- multiple direct dependencies. This function implements the policy that production
+-- dependencies take precedence over development dependencies.
+--
+-- Model assumptions:
+-- 1. Environment hydration has already been performed
+-- 2. A dependency is considered "production" if it's a direct production dependency OR
+--    if it's a transitive dependency of a direct production dependency
+-- 3. Each dependency should have exactly one environment (either production or development)
+--
+-- Example:
+--   Direct dependencies:
+--     requests (production)
+--     pytest (development)
+--   
+--   Transitive dependencies:
+--     urllib3 (used by both requests and pytest)
+--     
+--   After hydration, urllib3 would have both production and development environments.
+--   This function will keep only the production environment for urllib3.
+fixHydratedEnvironments :: Dependency -> Dependency
+fixHydratedEnvironments d
+  | Set.member DepTypes.EnvProduction envs && Set.member DepTypes.EnvDevelopment envs = 
+      d{dependencyEnvironments = Set.singleton DepTypes.EnvProduction}
+  | otherwise = d
+  where
+    envs = dependencyEnvironments d

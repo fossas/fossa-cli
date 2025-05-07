@@ -24,11 +24,12 @@ import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (..), Dependency (..), hydrateDepEnvs)
+import DepTypes (DepEnvironment (EnvDevelopment), DepType (..), Dependency (..), hydrateDepEnvs)
 import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
+import Strategy.Python.Dependency (fixHydratedEnvironments)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -194,15 +195,9 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     -- it is not possible to know if the dependency is 'production' or 'development'.
     -- strictly from lockfile itself. We hydrate "environment" from direct deps. If the
     -- dependency has no environment, we mark it as dev environment. We know that all production
-    -- dependencies will be hydrated and will have some envionment.
+    -- dependencies will be hydrated and will have some environment.
     graph :: Graphing Dependency
     graph =
-      -- Order matters:
-      -- 1. First convert PackageName to Dependency
-      -- 2. Then mark direct dependencies
-      -- 3. Then hydrate environments (propagate from direct to transitive)
-      -- 4. Then fix environments for transitive deps (ensure they're in the right env only)
-      -- 5. Finally, for Poetry 1.5+, mark empty envs as dev
       labelOptionalDepsIfPoetryGt1_5 $
         Graphing.gmap fixHydratedEnvironments $
           hydrateDepEnvs $
@@ -218,25 +213,11 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     lockVersion :: Text
     lockVersion = poetryMetadataLockVersion . poetryLockMetadata $ poetryLock
 
-    -- First, we need to separate out production and development dependencies
-    -- based on the package name and its source in pyproject.toml
-    -- This will help us correctly assign environments
     markEmptyEnvAsOptionalDep :: Dependency -> Dependency
     markEmptyEnvAsOptionalDep d =
       if null $ dependencyEnvironments d
         then d{dependencyEnvironments = Set.singleton EnvDevelopment}
         else d
-    
-    -- Helper function to fix environments after hydration
-    -- This ensures dependencies have the correct environment assignment
-    -- If a dependency is in both EnvProduction and EnvDevelopment, we need to decide which one to keep
-    fixHydratedEnvironments :: Dependency -> Dependency
-    fixHydratedEnvironments d
-      | Set.member EnvProduction (dependencyEnvironments d) && Set.member EnvDevelopment (dependencyEnvironments d) = 
-          -- If it's a transitive dependency of a production dependency (like rich → markdown-it-py),
-          -- keep only the production environment
-          d{dependencyEnvironments = Set.singleton EnvProduction}
-      | otherwise = d
 
     directDeps :: [Dependency]
     directDeps = pyProjectDeps pyProject
