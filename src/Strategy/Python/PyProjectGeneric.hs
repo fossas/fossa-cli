@@ -1,4 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
 
 module Strategy.Python.PyProjectGeneric
   ( PyProjectGeneric (..)
@@ -117,13 +119,20 @@ discover dir = withToolFilter GenericPyProjectType $ do
     processProject project = do
       -- Parse the file to determine project type
       pyProject <- parseGenericPyProject (pyprojectFile project)
+      
+      -- Get project type from the parsed file
+      let detectedType = Strategy.Python.PyProjectGeneric.Types.projectType pyProject
+      
+      -- Update the project data with the correct project type
+      let projectWithType = project { Strategy.Python.PyProjectGeneric.projectType = detectedType }
+      
       -- Create a DiscoveredProject with the appropriate type
-      let projectType = Strategy.Python.PyProjectGeneric.Types.projectType pyProject
-      let discoveredType = case projectType of
+      let discoveredType = case detectedType of
             PoetryProject -> PoetryProjectType  -- Use Poetry type for Poetry projects 
             PDMProject -> PdmProjectType        -- Use PDM type for PDM projects
             _ -> GenericPyProjectType           -- Use Generic type for others (PEP621, Unknown)
-      pure $ mkProject discoveredType project
+      
+      pure $ mkProject discoveredType projectWithType
 
 -- | Find PyProject.toml files and associated lock files
 findProjects :: 
@@ -135,18 +144,21 @@ findProjects ::
   m [PyProjectProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let pyprojectFile = findFileNamed "pyproject.toml" files
-      pdmLockFile = findFileNamed "pdm.lock" files 
-      poetryLockFile = findFileNamed "poetry.lock" files
+      collectedLockFiles = collectLockFiles files
+  
   case pyprojectFile of
-    Just pyproject -> pure ([PyProjectProject pyproject dir pdmLockFile poetryLockFile], WalkSkipSome [".venv"])
+    Just pyproject -> do
+      -- Create a new PyProjectProject with UnknownProject type
+      -- The actual project type will be set later in processProject
+      pure ([PyProjectProject pyproject dir collectedLockFiles UnknownProject], WalkSkipSome [".venv"])
     Nothing -> pure ([], WalkContinue)
 
 -- | Data type representing a PyProject.toml project
 data PyProjectProject = PyProjectProject
   { pyprojectFile :: Path Abs File
   , projectDir :: Path Abs Dir
-  , pdmLockFile :: Maybe (Path Abs File)
-  , poetryLockFile :: Maybe (Path Abs File)
+  , lockFiles :: [(LockFileType, Path Abs File)]  -- Named lock files
+  , projectType :: PyProjectType  -- Store project type directly
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -154,8 +166,60 @@ instance ToJSON PyProjectProject
 
 -- | Instance for AnalyzeProject
 instance AnalyzeProject PyProjectProject where
-  analyzeProject _ project = analyze (pyprojectFile project)
-  analyzeProjectStaticOnly _ project = analyze (pyprojectFile project)
+  analyzeProject _ project = analyzeWithProject project
+  analyzeProjectStaticOnly _ project = analyzeWithProject project
+
+-- | Analyze using PyProjectProject data
+analyzeWithProject ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  PyProjectProject ->
+  m DependencyResults
+analyzeWithProject project = do
+  -- Parse the PyProject.toml file to get project metadata
+  pyproject <- parseGenericPyProject (pyprojectFile project)
+  
+  -- Use different analysis strategy based on project type and available lock files
+  case Strategy.Python.PyProjectGeneric.projectType project of
+    -- For PDM projects
+    PDMProject -> do
+      -- Check if we have a PDM lock file
+      let maybePdmLockPath = findLockFileByType PDMLock (lockFiles project)
+      
+      case maybePdmLockPath of
+        Just pdmLockPath -> do
+          -- Use PDM lock file for complete graph
+          pdmAnalyzeWithLock (pyprojectFile project) pdmLockPath
+        Nothing -> do
+          -- Fall back to direct dependencies from pyproject.toml
+          pdmAnalyzeWithoutLock pyproject (pyprojectFile project)
+          
+    -- For Poetry projects
+    PoetryProject -> do
+      -- Check if we have a Poetry lock file
+      let maybePoetryLockPath = findLockFileByType PoetryLock (lockFiles project)
+      
+      case maybePoetryLockPath of
+        Just poetryLockPath -> do
+          -- Use Poetry lock file for complete graph
+          poetryAnalyzeWithLock (pyprojectFile project) poetryLockPath
+        Nothing -> do
+          -- Fall back to direct dependencies from pyproject.toml
+          poetryAnalyzeWithoutLock pyproject (pyprojectFile project)
+          
+    -- For PEP 621 and Unknown projects
+    _ -> do
+      -- Extract dependencies from pyproject.toml
+      let dependencies = extractDependencies pyproject
+      
+      pure $
+        DependencyResults
+          { dependencyGraph = directs dependencies
+          , dependencyGraphBreadth = Partial
+          , dependencyManifestFiles = [pyprojectFile project]
+          }
 
 -- | Create a DiscoveredProject from PyProjectProject with the provided project type
 mkProject :: DiscoveredProjectType -> PyProjectProject -> DiscoveredProject PyProjectProject
@@ -186,55 +250,38 @@ analyze ::
   Path Abs File ->
   m DependencyResults
 analyze pyprojectFile = do
-  -- Get the PyProjectProject containing the project file and lock files
+  -- Parse the PyProject.toml file to get project metadata
   let projectDir = parent pyprojectFile
   pyproject <- parseGenericPyProject pyprojectFile
   
-  let projectType = Strategy.Python.PyProjectGeneric.Types.projectType pyproject
+  -- Determine project type
+  let pyprojectType = Strategy.Python.PyProjectGeneric.Types.projectType pyproject
   
-  -- Use different analysis strategy based on project type and available lock files
-  case projectType of
-    -- For PDM projects
-    PDMProject -> do
-      -- Check if we have a PDM lock file in the same directory
-      let pyprojectDir = parent pyprojectFile
-      let pdmLockPath = pyprojectDir </> $(mkRelFile "pdm.lock")
-      pdmLockExists <- doesFileExist pdmLockPath
-      
-      if pdmLockExists
-        then do
-          -- Use PDM lock file for complete graph
-          pdmAnalyzeWithLock pyprojectFile pdmLockPath
-        else do
-          -- Fall back to direct dependencies from pyproject.toml
-          pdmAnalyzeWithoutLock pyproject pyprojectFile
-          
-    -- For Poetry projects
-    PoetryProject -> do
-      -- Check if we have a Poetry lock file in the same directory
-      let pyprojectDir = parent pyprojectFile
-      let poetryLockPath = pyprojectDir </> $(mkRelFile "poetry.lock")
-      poetryLockExists <- doesFileExist poetryLockPath
-      
-      if poetryLockExists
-        then do
-          -- Use Poetry lock file for complete graph
-          poetryAnalyzeWithLock pyprojectFile poetryLockPath
-        else do
-          -- Fall back to direct dependencies from pyproject.toml
-          poetryAnalyzeWithoutLock pyproject pyprojectFile
-          
-    -- For PEP 621 and Unknown projects
-    _ -> do
-      -- Extract dependencies from pyproject.toml
-      let dependencies = extractDependencies pyproject
-      
-      pure $
-        DependencyResults
-          { dependencyGraph = directs dependencies
-          , dependencyGraphBreadth = Partial
-          , dependencyManifestFiles = [pyprojectFile]
-          }
+  -- Find potential lock files in the same directory
+  let pyprojectDir = parent pyprojectFile
+  -- Check for lock files in the directory
+  let pdmLockPath = pyprojectDir </> $(mkRelFile "pdm.lock")
+  let poetryLockPath = pyprojectDir </> $(mkRelFile "poetry.lock")
+  
+  pdmLockExists <- doesFileExist pdmLockPath
+  poetryLockExists <- doesFileExist poetryLockPath
+  
+  -- Create a lock files collection
+  let lockFiles = catMaybes
+        [ if pdmLockExists then Just (PDMLock, pdmLockPath) else Nothing
+        , if poetryLockExists then Just (PoetryLock, poetryLockPath) else Nothing
+        ]
+  
+  -- Create a temporary PyProjectProject to use with analyzeWithProject
+  let project = PyProjectProject
+        { pyprojectFile = pyprojectFile
+        , projectDir = projectDir
+        , lockFiles = lockFiles
+        , Strategy.Python.PyProjectGeneric.projectType = pyprojectType
+        }
+  
+  -- Use the common implementation
+  analyzeWithProject project
 
 -- | Extract dependencies from a PyProjectGeneric based on its project type
 extractDependencies :: PyProjectGeneric -> [Dependency]
