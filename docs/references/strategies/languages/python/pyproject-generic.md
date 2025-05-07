@@ -47,6 +47,8 @@ The analysis strategy varies depending on the detected project type:
 | PDM          | Complete graph using `pdm.lock`    | Direct dependencies only |
 | PEP 621      | Direct dependencies only           | Direct dependencies only |
 
+For generic PEP 621 projects (without Poetry or PDM), the CLI only reports direct dependencies without edges or transitive dependencies, as there is no standardized way to resolve these without a specific build system.
+
 ## Limitations
 
 - When multiple build system configurations are present in a single `pyproject.toml` file, only the highest-priority one will be analyzed.
