@@ -1,5 +1,6 @@
 module Strategy.Python.PyProjectGeneric.Types
   ( PyProjectType (..)
+  , LockFileType (..)
   , PyProjectGeneric (..)
   , PyProjectMetadata (..)
   , PyProjectBuildSystem (..)
@@ -11,6 +12,8 @@ module Strategy.Python.PyProjectGeneric.Types
   , PyProjectPathDependency (..)
   , PyProjectUrlDependency (..)
   , detectProjectType
+  , projectTypePriority
+  , prioritizeProjectType
   , isPEP621
   , isPoetry
   , isPDM
@@ -22,6 +25,7 @@ module Strategy.Python.PyProjectGeneric.Types
 
 import Data.Aeson (ToJSON(..), Value, object, (.=))
 import Data.Aeson.Types qualified as Aeson
+import Data.List (sortOn)
 import Data.Map (Map)
 import Data.Text (Text)
 import Data.Maybe (isJust)
@@ -40,6 +44,33 @@ data PyProjectType
 
 instance ToJSON PyProjectType where
   toJSON = Aeson.genericToJSON Aeson.defaultOptions
+
+-- | Types of lock files
+data LockFileType 
+  = PoetryLock 
+  | PDMLock 
+  | UVLock     -- For future support
+  | OtherLock Text
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON LockFileType where
+  toJSON = Aeson.genericToJSON Aeson.defaultOptions
+
+-- | Define priority order for project types (highest to lowest)
+projectTypePriority :: PyProjectType -> Int
+projectTypePriority = \case
+  PoetryProject -> 3    -- Highest priority
+  PDMProject -> 2
+  PEP621Project -> 1
+  UnknownProject -> 0   -- Lowest priority
+
+-- | Priority-based project type selection
+-- When multiple project types are detected, choose the highest priority one
+prioritizeProjectType :: [PyProjectType] -> PyProjectType
+prioritizeProjectType candidates =
+  case sortOn (negate . projectTypePriority) candidates of
+    (highestPriority:_) -> highestPriority
+    [] -> UnknownProject
 
 -- | Tool-specific sections representation
 data PyProjectTool = PyProjectTool

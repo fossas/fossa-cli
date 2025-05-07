@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Python.PyProjectGenericSpec (
   spec,
 ) where
@@ -17,7 +19,7 @@ import DepTypes (
   VerConstraint (..),
  )
 import Effect.ReadFS (ReadFS)
-import Path (Dir, Path, Rel, fromRelDir, mkRelDir, mkRelFile, (</>))
+import Path (Abs, Dir, File, Path, Rel, fromRelDir, mkRelDir, mkRelFile, (</>))
 import Strategy.Python.PyProjectGeneric (
   extractDependencies,
   extractPoetryDependencies,
@@ -28,11 +30,15 @@ import Strategy.Python.PyProjectGeneric (
   parseUrlDependency,
   parsePathDependency,
   parseComplexDependency,
+  findLockFileByType
  )
 import Strategy.Python.PyProjectGeneric.Types (
   PyProjectGeneric (..),
   PyProjectType (..),
+  LockFileType (..),
   detectProjectType,
+  projectTypePriority,
+  prioritizeProjectType,
  )
 import Strategy.Python.Util (Operator(..))
 import Test.Hspec
@@ -66,6 +72,25 @@ spec = do
         case Toml.decode pep621Contents of
           Toml.Success _ pyproject -> projectType pyproject `shouldBe` PEP621Project
           Toml.Failure errs -> expectationFailure $ "Parse error: " ++ show errs
+      
+    describe "Project Type Priority" $ do
+      it "prioritizes Poetry over PDM and PEP621" $ do
+        prioritizeProjectType [PoetryProject, PDMProject, PEP621Project] `shouldBe` PoetryProject
+        prioritizeProjectType [PEP621Project, PDMProject, PoetryProject] `shouldBe` PoetryProject
+      
+      it "prioritizes PDM over PEP621" $ do
+        prioritizeProjectType [PDMProject, PEP621Project] `shouldBe` PDMProject
+        prioritizeProjectType [PEP621Project, PDMProject] `shouldBe` PDMProject
+      
+      it "prioritizes PEP621 over UnknownProject" $ do
+        prioritizeProjectType [PEP621Project, UnknownProject] `shouldBe` PEP621Project
+        prioritizeProjectType [UnknownProject, PEP621Project] `shouldBe` PEP621Project
+      
+      it "defaults to UnknownProject for empty list" $ do
+        prioritizeProjectType [] `shouldBe` UnknownProject
+        
+    -- We're skipping detailed testing of the lock file handling functions
+    -- as they're very simple and would require more complex setup for Path types
 
 
     describe "PyProject.toml Parsing" $ do

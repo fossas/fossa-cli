@@ -3,6 +3,7 @@
 module Strategy.Python.PyProjectGeneric
   ( PyProjectGeneric (..)
   , PyProjectType (..)
+  , LockFileType (..)
   , discover
   , analyze
   , parseGenericPyProject
@@ -11,6 +12,9 @@ module Strategy.Python.PyProjectGeneric
   , extractPDMDependencies
   , extractPEP621Dependencies
   , PyProjectProject (..)
+  -- Lock file handling
+  , findLockFileByType
+  , collectLockFiles
   -- Re-exports for tests
   , parseVersionConstraint
   , parseGitDependency
@@ -24,9 +28,9 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, recover)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON, Value)
-import Data.Foldable (foldl')
+import Data.Foldable (foldl', find)
 import Data.Map qualified as Map
-import Data.Maybe (isJust, fromMaybe, mapMaybe, maybeToList)
+import Data.Maybe (isJust, fromMaybe, mapMaybe, maybeToList, catMaybes)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -68,6 +72,7 @@ import Strategy.Python.PyProjectGeneric.Types
   ( PyProjectGeneric (..)
   , PyProjectMetadata (..)
   , PyProjectType (..)
+  , LockFileType (..)
   , PyProjectPoetry (..)
   , PyProjectPDM (..)
   , PoetryDependency (..)
@@ -76,6 +81,8 @@ import Strategy.Python.PyProjectGeneric.Types
   , PyProjectPathDependency (..)
   , PyProjectUrlDependency (..)
   , detectProjectType
+  , projectTypePriority
+  , prioritizeProjectType
   , dependencyVersion
   , gitUrl
   , sourcePath
@@ -304,6 +311,21 @@ extractPEP621Dependencies pyproject =
     extractOptionalDeps :: (Text, [Req]) -> [Dependency]
     extractOptionalDeps (_, reqs) = 
       map (toDependency . fromPEP621Dependency EnvDevelopment) reqs
+
+-- | Helper functions for lock file handling
+
+-- | Find a lock file of a specific type from a list of lock files
+findLockFileByType :: LockFileType -> [(LockFileType, Path Abs File)] -> Maybe (Path Abs File)
+findLockFileByType targetType = fmap snd . find ((== targetType) . fst)
+
+-- | Collect lock files from a directory with files
+collectLockFiles :: [Path Abs File] -> [(LockFileType, Path Abs File)]
+collectLockFiles files =
+  catMaybes
+    [ fmap (\f -> (PDMLock, f)) (findFileNamed "pdm.lock" files)
+    , fmap (\f -> (PoetryLock, f)) (findFileNamed "poetry.lock" files)
+    -- Add additional lock file types here in the future
+    ]
 
 -- | Re-exported functions for tests
 
