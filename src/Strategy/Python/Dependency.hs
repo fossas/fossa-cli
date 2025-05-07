@@ -17,6 +17,7 @@ module Strategy.Python.Dependency (
   mapCategoryToEnvironment,
   determineEnvironmentFromDirect,
   fixHydratedEnvironments,
+  parseDependencySpec,
 ) where
 
 import Data.Map.Strict qualified as Map
@@ -24,7 +25,15 @@ import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Void (Void)
 import Text.URI qualified as URI
+import Text.Megaparsec (ParseErrorBundle)
+import Strategy.Python.DependencyParser (
+  DependencySource(..),
+  VersionConstraint(..),
+  parseDependencySource,
+  parseVersionConstraint
+  )
 
 import DepTypes (
   DepEnvironment(..),
@@ -339,73 +348,60 @@ fromReq env req source =
 
 -- | Helper functions exported for tests
 
--- | Convert version constraint from text into VerConstraint
+-- | Convert version constraint from text into VerConstraint using parser combinators
 versionConstraint :: Text -> Maybe VerConstraint
-versionConstraint vt
-  | vt == "*" = Just $ DepTypes.CEq "*" -- Wildcard matches anything, return as CEq for test compatibility
-  | "^" `Text.isPrefixOf` vt = Just $ DepTypes.CCompatible (Text.drop 1 vt)
-  | "~=" `Text.isPrefixOf` vt = Just $ DepTypes.CCompatible (Text.drop 2 vt)
-  | ">=" `Text.isPrefixOf` vt = Just $ DepTypes.CGreaterOrEq (Text.drop 2 vt)
-  | ">" `Text.isPrefixOf` vt = Just $ DepTypes.CGreater (Text.drop 1 vt)
-  | "<=" `Text.isPrefixOf` vt = Just $ DepTypes.CLessOrEq (Text.drop 2 vt)
-  | "<" `Text.isPrefixOf` vt = Just $ DepTypes.CLess (Text.drop 1 vt)
-  | "==" `Text.isPrefixOf` vt = Just $ DepTypes.CEq (Text.drop 2 vt)
-  | "!=" `Text.isPrefixOf` vt = Just $ DepTypes.CNot (Text.drop 2 vt)
-  | Text.any (== ',') vt = -- parse comma-separated constraints
-      let parts = Text.splitOn "," vt
-          partConstraints = map versionConstraint parts
-      in foldConstraints partConstraints
-  | otherwise = Just $ DepTypes.CEq vt -- Default to equality
+versionConstraint vt = 
+  case parseVersionConstraint vt of
+    Right vc -> Just $ convertVersionConstraint vc
+    Left _ -> 
+      -- Fallback for backward compatibility in case parsing fails
+      Just $ DepTypes.CEq vt
   where
-    -- Fold list of Maybe constraints into a single constraint
-    foldConstraints :: [Maybe VerConstraint] -> Maybe VerConstraint
-    foldConstraints [] = Nothing
-    foldConstraints cs = 
-      let validConstraints = [c | Just c <- cs]
-      in if null validConstraints 
-         then Nothing
-         else Just $ foldr1 DepTypes.CAnd validConstraints
+    -- Convert our parsed version constraint to the DepTypes.VerConstraint type
+    convertVersionConstraint :: VersionConstraint -> VerConstraint
+    convertVersionConstraint = \case
+      VersionEq v -> DepTypes.CEq v
+      VersionGt v -> DepTypes.CGreater v
+      VersionGtEq v -> DepTypes.CGreaterOrEq v
+      VersionLt v -> DepTypes.CLess v
+      VersionLtEq v -> DepTypes.CLessOrEq v
+      VersionCompatible v -> DepTypes.CCompatible v
+      VersionNot v -> DepTypes.CNot v
+      VersionWildcard -> DepTypes.CEq "*" -- Match test expectations
+      VersionAnd v1 v2 -> DepTypes.CAnd (convertVersionConstraint v1) (convertVersionConstraint v2)
 
--- | Parse Git dependency from specification
+-- | Parse Git dependency from specification using parser combinators
 gitDependency :: Text -> Maybe Dependency
-gitDependency text =
-  if "git+" `Text.isPrefixOf` text
-    then 
-      let 
-        -- Extract URL and reference (branch/tag/rev) from git+https://repo@ref format
-        baseUrl = if "@" `Text.isInfixOf` text
-                    then Text.takeWhile (/= '@') (Text.drop 4 text)
-                    else Text.drop 4 text
-        reference = if "@" `Text.isInfixOf` text
-                      then Just $ Text.drop 1 $ Text.dropWhile (/= '@') text
-                      else Nothing
-        -- For now, we don't parse the package name from the URL
-        -- In real usage, we'd need to extract it from the repo path
-        packageName = case Text.splitOn "/" (Text.dropWhile (/= '/') baseUrl) of
+gitDependency text = 
+  case parseDependencySource text of
+    Right (GitSource url reference) ->
+      let
+        -- Extract package name from the URL path
+        packageName = case Text.splitOn "/" (Text.dropWhile (/= '/') url) of
                         [] -> "unknown"
                         parts -> maybe "unknown" (Text.replace ".git" "") (lastMaybe parts)
       in Just $ Dependency
            { dependencyType = GitType
            , dependencyName = packageName
            , DepTypes.dependencyVersion = Nothing
-           , dependencyLocations = [baseUrl <> maybe "" (\ref -> "@" <> ref) reference]
+           , dependencyLocations = [url <> maybe "" (\ref -> "@" <> ref) reference]
            , dependencyEnvironments = mempty
            , dependencyTags = mempty
            }
-    else Nothing
+    _ -> Nothing
   where
     lastMaybe :: [a] -> Maybe a
     lastMaybe [] = Nothing
     lastMaybe xs = Just $ last xs
 
--- | Parse URL dependency from specification
+-- | Parse URL dependency from specification using parser combinators
 urlDependency :: Text -> Maybe Dependency
 urlDependency text =
-  if ("http://" `Text.isPrefixOf` text) || ("https://" `Text.isPrefixOf` text)
-    then
+  case parseDependencySource text of
+    Right (HttpSource url) ->
       let
         -- Extract the filename from the URL to use as dependency name
-        fileName = case Text.splitOn "/" text of
+        fileName = case Text.splitOn "/" url of
                      [] -> "unknown"
                      parts -> case lastMaybe parts of
                                 Nothing -> "unknown"
@@ -415,27 +411,23 @@ urlDependency text =
       in Just $ Dependency
            { dependencyType = URLType
            , dependencyName = fileName
-           , DepTypes.dependencyVersion = Just $ DepTypes.CURI text
-           , dependencyLocations = [text]
+           , DepTypes.dependencyVersion = Just $ DepTypes.CURI url
+           , dependencyLocations = [url]
            , dependencyEnvironments = mempty
            , dependencyTags = mempty
            }
-    else Nothing
+    _ -> Nothing
   where
     lastMaybe :: [a] -> Maybe a
     lastMaybe [] = Nothing
     lastMaybe xs = Just $ last xs
 
--- | Parse Path dependency from specification
+-- | Parse Path dependency from specification using parser combinators
 pathDependency :: Text -> Maybe Dependency
 pathDependency text =
-  if ("file:" `Text.isPrefixOf` text) || ("../" `Text.isPrefixOf` text) || ("./" `Text.isPrefixOf` text) || ("/" `Text.isPrefixOf` text)
-    then
+  case parseDependencySource text of
+    Right (FileSource path) ->
       let
-        -- Extract path, removing file: prefix if present
-        path = if "file:" `Text.isPrefixOf` text
-                 then Text.drop 5 text
-                 else text
         -- Extract the directory name to use as dependency name
         dirName = case Text.splitOn "/" path of
                     [] -> "unknown"
@@ -448,32 +440,40 @@ pathDependency text =
            , dependencyEnvironments = mempty
            , dependencyTags = mempty
            }
-    else Nothing
+    _ -> Nothing
   where
     lastMaybe :: [a] -> Maybe a
     lastMaybe [] = Nothing
     lastMaybe xs = Just $ last xs
 
--- | Convert complex dependency specifications to Dependency type
+-- | Convert complex dependency specifications to Dependency type using parser combinators
 complexDependency :: Text -> Text -> Maybe Dependency
 complexDependency name spec =
-  -- Try parsing as one of the specialized dependency types first
-  if "git+" `Text.isPrefixOf` spec
-    then gitDependency spec
-  else if ("http://" `Text.isPrefixOf` spec) || ("https://" `Text.isPrefixOf` spec)
-    then urlDependency spec
-  else if ("file:" `Text.isPrefixOf` spec) || ("../" `Text.isPrefixOf` spec) || ("./" `Text.isPrefixOf` spec) || ("/" `Text.isPrefixOf` spec)
-    then pathDependency spec
-  else 
-    -- If not a specialized type, use simple version constraint parsing
-    Just $ Dependency
-      { dependencyType = PipType
-      , dependencyName = name
-      , DepTypes.dependencyVersion = versionConstraint spec
-      , dependencyLocations = []
-      , dependencyEnvironments = mempty
-      , dependencyTags = mempty
-      }
+  case parseDependencySource spec of
+    -- If it's a specialized dependency type, use the specific parser for it
+    Right (GitSource _ _) -> gitDependency spec
+    Right (HttpSource _) -> urlDependency spec
+    Right (FileSource _) -> pathDependency spec
+    Right (SimpleSource ver) -> 
+      -- If it's a simple version specification, create a regular dependency
+      Just $ Dependency
+        { dependencyType = PipType
+        , dependencyName = name
+        , DepTypes.dependencyVersion = versionConstraint ver
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = mempty
+        }
+    -- If parsing fails, try to treat it as a simple version constraint
+    Left _ -> 
+      Just $ Dependency
+        { dependencyType = PipType
+        , dependencyName = name
+        , DepTypes.dependencyVersion = versionConstraint spec
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = mempty
+        }
 
 -- | Convert list of Version to PythonVersionConstraint
 versionsToConstraint :: [Version] -> PythonVersionConstraint
@@ -546,3 +546,8 @@ fixHydratedEnvironments d
   | otherwise = d
   where
     envs = dependencyEnvironments d
+
+-- | Parse any dependency specification using parser combinators
+-- This is a convenience function that wraps parseDependencySource
+parseDependencySpec :: Text -> Either (ParseErrorBundle Text Void) DependencySource
+parseDependencySpec = parseDependencySource
