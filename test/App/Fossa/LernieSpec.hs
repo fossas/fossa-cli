@@ -265,7 +265,7 @@ expectedLicenseScanPathFilters =
   Just
     LicenseScanPathFilters
       { licenseScanPathFiltersOnly = [GlobFilter "/*", GlobFilter "/**"]
-      , licenseScanPathFiltersExclude = [GlobFilter "/*", GlobFilter "/**"]
+      , licenseScanPathFiltersExclude = []
       , licenseScanPathFilterFileExclude = []
       }
 
@@ -409,3 +409,24 @@ spec = do
           -- Just assert that we find matches for "Confidential" (from the org API) and "Proprietary License" (from grepOptions)
           let matchNames = lernieMatchDataName <$> concatMap lernieMatchMatches (lernieResultsCustomLicenses res)
           sort (nub matchNames) `shouldBe'` ["Confidential", "Proprietary License"]
+
+    it' "should handle Nothing licenseScanPathFilters without crashing" $ do
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions Nothing
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Just _ -> pure ()
+
+    it' "should apply licenseScanPathFilters correctly" $ do
+      let filters =
+            LicenseScanPathFilters
+              { licenseScanPathFiltersOnly = [GlobFilter "**/*one.txt"]
+              , licenseScanPathFiltersExclude = [GlobFilter "**/*something.txt"]
+              , licenseScanPathFilterFileExclude = []
+              }
+
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions (Just filters)
+      case result of
+        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing when given valid licenseScanPathFilters"
+        Just res -> do
+          let matchPaths = sort $ nub $ map lernieMatchPath (lernieResultsCustomLicenses res ++ lernieResultsKeywordSearches res)
+          matchPaths `shouldBe'` [fixedOnePath]
