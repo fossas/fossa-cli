@@ -17,13 +17,9 @@ module Strategy.Python.PyProjectGeneric.Types
   , isPEP621
   , isPoetry
   , isPDM
-  , dependencyVersion
-  , gitUrl
-  , sourcePath
-  , sourceUrl
   ) where
 
-import Data.Aeson (ToJSON(..), Value, object, (.=))
+import Data.Aeson (ToJSON(..), object, (.=))
 import Data.Aeson.Types qualified as Aeson
 import Data.List (sortOn)
 import Data.Map (Map)
@@ -335,9 +331,3 @@ isPDM = isJust . pdmSection
 isPEP621 :: PyProjectGeneric -> Bool
 isPEP621 = isJust . projectMetadata
 
--- | Debugging function to show project parsing
-debugProject :: PyProjectGeneric -> String
-debugProject proj = 
-  "Poetry: " ++ show (isJust $ poetrySection proj) ++ 
-  ", PDM: " ++ show (isJust $ pdmSection proj) ++ 
-  ", PEP621: " ++ show (isJust $ projectMetadata proj)

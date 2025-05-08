@@ -24,7 +24,6 @@ import Text.URI qualified as URI
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Data.Maybe (isNothing)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
@@ -33,7 +32,7 @@ import Types (
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (PdmProjectType),
-  GraphBreadth (Complete, Partial),
+  GraphBreadth (Complete),
  )
 
 discover ::

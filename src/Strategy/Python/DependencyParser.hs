@@ -11,13 +11,11 @@ module Strategy.Python.DependencyParser
   , versionConstraintParser
   ) where
 
-import Control.Applicative ((<|>))
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer qualified as L
 
 -- | Type representing the source of a dependency specification
 data DependencySource
