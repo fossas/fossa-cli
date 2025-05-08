@@ -37,6 +37,7 @@ import Strategy.Pub qualified as Pub
 import Strategy.Python.PDM.Pdm qualified as Pdm
 import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
+import Strategy.Python.PyProjectGeneric qualified as PyProjectGeneric
 import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
@@ -68,10 +69,10 @@ discoverFuncs =
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackagesConfig.discover
   , DiscoverFunc Paket.discover
-  , DiscoverFunc Pdm.discover
+  -- Remove PDM and Poetry discoverers - they're now handled by PyProjectGeneric
   , DiscoverFunc Perl.discover
   , DiscoverFunc Pipenv.discover
-  , DiscoverFunc Poetry.discover
+  , DiscoverFunc PyProjectGeneric.discover  -- Generic PyProject handler for all pyproject.toml projects
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover
   , DiscoverFunc R.discover

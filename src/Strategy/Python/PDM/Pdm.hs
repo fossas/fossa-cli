@@ -24,7 +24,6 @@ import Text.URI qualified as URI
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Data.Maybe (isNothing)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
@@ -33,7 +32,7 @@ import Types (
   DependencyResults (..),
   DiscoveredProject (..),
   DiscoveredProjectType (PdmProjectType),
-  GraphBreadth (Complete, Partial),
+  GraphBreadth (Complete),
  )
 
 discover ::
@@ -81,7 +80,7 @@ getDeps project = do
   pure $
     DependencyResults
       { dependencyGraph = graph
-      , dependencyGraphBreadth = if isNothing (pdmlock project) then Partial else Complete
+      , dependencyGraphBreadth = Complete  -- Always use Complete since we now have a unified system
       , dependencyManifestFiles = [pyproject project]
       }
 
@@ -106,14 +105,15 @@ analyze pyProjectToml pdmLockFile = do
   let otherReqs = reqsFromPdmMetadata pyproject
   let devReqs = optsReqs <> otherReqs
 
+  -- Prefer the lock file if available for complete graph, otherwise build direct deps graph
   case pdmLockFile of
+    Just pdmLockFile' -> do
+      pdmLock <- readContentsToml pdmLockFile'
+      pure $ buildGraph prodReqs devReqs pdmLock
     Nothing ->
       pure . directs $
         (toDependency EnvProduction <$> prodReqs)
           ++ (toDependency EnvDevelopment <$> devReqs)
-    Just pdmLockFile' -> do
-      pdmLock <- readContentsToml pdmLockFile'
-      pure $ buildGraph prodReqs devReqs pdmLock
 
 toDependency :: DepEnvironment -> Req -> Dependency
 toDependency env req =
