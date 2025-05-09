@@ -243,7 +243,9 @@ mergeOpts cfgfile envvars ReportCliOptions{..} = do
       , Has ReadFS sig m
       , Has Diagnostics sig m
       ) =>
-      Text -> OverrideProject -> m (ProjectRevision, ReportBase)
+      Text ->
+      OverrideProject ->
+      m (ProjectRevision, ReportBase)
     generateDirOrSBOMBase path projectOverride = do
       basedir <- Diag.recover $ collectBaseDir (Conv.toString path)
       case basedir of

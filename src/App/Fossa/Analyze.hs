@@ -338,7 +338,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
-        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
+        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
   let lernieResults = join . resultToMaybe $ maybeLernieResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
