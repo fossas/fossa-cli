@@ -10,7 +10,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Monad (guard)
+import Control.Monad (guard, when)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -39,6 +39,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
+import Control.Monad (when)
 
 -- | Pnpm Lockfile
 --
@@ -527,95 +528,112 @@ buildGraphLegacy lockFile = withoutLocalPackages $
 
 -- Placeholder for the new v9+ graph building logic using snapshots
 buildGraphWithSnapshots :: PnpmLockfile -> Graphing Dependency
-buildGraphWithSnapshots lockFile = withoutLocalPackagesSnapshot $
-  run . evalGrapher $ do
-    let catalogVersionMap = buildCatalogVersionMapSnapshots lockFile
-    let snapshotsMap = snapshots lockFile
+buildGraphWithSnapshots lockFile =
+  withoutLocalPackagesSnapshot $
+    run . evalGrapher $ do
+      let catalogVersionMap = buildCatalogVersionMapSnapshots lockFile
+      let snapshotsMap = snapshots lockFile
 
-    -- Helper to create a Dependency from snapshot data
-    -- Takes canonicalDepName, the reference string (snapshot key or similar), and context dev status
-    let resolveSnapshotDependency :: Text -> Text -> Bool -> Maybe Dependency
-        resolveSnapshotDependency canonicalDepName snapKeyOrRef isCtxDev = do
-          (nameFromSnapKey, versionFromSnapKey) <- parseSnapshotKey snapKeyOrRef
+      -- Helper to create a Dependency from snapshot data
+      let resolveSnapshotDependency :: Text -> Text -> Bool -> Maybe Dependency
+          resolveSnapshotDependency canonicalDepName snapKeyOrRef isCtxDev = do
+            (nameFromSnapKey, versionFromSnapKey) <- parseSnapshotKey snapKeyOrRef
 
-          let packageKeyInPackagesMap = mkPkgKey lockFile nameFromSnapKey versionFromSnapKey
-          let maybePkgData = Map.lookup packageKeyInPackagesMap (packages lockFile)
+            let packageKeyInPackagesMap = mkPkgKey lockFile nameFromSnapKey versionFromSnapKey
+            let maybePkgData = Map.lookup packageKeyInPackagesMap (packages lockFile)
 
-          let finalIsDev = maybe isCtxDev isDev maybePkgData
-          pure $ createDepSimple NodeJSType canonicalDepName (Just versionFromSnapKey) finalIsDev
+            let finalIsDev = maybe isCtxDev isDev maybePkgData
+            pure $ createDepSimple NodeJSType canonicalDepName (Just versionFromSnapKey) finalIsDev
 
-    -- Step 1: Process importers to establish direct dependencies
-    for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
-      let directProdDeps = Map.toList $ directDependencies projectSnapshot
-      let directDevDeps = Map.toList $ directDevDependencies projectSnapshot
+      -- Step 1: Process importers to establish direct dependencies
+      for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
+        let directProdDeps = Map.toList $ directDependencies projectSnapshot
+        let directDevDeps = Map.toList $ directDevDependencies projectSnapshot
 
-      for_ directProdDeps $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
-        case resolveSnapshotDependency canonicalName resolvedRefStr False of
-          Just resolvedDep -> do
-            deep resolvedDep
-            direct resolvedDep
-          Nothing -> do
-            -- Fallback for importer entries where resolvedRefStr isn't a direct snapshot key
-            let justVersion = withoutPeerDepSuffix resolvedRefStr
-            if Text.null justVersion
-              then
-                pure ()
-              else do
-                let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersion
-                case Map.lookup pkgKeyToLookup (packages lockFile) of
-                  Just pkgData -> do
-                    let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersion) pkgData False
-                    deep dep
-                    direct dep
-                  Nothing ->
-                    pure ()
+        for_ directProdDeps $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
+          case resolveSnapshotDependency canonicalName resolvedRefStr False of -- isCtxDev is now ignored by resolveSnapshotDependency
+            Just resolvedDep -> do
+              deep resolvedDep
+              direct resolvedDep
+            Nothing -> do
+              -- Fallback for importer entries where resolvedRefStr isn't a direct snapshot key
+              let justVersion = withoutPeerDepSuffix resolvedRefStr
+              if Text.null justVersion
+                then
+                  pure ()
+                else do
+                  let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersion
+                  case Map.lookup pkgKeyToLookup (packages lockFile) of
+                    Just pkgData -> do
+                      let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersion) pkgData False
+                      deep dep
+                      direct dep
+                    Nothing ->
+                      pure ()
 
-      for_ directDevDeps $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
-        case resolveSnapshotDependency canonicalName resolvedRefStr True of
-          Just resolvedDep -> do
-            deep resolvedDep
-            direct resolvedDep
-          Nothing -> do
-            -- Fallback for importer entries where resolvedRefStr isn't a direct snapshot key
-            let justVersion = withoutPeerDepSuffix resolvedRefStr
-            if Text.null justVersion
-              then
-                pure ()
-              else do
-                let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersion
-                case Map.lookup pkgKeyToLookup (packages lockFile) of
-                  Just pkgData -> do
-                    let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersion) pkgData True
-                    deep dep
-                    direct dep
-                  Nothing ->
-                    pure ()
+        for_ directDevDeps $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
+          case resolveSnapshotDependency canonicalName resolvedRefStr True of -- Restore True for dev deps
+            Just resolvedDep -> do
+              deep resolvedDep
+              direct resolvedDep
+            Nothing -> do
+              -- Fallback for importer entries where resolvedRefStr isn't a direct snapshot key
+              let justVersion = withoutPeerDepSuffix resolvedRefStr
+              if Text.null justVersion
+                then
+                  pure ()
+                else do
+                  let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersion
+                  case Map.lookup pkgKeyToLookup (packages lockFile) of
+                    Just pkgData -> do
+                      let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersion) pkgData True
+                      deep dep
+                      direct dep
+                    Nothing ->
+                      pure ()
 
-    -- Step 2: Process snapshots for transitive dependencies
-    for_ (Map.toList snapshotsMap) $ \(parentSnapKeyStr, snapshotData) -> do
-      case parseSnapshotKey parentSnapKeyStr of
-        Just (parentCanonicalName, _) ->
-          case resolveSnapshotDependency parentCanonicalName parentSnapKeyStr False of
-            Just parentDep -> do
-              deep parentDep
-              let childDeps = Map.toList $ snapshotDependencies snapshotData
-              for_ childDeps $ \(childCanonicalName, childSnapKeyRef) -> do
-                case resolveSnapshotDependency childCanonicalName childSnapKeyRef False of
-                  Just childDep -> do
-                    deep childDep
-                    edge parentDep childDep
-                  Nothing -> do
-                    case Map.lookup childSnapKeyRef (packages lockFile) of
-                      Just pkgData ->
-                        case getPkgNameVersionForV9Snapshots lockFile childSnapKeyRef pkgData of
-                          Just (pkgNameFromData, versionMaybe) -> do
-                            let concreteChildDep = resolveDependencySnapshots catalogVersionMap pkgNameFromData versionMaybe pkgData False
-                            deep concreteChildDep
-                            edge parentDep concreteChildDep
+      -- Step 2: Process snapshots for transitive dependencies
+      for_ (Map.toList snapshotsMap) $ \(parentSnapKeyStr, snapshotData) -> do
+        case parseSnapshotKey parentSnapKeyStr of
+          Just (parentCanonicalName, _) ->
+            case resolveSnapshotDependency parentCanonicalName parentSnapKeyStr False of
+              Just parentDep -> do
+                deep parentDep
+                let childDeps = Map.toList $ snapshotDependencies snapshotData
+                for_ childDeps $ \(childCanonicalName, childVersionRef) -> do
+                  -- Attempt to form the full snapshot key for the child
+                  -- childVersionRef is often just the version string from the snapshot's dependencies map.
+                  let fullChildSnapKey = childCanonicalName <> "@" <> childVersionRef
+                  case resolveSnapshotDependency childCanonicalName fullChildSnapKey False of
+                    Just childDep -> do
+                      deep childDep
+                      edge parentDep childDep
+                    Nothing ->
+                      -- Fallback: if childVersionRef was perhaps a path or non-standard ref
+                      -- that parseSnapshotKey (even with the formed key) couldn't handle,
+                      -- or if it was a git/file path that should be looked up differently.
+                      -- This part needs to be robust. For now, let's try to look up childVersionRef
+                      -- directly in packages IF it seems like it could be a key (e.g. contains '://' or 'file:')
+                      -- OR if it's just a version, this path won't help much directly.
+                      -- Consider if childVersionRef itself could be a key in `packages` for git/file.
+                      when (Text.isInfixOf "://" childVersionRef || Text.isPrefixOf "file:" childVersionRef) $
+                        case Map.lookup childVersionRef (packages lockFile) of
+                          Just pkgData ->
+                            case getPkgNameVersionForV9Snapshots lockFile childVersionRef pkgData of
+                              Just (pkgNameFromData, versionMaybe) -> do
+                                let concreteChildDep =
+                                      resolveDependencySnapshots
+                                        catalogVersionMap
+                                        pkgNameFromData
+                                        versionMaybe
+                                        pkgData
+                                        False
+                                deep concreteChildDep
+                                edge parentDep concreteChildDep
+                              _ -> pure ()
                           _ -> pure ()
-                      _ -> pure ()
-            Nothing -> pure () -- Couldn't parse parentSnapKeyStr, log warning?
-        Nothing -> pure () -- Couldn't parse parentSnapKeyStr, log warning?
+              Nothing -> pure () -- Couldn't resolve parentDep from parentSnapKeyStr
+          Nothing -> pure () -- Couldn't parse parentSnapKeyStr
   where
     withoutLocalPackagesSnapshot = shrink (\dep -> dependencyType dep /= UserType)
 
@@ -655,15 +673,15 @@ buildGraphWithSnapshots lockFile = withoutLocalPackagesSnapshot $
     -- Resolve dependency using PackageData, for non-snapshot packages (git, tarball, etc.)
     resolveDependencySnapshots :: Map Text Text -> Text -> Maybe Text -> PackageData -> Bool -> Dependency
     resolveDependencySnapshots _ _ _ (PackageData pkgIsDev _ (GitResolve (GitResolution url rev)) _ _) contextIsDev =
-      createDepSimple GitType url (Just rev) (pkgIsDev || contextIsDev)
+      createDepSimple GitType url (Just rev) (pkgIsDev || contextIsDev) -- Restore original logic
     resolveDependencySnapshots _ _ _ (PackageData pkgIsDev _ (TarballResolve (TarballResolution url)) _ _) contextIsDev =
-      createDepSimple URLType url Nothing (pkgIsDev || contextIsDev)
+      createDepSimple URLType url Nothing (pkgIsDev || contextIsDev) -- Restore original logic
     resolveDependencySnapshots _ _ _ (PackageData pkgIsDev (Just name) (DirectoryResolve _) _ _) contextIsDev =
-      createDepSimple UserType name Nothing (pkgIsDev || contextIsDev)
+      createDepSimple UserType name Nothing (pkgIsDev || contextIsDev) -- Restore original logic
     resolveDependencySnapshots _ name _ (PackageData pkgIsDev Nothing (DirectoryResolve _) _ _) contextIsDev =
-      createDepSimple UserType name Nothing (pkgIsDev || contextIsDev)
+      createDepSimple UserType name Nothing (pkgIsDev || contextIsDev) -- Restore original logic
     resolveDependencySnapshots _ name maybeVersion (PackageData pkgIsDev _ (RegistryResolve _) _ _) contextIsDev =
-      createDepSimple NodeJSType name maybeVersion (pkgIsDev || contextIsDev)
+      createDepSimple NodeJSType name maybeVersion (pkgIsDev || contextIsDev) -- Restore original logic
 
     -- Helper to get name/version from a PnpmLockV9 package key (which might be a path for git/file)
     -- or from PackageData if key is not directly parsable by simple means.
