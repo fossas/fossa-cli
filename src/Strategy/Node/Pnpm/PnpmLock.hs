@@ -9,21 +9,23 @@ module Strategy.Node.Pnpm.PnpmLock (
 ) where
 
 import Control.Applicative ((<|>))
+import Control.Carrier.Simple (runSimpleC)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (guard, when)
 import Data.Aeson.Extra (TextLike (..))
-import Data.Aeson.Key qualified as Key
-import Data.Aeson.KeyMap qualified as KeyMap
+import qualified Data.Aeson.Key as Key
+import qualified Data.Aeson.KeyMap as KeyMap
 import Data.Foldable (for_)
+import Data.Functor.Identity (runIdentity)
 import Data.Map (Map)
-import Data.Map qualified as Map
+import qualified Data.Map as Map
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Set qualified as Set
+import qualified Data.Set as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Data.Text qualified as Text
+import qualified Data.Text as Text
 import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
-import Data.Yaml qualified as Yaml
+import qualified Data.Yaml as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
@@ -33,13 +35,13 @@ import DepTypes (
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Effect.Logger (
   Logger,
+  ignoreLogger,
   logWarn,
   pretty,
  )
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
-import Control.Monad (when)
 
 -- | Pnpm Lockfile
 --
@@ -280,7 +282,7 @@ instance FromJSON CatalogEntry where
       <$> obj .: "specifier"
       <*> obj .: "version"
 
-analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m, Ord Dependency) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
 
@@ -289,7 +291,7 @@ analyze file = context "Analyzing Pnpm Lockfile" $ do
     PnpmLockV789 raw -> logWarn . pretty $ "pnpm-lock file is using version: " <> raw <> ", support may be limited."
     _ -> pure ()
 
-  context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
+  context "Building dependency graph" $ buildGraph pnpmLockFile
 
 -- Moved mkPkgKey to be a top-level helper function
 mkPkgKey :: PnpmLockfile -> Text -> Text -> Text
@@ -301,12 +303,20 @@ mkPkgKey lf name version = case lockFileVersion lf of
   PnpmLockV9 ->
     let keyWithSlash = mkPkgKeyFormat name version "slash"
         keyWithAt = mkPkgKeyFormat name version "at"
-        keyWithoutSlash = name <> "@" <> version -- For v9, package keys in 'packages' might not have leading '/'
-        -- but snapshot refs are 'name@version' or '@scope/name@version'.
-        -- When using this to look up *in packages map*, based on *snapshot parsed parts*,
-        -- we need to try variations.
-     in fromMaybe keyWithAt $ -- Default to keyWithAt if others not found or as a general fallback
-          findFirst (`Map.member` packages lf) [keyWithSlash, keyWithAt, keyWithoutSlash]
+        keyWithoutSlash = name <> "@" <> version
+        keyWithoutLeadingSlash = Text.dropWhile (== '/') keyWithAt
+        keyWithoutLeadingSlashSlash = Text.dropWhile (== '/') keyWithSlash
+     in -- For v9, try all possible key formats since the format can vary
+        -- between packages and snapshots
+        fromMaybe keyWithAt $ -- Default to keyWithAt if others not found
+          findFirst
+            (`Map.member` packages lf)
+            [ keyWithSlash
+            , keyWithAt
+            , keyWithoutSlash
+            , keyWithoutLeadingSlash
+            , keyWithoutLeadingSlashSlash
+            ]
   where
     findFirst :: (a -> Bool) -> [a] -> Maybe a
     findFirst _ [] = Nothing
@@ -316,7 +326,7 @@ mkPkgKey lf name version = case lockFileVersion lf of
     mkPkgKeyFormat nm ver format = case format of
       "slash" -> "/" <> nm <> "/" <> ver
       "at" -> "/" <> nm <> "@" <> ver
-      _ -> "/" <> nm <> "@" <> ver -- Default or error? For safety, default to 'at' as it's common.
+      _ -> "/" <> nm <> "@" <> ver -- Default to 'at' format
 
 -- Renamed original buildGraph to buildGraphLegacy
 buildGraphLegacy :: PnpmLockfile -> Graphing Dependency
@@ -338,7 +348,7 @@ buildGraphLegacy lockFile = withoutLocalPackages $
             catalogEntriesMap = Map.map catalogVersion . catalogEntries
 
         cleanupVersion :: PnpmLockfile -> Text -> Text
-        cleanupVersion lf = removeLinks . removePrefixes . withoutPeerDepSuffix . (if shouldApplySymConstraint lf then withoutSymConstraint else id)
+        cleanupVersion lf = removeLinks . removePrefixes . withoutPeerDepSuffix . withoutWorkspacePrefix . (if shouldApplySymConstraint lf then withoutSymConstraint else id)
           where
             shouldApplySymConstraint :: PnpmLockfile -> Bool
             shouldApplySymConstraint lock = case lockFileVersion lock of
@@ -349,6 +359,11 @@ buildGraphLegacy lockFile = withoutLocalPackages $
 
             withoutPeerDepSuffix :: Text -> Text
             withoutPeerDepSuffix = fst . Text.breakOn "("
+
+            withoutWorkspacePrefix :: Text -> Text
+            withoutWorkspacePrefix version
+              | "workspace:" `Text.isPrefixOf` version = ""
+              | otherwise = version
 
             removePrefixes :: Text -> Text
             removePrefixes version
@@ -526,11 +541,31 @@ buildGraphLegacy lockFile = withoutLocalPackages $
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType)
 
+-- Main buildGraph function that dispatches based on lockfile version
+buildGraph :: (Has Logger sig m, Ord Dependency) => PnpmLockfile -> m (Graphing Dependency)
+buildGraph lockFile = do
+  case lockFileVersion lockFile of
+    PnpmLockV9 -> buildGraphWithSnapshots lockFile
+    -- For older versions, we need to lift the pure buildGraphLegacy into the effectful context
+    _ -> pure $ buildGraphLegacy lockFile
+
+-- Define SnapshotPackageData (focus on dependencies for now)
+newtype SnapshotPackageData = SnapshotPackageData
+  { snapshotDependencies :: Map Text Text
+  -- TODO: Consider adding snapshotOptionalDependencies, snapshotTransitivePeerDependencies if needed later
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON SnapshotPackageData where
+  parseJSON = Yaml.withObject "SnapshotPackageData" $ \obj ->
+    SnapshotPackageData
+      <$> obj .:? "dependencies" .!= mempty
+
 -- Placeholder for the new v9+ graph building logic using snapshots
-buildGraphWithSnapshots :: PnpmLockfile -> Graphing Dependency
+buildGraphWithSnapshots :: (Has Logger sig m, Ord Dependency) => PnpmLockfile -> m (Graphing Dependency)
 buildGraphWithSnapshots lockFile =
-  withoutLocalPackagesSnapshot $
-    run . evalGrapher $ do
+  fmap withoutLocalPackagesSnapshot $
+    evalGrapher $ do
       let catalogVersionMap = buildCatalogVersionMapSnapshots lockFile
       let snapshotsMap = snapshots lockFile
 
@@ -545,52 +580,79 @@ buildGraphWithSnapshots lockFile =
             let finalIsDev = maybe isCtxDev isDev maybePkgData
             pure $ createDepSimple NodeJSType canonicalDepName (Just versionFromSnapKey) finalIsDev
 
+      -- Define processImporterEntries here, after resolveSnapshotDependency
+      let processImporterEntries entries isDepDevFlag =
+            for_ entries $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
+              if "catalog:" `Text.isPrefixOf` resolvedRefStr
+                then do
+                  let catalogAlias = Text.drop (Text.length "catalog:") resolvedRefStr
+                  case Map.lookup catalogAlias catalogVersionMap of
+                    Just actualVersion -> do
+                      -- Try to find the package in the packages map first
+                      let pkgKeyToLookup = mkPkgKey lockFile canonicalName actualVersion
+                      case Map.lookup pkgKeyToLookup (packages lockFile) of
+                        Just pkgData -> do
+                          let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just actualVersion) pkgData isDepDevFlag
+                          deep dep >> direct dep
+                        Nothing -> do
+                          -- If not in packages, try snapshots
+                          let snapshotKeyAttempt = canonicalName <> "@" <> actualVersion
+                          case resolveSnapshotDependency canonicalName snapshotKeyAttempt isDepDevFlag of
+                            Just resolvedDep -> deep resolvedDep >> direct resolvedDep
+                            Nothing -> logWarn $ pretty ("Catalog-resolved dep not found: " <> canonicalName <> "@" <> actualVersion)
+                    Nothing -> logWarn $ pretty ("Unresolved catalog alias: " <> catalogAlias <> " for " <> canonicalName)
+                else
+                  if "link:" `Text.isPrefixOf` resolvedRefStr
+                    then do
+                      let userDep = createDepSimple UserType canonicalName (Just resolvedRefStr) isDepDevFlag
+                      deep userDep >> direct userDep
+                    else
+                      if "workspace:" `Text.isPrefixOf` resolvedRefStr
+                        then do
+                          logWarn $ pretty ("Workspace protocol NYI for importer: " <> canonicalName <> " ref: " <> resolvedRefStr)
+                          pure ()
+                        else do
+                          -- Assumed to be a plain version string or a direct snapshot key string
+                          case resolveSnapshotDependency canonicalName resolvedRefStr isDepDevFlag of
+                            Just resolvedDep -> deep resolvedDep >> direct resolvedDep
+                            Nothing -> do
+                              -- Fallback: resolvedRefStr was not a direct snapshot key like name@version
+                              let justVersionNoSuffix = withoutPeerDepSuffix resolvedRefStr
+                              if Text.isInfixOf "://" justVersionNoSuffix || Text.isPrefixOf "file:" justVersionNoSuffix
+                                then do
+                                  -- Fallback Case 1: resolvedRefStr is a URL/File path (used as key in packages)
+                                  case Map.lookup justVersionNoSuffix (packages lockFile) of
+                                    Just pkgData ->
+                                      case getPkgNameVersionForV9Snapshots lockFile justVersionNoSuffix pkgData of
+                                        Just (pkgNameFromData, versionMaybe) -> do
+                                          let dep = resolveDependencySnapshots catalogVersionMap pkgNameFromData versionMaybe pkgData isDepDevFlag
+                                          deep dep >> direct dep
+                                        _ -> logWarn $ pretty ("Cannot get name/ver for pkg key: " <> justVersionNoSuffix)
+                                    Nothing -> logWarn $ pretty ("Importer URL-like ref not in packages: " <> justVersionNoSuffix)
+                                else
+                                  if not (Text.null justVersionNoSuffix)
+                                    then do
+                                      -- Fallback Case 2: resolvedRefStr was a simple version string (e.g. "1.2.3")
+                                      -- Try lookup in packages using canonicalName + justVersionNoSuffix
+                                      let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersionNoSuffix
+                                      case Map.lookup pkgKeyToLookup (packages lockFile) of
+                                        Just pkgData -> do
+                                          let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersionNoSuffix) pkgData isDepDevFlag
+                                          deep dep >> direct dep
+                                        Nothing -> do
+                                          -- Not in packages, final attempt: try forming name@version and looking up in snapshots
+                                          let snapshotKeyAttempt = canonicalName <> "@" <> justVersionNoSuffix
+                                          case resolveSnapshotDependency canonicalName snapshotKeyAttempt isDepDevFlag of
+                                            Just resolvedDepFromSnap -> deep resolvedDepFromSnap >> direct resolvedDepFromSnap
+                                            Nothing -> logWarn $ pretty ("Importer dep not in snaps/pkgs (plain ver): " <> canonicalName <> "@" <> justVersionNoSuffix)
+                                    else
+                                      -- Fallback Case 3: Empty version string after suffix removal
+                                      logWarn $ pretty ("Empty version for importer dep (after suffix): " <> canonicalName <> " ref: " <> resolvedRefStr)
+
       -- Step 1: Process importers to establish direct dependencies
       for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
-        let directProdDeps = Map.toList $ directDependencies projectSnapshot
-        let directDevDeps = Map.toList $ directDevDependencies projectSnapshot
-
-        for_ directProdDeps $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
-          case resolveSnapshotDependency canonicalName resolvedRefStr False of -- isCtxDev is now ignored by resolveSnapshotDependency
-            Just resolvedDep -> do
-              deep resolvedDep
-              direct resolvedDep
-            Nothing -> do
-              -- Fallback for importer entries where resolvedRefStr isn't a direct snapshot key
-              let justVersion = withoutPeerDepSuffix resolvedRefStr
-              if Text.null justVersion
-                then
-                  pure ()
-                else do
-                  let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersion
-                  case Map.lookup pkgKeyToLookup (packages lockFile) of
-                    Just pkgData -> do
-                      let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersion) pkgData False
-                      deep dep
-                      direct dep
-                    Nothing ->
-                      pure ()
-
-        for_ directDevDeps $ \(canonicalName, ProjectMapDepMetadata{depVersion = resolvedRefStr}) -> do
-          case resolveSnapshotDependency canonicalName resolvedRefStr True of -- Restore True for dev deps
-            Just resolvedDep -> do
-              deep resolvedDep
-              direct resolvedDep
-            Nothing -> do
-              -- Fallback for importer entries where resolvedRefStr isn't a direct snapshot key
-              let justVersion = withoutPeerDepSuffix resolvedRefStr
-              if Text.null justVersion
-                then
-                  pure ()
-                else do
-                  let pkgKeyToLookup = mkPkgKey lockFile canonicalName justVersion
-                  case Map.lookup pkgKeyToLookup (packages lockFile) of
-                    Just pkgData -> do
-                      let dep = resolveDependencySnapshots catalogVersionMap canonicalName (Just justVersion) pkgData True
-                      deep dep
-                      direct dep
-                    Nothing ->
-                      pure ()
+        processImporterEntries (Map.toList $ directDependencies projectSnapshot) False
+        processImporterEntries (Map.toList $ directDevDependencies projectSnapshot) True
 
       -- Step 2: Process snapshots for transitive dependencies
       for_ (Map.toList snapshotsMap) $ \(parentSnapKeyStr, snapshotData) -> do
@@ -665,23 +727,49 @@ buildGraphWithSnapshots lockFile =
       where
         catalogEntriesMap = Map.map catalogVersion . catalogEntries
 
-    -- Simplified/adapted cleanupVersion for snapshot context. May need more.
+    -- Improved version cleanup for v9 snapshots
     cleanupVersionSnapshots :: PnpmLockfile -> Text -> Text
-    cleanupVersionSnapshots _ = id -- For snapshot keys like name@version, version is usually clean.
-    -- If catalogs are used with snapshots, this needs proper implementation.
+    cleanupVersionSnapshots lf version =
+      let cleaned = removeLinks $ removePrefixes $ withoutPeerDepSuffix version
+       in case lockFileVersion lf of
+            PnpmLockV9 -> cleaned -- For v9, we don't need to handle sym constraints
+            _ -> if shouldApplySymConstraint lf then withoutSymConstraint cleaned else cleaned
+      where
+        withoutSymConstraint = fst . Text.breakOn "_"
+        withoutPeerDepSuffix = fst . Text.breakOn "("
+        removePrefixes v
+          | "@" `Text.isInfixOf` v && Text.count "@" v > 1 =
+              let parts = Text.splitOn "@" v
+               in if length parts >= 3
+                    then fromMaybe v (listToMaybe (reverse parts))
+                    else v
+          | otherwise = v
+        removeLinks v
+          | "link:" `Text.isPrefixOf` v = ""
+          | "workspace:" `Text.isPrefixOf` v = ""
+          | "catalog:" `Text.isPrefixOf` v = ""
+          | otherwise = v
+        shouldApplySymConstraint lock = case lockFileVersion lock of
+          PnpmLockV9 -> False
+          _ -> True
 
     -- Resolve dependency using PackageData, for non-snapshot packages (git, tarball, etc.)
     resolveDependencySnapshots :: Map Text Text -> Text -> Maybe Text -> PackageData -> Bool -> Dependency
-    resolveDependencySnapshots _ _ _ (PackageData pkgIsDev _ (GitResolve (GitResolution url rev)) _ _) contextIsDev =
-      createDepSimple GitType url (Just rev) (pkgIsDev || contextIsDev) -- Restore original logic
-    resolveDependencySnapshots _ _ _ (PackageData pkgIsDev _ (TarballResolve (TarballResolution url)) _ _) contextIsDev =
-      createDepSimple URLType url Nothing (pkgIsDev || contextIsDev) -- Restore original logic
-    resolveDependencySnapshots _ _ _ (PackageData pkgIsDev (Just name) (DirectoryResolve _) _ _) contextIsDev =
-      createDepSimple UserType name Nothing (pkgIsDev || contextIsDev) -- Restore original logic
-    resolveDependencySnapshots _ name _ (PackageData pkgIsDev Nothing (DirectoryResolve _) _ _) contextIsDev =
-      createDepSimple UserType name Nothing (pkgIsDev || contextIsDev) -- Restore original logic
-    resolveDependencySnapshots _ name maybeVersion (PackageData pkgIsDev _ (RegistryResolve _) _ _) contextIsDev =
-      createDepSimple NodeJSType name maybeVersion (pkgIsDev || contextIsDev) -- Restore original logic
+    resolveDependencySnapshots catMap depName maybeVersion pkgData contextIsDev =
+      case resolution pkgData of
+        GitResolve (GitResolution url rev) ->
+          createDepSimple GitType url (Just rev) (isDev pkgData || contextIsDev)
+        TarballResolve (TarballResolution url) ->
+          createDepSimple URLType url Nothing (isDev pkgData || contextIsDev)
+        DirectoryResolve _ ->
+          createDepSimple UserType (fromMaybe depName (name pkgData)) Nothing (isDev pkgData || contextIsDev)
+        RegistryResolve _ ->
+          let resolvedVersion =
+                maybeVersion >>= \v ->
+                  if "catalog:" `Text.isPrefixOf` v
+                    then Map.lookup depName catMap
+                    else Just $ cleanupVersionSnapshots lockFile v
+           in createDepSimple NodeJSType depName resolvedVersion (isDev pkgData || contextIsDev)
 
     -- Helper to get name/version from a PnpmLockV9 package key (which might be a path for git/file)
     -- or from PackageData if key is not directly parsable by simple means.
@@ -707,24 +795,3 @@ buildGraphWithSnapshots lockFile =
                 else
                   let slashParts = Text.splitOn "/" k
                    in if length slashParts >= 3 then Just (slashParts !! 2) else Nothing
-
--- Main buildGraph function that dispatches based on lockfile version
-buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile =
-  case lockFileVersion lockFile of
-    PnpmLockV9 -> buildGraphWithSnapshots lockFile
-    -- Potentially add PnpmLockV789 here if it also uses snapshots or a similar structure
-    -- For now, older versions use the legacy method
-    _ -> buildGraphLegacy lockFile
-
--- Define SnapshotPackageData (focus on dependencies for now)
-newtype SnapshotPackageData = SnapshotPackageData
-  { snapshotDependencies :: Map Text Text
-  -- TODO: Consider adding snapshotOptionalDependencies, snapshotTransitivePeerDependencies if needed later
-  }
-  deriving (Show, Eq, Ord)
-
-instance FromJSON SnapshotPackageData where
-  parseJSON = Yaml.withObject "SnapshotPackageData" $ \obj ->
-    SnapshotPackageData
-      <$> obj .:? "dependencies" .!= mempty
