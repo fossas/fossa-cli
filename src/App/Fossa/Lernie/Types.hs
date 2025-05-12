@@ -24,6 +24,7 @@ import Data.Text (Text)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseSourceUnit)
+import Types (LicenseScanPathFilters (..))
 
 data OrgWideCustomLicenseConfigPolicy = Use | Ignore
   deriving (Eq, Ord, Show)
@@ -72,6 +73,7 @@ instance FromJSON GrepEntry where
 data LernieConfig = LernieConfig
   { rootDir :: Path Abs Dir
   , regexes :: [LernieRegex]
+  , licenseScanPathFilters :: Maybe LicenseScanPathFilters
   , fullFiles :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
@@ -81,6 +83,7 @@ instance ToJSON LernieConfig where
     object
       [ "root_dir" .= toText rootDir
       , "regexes" .= toJSON regexes
+      , "license_scan_path_filters" .= toJSON licenseScanPathFilters
       , "full_files" .= fullFiles
       ]
 

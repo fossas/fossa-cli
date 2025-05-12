@@ -286,7 +286,8 @@ collectBaseFile ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  FilePath -> m (Path Abs File)
+  FilePath ->
+  m (Path Abs File)
 collectBaseFile = validateFile
 
 validateDir ::
