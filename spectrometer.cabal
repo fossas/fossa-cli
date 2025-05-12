@@ -548,6 +548,8 @@ executable fossa
   build-depends:  spectrometer
   ghc-options:    -threaded
 
+-- test/Pnpm/PnpmLockSpec.hs is the canonical pnpm lockfile test file. Any Strategy/Node/Pnpm path is obsolete and should not be referenced.
+
 test-suite unit-tests
   import:             lang
   import:             deps
@@ -689,7 +691,6 @@ test-suite unit-tests
     Pdm.PdmLockSpec
     Pdm.PdmSpec
     Perl.PerlSpec
-    Pnpm.PnpmLockSpec
     Python.PipenvSpec
     Python.PipSpec
     Python.Poetry.CommonSpec
@@ -727,6 +728,7 @@ test-suite unit-tests
     Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
+    Pnpm.PnpmLockSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:
