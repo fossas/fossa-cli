@@ -9,7 +9,6 @@ module Strategy.Node.Pnpm.PnpmLock (
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Carrier.Simple (runSimpleC)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (guard, when)
 import Data.Aeson.Extra (TextLike (..))
@@ -41,6 +40,12 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
+
+withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
+withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType)
+
+withoutPeerDepSuffix :: Text -> Text
+withoutPeerDepSuffix = fst . Text.breakOn "("
 
 -- | Pnpm Lockfile
 --
@@ -329,7 +334,7 @@ mkPkgKey lf name version = case lockFileVersion lf of
 
 -- Renamed original buildGraph to buildGraphLegacy
 buildGraphLegacy :: PnpmLockfile -> Graphing Dependency
-buildGraphLegacy lockFile = withoutLocalPackages $
+buildGraphLegacy lockFile =
   runIdentity . evalGrapher $ do
     -- Define helpers using let bindings
     let catalogVersionMap = buildCatalogVersionMap lockFile
@@ -347,7 +352,7 @@ buildGraphLegacy lockFile = withoutLocalPackages $
             catalogEntriesMap = Map.map catalogVersion . catalogEntries
 
         cleanupVersion :: PnpmLockfile -> Text -> Text
-        cleanupVersion lf = removeLinks . removePrefixes . withoutPeerDepSuffix . withoutWorkspacePrefix . (if shouldApplySymConstraint lf then withoutSymConstraint else id)
+        cleanupVersion lf = removeLinks . removePrefixes . withoutWorkspacePrefix . (if shouldApplySymConstraint lf then withoutSymConstraint else id)
           where
             shouldApplySymConstraint :: PnpmLockfile -> Bool
             shouldApplySymConstraint lock = case lockFileVersion lock of
@@ -355,9 +360,6 @@ buildGraphLegacy lockFile = withoutLocalPackages $
               _ -> True
             withoutSymConstraint :: Text -> Text
             withoutSymConstraint = fst . Text.breakOn "_"
-
-            withoutPeerDepSuffix :: Text -> Text
-            withoutPeerDepSuffix = fst . Text.breakOn "("
 
             withoutWorkspacePrefix :: Text -> Text
             withoutWorkspacePrefix version
@@ -509,9 +511,6 @@ buildGraphLegacy lockFile = withoutLocalPackages $
                     then -1
                     else Text.length prefix
 
-        withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
-        withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType)
-
     -- Main logic of buildGraphLegacy starts here, using the let-bound helpers
     for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
       let devDeps = Set.fromList $ map fst $ Map.toList (directDependencies projectSnapshot)
@@ -538,9 +537,6 @@ buildGraphLegacy lockFile = withoutLocalPackages $
           (pure ())
           (edge parentDep)
           (resolveDepFromPackage catalogVersionMap lockFile childName childVersion False)
-  where
-    withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
-    withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType)
 
 -- Main buildGraph function that dispatches based on lockfile version
 buildGraph :: (Has Logger sig m) => PnpmLockfile -> m (Graphing Dependency)
@@ -618,7 +614,7 @@ buildGraphWithSnapshots lockFile =
                             Just resolvedDep -> deep resolvedDep >> direct resolvedDep
                             Nothing -> do
                               -- Fallback: resolvedRefStr was not a direct snapshot key like name@version
-                              let justVersionNoSuffix = withoutPeerDepSuffix' resolvedRefStr
+                              let justVersionNoSuffix = withoutPeerDepSuffix resolvedRefStr
                               if Text.isInfixOf "://" justVersionNoSuffix || Text.isPrefixOf "file:" justVersionNoSuffix
                                 then do
                                   -- Fallback Case 1: resolvedRefStr is a URL/File path (used as key in packages)
@@ -698,14 +694,11 @@ buildGraphWithSnapshots lockFile =
               Nothing -> pure () -- Couldn't resolve parentDep from parentSnapKeyStr
           Nothing -> pure () -- Couldn't parse parentSnapKeyStr
   where
-    withoutLocalPkgsSnap = shrink (\dep -> dependencyType dep /= UserType)
-
-    withoutPeerDepSuffix' :: Text -> Text
-    withoutPeerDepSuffix' = fst . Text.breakOn "("
+    withoutLocalPkgsSnap = withoutLocalPackages
 
     parseSnapshotKey :: Text -> Maybe (Text, Text)
     parseSnapshotKey rawKey =
-      let key = withoutPeerDepSuffix' rawKey
+      let key = withoutPeerDepSuffix rawKey
        in case Text.splitOn "@" key of
             -- Handle scoped packages like @scope/name@version
             ["", scopeAndName, version]
@@ -731,13 +724,12 @@ buildGraphWithSnapshots lockFile =
     -- Improved version cleanup for v9 snapshots
     cleanupVersionSnapshots :: PnpmLockfile -> Text -> Text
     cleanupVersionSnapshots lf version =
-      let cleaned = removeLinks $ removePrefixes $ withoutPeerDepSuffix' version
+      let cleaned = removeLinks $ removePrefixes $ withoutPeerDepSuffix version
        in case lockFileVersion lf of
             PnpmLockV9 -> cleaned -- For v9, we don't need to handle sym constraints
             _ -> if shouldApplySymConstraint lf then withoutSymConstraint cleaned else cleaned
       where
         withoutSymConstraint = fst . Text.breakOn "_"
-        withoutPeerDepSuffix' = fst . Text.breakOn "("
         removePrefixes v
           | "@" `Text.isInfixOf` v && Text.count "@" v > 1 =
               let parts = Text.splitOn "@" v
