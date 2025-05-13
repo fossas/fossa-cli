@@ -54,6 +54,7 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts, Organization (..), orgFileUpload)
 import Path (Abs, Dir, File, Path)
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), LicenseUnit (..), LicenseUnitData (..), LicenseUnitInfo (..), LicenseUnitMatchData (..))
+import Types (LicenseScanPathFilters)
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
   deriving (Eq, Ord, Show, Hashable)
@@ -72,12 +73,13 @@ analyzeWithLernie ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   GrepOptions ->
+  Maybe LicenseScanPathFilters ->
   m (Maybe LernieResults)
-analyzeWithLernie rootDir maybeApiOpts grepOptions = do
+analyzeWithLernie rootDir maybeApiOpts grepOptions filters = do
   case (maybeApiOpts, orgWideCustomLicenseScanConfigPolicy grepOptions) of
-    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions FileUploadMatchData
-    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions FileUploadMatchData
-    (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions
+    (_, Ignore) -> analyzeWithLernieMain rootDir grepOptions filters FileUploadMatchData
+    (Nothing, Use) -> analyzeWithLernieMain rootDir grepOptions filters FileUploadMatchData
+    (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithLernieWithOrgInfo rootDir grepOptions filters
 
 analyzeWithLernieWithOrgInfo ::
   ( Has Diagnostics sig m
@@ -89,14 +91,15 @@ analyzeWithLernieWithOrgInfo ::
   ) =>
   Path Abs Dir ->
   GrepOptions ->
+  Maybe LicenseScanPathFilters ->
   m (Maybe LernieResults)
-analyzeWithLernieWithOrgInfo rootDir grepOptions = do
+analyzeWithLernieWithOrgInfo rootDir grepOptions filters = do
   org <- getOrganization
   let orgWideCustomLicenses = orgCustomLicenseScanConfigs org
       uploadKind = orgFileUpload org
 
   let options = grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
-  analyzeWithLernieMain rootDir options uploadKind
+  analyzeWithLernieMain rootDir options filters uploadKind
 
 analyzeWithLernieMain ::
   ( Has Diagnostics sig m
@@ -107,10 +110,11 @@ analyzeWithLernieMain ::
   ) =>
   Path Abs Dir ->
   GrepOptions ->
+  Maybe LicenseScanPathFilters ->
   FileUpload ->
   m (Maybe LernieResults)
-analyzeWithLernieMain rootDir grepOptions uploadKind = do
-  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions uploadKind
+analyzeWithLernieMain rootDir grepOptions filters uploadKind = do
+  let maybeLernieConfig = grepOptionsToLernieConfig rootDir grepOptions filters uploadKind
   case maybeLernieConfig of
     Just lernieConfig -> do
       unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
@@ -120,11 +124,11 @@ analyzeWithLernieMain rootDir grepOptions uploadKind = do
       pure $ Just lernieResults
     Nothing -> pure Nothing
 
-grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> FileUpload -> Maybe LernieConfig
-grepOptionsToLernieConfig rootDir grepOptions uploadKind =
+grepOptionsToLernieConfig :: Path Abs Dir -> GrepOptions -> Maybe LicenseScanPathFilters -> FileUpload -> Maybe LernieConfig
+grepOptionsToLernieConfig rootDir grepOptions filters uploadKind =
   case (customLicenseSearches <> keywordSearches) of
     [] -> Nothing
-    res -> Just . LernieConfig rootDir res $ case uploadKind of
+    res -> Just . LernieConfig rootDir res filters $ case uploadKind of
       FileUploadMatchData -> False
       FileUploadFullContent -> True
   where

@@ -1,5 +1,13 @@
 # FOSSA CLI Changelog
 
+## 3.10.8
+
+- Custom license scans: Apply `licenseScanPathFilters` to custom license scans ([#1535](https://github.com/fossas/fossa-cli/pull/1535)).
+
+## 3.10.7
+
+- Report: Allow generating SBOMs attribution reports using fossa-cli. ([#1534](https://github.com/fossas/fossa-cli/pull/1534))
+
 ## 3.10.6
 - Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
 - Licensing: Adds support for the NREL disclaimer

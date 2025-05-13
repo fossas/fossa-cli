@@ -117,14 +117,14 @@ data FossaApiClientF a where
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
-  GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
+  GetAttribution :: ProjectRevision -> ReportOutputFormat -> LocatorType -> FossaApiClientF Text
   GetCustomBuildPermissons ::
     ProjectRevision ->
     ProjectMetadata ->
     FossaApiClientF CustomBuildUploadPermissions
   GetIssues :: ProjectRevision -> Maybe DiffRevision -> LocatorType -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF Text
-  GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
+  GetRevisionDependencyCacheStatus :: ProjectRevision -> LocatorType -> FossaApiClientF RevisionDependencyCache
   GetLatestBuild :: ProjectRevision -> LocatorType -> FossaApiClientF Build
   GetOrganization :: FossaApiClientF Organization
   GetPolicies :: FossaApiClientF [CoreTypes.Policy]
@@ -217,14 +217,14 @@ uploadContributors locator contributors = sendSimple $ UploadContributors locato
 getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m Build
 getLatestBuild rev locatorType = sendSimple $ GetLatestBuild rev locatorType
 
-getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> m RevisionDependencyCache
-getRevisionDependencyCacheStatus = sendSimple . GetRevisionDependencyCacheStatus
+getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m RevisionDependencyCache
+getRevisionDependencyCacheStatus locType = sendSimple . GetRevisionDependencyCacheStatus locType
 
 getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> LocatorType -> m Issues
 getIssues projectRevision diffRevision locatorType = sendSimple $ GetIssues projectRevision diffRevision locatorType
 
-getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
-getAttribution revision format = sendSimple $ GetAttribution revision format
+getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> LocatorType -> m Text
+getAttribution revision format locatorType = sendSimple $ GetAttribution revision format locatorType
 
 getSignedUploadUrl :: Has FossaApiClient sig m => ComponentUploadFileType -> PackageRevision -> m SignedURL
 getSignedUploadUrl fileType packageSpec = sendSimple $ GetSignedUploadUrl fileType packageSpec

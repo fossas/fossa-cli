@@ -48,6 +48,7 @@ module App.Fossa.Config.Common (
   titleHelp,
   -- Deprecation
   applyReleaseGroupDeprecationWarning,
+  collectBaseFile,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -259,6 +260,8 @@ pathOpt = first show . parseRelDir
 targetOpt :: String -> Either String TargetFilter
 targetOpt = first errorBundlePretty . runParser targetFilterParser "(Command-line arguments)" . toText
 
+-- | Argument for the base dir for FOSSA to operate out of.
+-- Defaults to the current directory, ".".
 baseDirArg :: Parser String
 baseDirArg = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc baseDirDoc <> value ".")
   where
@@ -277,6 +280,15 @@ collectBaseDir ::
   FilePath ->
   m BaseDir
 collectBaseDir = fmap BaseDir . validateDir
+
+collectBaseFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Path Abs File)
+collectBaseFile = validateFile
 
 validateDir ::
   ( Has Diagnostics sig m
