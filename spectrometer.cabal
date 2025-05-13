@@ -691,6 +691,7 @@ test-suite unit-tests
     Pdm.PdmLockSpec
     Pdm.PdmSpec
     Perl.PerlSpec
+    Pnpm.PnpmLockSpec
     Python.PipenvSpec
     Python.PipSpec
     Python.Poetry.CommonSpec
@@ -728,7 +729,6 @@ test-suite unit-tests
     Yarn.V1.YarnLockV1Spec
     Yarn.V2.LockfileSpec
     Yarn.V2.ResolversSpec
-    Pnpm.PnpmLockSpec
 
   build-tool-depends: hspec-discover:hspec-discover ^>=2.10.0.1
   build-depends:

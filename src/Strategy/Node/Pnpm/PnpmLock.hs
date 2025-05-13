@@ -13,26 +13,26 @@ import Control.Carrier.Simple (runSimpleC)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Control.Monad (guard, when)
 import Data.Aeson.Extra (TextLike (..))
-import qualified Data.Aeson.Key as Key
-import qualified Data.Aeson.KeyMap as KeyMap
+import Data.Aeson.Key qualified as Key
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Foldable (for_)
 import Data.Functor.Identity (runIdentity)
 import Data.Map (Map)
-import qualified Data.Map as Map
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, listToMaybe)
-import qualified Data.Set as Set
+import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import qualified Data.Text as Text
+import Data.Text qualified as Text
 import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
-import qualified Data.Yaml as Yaml
+import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
   Dependency (Dependency, dependencyType),
   VerConstraint (CEq),
  )
-import Effect.Grapher (deep, direct, edge, evalGrapher, run)
+import Effect.Grapher (deep, direct, edge, evalGrapher)
 import Effect.Logger (
   Logger,
   ignoreLogger,
@@ -331,7 +331,7 @@ mkPkgKey lf name version = case lockFileVersion lf of
 -- Renamed original buildGraph to buildGraphLegacy
 buildGraphLegacy :: PnpmLockfile -> Graphing Dependency
 buildGraphLegacy lockFile = withoutLocalPackages $
-  run . evalGrapher $ do
+  runIdentity . evalGrapher $ do
     -- Define helpers using let bindings
     let catalogVersionMap = buildCatalogVersionMap lockFile
 
@@ -473,7 +473,7 @@ buildGraphLegacy lockFile = withoutLocalPackages $
               pure (name', version')
               where
                 atMay :: [a] -> Int -> Maybe a
-                atMay xs i = if i >= 0 && i < length xs then Just (xs !! i) else Nothing
+                atMay xs i = listToMaybe (drop i xs)
 
             parseAtFormat :: PnpmLockfile -> Text -> Maybe (Text, Text)
             parseAtFormat lock key = do
@@ -498,7 +498,7 @@ buildGraphLegacy lockFile = withoutLocalPackages $
               where
                 safeInit :: [a] -> Maybe [a]
                 safeInit [] = Nothing
-                safeInit xs = Just (init xs)
+                safeInit xs = if null xs then Nothing else Just (take (length xs - 1) xs)
 
             textIndexOf :: Text -> Text -> Int
             textIndexOf haystack needle =
@@ -791,7 +791,10 @@ buildGraphWithSnapshots lockFile =
         extractVersionFromKey k =
           let parts = Text.splitOn "@" k
            in if length parts > 1
-                then Just (last parts)
+                then listToMaybe (reverse parts)
                 else
                   let slashParts = Text.splitOn "/" k
-                   in if length slashParts >= 3 then Just (slashParts !! 2) else Nothing
+                   in if length slashParts >= 3 then slashParts `atMay` 2 else Nothing
+
+        atMay :: [a] -> Int -> Maybe a
+        atMay xs i = listToMaybe (drop i xs)
