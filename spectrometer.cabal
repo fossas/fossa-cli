@@ -738,6 +738,7 @@ test-suite unit-tests
     , hspec-hedgehog    ^>=0.1
     , hspec-megaparsec  ^>=2.2
     , HUnit             ^>=1.6.0
+    , QuickCheck        ^>=2.15.0.1
     , spectrometer
 
 test-suite integration-tests

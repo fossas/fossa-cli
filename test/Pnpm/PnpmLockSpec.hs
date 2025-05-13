@@ -4,35 +4,26 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
-import Control.Carrier.Lift (runM)
-import Control.Carrier.Simple ()
+import Control.Carrier.Simple (runSimpleC)
+import Control.Effect.Lift (run)
+import Control.Effect.Diagnostics (ignoreDiagnostics)
+import Data.Either (isRight)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Yaml (Value, decodeFileEither, prettyPrintParseException)
-import DepTypes (
-  DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (NodeJSType),
-  Dependency (..),
-  VerConstraint (CEq),
- )
-import Effect.Logger (ignoreLogger)
+import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (NodeJSType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDirect, expectEdge)
-import Graphing (Graphing)
-import Path (Abs, File, Path, mkRelFile, (</>))
+import Graphing (Graphing, edges, vertexList, edgesList)
+import Path (Abs, Dir, File, Path, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph)
-import Test.Hspec (
-  Spec,
-  describe,
-  expectationFailure,
-  it,
-  shouldBe,
-  shouldContain,
-  shouldMatchList,
-  shouldSatisfy,
- )
+import Test.Hspec (Spec, describe, expectationFailure, it, pendingWith, runIO, shouldBe, shouldContain, shouldMatchList, shouldSatisfy)
+import Test.Hspec.QuickCheck (prop)
+import Test.QuickCheck (Arbitrary (..), Gen, elements, listOf, oneof, suchThat)
+import Test.QuickCheck.Monadic (monadicIO, run)
+import GraphUtil (mkDep)
 
 -- | A dependency value used as a default in case of parsing errors in tests
 mkProdDep :: Text -> Dependency
@@ -51,7 +42,7 @@ checkGraph pathToFixture buildGraphSpec = do
   eitherDecodedLockFile <- runIO $ decodeFileEither (toString pathToFixture)
   case eitherDecodedLockFile of
     Right pnpmLock -> do
-      graph <- runIO $ runM $ ignoreLogger $ buildGraph pnpmLock
+      graph <- runIO $ runSimpleC $ ignoreDiagnostics $ buildGraph pnpmLock
       buildGraphSpec graph
     Left err ->
       describe "pnpm-lock" $
@@ -104,11 +95,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 2
-    graph `shouldSatisfy` \g -> length (edges g) == 1
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 2
+    graph `shouldSatisfy` \g -> length (edgesList g) == 1
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0")]
 
   it "parses a pnpm-lock.yaml file with dev dependencies" $ do
@@ -116,11 +107,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 3
-    graph `shouldSatisfy` \g -> length (edges g) == 2
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 3
+    graph `shouldSatisfy` \g -> length (edgesList g) == 2
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
 
   it "parses a pnpm-lock.yaml file with peer dependencies" $ do
@@ -128,11 +119,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 3
-    graph `shouldSatisfy` \g -> length (edges g) == 2
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 3
+    graph `shouldSatisfy` \g -> length (edgesList g) == 2
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
 
   it "parses a pnpm-lock.yaml file with optional dependencies" $ do
@@ -140,11 +131,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 3
-    graph `shouldSatisfy` \g -> length (edges g) == 2
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 3
+    graph `shouldSatisfy` \g -> length (edgesList g) == 2
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
 
   it "parses a pnpm-lock.yaml file with overrides" $ do
@@ -152,11 +143,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 3
-    graph `shouldSatisfy` \g -> length (edges g) == 2
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 3
+    graph `shouldSatisfy` \g -> length (edgesList g) == 2
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
 
   it "parses a pnpm-lock.yaml file with patches" $ do
@@ -164,11 +155,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 3
-    graph `shouldSatisfy` \g -> length (edges g) == 2
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 3
+    graph `shouldSatisfy` \g -> length (edgesList g) == 2
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
 
   it "parses a pnpm-lock.yaml file with resolutions" $ do
@@ -176,11 +167,11 @@ parsePnpmLockSpec = describe "parsePnpmLock" $ do
     let result = parsePnpmLock lockfile
     result `shouldSatisfy` isRight
     let Right graph = result
-    graph `shouldSatisfy` \g -> length (vertices g) == 3
-    graph `shouldSatisfy` \g -> length (edges g) == 2
-    let deps = vertices graph
+    graph `shouldSatisfy` \g -> length (vertexList g) == 3
+    graph `shouldSatisfy` \g -> length (edgesList g) == 2
+    let deps = vertexList graph
     deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
-    let edges = edges graph
+    let edges = edgesList graph
     edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
