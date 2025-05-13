@@ -750,3 +750,50 @@ buildGraphWithSnapshots lockFile =
           | "workspace:" `Text.isPrefixOf` v = ""
           | "catalog:" `Text.isPrefixOf` v = ""
           | otherwise = v
+
+    -- Restore required local helpers
+    resolveDependencySnapshots :: Map Text Text -> Text -> Maybe Text -> PackageData -> Bool -> Dependency
+    resolveDependencySnapshots catMap depName maybeVersion pkgData contextIsDev =
+      case resolution pkgData of
+        GitResolve (GitResolution url rev) ->
+          createDepSimple GitType url (Just rev) (isDev pkgData || contextIsDev)
+        TarballResolve (TarballResolution url) ->
+          createDepSimple URLType url Nothing (isDev pkgData || contextIsDev)
+        DirectoryResolve _ ->
+          createDepSimple UserType (fromMaybe depName (name pkgData)) Nothing (isDev pkgData || contextIsDev)
+        RegistryResolve _ ->
+          let resolvedVersion =
+                maybeVersion >>= \v ->
+                  if "catalog:" `Text.isPrefixOf` v
+                    then Map.lookup depName catMap
+                    else Just $ cleanupVersionSnapshots lockFile v
+           in createDepSimple NodeJSType depName resolvedVersion (isDev pkgData || contextIsDev)
+
+    getPkgNameVersionForV9Snapshots :: PnpmLockfile -> Text -> PackageData -> Maybe (Text, Maybe Text)
+    getPkgNameVersionForV9Snapshots _ key pkgMeta =
+      case resolution pkgMeta of
+        GitResolve (GitResolution url rev) -> Just (url, Just rev)
+        TarballResolve (TarballResolution url) -> Just (url, Nothing)
+        DirectoryResolve _ -> (,) <$> name pkgMeta <*> pure Nothing
+        RegistryResolve _ ->
+          case parseSnapshotKey key of
+            Just (n, v) -> Just (n, Just v)
+            Nothing ->
+              (,) <$> name pkgMeta <*> pure (extractVersionFromKey key)
+      where
+        extractVersionFromKey :: Text -> Maybe Text
+        extractVersionFromKey k =
+          let parts = Text.splitOn "@" k
+           in if length parts > 1
+                then listToMaybe (reverse parts)
+                else
+                  let slashParts = Text.splitOn "/" k
+                   in if length slashParts >= 3 then slashParts `atMay` 2 else Nothing
+
+        atMay :: [a] -> Int -> Maybe a
+        atMay xs i = listToMaybe (drop i xs)
+
+    shouldApplySymConstraint :: PnpmLockfile -> Bool
+    shouldApplySymConstraint lock = case lockFileVersion lock of
+      PnpmLockV9 -> False
+      _ -> True
