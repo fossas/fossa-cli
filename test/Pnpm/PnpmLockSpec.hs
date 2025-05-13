@@ -5,23 +5,23 @@ module Pnpm.PnpmLockSpec (
 ) where
 
 import Control.Carrier.Lift (runM)
-import Control.Carrier.Simple (runSimpleC)
+import Control.Carrier.Simple ()
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
-import Data.Text (Text, pack)
+import Data.Text (Text)
 import Data.Yaml (Value, decodeFileEither, prettyPrintParseException)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, NodeJSType, URLType),
+  DepType (NodeJSType),
   Dependency (..),
-  VerConstraint (CEq),
- )
+  VerConstraint (CEq)
+)
 import Effect.Logger (ignoreLogger)
 import GraphUtil (
   expectDirect,
-  expectEdge,
- )
+  expectEdge
+)
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
@@ -31,11 +31,11 @@ import Test.Hspec (
   describe,
   expectationFailure,
   it,
-  pending,
-  pendingWith,
-  runIO,
   shouldBe,
- )
+  shouldContain,
+  shouldMatchList,
+  shouldSatisfy
+)
 
 -- | A dependency value used as a default in case of parsing errors in tests
 mkProdDep :: Text -> Dependency
@@ -46,17 +46,6 @@ mkProdDep name =
     , dependencyVersion = Just $ CEq name
     , dependencyLocations = []
     , dependencyEnvironments = Set.fromList [EnvProduction]
-    , dependencyTags = Map.empty
-    }
-
-mkDevDep :: Text -> Dependency
-mkDevDep name =
-  Dependency
-    { dependencyType = NodeJSType
-    , dependencyName = name
-    , dependencyVersion = Just $ CEq name
-    , dependencyLocations = []
-    , dependencyEnvironments = Set.fromList [EnvDevelopment]
     , dependencyTags = Map.empty
     }
 
@@ -106,18 +95,11 @@ spec = do
     it "parses settings, importers, and catalogs sections" $ do
       eitherDecoded <- decodeFileEither (toString pnpmLockV9Snapshot)
       case eitherDecoded of
-        Right lockfile -> do
-          -- Check settings
-          let settings = (lockfile :: Data.Yaml.Value) -- Replace with actual type if available
-          -- Placeholder: actual checks depend on parser implementation
-          pure ()
+        Right _ -> pure ()  -- We're just testing that it parses successfully
         Left err -> expectationFailure $ prettyPrintParseException err
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph with workspaces" $ do
     it "should include dependencies of root and workspace package as direct" $ do
       expectDirect
@@ -132,9 +114,6 @@ pnpmLockGraphSpec graph = do
 
 pnpmLockGraphWithoutWorkspaceSpec :: Graphing Dependency -> Spec
 pnpmLockGraphWithoutWorkspaceSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph without workspaces" $ do
     it "should include dependencies of root package as direct" $ do
       expectDirect
@@ -146,9 +125,6 @@ pnpmLockGraphWithoutWorkspaceSpec graph = do
 
 pnpmLockV6GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6GraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph with v6 format" $ do
     it "should include dependencies of root package as direct" $ do
       expectDirect
@@ -160,9 +136,6 @@ pnpmLockV6GraphSpec graph = do
 
 pnpmLockV6WithWorkspaceGraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6WithWorkspaceGraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph with v6 format and workspaces" $ do
     it "should include dependencies of root and workspace package as direct" $ do
       expectDirect
@@ -176,9 +149,6 @@ pnpmLockV6WithWorkspaceGraphSpec graph = do
 
 pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV9GraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph with v9 format" $ do
     it "should include dependencies of root package as direct" $ do
       expectDirect
@@ -211,9 +181,6 @@ pnpmLockV9GraphSpec graph = do
 
 pnpmLockV9TestGraphSpec :: Graphing Dependency -> Spec
 pnpmLockV9TestGraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph with v9 format and test dependencies" $ do
     it "should include dependencies of root package as direct" $ do
       expectDirect
@@ -254,9 +221,6 @@ pnpmLockV9TestGraphSpec graph = do
 
 pnpmLockV9SnapshotGraphSpec :: Graphing Dependency -> Spec
 pnpmLockV9SnapshotGraphSpec graph = do
-  let hasEdge :: Dependency -> Dependency -> IO ()
-      hasEdge = expectEdge graph
-
   describe "buildGraph with v9 snapshot fixture" $ do
     it "should include direct dependencies of root package and scoped package" $ do
       expectDirect
@@ -280,16 +244,16 @@ pnpmLockV9SnapshotGraphSpec graph = do
         graph
 
     it "should include transitive dependencies" $ do
-      hasEdge
+      expectEdge graph
         (Dependency NodeJSType "a" (Just $ CEq "1.0.0") [] (Set.singleton EnvProduction) Map.empty)
         (Dependency NodeJSType "b" (Just $ CEq "2.0.0") [] (Set.singleton EnvProduction) Map.empty)
-      hasEdge
+      expectEdge graph
         (Dependency NodeJSType "b" (Just $ CEq "2.0.0") [] (Set.singleton EnvProduction) Map.empty)
         (Dependency NodeJSType "d" (Just $ CEq "4.0.0") [] (Set.singleton EnvProduction) Map.empty)
-      hasEdge
+      expectEdge graph
         (Dependency NodeJSType "c" (Just $ CEq "3.0.0") [] (Set.singleton EnvProduction) Map.empty)
         (Dependency NodeJSType "e" (Just $ CEq "5.0.0") [] (Set.singleton EnvProduction) Map.empty)
-      hasEdge
+      expectEdge graph
         (Dependency NodeJSType "d" (Just $ CEq "4.0.0") [] (Set.singleton EnvProduction) Map.empty)
         (Dependency NodeJSType "f" (Just $ CEq "6.0.0") [] (Set.singleton EnvProduction) Map.empty)
 
@@ -310,3 +274,88 @@ pnpmLockV9SnapshotGraphSpec graph = do
 
     it "should parse multiple catalogs" $ do
       pendingWith "Catalog URLs are not attached as tags in v9 lockfile graphs; adjust test if parser changes."
+
+describe "parsePnpmLock" $ do
+  it "parses a simple pnpm-lock.yaml file" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 2
+    graph `shouldSatisfy` \g -> length (edges g) == 1
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0")]
+
+  it "parses a pnpm-lock.yaml file with dev dependencies" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n    devDependencies: {baz: 3.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n  /baz/3.0.0:\n    resolution: {integrity: sha512-ghi789}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 3
+    graph `shouldSatisfy` \g -> length (edges g) == 2
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
+
+  it "parses a pnpm-lock.yaml file with peer dependencies" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n    peerDependencies: {baz: 3.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n  /baz/3.0.0:\n    resolution: {integrity: sha512-ghi789}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 3
+    graph `shouldSatisfy` \g -> length (edges g) == 2
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
+
+  it "parses a pnpm-lock.yaml file with optional dependencies" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n    optionalDependencies: {baz: 3.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n  /baz/3.0.0:\n    resolution: {integrity: sha512-ghi789}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 3
+    graph `shouldSatisfy` \g -> length (edges g) == 2
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
+
+  it "parses a pnpm-lock.yaml file with overrides" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n    overrides: {baz: 3.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n  /baz/3.0.0:\n    resolution: {integrity: sha512-ghi789}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 3
+    graph `shouldSatisfy` \g -> length (edges g) == 2
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
+
+  it "parses a pnpm-lock.yaml file with patches" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n    patches: {baz: 3.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n  /baz/3.0.0:\n    resolution: {integrity: sha512-ghi789}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 3
+    graph `shouldSatisfy` \g -> length (edges g) == 2
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
+
+  it "parses a pnpm-lock.yaml file with resolutions" $ do
+    let lockfile = "packages:\n  /foo/1.0.0:\n    resolution: {integrity: sha512-abc123}\n    dependencies: {bar: 2.0.0}\n    resolutions: {baz: 3.0.0}\n  /bar/2.0.0:\n    resolution: {integrity: sha512-def456}\n    dependencies: {}\n  /baz/3.0.0:\n    resolution: {integrity: sha512-ghi789}\n    dependencies: {}\n"
+    let result = parsePnpmLock lockfile
+    result `shouldSatisfy` isRight
+    let Right graph = result
+    graph `shouldSatisfy` \g -> length (vertices g) == 3
+    graph `shouldSatisfy` \g -> length (edges g) == 2
+    let deps = vertices graph
+    deps `shouldMatchList` [mkDep "foo" "1.0.0", mkDep "bar" "2.0.0", mkDep "baz" "3.0.0"]
+    let edges = edges graph
+    edges `shouldMatchList` [Edge (mkDep "foo" "1.0.0") (mkDep "bar" "2.0.0"), Edge (mkDep "foo" "1.0.0") (mkDep "baz" "3.0.0")]
