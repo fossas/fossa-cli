@@ -47,6 +47,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
 - [Integrating a Conan Project](./walkthroughs/conan.md)
 - [Configuring SSL/TLS Support Manually](./walkthroughs/ssl-cert.md)
+- [Using FOSSA CLI with HTTP Proxies](./walkthroughs/proxy-configuration.md)
 - [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)
 
 ### Features
@@ -160,6 +161,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [How to Debug Path Filters](./features/vendored-dependencies.md#debugging-your-path-filters)
 - [Debugging Container Analysis](./references/subcommands/container/scanner.md#debugging)
 - [Understanding SSL/TLS Certificates and FOSSA](./walkthroughs/ssl-cert.md)
+- [Using FOSSA CLI with HTTP Proxies](./walkthroughs/proxy-configuration.md)
 
 ## FAQs
 
