@@ -30,7 +30,7 @@ import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
-  Dependency (Dependency, dependencyType, dependencyEnvironments),
+  Dependency (Dependency, dependencyEnvironments, dependencyType),
   VerConstraint (CEq),
  )
 import Effect.Grapher (deep, direct, edge, evalGrapher)
