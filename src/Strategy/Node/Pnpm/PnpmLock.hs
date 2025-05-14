@@ -6,6 +6,8 @@ module Strategy.Node.Pnpm.PnpmLock (
 
   -- | Builds a graph of dependencies from a pnpm lockfile.
   buildGraph,
+  buildGraphLegacy,
+  PnpmLockfile,
 ) where
 
 import Control.Applicative ((<|>))
