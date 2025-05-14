@@ -12,7 +12,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Monad (guard, when)
+import Control.Monad (when)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -337,207 +337,120 @@ mkPkgKey lf name version = case lockFileVersion lf of
 -- Renamed original buildGraph to buildGraphLegacy
 buildGraphLegacy :: PnpmLockfile -> Graphing Dependency
 buildGraphLegacy lockFile =
-  runIdentity . evalGrapher $ do
-    -- Define helpers using let bindings
-    let catalogVersionMap = buildCatalogVersionMap lockFile
+  withoutLocalPackages $
+    runIdentity $
+      evalGrapher $ do
+        -- START: Local helpers for buildGraphLegacy, mimicking master's buildGraph logic
+        let getPkgNameVersionV5Legacy :: Text -> Maybe (Text, Text)
+            getPkgNameVersionV5Legacy pkgKey = case Text.stripPrefix "/" pkgKey of
+              Nothing -> Nothing
+              Just txt ->
+                let (nameWithSlash, version) = Text.breakOnEnd "/" txt
+                 in case (Text.stripSuffix "/" nameWithSlash, version) of
+                      (Just name, v) -> Just (name, v)
+                      _ -> Nothing
 
-        buildCatalogVersionMap :: PnpmLockfile -> Map Text Text
-        buildCatalogVersionMap lf =
-          let defaultCatalog =
-                Map.findWithDefault
-                  Map.empty
-                  "default"
-                  (Map.map catalogEntriesMap (catalogs lf))
-           in Map.map (cleanupVersion lf) defaultCatalog
-          where
-            catalogEntriesMap :: CatalogMap -> Map Text Text
-            catalogEntriesMap = Map.map catalogVersion . catalogEntries
+            getPkgNameVersionV6Legacy :: Text -> Maybe (Text, Text)
+            getPkgNameVersionV6Legacy pkgKey = case Text.stripPrefix "/" pkgKey of
+              Nothing -> Nothing
+              Just txt ->
+                let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt -- Includes peer suffix
+                    (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+                 in case (Text.stripSuffix "@" nameWithSlash, version) of
+                      (Just name, v) -> Just (name, v <> peerDepInfo) -- Pass with peer suffix
+                      _ -> Nothing
 
-        cleanupVersion :: PnpmLockfile -> Text -> Text
-        cleanupVersion lf = removeLinks . removePrefixes . withoutWorkspacePrefix . (if shouldApplySymConstraint lf then withoutSymConstraint else id)
-          where
-            shouldApplySymConstraint :: PnpmLockfile -> Bool
-            shouldApplySymConstraint lock = case lockFileVersion lock of
-              PnpmLockV9 -> False
-              _ -> True
-            withoutSymConstraint :: Text -> Text
-            withoutSymConstraint = fst . Text.breakOn "_"
+            getPkgNameVersionLegacyDispatch :: PnpmLockFileVersion -> Text -> Maybe (Text, Text)
+            getPkgNameVersionLegacyDispatch lockVer key = case lockVer of
+              PnpmLock4Or5 -> getPkgNameVersionV5Legacy key
+              PnpmLock6 -> getPkgNameVersionV6Legacy key
+              PnpmLockLt4 _ -> getPkgNameVersionV5Legacy key -- Fallback for v1-v3
+              _ -> Nothing -- Should not be called by buildGraphLegacy for v9+
 
-            withoutWorkspacePrefix :: Text -> Text
-            withoutWorkspacePrefix version
-              | "workspace:" `Text.isPrefixOf` version = ""
-              | otherwise = version
+        -- mkPkgKeyLegacyLocal was removed as it's unused here.
+        -- toResolvedDependency uses its own mkPkgKeyLegacyForResolved.
 
-            removePrefixes :: Text -> Text
-            removePrefixes version
-              | "@" `Text.isInfixOf` version && Text.count "@" version > 1 =
-                  let parts = Text.splitOn "@" version
-                   in if length parts >= 3
-                        then fromMaybe version (listToMaybe (reverse parts))
-                        else version
-              | otherwise = version
+        -- toDependency, toDep, toEnv, toResolvedDependency, withoutSymConstraint are defined below,
+        -- local to buildGraphLegacy's where clause, as they were in the previous correct structure.
+        -- END: Local helpers
 
-            removeLinks :: Text -> Text
-            removeLinks version
-              | "link:" `Text.isPrefixOf` version = ""
-              | "workspace:" `Text.isPrefixOf` version = ""
-              | "catalog:" `Text.isPrefixOf` version = ""
-              | otherwise = version
+        for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
+          let allDirectDependencies =
+                Map.toList (directDependencies projectSnapshot)
+                  <> Map.toList (directDevDependencies projectSnapshot)
 
-        resolveVersionFromCatalog :: Map Text Text -> Text -> (Text -> Text) -> Text -> Maybe Text
-        resolveVersionFromCatalog catMap name cleanupFunc version =
-          let isCatalogRef = "catalog:" `Text.isPrefixOf` version
-              cleanVer =
-                if isCatalogRef
-                  then Text.drop (Text.length "catalog:") version
-                  else version
-           in if isCatalogRef
-                then Map.lookup name catMap
-                else Just $ cleanupFunc cleanVer
+          for_ allDirectDependencies $ \(depName, ProjectMapDepMetadata depVersion) ->
+            maybe (pure ()) direct $ toResolvedDependency depName depVersion
 
-        createDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
-        createDep depType name version isDepGraphDev =
-          Dependency depType name (CEq <$> version) mempty (toEnv isDepGraphDev) mempty
+        for_ (Map.toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
+          let deepDependencies =
+                Map.toList (dependencies pkgMeta)
+                  <> Map.toList (peerDependencies pkgMeta)
 
-        toEnv :: Bool -> Set.Set DepEnvironment
-        toEnv isDepGraphDev = Set.singleton $ if isDepGraphDev then EnvDevelopment else EnvProduction
+          let (depName, depVersion) = case getPkgNameVersionLegacyDispatch (lockFileVersion lockFile) pkgKey of
+                Nothing -> (pkgKey, Nothing)
+                Just (name, version) -> (name, Just version)
+          let parentDep = toDependency depName depVersion pkgMeta
 
-        resolveDependency :: Map Text Text -> Text -> Maybe Text -> PackageData -> Bool -> Dependency
-        resolveDependency _ _ _ (PackageData pkgIsDev _ (GitResolve (GitResolution url rev)) _ _) contextIsDev =
-          createDep GitType url (Just rev) (pkgIsDev || contextIsDev)
-        resolveDependency _ _ _ (PackageData pkgIsDev _ (TarballResolve (TarballResolution url)) _ _) contextIsDev =
-          createDep URLType url Nothing (pkgIsDev || contextIsDev)
-        resolveDependency _ _ _ (PackageData pkgIsDev (Just name') (DirectoryResolve _) _ _) contextIsDev =
-          createDep UserType name' Nothing (pkgIsDev || contextIsDev)
-        resolveDependency _ name' _ (PackageData pkgIsDev Nothing (DirectoryResolve _) _ _) contextIsDev =
-          createDep UserType name' Nothing (pkgIsDev || contextIsDev)
-        resolveDependency catMap name' maybeVersion (PackageData pkgIsDev _ (RegistryResolve _) _ _) contextIsDev =
-          let resolvedVersion = maybeVersion >>= resolveVersionFromCatalog catMap name' (cleanupVersion lockFile)
-           in createDep NodeJSType name' resolvedVersion (pkgIsDev || contextIsDev)
+          deep parentDep
 
-        resolveDepFromImporter :: Map Text Text -> PnpmLockfile -> Text -> Text -> Maybe Dependency
-        resolveDepFromImporter catMap lf depName depVersion = do
-          if "link:" `Text.isPrefixOf` depVersion
-            then Nothing
-            else do
-              let isCatalogRef = "catalog:" `Text.isPrefixOf` depVersion
-              let cleanVer = cleanupVersion lf depVersion
+          for_ deepDependencies $ \(childName, childVersion) -> do
+            maybe (pure ()) (edge parentDep) (toResolvedDependency childName childVersion)
+  where
+    -- This toDependency is scoped to buildGraphLegacy and mirrors master's logic
+    toDependency :: Text -> Maybe Text -> PackageData -> Dependency
+    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
+      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
+    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
+      toDep GitType url (Just rev) isDev
+    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
+      toDep URLType url Nothing isDev
+    toDependency _ _ (PackageData isDev (Just nameFromPackage) (DirectoryResolve _) _ _) =
+      toDep UserType nameFromPackage Nothing isDev
+    toDependency nameFromImporter _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
+      toDep UserType nameFromImporter Nothing isDev
 
-              let resolvedVersion =
-                    if isCatalogRef
-                      then Map.lookup depName catMap
-                      else Just cleanVer
+    toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
+    toDep depType name version dev = Dependency depType name (CEq <$> version) mempty (toEnv dev) mempty
 
-              case resolvedVersion of
-                Nothing -> Nothing
-                Just ver ->
-                  if Text.null ver
-                    then Nothing
-                    else do
-                      let pk = mkPkgKey lf depName ver
-                      let maybePackage = Map.lookup pk (packages lf)
-                      pure $ case maybePackage of
-                        Nothing -> createDep NodeJSType depName (Just ver) False
-                        Just pkg -> resolveDependency catMap depName (Just ver) pkg False
+    toEnv :: Bool -> Set.Set DepEnvironment
+    toEnv isNotRequired = Set.singleton $ if isNotRequired then EnvDevelopment else EnvProduction
 
-        resolveDepFromPackage :: Map Text Text -> PnpmLockfile -> Text -> Text -> Bool -> Maybe Dependency
-        resolveDepFromPackage catMap lf depName depVersion parentIsDev = do
-          if "link:" `Text.isPrefixOf` depVersion
-            then Nothing
-            else do
-              let (actualDepName, actualVersion) =
-                    if "@" `Text.isInfixOf` depVersion && not ("/" `Text.isInfixOf` depVersion)
-                      then case Text.splitOn "@" depVersion of
-                        [name', ver] -> (name', ver)
-                        _ -> (depName, cleanupVersion lf depVersion)
-                      else (depName, cleanupVersion lf depVersion)
+    -- This mkPkgKeyLegacyLocal needs to be accessible by toResolvedDependency
+    -- It is defined in the let block above now.
+    -- For toResolvedDependency to use the mkPkgKeyLegacyLocal from the let block,
+    -- it needs to be passed explicitly or buildGraphLegacy needs to be a single do block
+    -- with the helpers in a where clause that also contains toResolvedDependency.
+    -- The current structure has toResolvedDependency in the where clause, separate from the let.
 
-              if Text.null actualVersion
-                then Nothing
-                else do
-                  let pk = mkPkgKey lf actualDepName actualVersion
-                  let maybePackage = Map.lookup pk (packages lf)
-                  pure $ case maybePackage of
-                    Nothing -> createDep NodeJSType actualDepName (Just actualVersion) parentIsDev
-                    Just pkg -> resolveDependency catMap actualDepName (Just actualVersion) pkg parentIsDev
+    -- Let's adjust toResolvedDependency to use the PnpmLockFileVersion directly for its local mkPkgKey call
+    -- or ensure mkPkgKeyLegacyLocal is in its scope.
+    -- The simplest way is to pass PnpmLockFileVersion to a local mkPkgKey inside toResolvedDependency or make it part of its 'where' if needed.
 
-        getPkgNameVersion :: PnpmLockfile -> Text -> Maybe (Text, Text)
-        getPkgNameVersion lf pkgKey = case lockFileVersion lf of
-          PnpmLock4Or5 -> parseSlashFormat pkgKey
-          PnpmLock6 -> parseAtFormat lf pkgKey
-          PnpmLockLt4 _ -> parseSlashFormat pkgKey
-          PnpmLockV789 _ -> parseAtFormat lf pkgKey
-          PnpmLockV9 -> parseAtFormat lf pkgKey <|> parseSlashFormat pkgKey
-          where
-            parseSlashFormat :: Text -> Maybe (Text, Text)
-            parseSlashFormat key = do
-              let parts = Text.splitOn "/" key
-              guard $ length parts >= 3
-              name' <- parts `atMay` 1
-              version' <- parts `atMay` 2
-              pure (name', version')
-              where
-                atMay :: [a] -> Int -> Maybe a
-                atMay xs i = listToMaybe (drop i xs)
+    toResolvedDependency :: Text -> Text -> Maybe Dependency
+    toResolvedDependency depName depVersion =
+      let -- Define mkPkgKeyLegacyLocal again here for toResolvedDependency's scope, or pass it.
+          -- For simplicity, let's redefine it here if it's purely based on its inputs.
+          -- Alternatively, ensure the top-level mkPkgKey is NOT used for legacy paths.
+          -- The let-bound mkPkgKeyLegacyLocal is not in scope here.
+          -- So, we must make a choice.
+          -- Replicating the logic here for clarity of buildGraphLegacy's self-containment for this helper:
+          mkPkgKeyLegacyForResolved :: PnpmLockFileVersion -> Text -> Text -> Text
+          mkPkgKeyLegacyForResolved lockVer name ver = case lockVer of
+            PnpmLock4Or5 -> "/" <> name <> "/" <> ver
+            PnpmLock6 -> "/" <> name <> "@" <> ver
+            PnpmLockLt4 _ -> "/" <> name <> "/" <> ver
+            _ -> "/" <> name <> "@" <> ver
 
-            parseAtFormat :: PnpmLockfile -> Text -> Maybe (Text, Text)
-            parseAtFormat lock key = do
-              let trimmedKey = Text.dropWhile (== '/') key
-              if "@" `Text.isPrefixOf` trimmedKey && Text.count "@" trimmedKey >= 2
-                then do
-                  let scopeEndPos = textIndexOf (Text.drop 1 trimmedKey) "@"
-                  guard $ scopeEndPos > 0
-                  let fullPos = scopeEndPos + 1
-                  let (nameWithScope, versionWithExtra) = Text.splitAt fullPos trimmedKey
-                  let version' = Text.drop 1 versionWithExtra
-                  pure (nameWithScope, cleanupVersion lock version')
-                else do
-                  let parts = Text.splitOn "@" trimmedKey
-                  guard $ length parts >= 2
-                  let mName = if null parts then Nothing else safeInit parts
-                  let mVersion = if null parts then Nothing else listToMaybe (reverse parts)
-                  case (mName, mVersion) of
-                    (Just nameParts, Just version') ->
-                      pure (Text.intercalate "@" nameParts, cleanupVersion lock version')
-                    _ -> Nothing
-              where
-                safeInit :: [a] -> Maybe [a]
-                safeInit [] = Nothing
-                safeInit xs = if null xs then Nothing else Just (take (length xs - 1) xs)
+          maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
+          maybeRegistrySrcPackage = Map.lookup (mkPkgKeyLegacyForResolved (lockFileVersion lockFile) depName depVersion) (packages lockFile)
+       in case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
+            (Nothing, Nothing) -> Nothing
+            (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg
+            (_, Just registryPkg) -> Just $ toDependency depName (Just depVersion) registryPkg
 
-            textIndexOf :: Text -> Text -> Int
-            textIndexOf haystack needle =
-              case Text.breakOn needle haystack of
-                (prefix, suffix) ->
-                  if Text.null suffix
-                    then -1
-                    else Text.length prefix
-
-    -- Main logic of buildGraphLegacy starts here, using the let-bound helpers
-    for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
-      let allDirectDependencies =
-            Map.toList (directDependencies projectSnapshot)
-              <> Map.toList (directDevDependencies projectSnapshot)
-
-      for_ allDirectDependencies $ \(depName, ProjectMapDepMetadata depVersion) ->
-        maybe (pure ()) direct $
-          resolveDepFromImporter catalogVersionMap lockFile depName depVersion
-
-    for_ (Map.toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
-      let pkgNameAndVersion = case getPkgNameVersion lockFile pkgKey of
-            Nothing -> (pkgKey, Nothing)
-            Just (name, version) -> (name, Just version)
-      let (depName, depVersionMaybe) = pkgNameAndVersion
-      let parentDep = resolveDependency catalogVersionMap depName depVersionMaybe pkgMeta False
-
-      deep parentDep
-
-      let pkgDependencies = Map.toList (dependencies pkgMeta) <> Map.toList (peerDependencies pkgMeta)
-      for_ pkgDependencies $ \(childName, childVersion) ->
-        maybe
-          (pure ())
-          (edge parentDep)
-          (resolveDepFromPackage catalogVersionMap lockFile childName childVersion False)
+    withoutSymConstraint :: Text -> Text
+    withoutSymConstraint = fst . Text.breakOn "_"
 
 -- Main buildGraph function that dispatches based on lockfile version
 buildGraph :: (Has Logger sig m) => PnpmLockfile -> m (Graphing Dependency)
