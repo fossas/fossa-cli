@@ -29,6 +29,7 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
+import Strategy.Python.Dependency (fixHydratedEnvironments)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -194,13 +195,14 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     -- it is not possible to know if the dependency is 'production' or 'development'.
     -- strictly from lockfile itself. We hydrate "environment" from direct deps. If the
     -- dependency has no environment, we mark it as dev environment. We know that all production
-    -- dependencies will be hydrated and will have some envionment.
+    -- dependencies will be hydrated and will have some environment.
     graph :: Graphing Dependency
     graph =
       labelOptionalDepsIfPoetryGt1_5 $
-        hydrateDepEnvs $
-          Graphing.promoteToDirect isDirect $
-            Graphing.gmap pkgNameToDependency (edges <> Graphing.deeps pkgsNoDeps)
+        Graphing.gmap fixHydratedEnvironments $
+          hydrateDepEnvs $
+            Graphing.promoteToDirect isDirect $
+              Graphing.gmap pkgNameToDependency (edges <> Graphing.deeps pkgsNoDeps)
 
     labelOptionalDepsIfPoetryGt1_5 :: Graphing Dependency -> Graphing Dependency
     labelOptionalDepsIfPoetryGt1_5 g = if isLockLt1_5 then g else Graphing.gmap markEmptyEnvAsOptionalDep g
