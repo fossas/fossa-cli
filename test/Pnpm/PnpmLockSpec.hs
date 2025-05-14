@@ -20,16 +20,20 @@ import Strategy.Node.Pnpm.PnpmLock (PnpmLockfile, buildGraphLegacy)
 import Test.Hspec (Spec, describe, expectationFailure, it, pendingWith, runIO, shouldMatchList, shouldSatisfy)
 
 -- | Create a NodeJS Dependency for testing
-mkDep :: Text -> Text -> Dependency
-mkDep name version =
+mkDepWithEnv :: Text -> Text -> DepEnvironment -> Dependency
+mkDepWithEnv name version env =
   Dependency
     { dependencyType = NodeJSType
     , dependencyName = name
     , dependencyVersion = Just $ CEq version
     , dependencyLocations = []
-    , dependencyEnvironments = Set.fromList [EnvProduction]
+    , dependencyEnvironments = Set.fromList [env]
     , dependencyTags = Map.empty
     }
+
+-- Default to production for legacy/v6/v7/v8
+mkDep :: Text -> Text -> Dependency
+mkDep name version = mkDepWithEnv name version EnvProduction
 
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
 checkGraph pathToFixture buildGraphSpec = do
@@ -236,9 +240,14 @@ pnpmLockV9GraphSpec graph = do
   describe "buildGraph with v9 format" $ do
     it "should include dependencies of root package as direct" $ do
       expectDirect
-        [ mkDep "aws-sdk" "2.1148.0"
-        , mkDep "glob" "8.0.3"
-        , mkDep "chokidar" "1.0.0"
+        [ mkDepWithEnv "aws-sdk" "1.0.0" EnvDevelopment
+        , mkDepWithEnv "aws-sdk" "2.1148.0" EnvDevelopment
+        , mkDepWithEnv "colors" "github.com/Marak/colors.js/6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26" EnvDevelopment
+        , mkDepWithEnv "commander" "9.2.0" EnvDevelopment
+        , mkDepWithEnv "example-local-pkg" "file:../local-package" EnvDevelopment
+        , mkDepWithEnv "glob" "8.0.3" EnvDevelopment
+        , mkDepWithEnv "lodash" "@github.com/lodash/lodash/archive/refs/heads/master.tar.gz" EnvDevelopment
+        , mkDepWithEnv "react" "18.1.0" EnvDevelopment
         ]
         graph
 
