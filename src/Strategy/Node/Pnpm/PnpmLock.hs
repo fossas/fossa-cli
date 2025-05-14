@@ -415,8 +415,8 @@ buildGraphLegacy lockFile =
           let resolvedVersion = maybeVersion >>= resolveVersionFromCatalog catMap name' (cleanupVersion lockFile)
            in createDep NodeJSType name' resolvedVersion (pkgIsDev || contextIsDev)
 
-        resolveDepFromImporter :: Map Text Text -> PnpmLockfile -> Text -> Text -> Bool -> Maybe Dependency
-        resolveDepFromImporter catMap lf depName depVersion isImporterDev = do
+        resolveDepFromImporter :: Map Text Text -> PnpmLockfile -> Text -> Text -> Maybe Dependency
+        resolveDepFromImporter catMap lf depName depVersion = do
           if "link:" `Text.isPrefixOf` depVersion
             then Nothing
             else do
@@ -437,8 +437,8 @@ buildGraphLegacy lockFile =
                       let pk = mkPkgKey lf depName ver
                       let maybePackage = Map.lookup pk (packages lf)
                       pure $ case maybePackage of
-                        Nothing -> createDep NodeJSType depName (Just ver) isImporterDev
-                        Just pkg -> resolveDependency catMap depName (Just ver) pkg isImporterDev
+                        Nothing -> createDep NodeJSType depName (Just ver) False
+                        Just pkg -> resolveDependency catMap depName (Just ver) pkg False
 
         resolveDepFromPackage :: Map Text Text -> PnpmLockfile -> Text -> Text -> Bool -> Maybe Dependency
         resolveDepFromPackage catMap lf depName depVersion parentIsDev = do
@@ -515,14 +515,13 @@ buildGraphLegacy lockFile =
 
     -- Main logic of buildGraphLegacy starts here, using the let-bound helpers
     for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
-      let devDeps = Set.fromList $ map fst $ Map.toList (directDependencies projectSnapshot)
       let allDirectDependencies =
             Map.toList (directDependencies projectSnapshot)
               <> Map.toList (directDevDependencies projectSnapshot)
 
       for_ allDirectDependencies $ \(depName, ProjectMapDepMetadata depVersion) ->
         maybe (pure ()) direct $
-          resolveDepFromImporter catalogVersionMap lockFile depName depVersion (Set.member depName devDeps)
+          resolveDepFromImporter catalogVersionMap lockFile depName depVersion
 
     for_ (Map.toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
       let pkgNameAndVersion = case getPkgNameVersion lockFile pkgKey of
