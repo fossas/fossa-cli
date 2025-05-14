@@ -11,7 +11,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Yaml (ParseException, decodeEither', decodeFileEither, prettyPrintParseException)
-import DepTypes (DepEnvironment (EnvProduction), DepType (NodeJSType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (NodeJSType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDirect, expectEdge)
 import Graphing (Graphing, edgesList, vertexList)
 import Path (Abs, File, Path, mkRelFile, (</>))
