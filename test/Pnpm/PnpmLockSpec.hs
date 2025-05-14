@@ -18,7 +18,6 @@ import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (PnpmLockfile, buildGraphLegacy)
 import Test.Hspec (Spec, describe, expectationFailure, it, pendingWith, runIO, shouldMatchList, shouldSatisfy)
-import Test.QuickCheck (Arbitrary (..), Gen, elements, listOf, oneof, suchThat)
 
 -- | Create a NodeJS Dependency for testing
 mkDep :: Text -> Text -> Dependency
