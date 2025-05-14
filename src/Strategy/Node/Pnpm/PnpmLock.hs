@@ -30,7 +30,7 @@ import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
-  Dependency (Dependency, dependencyType),
+  Dependency (Dependency, dependencyType, dependencyEnvironments),
   VerConstraint (CEq),
  )
 import Effect.Grapher (deep, direct, edge, evalGrapher)
@@ -660,23 +660,15 @@ buildGraphWithSnapshots lockFile =
             case resolveSnapshotDependency parentCanonicalName parentSnapKeyStr False of
               Just parentDep -> do
                 deep parentDep
+                let parentIsDev = Set.member EnvDevelopment (dependencyEnvironments parentDep)
                 let childDeps = Map.toList $ snapshotDependencies snapshotData
                 for_ childDeps $ \(childCanonicalName, childVersionRef) -> do
-                  -- Attempt to form the full snapshot key for the child
-                  -- childVersionRef is often just the version string from the snapshot's dependencies map.
                   let fullChildSnapKey = childCanonicalName <> "@" <> childVersionRef
-                  case resolveSnapshotDependency childCanonicalName fullChildSnapKey False of
+                  case resolveSnapshotDependency childCanonicalName fullChildSnapKey parentIsDev of
                     Just childDep -> do
                       deep childDep
                       edge parentDep childDep
                     Nothing ->
-                      -- Fallback: if childVersionRef was perhaps a path or non-standard ref
-                      -- that parseSnapshotKey (even with the formed key) couldn't handle,
-                      -- or if it was a git/file path that should be looked up differently.
-                      -- This part needs to be robust. For now, let's try to look up childVersionRef
-                      -- directly in packages IF it seems like it could be a key (e.g. contains '://' or 'file:')
-                      -- OR if it's just a version, this path won't help much directly.
-                      -- Consider if childVersionRef itself could be a key in `packages` for git/file.
                       when (Text.isInfixOf "://" childVersionRef || Text.isPrefixOf "file:" childVersionRef) $
                         case Map.lookup childVersionRef (packages lockFile) of
                           Just pkgData ->
@@ -688,7 +680,7 @@ buildGraphWithSnapshots lockFile =
                                         pkgNameFromData
                                         versionMaybe
                                         pkgData
-                                        False
+                                        parentIsDev
                                 deep concreteChildDep
                                 edge parentDep concreteChildDep
                               _ -> pure ()
