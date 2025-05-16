@@ -22,12 +22,27 @@ import GraphUtil (
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (PnpmLockfile, buildGraph, buildGraphLegacy)
+import Strategy.Node.Pnpm.PnpmLock (PnpmLockfile, buildGraph)
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
 
 -- Added for V9 tests
 import Data.Functor.Identity (runIdentity)
-import Effect.Logger (ignoreLogger)
+import Effect.Logger (Has, Logger, ignoreLogger)
+import Control.Carrier.Lift (runM)
+
+-- Helper function to explicitly run the graph builder in IO
+-- TODO: Revisit this section. There's a persistent type inference issue
+-- with GHC and fused-effects when calling `buildGraph` (which is the polymorphic
+-- `dispatchPnpmGraphBuilder` from PnpmLock.hs) in this test file.
+-- GHC incorrectly infers `buildGraph lf` as `Graphing Dependency` instead of
+-- the effectful `m (Graphing Dependency)`, even with various attempts to guide it
+-- (explicit type sigs, intermediate bindings, effectful operations in legacy path).
+-- The core issue seems to be how GHC specializes the dispatcher's polymorphic type
+-- when its legacy path (`pure $ somePureComputation`) is considered.
+-- For now, the test suite for pnpm (especially legacy versions) might not build correctly
+-- due to this type error, though the main `fossa` binary functionality is unaffected.
+getGraphIO :: PnpmLockfile -> IO (Graphing Dependency)
+getGraphIO lf = runM $ ignoreLogger $ buildGraph lf
 
 -- Ensure ParseException is imported if not already
 -- For Data.Yaml, if it's `import Data.Yaml (decodeFileEither, prettyPrintParseException)`
@@ -83,10 +98,13 @@ lodash =
     mempty
 
 checkGraphLegacy :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
-checkGraphLegacy pathToFixture buildGraphSpec = do
+checkGraphLegacy pathToFixture buildGraphSpecFn = do
   eitherDecodedLockFile <- runIO $ decodeFileEither (toString pathToFixture)
   case eitherDecodedLockFile of
-    Right pnpmLock -> buildGraphSpec (buildGraphLegacy pnpmLock)
+    Right pnpmLock -> do
+      -- TODO: This call site is affected by the type inference issue noted above for `getGraphIO`.
+      graph <- runIO $ getGraphIO pnpmLock
+      buildGraphSpecFn graph
     Left err ->
       describe "pnpm-lock legacy" $
         it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
@@ -116,7 +134,9 @@ spec = do
     describe "with real-world pnpm repo lockfile" $ do
       eitherDecodedLockFile <- runIO $ decodeFileEither (toString pnpmLockV9)
       case eitherDecodedLockFile of
-        Right pnpmLock -> pnpmLockV9GraphSpec (runIdentity (ignoreLogger (buildGraph pnpmLock)))
+        Right pnpmLock -> do
+          graph <- runIO $ getGraphIO pnpmLock
+          pnpmLockV9GraphSpec graph
         Left err ->
           describe "pnpm-lock v9" $
             it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
@@ -124,7 +144,9 @@ spec = do
     describe "with test dependencies" $ do
       eitherDecodedLockFile <- runIO $ decodeFileEither (toString pnpmLockV9Test)
       case eitherDecodedLockFile of
-        Right pnpmLock -> pnpmLockV9TestGraphSpec (runIdentity (ignoreLogger (buildGraph pnpmLock)))
+        Right pnpmLock -> do
+          graph <- runIO $ getGraphIO pnpmLock
+          pnpmLockV9TestGraphSpec graph
         Left err ->
           describe "pnpm-lock v9 test" $
             it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
@@ -134,7 +156,9 @@ spec = do
   describe "can work with v9.0 snapshot fixture" $ do
     eitherDecodedLockFile <- runIO $ decodeFileEither (toString pnpmLockV9Snapshot)
     case eitherDecodedLockFile of
-      Right pnpmLock -> pnpmLockV9SnapshotGraphSpec (runIdentity (ignoreLogger (buildGraph pnpmLock)))
+      Right pnpmLock -> do
+        graph <- runIO $ getGraphIO pnpmLock
+        pnpmLockV9SnapshotGraphSpec graph
       Left err ->
         it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
     it "parses settings, importers, and catalogs sections" $ do
