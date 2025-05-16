@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.10.9
 
 - Added support for `pnpm` v9 lockfiles
 
