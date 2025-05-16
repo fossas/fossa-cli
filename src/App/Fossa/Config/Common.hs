@@ -35,6 +35,9 @@ module App.Fossa.Config.Common (
 
   -- * Configuration Types
   ScanDestination (..),
+  DestinationMeta (..),
+  destinationMetadata,
+  destinationApiOpts,
 
   -- * Global Defaults
   defaultTimeoutDuration,
@@ -151,11 +154,26 @@ import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
 import Types (TargetFilter)
 
+newtype DestinationMeta = DestinationMeta (ApiOpts, ProjectMetadata)
+  deriving (Eq, Ord, Show, Generic)
+
+destinationApiOpts :: DestinationMeta -> ApiOpts
+destinationApiOpts (DestinationMeta m) = fst m
+
+instance ToJSON DestinationMeta where
+  toEncoding = genericToEncoding defaultOptions
+
 data ScanDestination
   = -- | upload to fossa with provided api key and base url
-    UploadScan ApiOpts ProjectMetadata
+    UploadScan DestinationMeta
+  | OutputAndUpload DestinationMeta
   | OutputStdout
   deriving (Eq, Ord, Show, Generic)
+
+destinationMetadata :: ScanDestination -> Maybe DestinationMeta
+destinationMetadata (UploadScan meta) = Just meta
+destinationMetadata (OutputAndUpload meta) = Just meta
+destinationMetadata _ = Nothing
 
 instance ToJSON ScanDestination where
   toEncoding = genericToEncoding defaultOptions

@@ -20,7 +20,7 @@ import App.Fossa.Config.Common (
   collectConfigFileFilters,
   collectRevisionOverride,
   commonOpts,
-  metadataOpts,
+  metadataOpts, DestinationMeta (..),
  )
 import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.Container.Common (
@@ -178,7 +178,7 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
     else do
       apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
       metaMerged <- collectAPIMetadata maybeCfgFile containerMetadata
-      pure $ UploadScan apiOpts metaMerged
+      pure $ UploadScan (DestinationMeta (apiOpts, metaMerged))
 
 collectFilters :: Maybe ConfigFile -> AllFilters
 collectFilters maybeConfig = do

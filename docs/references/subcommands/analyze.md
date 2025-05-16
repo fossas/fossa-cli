@@ -42,12 +42,18 @@ The paths and targets filtering options allow you to specify the exact targets w
 | `--without-default-filters`      | Ignore default path filters. See [default path filters](./analyze.md#what-are-the-default-path-filters)                  |
 
 
-### Printing results without uploading to FOSSA
+### Printing FOSSA results
 
 The `--output` flag can be used to print projects and dependency graph information to stdout, rather than uploading to FOSSA
 
 ```sh
 fossa analyze --output
+```
+
+To print projects and dependency graph information to stdout *in addition* to uploading to FOSSA as normal, use the `--tee-output` flag.
+
+```sh
+fossa analyze --tee-output
 ```
 
 ### Printing project metadata

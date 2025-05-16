@@ -50,7 +50,7 @@ import App.Fossa.Config.Common (
   targetOpt,
   validateDir,
   validateExists,
-  validateFile,
+  validateFile, DestinationMeta (..),
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -121,7 +121,7 @@ import Options.Applicative (
   short,
   strOption,
   switch,
-  (<|>),
+  (<|>), flag', flag,
  )
 import Path (Abs, Dir, File, Path, Rel)
 import Path.Extra (SomePath)
@@ -199,9 +199,19 @@ data VendoredDependencyOptions = VendoredDependencyOptions
 instance ToJSON VendoredDependencyOptions where
   toEncoding = genericToEncoding defaultOptions
 
+-- | What to do with analysis results.
+data OutputStyle =
+  -- | Upload results
+  Default
+  -- | Output results to stdout, but do not upload
+  | Output
+  -- | Upload results as with `Upload`, but also output them to stdout as with `Output`
+  | TeeOutput
+  deriving (Ord, Eq, Show)
+
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
-  , analyzeOutput :: Bool
+  , analyzeOutput :: OutputStyle
   , analyzeUnpackArchives :: Flag UnpackArchives
   , analyzeJsonOutput :: Flag JsonOutput
   , analyzeIncludeAllDeps :: Flag IncludeAll
@@ -235,9 +245,9 @@ data AnalyzeCliOpts = AnalyzeCliOpts
 
 instance GetCommonOpts AnalyzeCliOpts where
   getCommonOpts AnalyzeCliOpts{analyzeOutput, commons} =
-    if analyzeOutput
-      then Just commons{optTelemetry = Just NoTelemetry} -- When `--output` is used don't emit no telemetry.
-      else Just commons
+    case analyzeOutput of
+      Output -> Just commons{optTelemetry = Just NoTelemetry} -- When `--output` is used don't emit no telemetry.
+      _ -> Just commons
 
 instance GetSeverity AnalyzeCliOpts where
   getSeverity AnalyzeCliOpts{commons = CommonOpts{optDebug}} = if optDebug then SevDebug else SevInfo
@@ -309,7 +319,7 @@ cliParser :: Parser AnalyzeCliOpts
 cliParser =
   AnalyzeCliOpts
     <$> commonOpts
-    <*> switch (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA")
+    <*> outputKind
     <*> flagOpt UnpackArchives (applyFossaStyle <> long "unpack-archives" <> stringToHelpDoc "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> stringToHelpDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API.")
     <*> flagOpt IncludeAll (applyFossaStyle <> long "include-unused-deps" <> stringToHelpDoc "Include all deps found, instead of filtering non-production deps. Ignored by VSI.")
@@ -347,6 +357,10 @@ cliParser =
           [ "Path to fossa-deps file including filename"
           , boldItalicized "Default:" <> " fossa-deps.{yaml|yml|json}"
           ]
+
+    outputKind :: Parser OutputStyle
+    outputKind = flag' Output (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA")
+                 <|> flag Default TeeOutput (applyFossaStyle <> long "tee-output" <> stringToHelpDoc "Like --output, but upload in addition to outputting to stdout.")
 
 branchHelp :: Maybe (Doc AnsiStyle)
 branchHelp =
@@ -643,14 +657,16 @@ collectScanDestination ::
   AnalyzeCliOpts ->
   m ScanDestination
 collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
-  if analyzeOutput
-    then pure OutputStdout
-    else do
-      apiOpts <- collectApiOpts maybeCfgFile envvars commons
-      metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
-      void $ applyReleaseGroupDeprecationWarning metaMerged
-      when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
-      pure $ UploadScan apiOpts metaMerged
+  case analyzeOutput of
+    Output -> pure OutputStdout
+    TeeOutput -> getScanUploadDest OutputAndUpload
+    Default -> getScanUploadDest UploadScan
+  where getScanUploadDest constructor = do
+          apiOpts <- collectApiOpts maybeCfgFile envvars commons
+          metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+          void $ applyReleaseGroupDeprecationWarning metaMerged
+          when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
+          pure $ constructor (DestinationMeta (apiOpts, metaMerged))
 
 collectVsiModeOptions ::
   ( Has Diagnostics sig m
