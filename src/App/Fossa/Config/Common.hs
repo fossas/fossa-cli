@@ -35,9 +35,11 @@ module App.Fossa.Config.Common (
 
   -- * Configuration Types
   ScanDestination (..),
+  OutputStyle(..),
   DestinationMeta (..),
   destinationMetadata,
   destinationApiOpts,
+  outputStyleArgs,
 
   -- * Global Defaults
   defaultTimeoutDuration,
@@ -140,7 +142,7 @@ import Options.Applicative (
   strOption,
   switch,
   value,
-  (<|>),
+  (<|>), flag', flag,
  )
 import Options.Applicative.Builder (helpDoc)
 import Options.Applicative.Help (AnsiStyle)
@@ -162,6 +164,23 @@ destinationApiOpts (DestinationMeta m) = fst m
 
 instance ToJSON DestinationMeta where
   toEncoding = genericToEncoding defaultOptions
+
+-- | CLI options describing what to do with analysis results.
+data OutputStyle =
+  -- | Upload results
+  Default
+  -- | Output results to stdout, but do not upload
+  | Output
+  -- | Upload results as with `Upload`, but also output them to stdout as with `Output`
+  | TeeOutput
+  deriving (Ord, Eq, Show)
+
+outputStyleArgs :: Parser OutputStyle
+outputStyleArgs =
+  flag' Output (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA")
+  <|> flag Default TeeOutput (applyFossaStyle <> long "tee-output" <> stringToHelpDoc "Like --output, but upload in addition to outputting to stdout.")
+
+
 
 data ScanDestination
   = -- | upload to fossa with provided api key and base url

@@ -50,7 +50,7 @@ import App.Fossa.Config.Common (
   targetOpt,
   validateDir,
   validateExists,
-  validateFile, DestinationMeta (..),
+  validateFile, DestinationMeta (..), OutputStyle (..), outputStyleArgs,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -121,7 +121,7 @@ import Options.Applicative (
   short,
   strOption,
   switch,
-  (<|>), flag', flag,
+  (<|>),
  )
 import Path (Abs, Dir, File, Path, Rel)
 import Path.Extra (SomePath)
@@ -198,16 +198,6 @@ data VendoredDependencyOptions = VendoredDependencyOptions
 
 instance ToJSON VendoredDependencyOptions where
   toEncoding = genericToEncoding defaultOptions
-
--- | What to do with analysis results.
-data OutputStyle =
-  -- | Upload results
-  Default
-  -- | Output results to stdout, but do not upload
-  | Output
-  -- | Upload results as with `Upload`, but also output them to stdout as with `Output`
-  | TeeOutput
-  deriving (Ord, Eq, Show)
 
 data AnalyzeCliOpts = AnalyzeCliOpts
   { commons :: CommonOpts
@@ -319,7 +309,7 @@ cliParser :: Parser AnalyzeCliOpts
 cliParser =
   AnalyzeCliOpts
     <$> commonOpts
-    <*> outputKind
+    <*> outputStyleArgs
     <*> flagOpt UnpackArchives (applyFossaStyle <> long "unpack-archives" <> stringToHelpDoc "Recursively unpack and analyze discovered archives")
     <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> stringToHelpDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API.")
     <*> flagOpt IncludeAll (applyFossaStyle <> long "include-unused-deps" <> stringToHelpDoc "Include all deps found, instead of filtering non-production deps. Ignored by VSI.")
@@ -357,10 +347,6 @@ cliParser =
           [ "Path to fossa-deps file including filename"
           , boldItalicized "Default:" <> " fossa-deps.{yaml|yml|json}"
           ]
-
-    outputKind :: Parser OutputStyle
-    outputKind = flag' Output (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA")
-                 <|> flag Default TeeOutput (applyFossaStyle <> long "tee-output" <> stringToHelpDoc "Like --output, but upload in addition to outputting to stdout.")
 
 branchHelp :: Maybe (Doc AnsiStyle)
 branchHelp =
