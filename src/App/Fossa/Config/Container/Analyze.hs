@@ -14,13 +14,16 @@ import App.Docs (fossaContainerAnalyzeDefaultFilterDocUrl)
 import App.Fossa.Config.Analyze (WithoutDefaultFilters, branchHelp, withoutDefaultFilterParser)
 import App.Fossa.Config.Common (
   CommonOpts (CommonOpts, optDebug, optProjectName, optProjectRevision),
+  DestinationMeta (..),
+  OutputStyle (..),
   ScanDestination (..),
   collectAPIMetadata,
   collectApiOpts,
   collectConfigFileFilters,
   collectRevisionOverride,
   commonOpts,
-  metadataOpts, DestinationMeta (..), outputStyleArgs, OutputStyle (..),
+  metadataOpts,
+  outputStyleArgs,
  )
 import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.Container.Common (
@@ -170,11 +173,12 @@ collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
   case containerOutputStyle of
     Output -> pure OutputStdout
     TeeOutput -> getScanUploadDest OutputAndUpload
-    Default ->  getScanUploadDest UploadScan
-  where getScanUploadDest constructor = do
-          apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
-          metaMerged <- collectAPIMetadata maybeCfgFile containerMetadata
-          pure $ constructor (DestinationMeta (apiOpts, metaMerged))
+    Default -> getScanUploadDest UploadScan
+  where
+    getScanUploadDest constructor = do
+      apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
+      metaMerged <- collectAPIMetadata maybeCfgFile containerMetadata
+      pure $ constructor (DestinationMeta (apiOpts, metaMerged))
 
 collectFilters :: Maybe ConfigFile -> AllFilters
 collectFilters maybeConfig = do

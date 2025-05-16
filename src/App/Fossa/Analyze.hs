@@ -49,6 +49,7 @@ import App.Fossa.Config.Analyze (
   WithoutDefaultFilters (..),
  )
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -105,6 +106,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
+import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -137,8 +139,6 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
-import App.Fossa.Config.Common (destinationMetadata, DestinationMeta (..), destinationApiOpts)
-import Data.Traversable (for)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -306,12 +306,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
 
-  orgInfo <- for maybeDestMeta (\(DestinationMeta (apiOpts, metadata)) -> runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata)
-
-    -- case destination of
-    -- OutputStdout -> pure Nothing
-    -- UploadScan apiOpts metadata ->
-    --   fmap Just . runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
+  orgInfo <-
+    for
+      maybeDestMeta
+      ( \(DestinationMeta (apiOpts, metadata)) ->
+          runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
+      )
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -391,12 +391,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
 
   maybeEndpointAppVersion <- fmap join . for maybeApiOpts $
-     \apiOpts -> runFossaApiClient apiOpts $ do
-          -- Using 'recovery' as API corresponding to 'getEndpointVersion',
-          -- seems to be not stable and we sometimes see TimeoutError in telemetry
-          version <- recover getEndpointVersion
-          debugMetadata "FossaEndpointCoreVersion" version
-          pure version
+    \apiOpts -> runFossaApiClient apiOpts $ do
+      -- Using 'recovery' as API corresponding to 'getEndpointVersion',
+      -- seems to be not stable and we sometimes see TimeoutError in telemetry
+      version <- recover getEndpointVersion
+      debugMetadata "FossaEndpointCoreVersion" version
+      pure version
 
   -- In our graph, we may have unresolved path dependencies
   -- If we are in output mode, do nothing. If we are in upload mode
@@ -447,18 +447,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   pure outputResult
   where
     sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
-      let doUpload (DestinationMeta (apiOpts, metadata))=
+      let doUpload (DestinationMeta (apiOpts, metadata)) =
             Diag.context "upload-results"
-            . runFossaApiClient apiOpts
-            $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
-            doAssertRevisionBinaries iatAssertion locator
-      in
-        case destination of
-          OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
-          UploadScan meta -> doUpload meta
-          OutputAndUpload meta -> do logStdout . decodeUtf8 $ Aeson.encode result
-                                     doUpload meta
+              . runFossaApiClient apiOpts
+              $ do
+                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
+                doAssertRevisionBinaries iatAssertion locator
+       in case destination of
+            OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
+            UploadScan meta -> doUpload meta
+            OutputAndUpload meta -> do
+              logStdout . decodeUtf8 $ Aeson.encode result
+              doUpload meta
 
     emptyScanUnits :: ScanUnits
     emptyScanUnits = SourceUnitOnly []

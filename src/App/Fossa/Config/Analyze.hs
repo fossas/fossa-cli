@@ -36,6 +36,8 @@ import App.Docs (fossaAnalyzeDefaultFilterDocUrl)
 import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
   CommonOpts (..),
+  DestinationMeta (..),
+  OutputStyle (..),
   ScanDestination (..),
   applyReleaseGroupDeprecationWarning,
   baseDirArg,
@@ -46,11 +48,12 @@ import App.Fossa.Config.Common (
   collectRevisionData',
   commonOpts,
   metadataOpts,
+  outputStyleArgs,
   pathOpt,
   targetOpt,
   validateDir,
   validateExists,
-  validateFile, DestinationMeta (..), OutputStyle (..), outputStyleArgs,
+  validateFile,
  )
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
@@ -647,12 +650,13 @@ collectScanDestination maybeCfgFile envvars AnalyzeCliOpts{..} =
     Output -> pure OutputStdout
     TeeOutput -> getScanUploadDest OutputAndUpload
     Default -> getScanUploadDest UploadScan
-  where getScanUploadDest constructor = do
-          apiOpts <- collectApiOpts maybeCfgFile envvars commons
-          metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
-          void $ applyReleaseGroupDeprecationWarning metaMerged
-          when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
-          pure $ constructor (DestinationMeta (apiOpts, metaMerged))
+  where
+    getScanUploadDest constructor = do
+      apiOpts <- collectApiOpts maybeCfgFile envvars commons
+      metaMerged <- maybe (pure analyzeMetadata) (mergeFileCmdMetadata analyzeMetadata) (maybeCfgFile)
+      void $ applyReleaseGroupDeprecationWarning metaMerged
+      when (length (projectLabel metaMerged) > 5) $ fatalText "Projects are only allowed to have 5 associated project labels"
+      pure $ constructor (DestinationMeta (apiOpts, metaMerged))
 
 collectVsiModeOptions ::
   ( Has Diagnostics sig m

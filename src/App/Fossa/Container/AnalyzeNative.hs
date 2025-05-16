@@ -10,8 +10,9 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
 import App.Fossa.Config.Common (
+  DestinationMeta (..),
   ScanDestination (..),
-  applyReleaseGroupDeprecationWarning, DestinationMeta (..),
+  applyReleaseGroupDeprecationWarning,
  )
 import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
