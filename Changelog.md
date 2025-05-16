@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.10.9
+
+- CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
+
 ## 3.10.8
 
 - Custom license scans: Apply `licenseScanPathFilters` to custom license scans ([#1535](https://github.com/fossas/fossa-cli/pull/1535)).
