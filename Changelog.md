@@ -1,8 +1,12 @@
 # FOSSA CLI Changelog
 
-## 3.10.9
+## 3.10.10
 
 - Added support for `pnpm` v9 lockfiles
+
+## 3.10.9
+
+- CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
 
 ## 3.10.8
 
