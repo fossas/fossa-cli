@@ -10,7 +10,6 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative (Alternative (..))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Monad (unless)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
@@ -328,6 +327,7 @@ instance FromJSON ProjectMapDepMetadata where
 data PackageData = PackageData
   { isDev :: Bool
   , name :: Maybe Text
+  , pkgVersion :: Maybe Text
   , resolution :: Resolution
   , dependencies :: Map Text Text
   , peerDependencies :: Map Text Text
@@ -339,6 +339,7 @@ instance FromJSON PackageData where
     PackageData
       <$> (obj .:? "dev" .!= False)
       <*> obj .:? "name"
+      <*> obj .:? "version"
       <*> obj .: "resolution"
       <*> (obj .:? "dependencies" .!= mempty)
       <*> (obj .:? "peerDependencies" .!= mempty)
@@ -497,7 +498,7 @@ buildGraph lockFile =
           let (depName, depVersion) = case getPkgNameVersionLegacyDispatch (lockFileVersion lockFile) pkgKey of
                 Nothing -> (pkgKey, Nothing)
                 Just (name, version) -> (name, Just version)
-          let parentDep = toDependency depName depVersion pkgMeta
+          let parentDep = toDependencyLegacy depName depVersion pkgMeta
 
           -- It is ok, if this dependency was already graphed as direct
           -- @direct 1 <> deep 1 = direct 1@
@@ -506,17 +507,17 @@ buildGraph lockFile =
           for_ deepDependencies $ \(childName, childVersion) -> do
             maybe (pure ()) (edge parentDep) (toResolvedDependency childName childVersion)
   where
-    toDependency :: Text -> Maybe Text -> PackageData -> Dependency
-    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
+    toDependencyLegacy :: Text -> Maybe Text -> PackageData -> Dependency
+    toDependencyLegacy name maybeVersion (PackageData isDev _ _ (RegistryResolve _) _ _) =
       toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
-    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
+    toDependencyLegacy _ _ (PackageData isDev _ _ (GitResolve (GitResolution url rev)) _ _) =
       toDep GitType url (Just rev) isDev
-    toDependency depName _ (PackageData isDev mName (TarballResolve _) _ _) =
-      let logicalName = fromMaybe depName mName
-       in toDep URLType logicalName Nothing isDev
-    toDependency _ _ (PackageData isDev (Just nameFromPackage) (DirectoryResolve _) _ _) =
+    -- For legacy (v5/v6), use the tarball URL as the dependency name
+    toDependencyLegacy _ _ (PackageData isDev _ _ (TarballResolve (TarballResolution url)) _ _) =
+      toDep URLType url Nothing isDev
+    toDependencyLegacy _ _ (PackageData isDev (Just nameFromPackage) _ (DirectoryResolve _) _ _) =
       toDep UserType nameFromPackage Nothing isDev
-    toDependency nameFromImporter _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
+    toDependencyLegacy nameFromImporter _ (PackageData isDev Nothing _ (DirectoryResolve _) _ _) =
       toDep UserType nameFromImporter Nothing isDev
 
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
@@ -545,13 +546,12 @@ buildGraph lockFile =
     --
     toResolvedDependency :: Text -> Text -> Maybe Dependency
     toResolvedDependency depName depVersion =
-      let -- This local mkPkgKey is specific to legacy formats (v5, v6)
-          maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
+      let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
           maybeRegistrySrcPackage = Map.lookup (mkPkgKey lockFile depName depVersion) (packages lockFile)
        in case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
             (Nothing, Nothing) -> Nothing
-            (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg
-            (_, Just registryPkg) -> Just $ toDependency depName (Just depVersion) registryPkg
+            (Just nonRegistryPkg, _) -> Just $ toDependencyLegacy depName Nothing nonRegistryPkg
+            (_, Just registryPkg) -> Just $ toDependencyLegacy depName (Just depVersion) registryPkg
 
 -- Dispatches to the appropriate graph building logic based on lockfile version.
 dispatchPnpmGraphBuilder :: (Has Logger sig m, Has Diagnostics sig m) => PnpmLockfile -> m (Graphing Dependency)
@@ -590,24 +590,39 @@ buildGraphWithSnapshots lockFile = evalGrapher $ do
   let snapshotsMap = snapshots lockFile
 
   let processSnapshotTree :: Text -> Bool -> Maybe Dependency -> Set.Set Text -> GrapherC Dependency m ()
-      processSnapshotTree snapKey parentIsDev maybeParentDep visited =
-        unless (Set.member snapKey visited) $
-          case Map.lookup snapKey snapshotsMap of
-            Just snapshot ->
-              let visited' = Set.insert snapKey visited
-               in case parseSnapshotKey snapKey of
-                    Just (name, version) ->
-                      let thisDep = createDepSimple NodeJSType name (Just version) parentIsDev
-                       in do
-                            deep thisDep
-                            for_ maybeParentDep $ \parentDep -> edge parentDep thisDep
-                            let isDev = Set.member EnvDevelopment (dependencyEnvironments thisDep)
-                            let allDeps = Map.toList (snapshotDependencies snapshot) ++ Map.toList (snapshotOptionalDependencies snapshot)
-                            for_ allDeps $ \(childName, childVersion) ->
-                              let childSnapKey = childName <> "@" <> childVersion
-                               in processSnapshotTree childSnapKey isDev (Just thisDep) visited'
-                    Nothing -> logWarn $ pretty ("[PNPM v9] Failed to parse snapshot key: " <> snapKey)
+      processSnapshotTree snapKey parentIsDev maybeParentDep visited
+        | Set.member snapKey visited = pure ()
+        | otherwise = case Map.lookup snapKey snapshotsMap of
             Nothing -> logWarn $ pretty ("[PNPM v9] Snapshot missing for: " <> snapKey)
+            Just snapshot ->
+              case parseSnapshotKey snapKey of
+                Nothing -> logWarn $ pretty ("[PNPM v9] Failed to parse snapshot key: " <> snapKey)
+                Just (name, version) -> do
+                  thisDep <- buildThisDep name version parentIsDev
+                  deep thisDep
+                  for_ maybeParentDep $ \parentDep -> edge parentDep thisDep
+                  let isDev = Set.member EnvDevelopment (dependencyEnvironments thisDep)
+                  let allDeps = Map.toList (snapshotDependencies snapshot) ++ Map.toList (snapshotOptionalDependencies snapshot)
+                  let visited' = Set.insert snapKey visited
+                  for_ allDeps $ \(childName, childVersion) ->
+                    let childSnapKey = childName <> "@" <> childVersion
+                     in processSnapshotTree childSnapKey isDev (Just thisDep) visited'
+
+      buildThisDep :: Text -> Text -> Bool -> GrapherC Dependency m Dependency
+      buildThisDep pkgName version parentIsDev =
+        let pkgKey = mkPkgKey lockFile pkgName version
+         in case Map.lookup pkgKey (packages lockFile) of
+              Just pkgData ->
+                case resolution pkgData of
+                  TarballResolve _ ->
+                    let depName = fromMaybe pkgName (name pkgData)
+                     in case pkgVersion pkgData of
+                          Just v -> pure $ createDepSimple NodeJSType depName (Just v) parentIsDev
+                          Nothing -> do
+                            logWarn $ pretty ("[PNPM v9] Tarball dependency for " <> depName <> " is missing a version in package metadata. Using empty version.")
+                            pure $ createDepSimple NodeJSType depName Nothing parentIsDev
+                  _ -> pure $ createDepSimple NodeJSType pkgName (Just version) parentIsDev
+              Nothing -> pure $ createDepSimple NodeJSType pkgName (Just version) parentIsDev
 
   -- Process importers for direct edges
   let processImporters :: Map Text ProjectMap -> GrapherC Dependency m ()
