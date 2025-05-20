@@ -1,12 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Strategy.Node.Pnpm.PnpmLock (
-  -- | Analyzes a pnpm lockfile and returns a graph of dependencies.
-  analyze,
-
-  -- * for testing
-
-  -- | Builds a graph of dependencies from a pnpm lockfile.
   dispatchPnpmGraphBuilder,
   buildGraph,
   PnpmLockfile (..),
@@ -405,6 +399,7 @@ instance FromJSON CatalogEntry where
       <$> obj .: "specifier"
       <*> obj .: "version"
 
+-- | Analyzes a pnpm lockfile and returns a graph of dependencies.
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
@@ -449,7 +444,7 @@ buildGraph lockFile =
   withoutLocalPackages $
     runIdentity $
       evalGrapher $ do
-        -- START: Local helpers for buildGraphLegacy, mimicking master's buildGraph logic
+        -- Local helpers for buildGraphLegacy, for pre-v9 lockfile logic
         -- Gets package name and version from package's key (v5 format).
         --
         -- >> getPkgNameVersionV5Legacy "" = Nothing
@@ -457,13 +452,11 @@ buildGraph lockFile =
         -- >> getPkgNameVersionV5Legacy "/pkg-a/1.0.0" = Just ("pkg-a", "1.0.0")
         -- >> getPkgNameVersionV5Legacy "/@angular/core/1.0.0" = Just ("@angular/core", "1.0.0")
         let getPkgNameVersionV5Legacy :: Text -> Maybe (Text, Text)
-            getPkgNameVersionV5Legacy pkgKey = case Text.stripPrefix "/" pkgKey of
-              Nothing -> Nothing
-              Just txt ->
-                let (nameWithSlash, version) = Text.breakOnEnd "/" txt
-                 in case (Text.stripSuffix "/" nameWithSlash, version) of
-                      (Just name, v) -> Just (name, v)
-                      _ -> Nothing
+            getPkgNameVersionV5Legacy pkgKey = do
+              txt <- Text.stripPrefix "/" pkgKey
+              let (nameWithSlash, version) = Text.breakOnEnd "/" txt
+              name <- Text.stripSuffix "/" nameWithSlash
+              pure (name, version)
 
             -- Gets package name and version from package's key (v6 format).
             --
@@ -473,23 +466,21 @@ buildGraph lockFile =
             -- >> getPkgNameVersionV6Legacy "/@angular/core@1.0.0" = Just ("@angular/core", "1.0.0")
             -- >> getPkgNameVersionV6Legacy "/@angular/core@1.0.0(babel@1.0.0)" = Just ("@angular/core", "1.0.0(babel@1.0.0)")
             getPkgNameVersionV6Legacy :: Text -> Maybe (Text, Text)
-            getPkgNameVersionV6Legacy pkgKey = case Text.stripPrefix "/" pkgKey of
-              Nothing -> Nothing
-              Just txt ->
-                let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt -- Includes peer suffix
-                    (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
-                 in case (Text.stripSuffix "@" nameWithSlash, version) of
-                      (Just name, v) -> Just (name, v <> peerDepInfo) -- Pass with peer suffix
-                      _ -> Nothing
+            getPkgNameVersionV6Legacy pkgKey = do
+              txt <- Text.stripPrefix "/" pkgKey
+              let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt -- Includes peer suffix
+                  (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+              name <- Text.stripSuffix "@" nameWithSlash
+              pure (name, version <> peerDepInfo)
 
             -- Dispatches to the correct legacy version parser based on lockFileVersion.
             getPkgNameVersionLegacyDispatch :: PnpmLockFileVersion -> Text -> Maybe (Text, Text)
             getPkgNameVersionLegacyDispatch lockVer key = case lockVer of
               PnpmLock4Or5 -> getPkgNameVersionV5Legacy key
               PnpmLock6 -> getPkgNameVersionV6Legacy key
-              PnpmLockLt4 _ -> getPkgNameVersionV5Legacy key -- v3 or below are deprecated, fallback to closest
+              PnpmLockLt4 _ -> getPkgNameVersionV5Legacy key -- v3 or below are deprecated and are not used in practice, fallback to closest
               _ -> Nothing -- Should not be called by buildGraph for v9+
-              -- END: Local helpers
+         
         for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
           let allDirectDependencies =
                 Map.toList (directDependencies projectSnapshot)
@@ -508,12 +499,13 @@ buildGraph lockFile =
                 Just (name, version) -> (name, Just version)
           let parentDep = toDependency depName depVersion pkgMeta
 
+      -- It is ok, if this dependency was already graphed as direct
+      -- @direct 1 <> deep 1 = direct 1@
           deep parentDep
 
           for_ deepDependencies $ \(childName, childVersion) -> do
             maybe (pure ()) (edge parentDep) (toResolvedDependency childName childVersion)
   where
-    -- This toDependency is scoped to buildGraphLegacy and mirrors master's logic
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
     toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
       toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
