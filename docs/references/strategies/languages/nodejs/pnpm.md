@@ -170,8 +170,4 @@ targets:
 ```
 ### Are all versions of `pnpm` supported?
 
-At this time, the latest version of pnpm (v9) and its associated v9 lockfiles are not correctly parsed by FOSSA. Please revert to v8 (v6 lockfile) if your dependencies are not resolved in the FOSSA UI: "FOSSA was unable to analyze this dependency. If it is behind a private registry or auth you may need to configure FOSSA's access, then rebuild this dependency." This is due to the version number being appended to the package name:
-
-<img width="796" alt="image" src="https://github.com/user-attachments/assets/d1461506-d3e7-42da-b9be-2b53a87f79f1" />
-
-Please [email](mailto:support@fossa.com) FOSSA support if you are affected by this limitation.
+As of [PR #1531](https://github.com/fossas/fossa-cli/pull/1531), pnpm v9 and v10 and their associated v9 lockfiles are supported by FOSSA CLI. If you encounter any issues, please [email](mailto:support@fossa.com) FOSSA support.
