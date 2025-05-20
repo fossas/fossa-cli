@@ -22,13 +22,16 @@ import GraphUtil (
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (PnpmLockfile, buildGraph)
+import Strategy.Node.Pnpm.PnpmLock (PnpmLockFileVersion (..), PnpmLockfile (..), buildGraph, dispatchPnpmGraphBuilder)
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
 
 -- Added for V9 tests
-import Data.Functor.Identity (runIdentity)
-import Effect.Logger (Has, Logger, ignoreLogger)
+
+import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Lift (runM)
+import Control.Carrier.Stack (runStack)
+import Diag.Result (Result (..))
+import Effect.Logger (ignoreLogger)
 
 -- Helper function to explicitly run the graph builder in IO
 -- TODO: Revisit this section. There's a persistent type inference issue
@@ -42,7 +45,20 @@ import Control.Carrier.Lift (runM)
 -- For now, the test suite for pnpm (especially legacy versions) might not build correctly
 -- due to this type error, though the main `fossa` binary functionality is unaffected.
 getGraphIO :: PnpmLockfile -> IO (Graphing Dependency)
-getGraphIO lf = runM $ ignoreLogger $ buildGraph lf
+getGraphIO lf =
+  case lockFileVersion lf of
+    PnpmLock9      -> runEffectful lf
+    PnpmLockGt9 _  -> runEffectful lf
+    _              -> pure (buildGraph lf)
+  where
+    runEffectful lfile = do
+      let computationToRun = runStack $ ignoreLogger $ runDiagnostics $ dispatchPnpmGraphBuilder lfile
+      finalResult <- runM computationToRun
+      case finalResult of
+        Success _warnings graph -> pure graph
+        Failure _warnings err -> do
+          expectationFailure ("getGraphIO failed: " ++ show err)
+          pure mempty
 
 -- Ensure ParseException is imported if not already
 -- For Data.Yaml, if it's `import Data.Yaml (decodeFileEither, prettyPrintParseException)`

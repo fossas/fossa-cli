@@ -9,7 +9,8 @@ module Strategy.Node.Pnpm.PnpmLock (
   -- | Builds a graph of dependencies from a pnpm lockfile.
   dispatchPnpmGraphBuilder,
   buildGraph,
-  PnpmLockfile,
+  PnpmLockfile (..),
+  PnpmLockFileVersion (..),
 ) where
 
 import Control.Applicative (Alternative (..))
@@ -518,8 +519,9 @@ buildGraph lockFile =
       toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
     toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
       toDep GitType url (Just rev) isDev
-    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
-      toDep URLType url Nothing isDev
+    toDependency depName _ (PackageData isDev mName (TarballResolve _) _ _) =
+      let logicalName = fromMaybe depName mName
+       in toDep URLType logicalName Nothing isDev
     toDependency _ _ (PackageData isDev (Just nameFromPackage) (DirectoryResolve _) _ _) =
       toDep UserType nameFromPackage Nothing isDev
     toDependency nameFromImporter _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
