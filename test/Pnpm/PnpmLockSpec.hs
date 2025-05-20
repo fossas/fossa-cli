@@ -47,9 +47,9 @@ import Effect.Logger (ignoreLogger)
 getGraphIO :: PnpmLockfile -> IO (Graphing Dependency)
 getGraphIO lf =
   case lockFileVersion lf of
-    PnpmLock9      -> runEffectful lf
-    PnpmLockGt9 _  -> runEffectful lf
-    _              -> pure (buildGraph lf)
+    PnpmLock9 -> runEffectful lf
+    PnpmLockGt9 _ -> runEffectful lf
+    _ -> pure (buildGraph lf)
   where
     runEffectful lfile = do
       let computationToRun = runStack $ ignoreLogger $ runDiagnostics $ dispatchPnpmGraphBuilder lfile

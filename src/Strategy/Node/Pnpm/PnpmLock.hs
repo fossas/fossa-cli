@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Strategy.Node.Pnpm.PnpmLock (
+  analyze,
   dispatchPnpmGraphBuilder,
   buildGraph,
   PnpmLockfile (..),
@@ -480,7 +481,6 @@ buildGraph lockFile =
               PnpmLock6 -> getPkgNameVersionV6Legacy key
               PnpmLockLt4 _ -> getPkgNameVersionV5Legacy key -- v3 or below are deprecated and are not used in practice, fallback to closest
               _ -> Nothing -- Should not be called by buildGraph for v9+
-         
         for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
           let allDirectDependencies =
                 Map.toList (directDependencies projectSnapshot)
@@ -499,8 +499,8 @@ buildGraph lockFile =
                 Just (name, version) -> (name, Just version)
           let parentDep = toDependency depName depVersion pkgMeta
 
-      -- It is ok, if this dependency was already graphed as direct
-      -- @direct 1 <> deep 1 = direct 1@
+          -- It is ok, if this dependency was already graphed as direct
+          -- @direct 1 <> deep 1 = direct 1@
           deep parentDep
 
           for_ deepDependencies $ \(childName, childVersion) -> do
