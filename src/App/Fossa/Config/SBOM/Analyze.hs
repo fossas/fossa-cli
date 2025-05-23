@@ -82,7 +82,7 @@ subcommand f =
   command
     "analyze"
     ( info (f <$> cliParser) $
-        progDescDoc (formatStringToDoc "Scan an SBOM file")
+        progDescDoc (formatStringToDoc "Upload and analyze an SBOM file in FOSSA")
     )
 
 data ForceRescan = ForceRescan deriving (Generic)
