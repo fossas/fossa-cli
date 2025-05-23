@@ -11,8 +11,14 @@ import App.Fossa.Analyze.Types (AnalyzeProject(..))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON, defaultOptions, genericToJSON)
+import Data.Map qualified as Map
 import Data.Maybe (isJust)
+import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Text qualified as Text
+import DepTypes (DepEnvironment(..), DepType(..), Dependency(..), VerConstraint)
+import Graphing qualified
+import Strategy.Python.Util (Req(..), toConstraint)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk
@@ -24,8 +30,8 @@ import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, (</>))
-import qualified Strategy.Python.Poetry.PyProject as PyProject
-import Strategy.Python.Poetry.Common (pyProjectDeps)
+import qualified Strategy.Python.PyProject.PyProjectToml as PyProject
+import Strategy.Python.PyProject.PdmLock (buildGraph)
 import TH.RelativePaths (mkRelFile)
 import Types (DependencyResults(..), DiscoveredProject(..), DiscoveredProjectType(GenericPyProjectType), GraphBreadth(..))
 
@@ -151,6 +157,67 @@ analyze ::
   ) =>
   PyProjectProject -> m DependencyResults
 analyze project = context "PyProject analysis" $ do
+  case projectType project of
+    PoetryProject -> analyzePoetryProject project
+    PDMProject -> analyzePDMProject project
+    PEP621Project -> analyzePEP621Project project
+
+analyzePoetryProject ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  PyProjectProject -> m DependencyResults
+analyzePoetryProject project = do
+  pyproject <- readContentsToml @PyProject.PyProject (pyprojectFile project)
+  let deps = extractPoetryDeps pyproject
+  
+  pure $ DependencyResults
+    { dependencyGraph = Graphing.fromList deps
+    , dependencyGraphBreadth = Complete
+    , dependencyManifestFiles = [pyprojectFile project]
+    }
+
+extractPoetryDeps :: PyProject.PyProject -> [Dependency]
+extractPoetryDeps pyproject = filter notNamedPython $ 
+  PyProject.allPoetryProductionDeps pyproject ++ PyProject.allPoetryNonProductionDeps pyproject
+  where
+    notNamedPython = (/= "python") . dependencyName
+
+analyzePDMProject ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  PyProjectProject -> m DependencyResults
+analyzePDMProject project = do
+  pyproject <- readContentsToml @PyProject.PyProject (pyprojectFile project)
+  
+  let (prodReqs, optsReqs) = reqsFromPyProject pyproject
+  let otherReqs = reqsFromPdmMetadata pyproject
+  let devReqs = optsReqs <> otherReqs
+  
+  deps <- case lockFile project of
+    Just lockPath | Just PDMLock <- determineLockFileType lockPath -> do
+      pdmLock <- readContentsToml lockPath
+      pure $ buildGraph prodReqs devReqs pdmLock
+    _ -> pure $ Graphing.directs $
+      (toDependency EnvProduction <$> prodReqs) ++
+      (toDependency EnvDevelopment <$> devReqs)
+  
+  pure $ DependencyResults
+    { dependencyGraph = deps
+    , dependencyGraphBreadth = Complete
+    , dependencyManifestFiles = [pyprojectFile project]
+    }
+
+analyzePEP621Project ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  PyProjectProject -> m DependencyResults
+analyzePEP621Project project = do
   pyproject <- readContentsToml @PyProject.PyProject (pyprojectFile project)
   deps <- pyProjectDeps pyproject
   
@@ -159,6 +226,53 @@ analyze project = context "PyProject analysis" $ do
     , dependencyGraphBreadth = Complete
     , dependencyManifestFiles = [pyprojectFile project]
     }
+
+-- Helper functions from old PDM strategy
+
+reqsFromPyProject :: PyProject.PyProject -> ([Req], [Req])
+reqsFromPyProject pyproject = 
+  case PyProject.pyprojectMetadata pyproject of
+    Nothing -> ([], [])
+    Just metadata ->
+      let prodDeps = maybe [] id (PyProject.pyprojectDependencies metadata)
+          optionalDeps = maybe [] (concatMap snd . Map.toList) (PyProject.pyprojectOptionalDependencies metadata)
+      in (prodDeps, optionalDeps)
+
+reqsFromPdmMetadata :: PyProject.PyProject -> [Req]
+reqsFromPdmMetadata pyproject =
+  case PyProject.pyprojectTool pyproject >>= PyProject.pyprojectPdm of
+    Nothing -> []
+    Just pdm -> maybe [] (concatMap snd . Map.toList) (PyProject.pdmDevDependencies pdm)
+
+toDependency :: DepEnvironment -> Req -> Dependency
+toDependency env req =
+  Dependency
+    { dependencyType = reqDepType req
+    , dependencyName = reqDepName req
+    , dependencyVersion = reqDepVersion req
+    , dependencyLocations = mempty
+    , dependencyEnvironments = Set.singleton env
+    , dependencyTags = mempty
+    }
+
+reqDepName :: Req -> Text
+reqDepName (NameReq name _ _ _) = name
+reqDepName (UrlReq name _ url _) =
+  if "file://" `Text.isPrefixOf` (Text.pack $ show url)
+    then name
+    else Text.pack $ show url
+
+reqDepType :: Req -> DepType
+reqDepType (NameReq{}) = PipType
+reqDepType (UrlReq _ _ url _) =
+  if "file://" `Text.isPrefixOf` (Text.pack $ show url)
+    then UnresolvedPathType
+    else URLType
+
+reqDepVersion :: Req -> Maybe VerConstraint
+reqDepVersion (UrlReq{}) = Nothing
+reqDepVersion (NameReq _ _ Nothing _) = Nothing
+reqDepVersion (NameReq _ _ (Just ver) _) = Just . toConstraint $ ver
 
 getDeps ::
   ( Has ReadFS sig m

@@ -52,8 +52,7 @@ import Strategy.Python.Util (
   Version(..)
  )
 
-import qualified Strategy.Python.PyProjectGeneric.Types as PyProjectGeneric
-import qualified Strategy.Python.Poetry.PyProject as Poetry
+import qualified Strategy.Python.PyProject.PyProjectToml as Poetry
 
 -- | Source of the Python dependency
 data PythonDependencySource
@@ -205,10 +204,10 @@ toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMark
             MarkerNotIn -> [(lhs, "not (" <> rhs <> ")")]
             MarkerOperator _ -> [(lhs, rhs)]
 
--- | Convert a PyProjectGeneric Poetry dependency to unified PythonDependency
-fromPoetryDependency :: Text -> DepEnvironment -> PyProjectGeneric.PoetryDependency -> PythonDependency
+-- | Convert a Poetry dependency to unified PythonDependency
+fromPoetryDependency :: Text -> DepEnvironment -> Poetry.PoetryDependency -> PythonDependency
 fromPoetryDependency name env = \case
-  PyProjectGeneric.PoetryTextVersion v -> 
+  Poetry.PoetryTextVersion v -> 
     PythonDependency
       { pyDepName = name
       , pyDepType = SimpleVersion v
@@ -218,40 +217,40 @@ fromPoetryDependency name env = \case
       , pyDepSource = FromPyProject
       }
   
-  PyProjectGeneric.PoetryDetailedVersion d -> 
+  Poetry.PoetryDetailedVersion d -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = SimpleVersion (PyProjectGeneric.dependencyVersion d)
+      , pyDepType = SimpleVersion (Poetry.dependencyVersion d)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  PyProjectGeneric.PoetryGitDependency g -> 
+  Poetry.PoetryGitDependency g -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = GitDependency (PyProjectGeneric.gitUrl g) (PyProjectGeneric.gitBranch g) (PyProjectGeneric.gitRev g) (PyProjectGeneric.gitTag g)
+      , pyDepType = GitDependency (Poetry.gitUrl g) (Poetry.gitBranch g) (Poetry.gitRev g) (Poetry.gitTag g)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  PyProjectGeneric.PoetryPathDependency p -> 
+  Poetry.PoetryPathDependency p -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = PathDependency (PyProjectGeneric.sourcePath p)
+      , pyDepType = PathDependency (Poetry.sourcePath p)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  PyProjectGeneric.PoetryUrlDependency u -> 
+  Poetry.PoetryUrlDependency u -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = URLDependency (PyProjectGeneric.sourceUrl u)
+      , pyDepType = URLDependency (Poetry.sourceUrl u)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing

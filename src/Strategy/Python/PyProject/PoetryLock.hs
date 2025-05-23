@@ -1,4 +1,4 @@
-module Strategy.Python.Poetry.PoetryLock (
+module Strategy.Python.PyProject.PoetryLock (
   PoetryLock (..),
   PoetryLockPackage (..),
   PackageName (..),

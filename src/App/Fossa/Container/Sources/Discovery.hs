@@ -43,9 +43,8 @@ import Strategy.NuGet.Paket qualified as Paket
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
 import Strategy.Perl qualified as Perl
 import Strategy.Pub qualified as Pub
-import Strategy.Python.PDM.Pdm qualified as Pdm
 import Strategy.Python.Pipenv qualified as Pipenv
-import Strategy.Python.Poetry qualified as Poetry
+import Strategy.Python.PyProject qualified as PyProject
 import Strategy.Python.Setuptools qualified as Setuptools
 import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
@@ -92,10 +91,9 @@ managedDepsDiscoveryF =
   , DiscoverFunc Nuspec.discover
   , DiscoverFunc PackagesConfig.discover
   , DiscoverFunc Paket.discover
-  , DiscoverFunc Pdm.discover
   , DiscoverFunc Perl.discover
   , DiscoverFunc Pipenv.discover
-  , DiscoverFunc Poetry.discover
+  , DiscoverFunc PyProject.discover
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover
   , DiscoverFunc R.discover
