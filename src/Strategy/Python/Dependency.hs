@@ -335,7 +335,7 @@ fromReq env req source =
         , pyDepSource = source
         }
     
-    UrlReq nm extras uri marker ->
+    UrlReq _ extras uri marker ->
       let url = URI.render uri
       in PythonDependency
         { pyDepName = url -- Always use the URL as the name for all URL dependencies to match master branch behavior
