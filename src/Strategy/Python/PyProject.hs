@@ -39,12 +39,13 @@ import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON(toJSON), defaultOptions, genericToJSON)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.List (find)
 import Data.Maybe (isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes (DepEnvironment(..), DepType(..), Dependency(..), VerConstraint(..))
+import DepTypes (DepEnvironment(..), DepType(..), Dependency(..), VerConstraint(..), hydrateDepEnvs)
 import Graphing qualified
 import Strategy.Python.Util (Req(..), toConstraint)
 import Text.URI qualified as URI
@@ -279,12 +280,53 @@ buildGraphFromPoetryLock pyproject poetryLock =
       -- Convert ALL packages from lock file using resolved versions
       deps = map (poetryLockToDependency pyprojectProdDeps pyprojectDevDeps pep621ProdDeps) lockPkgs
       
-      -- Mark dependencies with empty environments as development dependencies
+      -- Build the initial graph with direct dependencies and their edges
+      allEdges = concatMap (buildPackageEdges lockPkgs) lockPkgs
+      edgesGraph = foldl (<>) Graphing.empty allEdges
+      initialGraph = Graphing.fromList (filter ((/= "python") . dependencyName) deps) <> edgesGraph
+      
+      -- Hydrate environments through the dependency graph
+      hydratedGraph = hydrateDepEnvs initialGraph
+      
+      -- Mark any remaining dependencies with empty environments as development dependencies
       markEmptyEnvAsDev dep = if Set.null (dependencyEnvironments dep)
                               then dep{dependencyEnvironments = Set.singleton EnvDevelopment}
                               else dep
       
-  in Graphing.fromList $ map markEmptyEnvAsDev $ filter ((/= "python") . dependencyName) deps
+  in Graphing.gmap markEmptyEnvAsDev hydratedGraph
+
+-- Build edges between packages based on lock file dependencies
+buildPackageEdges :: [PoetryLock.PoetryLockPackage] -> PoetryLock.PoetryLockPackage -> [Graphing.Graphing Dependency]
+buildPackageEdges allPkgs pkg = 
+  let pkgName = PoetryLock.unPackageName (PoetryLock.poetryLockPackageName pkg)
+      dependencies = Map.keys (PoetryLock.poetryLockPackageDependencies pkg)
+      
+      -- Find parent dependency in the converted list
+      parentDep = Dependency
+        { dependencyType = PipType
+        , dependencyName = pkgName
+        , dependencyVersion = Just (CEq $ PoetryLock.poetryLockPackageVersion pkg)
+        , dependencyLocations = []
+        , dependencyEnvironments = Set.empty -- Will be hydrated later
+        , dependencyTags = Map.empty
+        }
+      
+      -- Create edges to each dependency
+      createEdge depName = 
+        case find (\p -> PoetryLock.unPackageName (PoetryLock.poetryLockPackageName p) == PoetryLock.unPackageName (PoetryLock.poetryLockPackageName depName)) allPkgs of
+          Just childPkg -> 
+            let childDep = Dependency
+                  { dependencyType = PipType
+                  , dependencyName = PoetryLock.unPackageName (PoetryLock.poetryLockPackageName depName)
+                  , dependencyVersion = Just (CEq $ PoetryLock.poetryLockPackageVersion childPkg)
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.empty -- Will be hydrated later
+                  , dependencyTags = Map.empty
+                  }
+            in Graphing.edge parentDep childDep
+          Nothing -> Graphing.empty
+      
+  in map createEdge dependencies
 
 -- Extract PEP621 production dependencies for environment classification
 getPEP621ProductionDeps :: PyProject.PyProject -> Set.Set Text
