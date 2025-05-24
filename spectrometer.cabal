@@ -498,18 +498,14 @@ library
     Strategy.Perl
     Strategy.Pub
     Strategy.Python.Errors
-    Strategy.Python.PDM.Pdm
-    Strategy.Python.PDM.PdmLock
     Strategy.Python.Pip
     Strategy.Python.Pipenv
-    Strategy.Python.Poetry
-    Strategy.Python.Poetry.Common
-    Strategy.Python.Poetry.PoetryLock
-    Strategy.Python.Poetry.PyProject
     Strategy.Python.Dependency
     Strategy.Python.DependencyParser
-    Strategy.Python.PyProjectGeneric
-    Strategy.Python.PyProjectGeneric.Types
+    Strategy.Python.PyProject
+    Strategy.Python.PyProject.PdmLock
+    Strategy.Python.PyProject.PoetryLock
+    Strategy.Python.PyProject.PyProjectToml
     Strategy.Python.ReqTxt
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
@@ -690,16 +686,10 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
-    Pdm.PdmLockSpec
-    Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec
     Python.PipSpec
-    Python.Poetry.CommonSpec
-    Python.Poetry.PoetryLockSpec
-    Python.Poetry.PyProjectSpec
-    Python.PoetrySpec
     Python.PyProjectGenericSpec
     Python.DependencyParserSpec
     Python.DependencySpec
@@ -767,7 +757,6 @@ test-suite integration-tests
     Analysis.NugetSpec
     Analysis.PnpmSpec
     Analysis.Python.PipenvSpec
-    Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
     Analysis.RubySpec
     Analysis.RustSpec

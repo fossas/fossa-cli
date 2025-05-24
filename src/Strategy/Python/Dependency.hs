@@ -52,27 +52,24 @@ import Strategy.Python.Util (
   Version(..)
  )
 
-import qualified Strategy.Python.PyProject.PyProjectToml as Poetry
+import qualified Strategy.Python.PyProject.PyProjectToml as PyProject
 
--- | Source of the Python dependency
 data PythonDependencySource
-  = FromPyProject  -- ^ Dependency declared in pyproject.toml
-  | FromLockFile   -- ^ Dependency from lock file
-  | FromBoth       -- ^ Dependency in both pyproject.toml and lock file
-  | FromSetupPy    -- ^ Dependency from setup.py
-  | FromRequirements -- ^ Dependency from requirements.txt
+  = FromPyProject
+  | FromLockFile
+  | FromBoth
+  | FromSetupPy
+  | FromRequirements
   deriving (Eq, Ord, Show)
 
--- | Type of Python dependency
 data PythonDependencyType
-  = SimpleVersion Text -- ^ Simple version specifier (e.g., "^1.2.3")
-  | VersionConstraint PythonVersionConstraint -- ^ Structured version constraint
-  | GitDependency Text (Maybe Text) (Maybe Text) (Maybe Text) -- ^ Git URL, branch, rev, tag
-  | PathDependency Text -- ^ Local path to package
-  | URLDependency Text -- ^ URL to package
+  = SimpleVersion Text
+  | VersionConstraint PythonVersionConstraint
+  | GitDependency Text (Maybe Text) (Maybe Text) (Maybe Text)
+  | PathDependency Text
+  | URLDependency Text
   deriving (Eq, Ord, Show)
 
--- | Python version constraint representation
 data PythonVersionConstraint
   = PythonVersionEq Text
   | PythonVersionGt Text
@@ -86,18 +83,16 @@ data PythonVersionConstraint
   | PythonVersionOr PythonVersionConstraint PythonVersionConstraint
   deriving (Eq, Ord, Show)
 
--- | Unified Python dependency representation
 data PythonDependency = PythonDependency
-  { pyDepName :: Text -- ^ Name of the dependency
-  , pyDepType :: PythonDependencyType -- ^ Type and version specification
-  , pyDepEnvironments :: Set.Set DepEnvironment -- ^ Environments (prod, dev, test, etc.)
-  , pyDepExtras :: [Text] -- ^ Optional extras (features)
-  , pyDepMarkers :: Maybe Marker -- ^ Environment markers (os, python_version, etc.)
-  , pyDepSource :: PythonDependencySource -- ^ Source of the dependency
+  { pyDepName :: Text
+  , pyDepType :: PythonDependencyType
+  , pyDepEnvironments :: Set.Set DepEnvironment
+  , pyDepExtras :: [Text]
+  , pyDepMarkers :: Maybe Marker
+  , pyDepSource :: PythonDependencySource
   }
   deriving (Eq, Ord, Show)
 
--- | Convert a Python dependency to the general FOSSA Dependency type
 toDependency :: PythonDependency -> Dependency
 toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMarkers, pyDepSource} =
   Dependency
@@ -204,10 +199,9 @@ toDependency PythonDependency{pyDepName, pyDepType, pyDepEnvironments, pyDepMark
             MarkerNotIn -> [(lhs, "not (" <> rhs <> ")")]
             MarkerOperator _ -> [(lhs, rhs)]
 
--- | Convert a Poetry dependency to unified PythonDependency
-fromPoetryDependency :: Text -> DepEnvironment -> Poetry.PoetryDependency -> PythonDependency
+fromPoetryDependency :: Text -> DepEnvironment -> PyProject.PoetryDependency -> PythonDependency
 fromPoetryDependency name env = \case
-  Poetry.PoetryTextVersion v -> 
+  PyProject.PoetryTextVersion v -> 
     PythonDependency
       { pyDepName = name
       , pyDepType = SimpleVersion v
@@ -217,50 +211,49 @@ fromPoetryDependency name env = \case
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PoetryDetailedVersion d -> 
+  PyProject.PyProjectPoetryDetailedVersionDependencySpec d -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = SimpleVersion (Poetry.dependencyVersion d)
+      , pyDepType = SimpleVersion (PyProject.poetryDependencyVersion d)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PoetryGitDependency g -> 
+  PyProject.PyProjectPoetryGitDependencySpec g -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = GitDependency (Poetry.gitUrl g) (Poetry.gitBranch g) (Poetry.gitRev g) (Poetry.gitTag g)
+      , pyDepType = GitDependency (PyProject.gitUrl g) (PyProject.gitBranch g) (PyProject.gitRev g) (PyProject.gitTag g)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PoetryPathDependency p -> 
+  PyProject.PyProjectPoetryPathDependencySpec p -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = PathDependency (Poetry.sourcePath p)
+      , pyDepType = PathDependency (PyProject.sourcePath p)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PoetryUrlDependency u -> 
+  PyProject.PyProjectPoetryUrlDependencySpec u -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = URLDependency (Poetry.sourceUrl u)
+      , pyDepType = URLDependency (PyProject.sourceUrl u)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
 
--- | Convert a Poetry.PyProject Poetry dependency to unified PythonDependency
-fromPoetryDependencyPyProject :: Text -> DepEnvironment -> Poetry.PoetryDependency -> PythonDependency
+fromPoetryDependencyPyProject :: Text -> DepEnvironment -> PyProject.PoetryDependency -> PythonDependency
 fromPoetryDependencyPyProject name env = \case
-  Poetry.PoetryTextVersion v -> 
+  PyProject.PoetryTextVersion v -> 
     PythonDependency
       { pyDepName = name
       , pyDepType = SimpleVersion v
@@ -270,55 +263,52 @@ fromPoetryDependencyPyProject name env = \case
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PyProjectPoetryDetailedVersionDependencySpec d -> 
+  PyProject.PyProjectPoetryDetailedVersionDependencySpec d -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = SimpleVersion (Poetry.poetryDependencyVersion d)
+      , pyDepType = SimpleVersion (PyProject.poetryDependencyVersion d)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PyProjectPoetryGitDependencySpec g -> 
+  PyProject.PyProjectPoetryGitDependencySpec g -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = GitDependency (Poetry.gitUrl g) (Poetry.gitBranch g) (Poetry.gitRev g) (Poetry.gitTag g)
+      , pyDepType = GitDependency (PyProject.gitUrl g) (PyProject.gitBranch g) (PyProject.gitRev g) (PyProject.gitTag g)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PyProjectPoetryPathDependencySpec p -> 
+  PyProject.PyProjectPoetryPathDependencySpec p -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = PathDependency (Poetry.sourcePath p)
+      , pyDepType = PathDependency (PyProject.sourcePath p)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
   
-  Poetry.PyProjectPoetryUrlDependencySpec u -> 
+  PyProject.PyProjectPoetryUrlDependencySpec u -> 
     PythonDependency
       { pyDepName = name
-      , pyDepType = URLDependency (Poetry.sourceUrl u)
+      , pyDepType = URLDependency (PyProject.sourceUrl u)
       , pyDepEnvironments = Set.singleton env
       , pyDepExtras = []
       , pyDepMarkers = Nothing
       , pyDepSource = FromPyProject
       }
 
--- | Convert a PDM dependency (as a Req) to PythonDependency
 fromPDMDependency :: DepEnvironment -> Req -> PythonDependency
 fromPDMDependency env req = fromReq env req FromPyProject
 
--- | Convert a PEP621 dependency (as a Req) to PythonDependency
 fromPEP621Dependency :: DepEnvironment -> Req -> PythonDependency
 fromPEP621Dependency env req = fromReq env req FromPyProject
 
--- | Convert a Req to PythonDependency
 fromReq :: DepEnvironment -> Req -> PythonDependencySource -> PythonDependency
 fromReq env req source = 
   case req of
@@ -345,9 +335,6 @@ fromReq env req source =
         , pyDepSource = source
         }
 
--- | Helper functions exported for tests
-
--- | Convert version constraint from text into VerConstraint using parser combinators
 versionConstraint :: Text -> Maybe VerConstraint
 versionConstraint vt = 
   case parseVersionConstraint vt of
@@ -369,7 +356,6 @@ versionConstraint vt =
       VersionWildcard -> DepTypes.CEq "*" -- Match test expectations
       VersionAnd v1 v2 -> DepTypes.CAnd (convertVersionConstraint v1) (convertVersionConstraint v2)
 
--- | Parse Git dependency from specification using parser combinators
 gitDependency :: Text -> Maybe Dependency
 gitDependency text = 
   case parseDependencySource text of
@@ -393,7 +379,6 @@ gitDependency text =
     lastMaybe [] = Nothing
     lastMaybe xs = Just $ last xs
 
--- | Parse URL dependency from specification using parser combinators
 urlDependency :: Text -> Maybe Dependency
 urlDependency text =
   case parseDependencySource text of
@@ -421,7 +406,6 @@ urlDependency text =
     lastMaybe [] = Nothing
     lastMaybe xs = Just $ last xs
 
--- | Parse Path dependency from specification using parser combinators
 pathDependency :: Text -> Maybe Dependency
 pathDependency text =
   case parseDependencySource text of
@@ -445,7 +429,6 @@ pathDependency text =
     lastMaybe [] = Nothing
     lastMaybe xs = Just $ last xs
 
--- | Convert complex dependency specifications to Dependency type using parser combinators
 complexDependency :: Text -> Text -> Maybe Dependency
 complexDependency name spec =
   case parseDependencySource spec of
@@ -474,13 +457,11 @@ complexDependency name spec =
         , dependencyTags = mempty
         }
 
--- | Convert list of Version to PythonVersionConstraint
 versionsToConstraint :: [Version] -> PythonVersionConstraint
 versionsToConstraint [] = PythonVersionArbitrary
 versionsToConstraint [v] = versionToConstraint v
 versionsToConstraint (v:vs) = PythonVersionAnd (versionToConstraint v) (versionsToConstraint vs)
 
--- | Convert Version to PythonVersionConstraint
 versionToConstraint :: Version -> PythonVersionConstraint
 versionToConstraint (Version op ver) = 
   case op of
@@ -493,7 +474,6 @@ versionToConstraint (Version op ver) =
     OpGt -> PythonVersionGt ver
     OpArbitrary -> PythonVersionArbitrary
 
--- | Map a package category to a dependency environment
 -- This function provides consistent environment mapping across different package managers
 mapCategoryToEnvironment :: Text -> DepEnvironment
 mapCategoryToEnvironment category = case category of
@@ -505,7 +485,6 @@ mapCategoryToEnvironment category = case category of
   "test" -> DepTypes.EnvTesting
   other -> DepTypes.EnvOther other
 
--- | Determine environment based on whether a dependency is direct in production
 -- If the package is in the direct production dependencies, mark as production
 -- Otherwise, consider it a development dependency
 determineEnvironmentFromDirect :: Bool -> Set.Set DepEnvironment
@@ -514,7 +493,6 @@ determineEnvironmentFromDirect isProductionDirect =
   then Set.singleton DepTypes.EnvProduction 
   else Set.singleton DepTypes.EnvDevelopment
 
--- | Resolves environment conflicts after environment hydration.
 -- When a dependency belongs to both production and development environments,
 -- prioritize production over development.
 --
@@ -546,7 +524,6 @@ fixHydratedEnvironments d
   where
     envs = dependencyEnvironments d
 
--- | Parse any dependency specification using parser combinators
 -- This is a convenience function that wraps parseDependencySource
 parseDependencySpec :: Text -> Either (ParseErrorBundle Text Void) DependencySource
 parseDependencySpec = parseDependencySource
