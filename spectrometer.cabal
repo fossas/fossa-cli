@@ -686,13 +686,19 @@ test-suite unit-tests
     NuGet.PaketSpec
     NuGet.ProjectAssetsJsonSpec
     NuGet.ProjectJsonSpec
+    Pdm.PdmLockSpec
+    Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
-    Python.PipenvSpec
-    Python.PipSpec
-    Python.PyProjectGenericSpec
     Python.DependencyParserSpec
     Python.DependencySpec
+    Python.PipenvSpec
+    Python.PipSpec
+    Python.Poetry.CommonSpec
+    Python.Poetry.PoetryLockSpec
+    Python.Poetry.PyProjectSpec
+    Python.PoetrySpec
+    Python.PyProjectGenericSpec
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
@@ -757,6 +763,7 @@ test-suite integration-tests
     Analysis.NugetSpec
     Analysis.PnpmSpec
     Analysis.Python.PipenvSpec
+    Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
     Analysis.RubySpec
     Analysis.RustSpec
