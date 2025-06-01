@@ -14,7 +14,7 @@ import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..))
 import Data.List (nub, sort)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.String.Conversion (ToText (toText))
 import Data.Text qualified as Text
 import Fossa.API.Types (Organization (..))
@@ -269,33 +269,33 @@ expectedLicenseScanPathFilters =
       , licenseScanPathFilterFileExclude = []
       }
 
-expectedLernieConfig :: LernieConfig
-expectedLernieConfig =
-  LernieConfig
+expectedFicusConfig :: FicusConfig
+expectedFicusConfig =
+  FicusConfig
     { rootDir = absDir
-    , regexes = [customLicenseLernieRegex, keywordSearchLernieRegex]
+    , regexes = [customLicenseFicusRegex, keywordSearchFicusRegex]
     , licenseScanPathFilters = expectedLicenseScanPathFilters
     , fullFiles = False
     }
 
-keywordSearchLernieRegex :: LernieRegex
-keywordSearchLernieRegex =
-  LernieRegex
+keywordSearchFicusRegex :: FicusRegex
+keywordSearchFicusRegex =
+  FicusRegex
     { pat = "[Kk]eyword [Ss]earch"
     , name = "Keyword Search"
     , scanType = KeywordSearch
     }
 
-customLicenseLernieRegex :: LernieRegex
-customLicenseLernieRegex =
-  LernieRegex
+customLicenseFicusRegex :: FicusRegex
+customLicenseFicusRegex =
+  FicusRegex
     { pat = "[Pp]roprietary [Ll]icense"
     , name = "Proprietary License"
     , scanType = CustomLicense
     }
 
 fixtureDir :: Path Rel Dir
-fixtureDir = $(mkRelDir "test/App/Fossa/Lernie/testdata/repo")
+fixtureDir = $(mkRelDir "test/App/Fossa/Ficus/testdata/repo")
 
 spec :: Spec
 spec = do
@@ -304,23 +304,23 @@ spec = do
       ficusMessagesToFicusResults filledInMessages absDir `shouldBe` expectedFicusResults
 
     it "should deal properly with two of the same license found in one file" $ do
-      lernieMessagesToLernieResults doubleMessages absDir `shouldBe` expectedDoubleLernieResults
+      ficusMessagesToFicusResults doubleMessages absDir `shouldBe` expectedDoubleFicusResults
 
-  describe "addLernieMessage" $ do
+  describe "addFicusMessage" $ do
     it "should add a match to matches" $ do
-      (lernieMessageMatches filledInMessages) `shouldBe` [keywordSearchMatchMessage, customLicenseMatchMessage]
+      (ficusMessageMatches filledInMessages) `shouldBe` [keywordSearchMatchMessage, customLicenseMatchMessage]
 
     it "should add a warning to warnings" $ do
-      (lernieMessageWarnings filledInMessages) `shouldBe` [warningMessage]
+      (ficusMessageWarnings filledInMessages) `shouldBe` [warningMessage]
 
     it "should add an error to errors" $ do
-      (lernieMessageErrors filledInMessages) `shouldBe` [errorMessage]
+      (ficusMessageErrors filledInMessages) `shouldBe` [errorMessage]
 
-  describe "grepOptionsToLernieConfig" $ do
-    it "should create a lernie config" $ do
-      grepOptionsToLernieConfig absDir grepOptions expectedLicenseScanPathFilters FileUploadMatchData `shouldBe` Just expectedLernieConfig
+  describe "grepOptionsToFicusConfig" $ do
+    it "should create a ficus config" $ do
+      grepOptionsToFicusConfig absDir grepOptions expectedLicenseScanPathFilters FileUploadMatchData `shouldBe` Just expectedFicusConfig
 
-  describe "analyzeWithLernie" $ do
+  describe "analyzeWithFicus" $ do
     currDir <- runIO getCurrentDir
     let scanDir = currDir </> fixtureDir
 
@@ -331,7 +331,7 @@ spec = do
     let fixedOnePath = fromMaybe onePath (Text.stripSuffix (toText pathSeparator) onePath)
 
     it' "should analyze a directory with the provided config if no API keys are passed in" $ do
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions{configFilePath = (Just $ scanDir </> $(mkRelFile ".fossa.yml"))} Nothing
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicus scanDir Nothing grepOptions{configFilePath = (Just $ scanDir </> $(mkRelFile ".fossa.yml"))} Nothing
       -- Fix the paths in the expected data. We need to do this here because they include the full path to the file
       let actualUnitData =
             expectedUnitData
@@ -350,25 +350,25 @@ spec = do
               , licenseSourceUnitLicenseUnits = NE.singleton actualLicenseUnit
               }
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing"
         Just res -> do
-          (lernieResultsKeywordSearches res) `shouldBe'` [keywordSearchMatchMessage{lernieMatchPath = fixedSomethingPath}]
-          (lernieResultsCustomLicenses res)
+          (ficusResultsKeywordSearches res) `shouldBe'` [keywordSearchMatchMessage{ficusMatchPath = fixedSomethingPath}]
+          (ficusResultsCustomLicenses res)
             `shouldBe'` [ customLicenseMatchMessage
-                            { lernieMatchPath = fixedOnePath
-                            , lernieMatchMatches = [customLicenseLernieMatchData, secondCustomLicenseLernieMatchData, thirdCustomLicenseLernieMatchData]
+                            { ficusMatchPath = fixedOnePath
+                            , ficusMatchMatches = [customLicenseFicusMatchData, secondCustomLicenseFicusMatchData, thirdCustomLicenseFicusMatchData]
                             }
                         ]
-          (lernieResultsSourceUnit res) `shouldBe'` Just actualSourceUnit
+          (ficusResultsSourceUnit res) `shouldBe'` Just actualSourceUnit
 
     it' "should include the file contents if the org has the full-files flag on" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = True}
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions Nothing
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicusWithOrgInfo scanDir grepOptions Nothing
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing"
         Just res -> do
           -- Just assert that we find the contents of the files
-          let sourceUnit = lernieResultsSourceUnit res
+          let sourceUnit = ficusResultsSourceUnit res
           let maybeLicenseUnits = licenseSourceUnitLicenseUnits <$> sourceUnit
           case maybeLicenseUnits of
             Nothing -> expectationFailure' "licenseUnits should not be Nothing"
@@ -386,12 +386,12 @@ spec = do
 
     it' "should not include the file contents if the org has the full-files flag off" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry], orgRequiresFullFileUploads = False}
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions Nothing
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicusWithOrgInfo scanDir grepOptions Nothing
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing"
         Just res -> do
           -- Just assert that the contents are all `Nothing`
-          let sourceUnit = lernieResultsSourceUnit res
+          let sourceUnit = ficusResultsSourceUnit res
           let maybeLicenseUnits = licenseSourceUnitLicenseUnits <$> sourceUnit
           case maybeLicenseUnits of
             Nothing -> expectationFailure' "licenseUnits should not be Nothing"
@@ -402,18 +402,18 @@ spec = do
 
     it' "should merge the config from fossa.yml and the org" $ do
       GetOrganization `alwaysReturns` Fixtures.organization{orgCustomLicenseScanConfigs = [secondCustomLicenseGrepEntry]}
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernieWithOrgInfo scanDir grepOptions Nothing
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicusWithOrgInfo scanDir grepOptions Nothing
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing"
         Just res -> do
           -- Just assert that we find matches for "Confidential" (from the org API) and "Proprietary License" (from grepOptions)
-          let matchNames = lernieMatchDataName <$> concatMap lernieMatchMatches (lernieResultsCustomLicenses res)
+          let matchNames = ficusMatchDataName <$> concatMap ficusMatchMatches (ficusResultsCustomLicenses res)
           sort (nub matchNames) `shouldBe'` ["Confidential", "Proprietary License"]
 
     it' "should handle Nothing licenseScanPathFilters without crashing" $ do
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions Nothing
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicus scanDir Nothing grepOptions Nothing
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing"
         Just _ -> pure ()
 
     it' "should apply licenseScanPathFilters' only filter correctly" $ do
@@ -424,11 +424,11 @@ spec = do
               , licenseScanPathFilterFileExclude = []
               }
 
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions (Just filters)
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicus scanDir Nothing grepOptions (Just filters)
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing when given valid licenseScanPathFilters"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing when given valid licenseScanPathFilters"
         Just res -> do
-          let matchPaths = sort $ nub $ map lernieMatchPath (lernieResultsCustomLicenses res ++ lernieResultsKeywordSearches res)
+          let matchPaths = sort $ nub $ map ficusMatchPath (ficusResultsCustomLicenses res ++ ficusResultsKeywordSearches res)
           matchPaths `shouldBe'` [fixedOnePath]
 
     it' "should apply licenseScanPathFilters' exclude filter correctly" $ do
@@ -439,9 +439,9 @@ spec = do
               , licenseScanPathFilterFileExclude = []
               }
 
-      result <- ignoreDebug . withoutTelemetry $ analyzeWithLernie scanDir Nothing grepOptions (Just filters)
+      result <- ignoreDebug . withoutTelemetry $ analyzeWithFicus scanDir Nothing grepOptions (Just filters)
       case result of
-        Nothing -> expectationFailure' "analyzeWithLernie should not return Nothing when given valid licenseScanPathFilters"
+        Nothing -> expectationFailure' "analyzeWithFicus should not return Nothing when given valid licenseScanPathFilters"
         Just res -> do
-          let matchPaths = sort $ nub $ map lernieMatchPath (lernieResultsCustomLicenses res ++ lernieResultsKeywordSearches res)
+          let matchPaths = sort $ nub $ map ficusMatchPath (ficusResultsCustomLicenses res ++ ficusResultsKeywordSearches res)
           matchPaths `shouldBe'` [fixedOnePath]
