@@ -67,7 +67,7 @@ import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (Analy
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
-import App.Fossa.Lernie.Types (GrepOptions (..), OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Ficus.Types (GrepOptions (..), OrgWideCustomLicenseConfigPolicy (..))
 import App.Fossa.Reachability.Types (CallGraphAnalysis (NoCallGraphAnalysis), SourceUnitReachability (..))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Fossa.VendoredDependency (VendoredDependency (..))
