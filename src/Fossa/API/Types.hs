@@ -48,7 +48,7 @@ module Fossa.API.Types (
   chunkArchiveComponents,
 ) where
 
-import App.Fossa.Lernie.Types (GrepEntry)
+import App.Fossa.Ficus.Types (GrepEntry)
 import App.Types (DependencyRebuild (..), FileUpload (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText)

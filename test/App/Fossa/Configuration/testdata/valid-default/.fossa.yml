@@ -8,7 +8,7 @@ project:
   id: github.com/fossa-cli
   name: fossa-cli
   team: fossa-team
-  teams: 
+  teams:
     - fossa-team
   policy: license-policy
   link: fossa.com
@@ -31,10 +31,9 @@ releaseGroup:
   licensePolicy: example-license-policy
   securityPolicy: example-security-policy
   qualityPolicy: example-quality-policy
-  teams: 
+  teams:
     - team-1
     - team-2
-
 
 revision:
   commit: "12345"
@@ -71,9 +70,9 @@ vendoredDependencies:
       - "test/**/*.rb"
 
 customLicenseSearch:
-   - matchCriteria: (?i)proprietary
-     name: "Proprietary License"
+  - matchCriteria: (?i)proprietary
+    name: "Proprietary License"
 
 experimentalKeywordSearch:
-   - matchCriteria: \w*(_token)
-     name: "token search"
+  - matchCriteria: \w*(_token)
+    name: "token search"

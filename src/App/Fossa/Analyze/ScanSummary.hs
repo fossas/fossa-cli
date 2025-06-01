@@ -193,7 +193,7 @@ renderDefaultSkippedTargetHelp =
   ]
 
 summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
+summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dynamicLinkingDeps ficus reachabilityAttempts) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -426,7 +426,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts) = do
+dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps ficus reachabilityAttempts) = do
   let doc =
         stripAnsiEscapeCodes
           . renderStrict
@@ -440,7 +440,7 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
               , renderSourceUnit "binary-deps analysis" binary
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
-              , renderSourceUnit "Custom-license scan & Keyword Search" ficusResults
+              , renderSourceUnit "Custom-license scan & Keyword Search" ficus
               ]
             ++ renderReachability
 
@@ -449,7 +449,7 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps ficusResults reachabilityAttempts))
+    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps ficus reachabilityAttempts))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

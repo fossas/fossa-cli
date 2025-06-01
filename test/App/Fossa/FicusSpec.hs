@@ -63,89 +63,89 @@ secondCustomLicenseFicusMatchData =
     , ficusMatchDataEndLine = 3
     }
 
-thirdCustomLicenseLernieMatchData :: LernieMatchData
-thirdCustomLicenseLernieMatchData =
-  customLicenseLernieMatchData
-    { lernieMatchDataStartByte = 85 + extraLineBytes * 4
-    , lernieMatchDataEndByte = 104 + extraLineBytes * 4
-    , lernieMatchDataStartLine = 5
-    , lernieMatchDataEndLine = 5
+thirdCustomLicenseFicusMatchData :: FicusMatchData
+thirdCustomLicenseFicusMatchData =
+  customLicenseFicusMatchData
+    { ficusMatchDataStartByte = 85 + extraLineBytes * 4
+    , ficusMatchDataEndByte = 104 + extraLineBytes * 4
+    , ficusMatchDataStartLine = 5
+    , ficusMatchDataEndLine = 5
     }
 
-customLicenseMatchMessage :: LernieMatch
+customLicenseMatchMessage :: FicusMatch
 customLicenseMatchMessage =
-  LernieMatch
-    { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
-    , lernieMatchMatches = [customLicenseLernieMatchData]
-    , lernieMatchContents = Nothing
+  FicusMatch
+    { ficusMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
+    , ficusMatchMatches = [customLicenseFicusMatchData]
+    , ficusMatchContents = Nothing
     }
 
-secondCustomLicenseMatchMessage :: LernieMatch
+secondCustomLicenseMatchMessage :: FicusMatch
 secondCustomLicenseMatchMessage =
-  LernieMatch
-    { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
-    , lernieMatchMatches = [secondCustomLicenseLernieMatchData]
-    , lernieMatchContents = Nothing
+  FicusMatch
+    { ficusMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
+    , ficusMatchMatches = [secondCustomLicenseFicusMatchData]
+    , ficusMatchContents = Nothing
     }
 
-keywordSearchLernieMatchData :: LernieMatchData
-keywordSearchLernieMatchData =
-  LernieMatchData
-    { lernieMatchDataPattern = "[Kk]eyword [Ss]earch"
-    , lernieMatchDataMatchString = "Keyword Search"
-    , lernieMatchDataScanType = KeywordSearch
-    , lernieMatchDataName = "Keyword Search"
-    , lernieMatchDataStartByte = 0
-    , lernieMatchDataEndByte = 14
-    , lernieMatchDataStartLine = 1
-    , lernieMatchDataEndLine = 1
+keywordSearchFicusMatchData :: FicusMatchData
+keywordSearchFicusMatchData =
+  FicusMatchData
+    { ficusMatchDataPattern = "[Kk]eyword [Ss]earch"
+    , ficusMatchDataMatchString = "Keyword Search"
+    , ficusMatchDataScanType = KeywordSearch
+    , ficusMatchDataName = "Keyword Search"
+    , ficusMatchDataStartByte = 0
+    , ficusMatchDataEndByte = 14
+    , ficusMatchDataStartLine = 1
+    , ficusMatchDataEndLine = 1
     }
 
-keywordSearchMatchMessage :: LernieMatch
+keywordSearchMatchMessage :: FicusMatch
 keywordSearchMatchMessage =
-  LernieMatch
-    { lernieMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
-    , lernieMatchMatches = [keywordSearchLernieMatchData]
-    , lernieMatchContents = Nothing
+  FicusMatch
+    { ficusMatchPath = toText . toFilePath $ absDir </> $(mkRelDir "two.txt")
+    , ficusMatchMatches = [keywordSearchFicusMatchData]
+    , ficusMatchContents = Nothing
     }
 
-warningMessage :: LernieWarning
+warningMessage :: FicusWarning
 warningMessage =
-  LernieWarning
-    { lernieWarningMessage = "this is a warning"
-    , lernieWarningType = "SomeWarningType"
+  FicusWarning
+    { ficusWarningMessage = "this is a warning"
+    , ficusWarningType = "SomeWarningType"
     }
 
-errorMessage :: LernieError
+errorMessage :: FicusError
 errorMessage =
-  LernieError
-    { lernieErrorMessage = "this is an Error"
-    , lernieErrorType = "SomeWarningType"
+  FicusError
+    { ficusErrorMessage = "this is an Error"
+    , ficusErrorType = "SomeWarningType"
     }
 
-filledInMessages :: LernieMessages
+filledInMessages :: FicusMessages
 filledInMessages =
-  singletonLernieMessage (LernieMessageLernieError errorMessage)
-    <> singletonLernieMessage (LernieMessageLernieWarning warningMessage)
-    <> singletonLernieMessage (LernieMessageLernieMatch keywordSearchMatchMessage)
-    <> singletonLernieMessage (LernieMessageLernieMatch customLicenseMatchMessage)
+  singletonFicusMessage (FicusMessageFicusError errorMessage)
+    <> singletonFicusMessage (FicusMessageFicusWarning warningMessage)
+    <> singletonFicusMessage (FicusMessageFicusMatch keywordSearchMatchMessage)
+    <> singletonFicusMessage (FicusMessageFicusMatch customLicenseMatchMessage)
 
-doubleMessages :: LernieMessages
-doubleMessages = singletonLernieMessage (LernieMessageLernieMatch secondCustomLicenseMatchMessage) <> filledInMessages
+doubleMessages :: FicusMessages
+doubleMessages = singletonFicusMessage (FicusMessageFicusMatch secondCustomLicenseMatchMessage) <> filledInMessages
 
-expectedLernieResults :: LernieResults
-expectedLernieResults =
-  LernieResults
-    { lernieResultsKeywordSearches = [keywordSearchMatchMessage]
-    , lernieResultsCustomLicenses = [customLicenseMatchMessage]
-    , lernieResultsSourceUnit = Just expectedSourceUnit
+expectedFicusResults :: FicusResults
+expectedFicusResults =
+  FicusResults
+    { ficusResultsKeywordSearches = [keywordSearchMatchMessage]
+    , ficusResultsCustomLicenses = [customLicenseMatchMessage]
+    , ficusResultsSourceUnit = Just expectedSourceUnit
     }
 
-expectedDoubleLernieResults :: LernieResults
-expectedDoubleLernieResults =
-  expectedLernieResults
-    { lernieResultsCustomLicenses = [secondCustomLicenseMatchMessage, customLicenseMatchMessage]
-    , lernieResultsSourceUnit = Just expectedDoubleSourceUnit
+expectedDoubleFicusResults :: FicusResults
+expectedDoubleFicusResults =
+  expectedFicusResults
+    { ficusResultsCustomLicenses = [secondCustomLicenseMatchMessage, customLicenseMatchMessage]
+    , ficusResultsSourceUnit = Just expectedDoubleSourceUnit
     }
 
 absDir :: Path Abs Dir
@@ -299,9 +299,9 @@ fixtureDir = $(mkRelDir "test/App/Fossa/Lernie/testdata/repo")
 
 spec :: Spec
 spec = do
-  describe "lernieMessagesToLernieResults" $ do
-    it "should create a proper LernieResults" $ do
-      lernieMessagesToLernieResults filledInMessages absDir `shouldBe` expectedLernieResults
+  describe "ficusMessagesToFicusResults" $ do
+    it "should create a proper FicusResults" $ do
+      ficusMessagesToFicusResults filledInMessages absDir `shouldBe` expectedFicusResults
 
     it "should deal properly with two of the same license found in one file" $ do
       lernieMessagesToLernieResults doubleMessages absDir `shouldBe` expectedDoubleLernieResults

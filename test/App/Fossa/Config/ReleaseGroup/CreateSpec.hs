@@ -8,7 +8,7 @@ import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), Releas
 import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..), CreateOpts (..), mergeOpts)
 import App.Fossa.Config.Utils (fixtureDir)
 import App.Fossa.Configuration.ConfigurationSpec (expectedReleaseGroup)
-import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Ficus.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (ReleaseGroupProjectRevision (..), ReleaseGroupReleaseRevision (..), ReleaseGroupRevision (..))
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)

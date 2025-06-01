@@ -4,13 +4,13 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths,
-  Lernie,
+  Ficus,
   ThemisIndex,
   ThemisBins (..),
   toPath,
   withThemisAndIndex,
   withBerkeleyBinary,
-  withLernieBinary,
+  withFicusBinary,
   withMillhoneBinary,
   withCirceBinary,
   allBins,
@@ -57,7 +57,7 @@ data PackagedBinary
   = Themis
   | ThemisIndex
   | BerkeleyDB
-  | Lernie
+  | Ficus
   | Millhone
   | Circe
   deriving (Show, Eq, Enum, Bounded)
@@ -75,7 +75,7 @@ data ThemisBinary
 
 data ThemisIndex
 
-data Lernie
+data Ficus
 
 data Circe
 
@@ -113,8 +113,8 @@ extractThemisFiles = do
 withBerkeleyBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
 
-withLernieBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
-withLernieBinary = withEmbeddedBinary Lernie
+withFicusBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
+withFicusBinary = withEmbeddedBinary Ficus
 
 withMillhoneBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withMillhoneBinary = withEmbeddedBinary Millhone
@@ -148,7 +148,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
   BerkeleyDB -> embeddedBinaryBerkeleyDB
-  Lernie -> embeddedBinaryLernie
+  Ficus -> embeddedBinaryFicus
   Millhone -> embeddedBinaryMillhone
   Circe -> embeddedBinaryCirce
 
@@ -163,7 +163,7 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
-  Lernie -> $(mkRelFile "lernie")
+  Ficus -> $(mkRelFile "ficus")
   Millhone -> $(mkRelFile "millhone")
   Circe -> $(mkRelFile "circe")
 
@@ -205,8 +205,8 @@ embeddedBinaryThemisIndex = $(embedFileIfExists "vendor-bins/index.gob.xz")
 themisVersion :: Text
 themisVersion = $$(themisVersionQ)
 
-embeddedBinaryLernie :: ByteString
-embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
+embeddedBinaryFicus :: ByteString
+embeddedBinaryFicus = $(embedFileIfExists "vendor-bins/ficus")
 
 embeddedBinaryCirce :: ByteString
 embeddedBinaryCirce = $(embedFileIfExists "vendor-bins/circe")

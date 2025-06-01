@@ -114,24 +114,24 @@ instance ToJSON FicusScanType where
 
 instance FromJSON FicusScanType
 
-data LernieMessageType = LernieMessageTypeMatch | LernieMessageTypeError | LernieMessageTypeWarning
+data FicusMessageType = FicusMessageTypeMatch | FicusMessageTypeError | FicusMessageTypeWarning
   deriving (Eq, Ord, Show, Generic)
 
-instance ToText LernieMessageType where
-  toText LernieMessageTypeMatch = "Match"
-  toText LernieMessageTypeError = "Error"
-  toText LernieMessageTypeWarning = "Warning"
+instance ToText FicusMessageType where
+  toText FicusMessageTypeMatch = "Match"
+  toText FicusMessageTypeError = "Error"
+  toText FicusMessageTypeWarning = "Warning"
 
-instance ToJSON LernieMessageType where
+instance ToJSON FicusMessageType where
   toJSON = toJSON . toText
 
-instance FromJSON LernieMessageType where
-  parseJSON = withText "LernieMessageType" $ \msg -> do
+instance FromJSON FicusMessageType where
+  parseJSON = withText "FicusMessageType" $ \msg -> do
     case msg of
-      "Match" -> pure LernieMessageTypeMatch
-      "Error" -> pure LernieMessageTypeError
-      "Warning" -> pure LernieMessageTypeWarning
-      _ -> fail "invalid Lernie message type"
+      "Match" -> pure FicusMessageTypeMatch
+      "Error" -> pure FicusMessageTypeError
+      "Warning" -> pure FicusMessageTypeWarning
+      _ -> fail "invalid Ficus message type"
 
 data FicusMatch = FicusMatch
   { ficusMatchPath :: Text
@@ -140,9 +140,9 @@ data FicusMatch = FicusMatch
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance FromJSON LernieMatch where
-  parseJSON = withObject "LernieMatch" $ \obj ->
-    LernieMatch
+instance FromJSON FicusMatch where
+  parseJSON = withObject "FicusMatch" $ \obj ->
+    FicusMatch
       <$> (obj .: "path")
       <*> (obj .: "matches")
       <*> (obj .:? "contents")
@@ -153,9 +153,9 @@ data FicusWarning = FicusWarning
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance FromJSON LernieWarning where
-  parseJSON = withObject "LernieWarning" $ \obj ->
-    LernieWarning
+instance FromJSON FicusWarning where
+  parseJSON = withObject "FicusWarning" $ \obj ->
+    FicusWarning
       <$> (obj .: "message")
       <*> (obj .: "type")
 
@@ -165,9 +165,9 @@ data FicusError = FicusError
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance FromJSON LernieError where
-  parseJSON = withObject "LernieError" $ \obj ->
-    LernieError
+instance FromJSON FicusError where
+  parseJSON = withObject "FicusError" $ \obj ->
+    FicusError
       <$> (obj .: "message")
       <*> (obj .: "type")
 
@@ -183,9 +183,9 @@ data FicusMatchData = FicusMatchData
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance FromJSON LernieMatchData where
-  parseJSON = withObject "LernieMatchData" $ \obj ->
-    LernieMatchData
+instance FromJSON FicusMatchData where
+  parseJSON = withObject "FicusMatchData" $ \obj ->
+    FicusMatchData
       <$> (obj .: "pattern")
       <*> (obj .: "match_str")
       <*> (obj .: "scan_type")
@@ -195,7 +195,7 @@ instance FromJSON LernieMatchData where
       <*> (obj .: "start_line")
       <*> (obj .: "end_line")
 
-instance ToJSON LernieMatchData
+instance ToJSON FicusMatchData
 
 data FicusResults = FicusResults
   { ficusResultsKeywordSearches :: [FicusMatch]
@@ -211,36 +211,36 @@ data FicusMessages = FicusMessages
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance Semigroup LernieMessages where
-  LernieMessages w1 e1 m1 <> LernieMessages w2 e2 m2 = LernieMessages (w1 <> w2) (e1 <> e2) (m1 <> m2)
+instance Semigroup FicusMessages where
+  FicusMessages m1 w1 e1 <> FicusMessages m2 w2 e2 = FicusMessages (m1 <> m2) (w1 <> w2) (e1 <> e2)
 
-instance Monoid LernieMessages where
-  mempty = LernieMessages [] [] []
+instance Monoid FicusMessages where
+  mempty = FicusMessages [] [] []
 
-data LernieMessage = LernieMessageLernieMatch LernieMatch | LernieMessageLernieWarning LernieWarning | LernieMessageLernieError LernieError
+data FicusMessage = FicusMessageFicusMatch FicusMatch | FicusMessageFicusWarning FicusWarning | FicusMessageFicusError FicusError
   deriving (Eq, Ord, Show, Generic)
 
-instance FromJSON LernieMessage where
+instance FromJSON FicusMessage where
   parseJSON (Object o) = do
     messageType <- o .: "type"
     case messageType of
-      LernieMessageTypeWarning -> do
+      FicusMessageTypeWarning -> do
         Object d <- o .: "data"
         let message = d .: "message"
         let warningType = d .: "type"
-        warning <- LernieWarning <$> warningType <*> message
-        pure $ LernieMessageLernieWarning warning
-      LernieMessageTypeError -> do
+        warning <- FicusWarning <$> message <*> warningType
+        pure $ FicusMessageFicusWarning warning
+      FicusMessageTypeError -> do
         Object d <- o .: "data"
         let errorType = d .: "type"
         let message = d .: "message"
-        err <- LernieError <$> errorType <*> message
-        pure $ LernieMessageLernieError err
-      LernieMessageTypeMatch -> do
+        err <- FicusError <$> message <*> errorType
+        pure $ FicusMessageFicusError err
+      FicusMessageTypeMatch -> do
         Object d <- o .: "data"
         let path = d .: "path"
         let matches = d .: "matches"
         let contents = d .:? "contents"
-        match <- LernieMatch <$> path <*> matches <*> contents
-        pure $ LernieMessageLernieMatch match
-  parseJSON _ = fail "Invalid schema for LernieMessage. It must be an object"
+        match <- FicusMatch <$> path <*> matches <*> contents
+        pure $ FicusMessageFicusMatch match
+  parseJSON _ = fail "Invalid schema for FicusMessage. It must be an object"

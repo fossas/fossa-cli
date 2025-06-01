@@ -20,7 +20,7 @@ import App.Fossa.Config.ConfigFile (
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
-import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Ficus.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)

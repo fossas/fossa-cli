@@ -249,8 +249,6 @@ library
     App.Fossa.Ficus.Types
     App.Fossa.FirstPartyScan
     App.Fossa.Init
-    App.Fossa.Lernie.Analyze
-    App.Fossa.Lernie.Types
     App.Fossa.LicenseScan
     App.Fossa.LicenseScanner
     App.Fossa.ListTargets
@@ -582,7 +580,7 @@ test-suite unit-tests
     App.Fossa.FicusSpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
-    App.Fossa.LernieSpec
+    App.Fossa.FicusSpec
     App.Fossa.LicenseScannerSpec
     App.Fossa.ManualDepsSpec
     App.Fossa.PathDependencySpec
