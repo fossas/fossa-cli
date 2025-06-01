@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.11.0
+
+- Replace Lernie with Ficus.([#1547](https://github.com/fossas/fossa-cli/pull/1547))
+
 ## 3.10.9
 
 - CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))

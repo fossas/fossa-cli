@@ -50,9 +50,9 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
+import App.Fossa.Ficus.Analyze (analyzeWithFicus)
+import App.Fossa.Ficus.Types (FicusResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
-import App.Fossa.Lernie.Analyze (analyzeWithLernie)
-import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
@@ -335,14 +335,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
-  maybeLernieResults <-
+  maybeFicusResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
-        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
-  let lernieResults = join . resultToMaybe $ maybeLernieResults
+        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
+  let ficusResults = join . resultToMaybe $ maybeFicusResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
@@ -355,8 +355,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   -- Flush logs using the original Result from VSI.
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
-  -- Flush logs from lernie
-  traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
+  -- Flush logs from ficus
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -422,17 +422,17 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeFicusResults reachabilityUnitsResult
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =
-        case (firstPartyScanResults, lernieResultsSourceUnit =<< lernieResults) of
+        case (firstPartyScanResults, ficusResultsSourceUnit =<< ficusResults) of
           (Nothing, Nothing) -> Nothing
-          (Just firstParty, Just lernie) -> Just $ firstParty <> lernie
-          (Nothing, Just lernie) -> Just lernie
+          (Just firstParty, Just ficus) -> Just $ firstParty <> ficus
+          (Nothing, Just ficus) -> Just ficus
           (Just firstParty, Nothing) -> Just firstParty
-  let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
+  let keywordSearchResultsFound = (maybe False (not . null . ficusResultsKeywordSearches) ficusResults)
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
   scanUnits <-

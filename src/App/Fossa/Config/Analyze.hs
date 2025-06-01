@@ -68,7 +68,7 @@ import App.Fossa.Config.ConfigFile (
   resolveConfigFile,
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
-import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..))
+import App.Fossa.Ficus.Types (GrepEntry (..), GrepOptions (..))
 import App.Fossa.Reachability.Types (ReachabilityConfig (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI

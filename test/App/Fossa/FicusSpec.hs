@@ -2,12 +2,12 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module App.Fossa.LernieSpec (
+module App.Fossa.FicusSpec (
   spec,
 ) where
 
-import App.Fossa.Lernie.Analyze (analyzeWithLernie, analyzeWithLernieWithOrgInfo, grepOptionsToLernieConfig, lernieMessagesToLernieResults, singletonLernieMessage)
-import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..), LernieConfig (..), LernieError (..), LernieMatch (..), LernieMatchData (..), LernieMessage (..), LernieMessages (..), LernieRegex (..), LernieResults (..), LernieScanType (..), LernieWarning (..), OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Ficus.Analyze (analyzeWithFicus, analyzeWithFicusWithOrgInfo, ficusMessagesToFicusResults, grepOptionsToFicusConfig, singletonFicusMessage)
+import App.Fossa.Ficus.Types (FicusConfig (..), FicusError (..), FicusMatch (..), FicusMatchData (..), FicusMessage (..), FicusMessages (..), FicusRegex (..), FicusResults (..), FicusScanType (..), FicusWarning (..), GrepEntry (..), GrepOptions (..), OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (FileUpload (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Telemetry (withoutTelemetry)
@@ -28,17 +28,17 @@ import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Test.MockApi (alwaysReturns)
 import Types (GlobFilter (GlobFilter), LicenseScanPathFilters (..))
 
-customLicenseLernieMatchData :: LernieMatchData
-customLicenseLernieMatchData =
-  LernieMatchData
-    { lernieMatchDataPattern = "[Pp]roprietary [Ll]icense"
-    , lernieMatchDataMatchString = "Proprietary License"
-    , lernieMatchDataScanType = CustomLicense
-    , lernieMatchDataName = "Proprietary License"
-    , lernieMatchDataStartByte = 10
-    , lernieMatchDataEndByte = 29
-    , lernieMatchDataStartLine = 1
-    , lernieMatchDataEndLine = 1
+customLicenseFicusMatchData :: FicusMatchData
+customLicenseFicusMatchData =
+  FicusMatchData
+    { ficusMatchDataPattern = "[Pp]roprietary [Ll]icense"
+    , ficusMatchDataMatchString = "Proprietary License"
+    , ficusMatchDataScanType = CustomLicense
+    , ficusMatchDataName = "Proprietary License"
+    , ficusMatchDataStartByte = 10
+    , ficusMatchDataEndByte = 29
+    , ficusMatchDataStartLine = 1
+    , ficusMatchDataEndLine = 1
     }
 
 -- Every newline in Windows adds one more byte than a newLine on macOS or Linux
@@ -54,13 +54,13 @@ extraLineBytes = 1
 extraLineBytes = 0
 #endif
 
-secondCustomLicenseLernieMatchData :: LernieMatchData
-secondCustomLicenseLernieMatchData =
-  customLicenseLernieMatchData
-    { lernieMatchDataStartByte = 42 + extraLineBytes * 2
-    , lernieMatchDataEndByte = 61 + extraLineBytes * 2
-    , lernieMatchDataStartLine = 3
-    , lernieMatchDataEndLine = 3
+secondCustomLicenseFicusMatchData :: FicusMatchData
+secondCustomLicenseFicusMatchData =
+  customLicenseFicusMatchData
+    { ficusMatchDataStartByte = 42 + extraLineBytes * 2
+    , ficusMatchDataEndByte = 61 + extraLineBytes * 2
+    , ficusMatchDataStartLine = 3
+    , ficusMatchDataEndLine = 3
     }
 
 thirdCustomLicenseLernieMatchData :: LernieMatchData

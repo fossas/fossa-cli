@@ -25,7 +25,7 @@ module App.Fossa.Config.ConfigFile (
 ) where
 
 import App.Docs (fossaYmlDocUrl)
-import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import App.Fossa.Ficus.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (..), ProjectMetadata (..), ReleaseGroupMetadata)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (

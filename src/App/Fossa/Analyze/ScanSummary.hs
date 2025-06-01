@@ -19,7 +19,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (StaticOnly))
 import App.Fossa.Config.Analyze qualified as Config
-import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
+import App.Fossa.Ficus.Types (FicusMatch (..), FicusMatchData (..), FicusResults (..))
 import App.Fossa.Reachability.Types (SourceUnitReachability (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
@@ -215,8 +215,8 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dyna
           <> summarizeSrcUnit "binary-deps analysis" (Just getBinaryIdentifier) binary
           <> summarizeSrcUnit "dynamic linked dependency analysis" (Just getBinaryIdentifier) dynamicLinkingDeps
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
-          <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
-          <> summarizeSrcUnit "Custom-License Search" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
+          <> summarizeSrcUnit "Keyword Search" (Just getFicusIdentifier) (ficusResultsKeywordSearches <$$> ficus)
+          <> summarizeSrcUnit "Custom-License Search" (Just getFicusIdentifier) (ficusResultsCustomLicenses <$$> ficus)
           <> reachabilitySummary
           <> [""]
   where
@@ -233,7 +233,7 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary manualDeps dyna
         , srcUnitToScanCount binary
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
-        , srcUnitToScanCount lernie
+        , srcUnitToScanCount ficus
         ]
 
     -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
@@ -259,19 +259,19 @@ itemize symbol f = map ((symbol <>) . f)
 getBinaryIdentifier :: SourceUnit -> [Text]
 getBinaryIdentifier srcUnit = maybe [] (srcUserDepName <$>) (userDefinedDeps =<< additionalData srcUnit)
 
--- A LernieMatch has many LernieMatchData. getLernieIdentifier creates one line of output per LernieMatchData.
+-- A FicusMatch has many FicusMatchData. getFicusIdentifier creates one line of output per FicusMatchData.
 -- Example output:
 -- Proprietary License - /Users/scott/fossa/license-scan-dirs/grepper/one.txt (lines 1-1)
 -- <name of regex from config> - <path to file> (lines <startLine>-<endLine>)
-getLernieIdentifier :: [LernieMatch] -> [Text]
-getLernieIdentifier [] = ["No results found"]
-getLernieIdentifier matches = concatMap renderLernieMatch matches
+getFicusIdentifier :: [FicusMatch] -> [Text]
+getFicusIdentifier [] = ["No results found"]
+getFicusIdentifier matches = concatMap renderFicusMatch matches
   where
-    renderLernieMatch :: LernieMatch -> [Text]
-    renderLernieMatch LernieMatch{..} = map (renderLernieMatchData lernieMatchPath) lernieMatchMatches
+    renderFicusMatch :: FicusMatch -> [Text]
+    renderFicusMatch FicusMatch{..} = map (renderFicusMatchData ficusMatchPath) ficusMatchMatches
 
-    renderLernieMatchData :: Text -> LernieMatchData -> Text
-    renderLernieMatchData path LernieMatchData{..} = lernieMatchDataName <> " - " <> path <> " (lines " <> showText lernieMatchDataStartLine <> "-" <> showText lernieMatchDataEndLine <> ")"
+    renderFicusMatchData :: Text -> FicusMatchData -> Text
+    renderFicusMatchData path FicusMatchData{..} = ficusMatchDataName <> " - " <> path <> " (lines " <> showText ficusMatchDataStartLine <> "-" <> showText ficusMatchDataEndLine <> ")"
 
 getManualVendorDepsIdentifier :: SourceUnit -> [Text]
 getManualVendorDepsIdentifier srcUnit = refDeps ++ foundRemoteDeps ++ customDeps ++ vendorDeps
@@ -440,7 +440,7 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
               , renderSourceUnit "binary-deps analysis" binary
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
-              , renderSourceUnit "Custom-license scan & Keyword Search" lernieResults
+              , renderSourceUnit "Custom-license scan & Keyword Search" ficusResults
               ]
             ++ renderReachability
 
@@ -449,7 +449,7 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts))
+    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary manualDeps dynamicLinkingDeps ficusResults reachabilityAttempts))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

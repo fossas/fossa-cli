@@ -22,8 +22,8 @@ extra-source-files:
   target/release/millhone
   target/release/millhone.exe
   vendor-bins/circe
+  vendor-bins/ficus
   vendor-bins/index.gob.xz
-  vendor-bins/lernie
   vendor-bins/themis-cli
 
 common lang
@@ -245,6 +245,8 @@ library
     App.Fossa.DependencyMetadata
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.Ficus.Analyze
+    App.Fossa.Ficus.Types
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze
@@ -577,6 +579,7 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.FicusSpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec

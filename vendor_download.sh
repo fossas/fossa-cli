@@ -32,23 +32,23 @@ mkdir -p vendor-bins
 
 ASSET_POSTFIX=""
 THEMIS_ASSET_POSTFIX=""
-LERNIE_ASSET_POSTFIX=""
 CIRCE_ASSET_POSTFIX=""
+FICUS_ASSET_POSTFIX=""
 case "$(uname -s)" in
   Darwin)
     case "$(uname -m)" in
       arm64)
         ASSET_POSTFIX="darwin-arm64"
-        LERNIE_ASSET_POSTFIX="aarch64-macos"
         THEMIS_ASSET_POSTFIX="darwin-arm64"
         CIRCE_ASSET_POSTFIX="aarch64-apple-darwin"
+        FICUS_ASSET_POSTFIX="aarch64-macos"
         ;;
 
       *)
         ASSET_POSTFIX="darwin-amd64"
-        LERNIE_ASSET_POSTFIX="x86_64-macos"
         THEMIS_ASSET_POSTFIX="darwin-amd64"
         CIRCE_ASSET_POSTFIX="x86_64-apple-darwin"
+        FICUS_ASSET_POSTFIX="x86_64-macos"
         ;;
     esac
     ;;
@@ -58,15 +58,15 @@ case "$(uname -s)" in
       aarch64)
         ASSET_POSTFIX="linux"
         THEMIS_ASSET_POSTFIX="linux-arm64"
-        LERNIE_ASSET_POSTFIX="aarch64-linux"
         CIRCE_ASSET_POSTFIX="aarch64-unknown-linux-musl"
+        FICUS_ASSET_POSTFIX="aarch64-linux"
       ;;
 
       *)
         ASSET_POSTFIX="linux"
         THEMIS_ASSET_POSTFIX="linux-amd64"
-        LERNIE_ASSET_POSTFIX="x86_64-linux"
         CIRCE_ASSET_POSTFIX="x86_64-unknown-linux-musl"
+        FICUS_ASSET_POSTFIX="x86_64-linux"
         ;;
     esac
     ;;
@@ -74,8 +74,8 @@ case "$(uname -s)" in
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
     THEMIS_ASSET_POSTFIX="windows-amd64"
-    LERNIE_ASSET_POSTFIX="x86_64-windows.exe"
     CIRCE_ASSET_POSTFIX="x86_64-pc-windows-msvc"
+    FICUS_ASSET_POSTFIX="x86_64-windows.exe"
     ;;
 esac
 
@@ -117,32 +117,7 @@ echo "themis index downloaded"
 rm $THEMIS_RELEASE_JSON
 echo
 
-# Download latest release of Lernie
-
-echo "Downloading lernie binary from latest release"
-LERNIE_RELEASE_JSON=vendor-bins/lernie-release.json
-curl -sSL \
-    -H "Authorization: token $GITHUB_TOKEN" \
-    -H "Accept: application/vnd.github.v3.raw" \
-    https://api.github.com/repos/fossas/lernie/releases/latest > $LERNIE_RELEASE_JSON
-
-LERNIE_TAG=$(jq -cr ".name" $LERNIE_RELEASE_JSON)
-# Strip the leading 'v' off of the tag
-LERNIE_VERSION="${LERNIE_TAG/#v/}"
-FILTER=".name == \"lernie-$LERNIE_VERSION-$LERNIE_ASSET_POSTFIX\""
-jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $LERNIE_RELEASE_JSON | while read -r ASSET; do
-  URL="$(echo "$ASSET" | jq -c -r '.url')"
-  NAME="$(echo "$ASSET" | jq -c -r '.name')"
-  OUTPUT="$(echo vendor-bins/"$NAME" | sed 's/-'"$LERNIE_VERSION"'-'$LERNIE_ASSET_POSTFIX'$//')"
-
-  echo "Downloading '$NAME' to '$OUTPUT'"
-  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s "$URL" > "$OUTPUT"
-done
-echo "Lernie download successful"
-
-rm $LERNIE_RELEASE_JSON
-
-# Download latest release of Circe
+# Download latest release of circe
 
 echo "Downloading circe binary from latest release"
 CIRCE_RELEASE_JSON=vendor-bins/circe-release.json
@@ -192,6 +167,31 @@ fi
 echo "Circe download successful"
 
 rm $CIRCE_RELEASE_JSON
+
+# Download latest release of Ficus
+
+echo "Downloading ficus binary from latest release"
+FICUS_RELEASE_JSON=vendor-bins/ficus-release.json
+curl -sSL \
+    -H "Authorization: token $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    https://api.github.com/repos/fossas/ficus/releases/latest > $FICUS_RELEASE_JSON
+
+FICUS_TAG=$(jq -cr ".name" $FICUS_RELEASE_JSON)
+# Strip the leading 'v' off of the tag
+FICUS_VERSION="${FICUS_TAG/#v/}"
+FILTER=".name == \"ficus-$FICUS_VERSION-$FICUS_ASSET_POSTFIX\""
+jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $FICUS_RELEASE_JSON | while read -r ASSET; do
+  URL="$(echo "$ASSET" | jq -c -r '.url')"
+  NAME="$(echo "$ASSET" | jq -c -r '.name')"
+  OUTPUT="$(echo vendor-bins/"$NAME" | sed 's/-'"$FICUS_VERSION"'-'$FICUS_ASSET_POSTFIX'$//')"
+
+  echo "Downloading '$NAME' to '$OUTPUT'"
+  curl -sL -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/octet-stream" -s "$URL" > "$OUTPUT"
+done
+echo "Ficus download successful"
+
+rm $FICUS_RELEASE_JSON
 
 # Finished downloading
 

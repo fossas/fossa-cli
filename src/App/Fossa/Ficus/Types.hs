@@ -1,19 +1,19 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module App.Fossa.Lernie.Types (
+module App.Fossa.Ficus.Types (
   OrgWideCustomLicenseConfigPolicy (..),
   GrepOptions (..),
   GrepEntry (..),
-  LernieResults (..),
-  LernieMatch (..),
-  LernieWarning (..),
-  LernieError (..),
-  LernieMessage (..),
-  LernieMessages (..),
-  LernieConfig (..),
-  LernieRegex (..),
-  LernieMatchData (..),
-  LernieScanType (..),
+  FicusResults (..),
+  FicusMatch (..),
+  FicusWarning (..),
+  FicusError (..),
+  FicusMessage (..),
+  FicusMessages (..),
+  FicusConfig (..),
+  FicusRegex (..),
+  FicusMatchData (..),
+  FicusScanType (..),
 ) where
 
 import Data.Aeson (FromJSON, KeyValue ((.=)), ToJSON (toJSON), Value (Object), defaultOptions, genericToEncoding, object, withObject, withText, (.:?))
@@ -70,16 +70,16 @@ instance FromJSON GrepEntry where
       <$> obj .: "matchCriteria"
       <*> obj .: "name"
 
-data LernieConfig = LernieConfig
+data FicusConfig = FicusConfig
   { rootDir :: Path Abs Dir
-  , regexes :: [LernieRegex]
+  , regexes :: [FicusRegex]
   , licenseScanPathFilters :: Maybe LicenseScanPathFilters
   , fullFiles :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON LernieConfig where
-  toJSON LernieConfig{..} =
+instance ToJSON FicusConfig where
+  toJSON FicusConfig{..} =
     object
       [ "root_dir" .= toText rootDir
       , "regexes" .= toJSON regexes
@@ -87,32 +87,32 @@ instance ToJSON LernieConfig where
       , "full_files" .= fullFiles
       ]
 
-data LernieRegex = LernieRegex
+data FicusRegex = FicusRegex
   { pat :: Text
   , name :: Text
-  , scanType :: LernieScanType
+  , scanType :: FicusScanType
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON LernieRegex where
-  toJSON LernieRegex{..} =
+instance ToJSON FicusRegex where
+  toJSON FicusRegex{..} =
     object
       [ "pattern" .= toText pat
       , "name" .= toText name
       , "scan_type" .= toText scanType
       ]
 
-data LernieScanType = CustomLicense | KeywordSearch
+data FicusScanType = CustomLicense | KeywordSearch
   deriving (Eq, Ord, Show, Generic)
 
-instance ToText LernieScanType where
+instance ToText FicusScanType where
   toText CustomLicense = "CustomLicense"
   toText KeywordSearch = "KeywordSearch"
 
-instance ToJSON LernieScanType where
+instance ToJSON FicusScanType where
   toJSON = toJSON . toText
 
-instance FromJSON LernieScanType
+instance FromJSON FicusScanType
 
 data LernieMessageType = LernieMessageTypeMatch | LernieMessageTypeError | LernieMessageTypeWarning
   deriving (Eq, Ord, Show, Generic)
@@ -133,10 +133,10 @@ instance FromJSON LernieMessageType where
       "Warning" -> pure LernieMessageTypeWarning
       _ -> fail "invalid Lernie message type"
 
-data LernieMatch = LernieMatch
-  { lernieMatchPath :: Text
-  , lernieMatchMatches :: [LernieMatchData]
-  , lernieMatchContents :: Maybe Text
+data FicusMatch = FicusMatch
+  { ficusMatchPath :: Text
+  , ficusMatchMatches :: [FicusMatchData]
+  , ficusMatchContents :: Maybe Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -147,9 +147,9 @@ instance FromJSON LernieMatch where
       <*> (obj .: "matches")
       <*> (obj .:? "contents")
 
-data LernieWarning = LernieWarning
-  { lernieWarningMessage :: Text
-  , lernieWarningType :: Text
+data FicusWarning = FicusWarning
+  { ficusWarningMessage :: Text
+  , ficusWarningType :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -159,9 +159,9 @@ instance FromJSON LernieWarning where
       <$> (obj .: "message")
       <*> (obj .: "type")
 
-data LernieError = LernieError
-  { lernieErrorMessage :: Text
-  , lernieErrorType :: Text
+data FicusError = FicusError
+  { ficusErrorMessage :: Text
+  , ficusErrorType :: Text
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -171,15 +171,15 @@ instance FromJSON LernieError where
       <$> (obj .: "message")
       <*> (obj .: "type")
 
-data LernieMatchData = LernieMatchData
-  { lernieMatchDataPattern :: Text
-  , lernieMatchDataMatchString :: Text
-  , lernieMatchDataScanType :: LernieScanType
-  , lernieMatchDataName :: Text
-  , lernieMatchDataStartByte :: Integer
-  , lernieMatchDataEndByte :: Integer
-  , lernieMatchDataStartLine :: Integer
-  , lernieMatchDataEndLine :: Integer
+data FicusMatchData = FicusMatchData
+  { ficusMatchDataPattern :: Text
+  , ficusMatchDataMatchString :: Text
+  , ficusMatchDataScanType :: FicusScanType
+  , ficusMatchDataName :: Text
+  , ficusMatchDataStartByte :: Integer
+  , ficusMatchDataEndByte :: Integer
+  , ficusMatchDataStartLine :: Integer
+  , ficusMatchDataEndLine :: Integer
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -197,17 +197,17 @@ instance FromJSON LernieMatchData where
 
 instance ToJSON LernieMatchData
 
-data LernieResults = LernieResults
-  { lernieResultsSourceUnit :: Maybe LicenseSourceUnit
-  , lernieResultsKeywordSearches :: [LernieMatch]
-  , lernieResultsCustomLicenses :: [LernieMatch]
+data FicusResults = FicusResults
+  { ficusResultsKeywordSearches :: [FicusMatch]
+  , ficusResultsCustomLicenses :: [FicusMatch]
+  , ficusResultsSourceUnit :: Maybe LicenseSourceUnit
   }
   deriving (Eq, Ord, Show, Generic)
 
-data LernieMessages = LernieMessages
-  { lernieMessageWarnings :: [LernieWarning]
-  , lernieMessageErrors :: [LernieError]
-  , lernieMessageMatches :: [LernieMatch]
+data FicusMessages = FicusMessages
+  { ficusMessageMatches :: [FicusMatch]
+  , ficusMessageWarnings :: [FicusWarning]
+  , ficusMessageErrors :: [FicusError]
   }
   deriving (Eq, Ord, Show, Generic)
 

@@ -12,7 +12,7 @@ module App.Fossa.Analyze.Types (
 
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
-import App.Fossa.Lernie.Types (LernieResults)
+import App.Fossa.Ficus.Types (FicusResults)
 import App.Fossa.Reachability.Types (SourceUnitReachability (..))
 import App.Types (Mode)
 import Control.Effect.Debug (Debug)
@@ -82,7 +82,7 @@ data AnalysisScanResult = AnalysisScanResult
   , binaryDepsScanResult :: Result (Maybe SourceUnit)
   , fossaDepsScanResult :: Result (Maybe SourceUnit)
   , dynamicLinkingResult :: Result (Maybe SourceUnit)
-  , lernieResult :: Result (Maybe LernieResults)
+  , ficusResult :: Result (Maybe FicusResults)
   , reachabilityResult :: [SourceUnitReachabilityAttempt]
   }
 
