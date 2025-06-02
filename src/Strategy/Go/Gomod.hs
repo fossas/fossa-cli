@@ -87,6 +87,10 @@ data Statement
     -- the toolchain block as they are of no use to us today.
     -- Refer to: https://go.dev/doc/modules/gomod-ref#toolchain
     ToolchainStatement Text
+  | -- | dependencies in the tool block are development tools
+    -- which we do not currently support scanning, so we skip this.
+    -- Refer to: https://tip.golang.org/doc/modules/managing-dependencies#tools
+    ToolStatement Text
   deriving (Eq, Ord, Show)
 
 type PackageName = Text
@@ -224,6 +228,7 @@ gomodParser = do
     statement =
       (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
         <|> (singleton <$> toolChainStatements)
+        <|> (singleton <$> toolStatements)
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
@@ -234,10 +239,15 @@ gomodParser = do
     goVersionStatement :: Parser Statement
     goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> goVersion
 
-    -- top-level go version statement
+    -- top-level toolchain statement
     -- e.g., toolchain go1.21.1
     toolChainStatements :: Parser Statement
     toolChainStatements = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
+
+    -- top-level tool statement
+    -- e.g., tool golang.org/x/tools/cmd/stringer
+    toolStatements :: Parser Statement
+    toolStatements = ToolStatement <$ lexeme (chunk "tool") <*> anyToken
 
     -- top-level require statements
     -- e.g.:
