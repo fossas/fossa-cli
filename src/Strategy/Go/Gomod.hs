@@ -91,6 +91,9 @@ data Statement
     -- which we do not currently support scanning, so we skip this.
     -- Refer to: https://tip.golang.org/doc/modules/managing-dependencies#tools
     ToolStatement Text
+  | -- | Specifies the default GODEBUG settings.
+    -- Refer to: https://go.dev/doc/modules/gomod-ref#godebug
+    GoDebugStatements Text
   deriving (Eq, Ord, Show)
 
 type PackageName = Text
@@ -229,6 +232,7 @@ gomodParser = do
       (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
         <|> (singleton <$> toolChainStatements)
         <|> (singleton <$> toolStatements)
+        <|> (singleton <$> goDebugStatements)
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
@@ -248,6 +252,11 @@ gomodParser = do
     -- e.g., tool golang.org/x/tools/cmd/stringer
     toolStatements :: Parser Statement
     toolStatements = ToolStatement <$ lexeme (chunk "tool") <*> anyToken
+
+    -- top-level godebug statement
+    -- e.g., godebug asynctimerchan=0
+    goDebugStatements :: Parser Statement
+    goDebugStatements = GoDebugStatements <$ lexeme (chunk "godebug") <*> anyToken
 
     -- top-level require statements
     -- e.g.:
