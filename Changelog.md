@@ -4,6 +4,10 @@
 
 - Replace Lernie with Ficus.([#1547](https://github.com/fossas/fossa-cli/pull/1547))
 
+## 3.10.10
+
+- go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
+
 ## 3.10.9
 
 - CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
