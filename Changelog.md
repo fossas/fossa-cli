@@ -2,7 +2,7 @@
 
 ## 3.10.10
 
-- go: support the `tool` directive introduced in go Feb 2025 ([#1546](https://github.com/fossas/fossa-cli/pull/1553))
+- go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
 
 ## 3.10.9
 
