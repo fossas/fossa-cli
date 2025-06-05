@@ -110,6 +110,15 @@ If it fails or `fossa analyze` is invoked with `--static-analysis-only`, the str
 
 ## FAQ
 
+### What happens to the other directives in the `go.mod` file?
+
+The `go.mod` [file has a number of directives](https://go.dev/doc/modules/gomod-ref) other than require and replace which we parse but discard:
+
+- go - The version of GO that the project is built upon. The CLI does not support scanning build tools.
+- toolchain - Specifies the toolchain to use during compilation. 
+- tool - Developer tools that should be imported with the project. Developer tools are excluded by default.
+- godebug - Specifies default GODEBUG settings.
+
 ### Why do I see a dependency in `go.mod`, but it is not reflected in FOSSA?
 
 To explain how this can be the case, it's important to note that just because a package is in `go.mod` doesn't mean that it's actually used in the project;
