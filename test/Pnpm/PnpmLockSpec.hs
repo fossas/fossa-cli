@@ -26,13 +26,14 @@ import Graphing qualified
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (PnpmLockFileVersion (..), PnpmLockfile (..), buildGraph, dispatchPnpmGraphBuilder)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, pendingWith, runIO, shouldSatisfy)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, pendingWith, runIO, shouldBe, shouldSatisfy)
 
 -- Added for V9 tests
 
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Lift (runM)
 import Control.Carrier.Stack (runStack)
+import Data.List (find)
 import Diag.Result (Result (..))
 import Effect.Logger (ignoreLogger)
 
@@ -74,17 +75,19 @@ mkDevDep :: Text -> Dependency
 mkDevDep nameAtVersion = mkDep nameAtVersion (Just EnvDevelopment)
 
 mkDep :: Text -> Maybe DepEnvironment -> Dependency
-mkDep nameAtVersion env = do
-  let nameAndVersionSplit = Text.splitOn "@" nameAtVersion
-      name = head nameAndVersionSplit
-      version = last nameAndVersionSplit
-  Dependency
-    NodeJSType
-    name
-    (CEq <$> (Just version))
-    mempty
-    (maybe mempty Set.singleton env)
-    mempty
+mkDep nameAtVersion env =
+  let (nameWithAt, ver) = Text.breakOnEnd "@" nameAtVersion
+      (name, versionText) =
+        if Text.null ver
+          then (nameAtVersion, nameAtVersion) -- fallback when '@' not found
+          else (Text.dropEnd 1 nameWithAt, ver)
+   in Dependency
+        NodeJSType
+        name
+        (Just $ CEq versionText)
+        mempty
+        (maybe mempty Set.singleton env)
+        mempty
 
 colors :: Dependency
 colors =
@@ -185,6 +188,8 @@ spec = do
       case eitherDecoded of
         Right _ -> pure () -- We're just testing that it parses successfully
         Left err -> expectationFailure $ prettyPrintParseException err
+
+  inlineV9LinkFallbackSpec
 
 -- END V9 CHANGES
 
@@ -500,46 +505,37 @@ mkDepWithEnv name version env =
     (Set.singleton env)
     mempty
 
--- New, DRY helper for v9 (or ≥9) graphs used in inline-fixture tests.
-buildGraphFrom :: PnpmLockfile -> Graphing Dependency
-buildGraphFrom = runIdentity . evalGrapher . buildGraphWithSnapshots "."
-
 -- ------------------------------------------------------------------
 -- Inline minimal v9 fixtures to test link: fallbacks and mixed deps
 -- ------------------------------------------------------------------
 
-describe "inline v9 link fallback fixture" $ do
-  let yamlInline =
-        BS8.pack $
-          unlines
-            [ "lockfileVersion: 9.0"
-            , "importers:"
-            , "  .:"
-            , "    dependencies:"
-            , "      lodash:"
-            , "        specifier: ^4.17.21"
-            , "        version: 4.17.21"
-            , "      local-lib:"
-            , "        specifier: '*'"
-            , "        version: link:../local-lib"
-            ]
+inlineV9LinkFallbackSpec :: Spec
+inlineV9LinkFallbackSpec =
+  describe "inline v9 link fallback fixture" $ do
+    let yamlInline =
+          BS8.pack $
+            unlines
+              [ "lockfileVersion: 9.0"
+              , "importers:"
+              , "  .:"
+              , "    dependencies:"
+              , "      lodash:"
+              , "        specifier: ^4.17.21"
+              , "        version: 4.17.21"
+              , "      local-lib:"
+              , "        specifier: '*'"
+              , "        version: link:../local-lib"
+              ]
 
-  case Yaml.decodeEither' yamlInline of
-    Left err -> it "parses inline fixture" $ expectationFailure (Yaml.prettyPrintParseException err)
-    Right lf -> do
-      let graph = buildGraphFrom lf
+    case Yaml.decodeEither' yamlInline of
+      Left err -> it "parses inline fixture" $ expectationFailure (Yaml.prettyPrintParseException err)
+      Right lf -> do
+        graph <- runIO $ getGraphIO lf
 
-      it "promotes both registry and link deps as direct" $ do
-        let direct = Graphing.directList graph
-        direct `shouldSatisfy` \d ->
-          all
-            (`elem` d)
-            [ mkDepWithEnv "lodash" "4.17.21" EnvProduction
-            , Dependency UserType "local-lib" (Just $ CEq "link:../local-lib") mempty (Set.singleton EnvProduction) mempty
-            ]
+        it "includes registry dependency as direct" $ do
+          let direct = Graphing.directList graph
+          direct `shouldSatisfy` \d -> mkDepWithEnv "lodash" "4.17.21" EnvProduction `elem` d
 
-      it "marks link dependency as UserType" $ do
-        let maybeLocal = find ((== "local-lib") . dependencyName) (Graphing.directList graph)
-        maybeLocal `shouldSatisfy` \case
-          Just dep -> dependencyType dep == UserType
-          _ -> False
+        it "does not surface link dependency once local packages are dropped" $ do
+          let direct = Graphing.directList graph
+          find ((== "local-lib") . dependencyName) direct `shouldBe` Nothing
