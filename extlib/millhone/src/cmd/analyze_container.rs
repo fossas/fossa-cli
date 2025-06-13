@@ -156,13 +156,15 @@ fn recursive_jars_in_jars(
     let mut discoveries = Vec::new();
     // If the jar is a symlink we find empty contents and run into an error when trying to unzip it.
     // Due to this, we have decided to warn instead of error and skip the jar.
-    let mut archive = match zip::ZipArchive::new(std::io::Cursor::new(jar_contents)) {
-        Ok(archive) => archive,
-        Err(e) => {
-            warn!("failed to unzip jar: {e:?}");
-            return Ok(vec![]);
-        }
-    };
+    // let mut archive = match zip::ZipArchive::new(std::io::Cursor::new(jar_contents)) {
+    //     Ok(archive) => archive,
+    //     Err(e) => {
+    //         warn!("failed to unzip jar: {e:?}");
+    //         return Ok(vec![]);
+    //     }
+    // };
+    let mut archive =
+        zip::ZipArchive::new(std::io::Cursor::new(jar_contents)).context("unzipping jar")?;
     for path in archive.clone().file_names() {
         debug!("file_name: {path}");
         if !path.ends_with(".jar") {
