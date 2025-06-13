@@ -1,8 +1,12 @@
 # FOSSA CLI Changelog
 
-## 3.10.10
+## 3.10.11
 
 - Added support for `pnpm` v9 lockfiles
+
+## 3.10.10
+
+- go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
 
 ## 3.10.9
 
