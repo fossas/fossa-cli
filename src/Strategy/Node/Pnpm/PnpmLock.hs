@@ -56,7 +56,7 @@ parseSnapshotKey rawKey =
 -- | Remove local packages (UserType) **except** the synthetic workspace root ".".
 --   Keeping that node lets us inspect importer-level relationships later if needed.
 withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
-withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType || dependencyName dep == ".")
+withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType || dependencyName dep == syntheticRootPath)
 
 -- Sometimes package versions include resolved peer dependency version
 -- in parentheses. This is used by pnpm for dependency resolution, we do
@@ -325,7 +325,11 @@ instance FromJSON ProjectMapDepMetadata where
 data PackageData = PackageData
   { isDev :: Bool
   , name :: Maybe Text
+  -- ^ Declared name of the package (present for non-registry resolutions)
   , pkgVersion :: Maybe Text
+  -- ^ Populated only when the package was resolved via a non-registry
+  --   resolver (git, tarball, directory). For registry resolutions the
+  --   version is embedded in the key itself and this field is absent.
   , resolution :: Resolution
   , dependencies :: Map Text Text
   , peerDependencies :: Map Text Text
@@ -593,12 +597,16 @@ buildGraphWithSnapshots lockFile = do
         Set.fromList
           [ child
           | (parent, child) <- edgesList initial
-          , dependencyType parent == UserType
-          , dependencyName parent == "."
+          , isSyntheticRootDep parent
           ]
 
   let promotePredicate dep =
-        (Set.member dep dotChildren) && (not (any (\(p', c) -> (c == dep) && (dependencyName p' /= ".")) (edgesList initial)))
+        Set.member dep dotChildren
+          && not
+            ( any
+                (\(p', c) -> c == dep && dependencyName p' /= syntheticRootPath)
+                (edgesList initial)
+            )
 
   -- Promote those nodes to direct, then drop other local packages (but keep ".").
   let promoted = promoteToDirect promotePredicate initial
@@ -614,9 +622,14 @@ data V9GraphingContext = V9GraphingContext
   , ctxPackages :: Map Text PackageData
   }
 
+-- | Alias representing a canonical key used in the @snapshots@ map of a v9
+--   pnpm-lockfile.  Using a named type clarifies intent without incurring any
+--   runtime cost (it is just @Text@ underneath).
+type SnapshotKey = Text
+
 -- Parses "name@version(peers)" into ("name", "version(peers)")
 -- or "name@version" into ("name", "version")
-parseSnapshotKeyPreservingPeers :: Text -> Maybe (Text, Text)
+parseSnapshotKeyPreservingPeers :: SnapshotKey -> Maybe (Text, Text)
 parseSnapshotKeyPreservingPeers key =
   case Text.findIndex (== '@') (Text.reverse key) of -- Find last '@'
     Nothing -> Nothing -- No '@' found
@@ -630,7 +643,7 @@ parseSnapshotKeyPreservingPeers key =
 -- | Normalizes a raw snapshot key reference (often from a dependency value in snapshots or importers)
 --   to a more canonical form that is likely to match a key in the `snapshots` map.
 --   Handles cases like missing leading slashes or `npm:` prefixes.
-normalizeRawSnapshotKeyRef :: Text -> Text
+normalizeRawSnapshotKeyRef :: SnapshotKey -> SnapshotKey
 normalizeRawSnapshotKeyRef keyRef
   | "@@" `Text.isInfixOf` keyRef =
       let parts = Text.splitOn "@@" keyRef
@@ -658,40 +671,40 @@ generateVersionCandidates ver = nub $ ver : go ver
             Just (safeBase, _) -> safeBase : go safeBase
             Nothing -> []
 
-generateCandidateSnapshotKeysV9 :: Maybe Text -> Text -> [Text]
+generateCandidateSnapshotKeysV9 :: Maybe Text -> SnapshotKey -> [SnapshotKey]
 generateCandidateSnapshotKeysV9 maybeDepNameFromContext snapKeyRefFromParent =
-  let -- First, treat the raw ref as a potential key itself, with and without slash.
-      rawKeyCandidates =
-        let normalized = normalizeRawSnapshotKeyRef snapKeyRefFromParent
-         in nub [snapKeyRefFromParent, "/" <> snapKeyRefFromParent, normalized, "/" <> normalized]
+  let -- 1. Canonical form of the reference (strip npm:, @@ alias etc.)
+      canonical = normalizeRawSnapshotKeyRef snapKeyRefFromParent
 
-      -- Second, generate candidates by stripping peer dependencies from the ref.
+      -- keep only two base variants: with and without leading slash
+      rawKeyCandidates = nub [canonical, "/" <> canonical]
+
+      -- 2. Versions with progressively stripped peer-suffixes
       versionCandidates = generateVersionCandidates snapKeyRefFromParent
 
-      -- For each version string, combine it with the context name if available.
-      nameAndVersionCandidates = case maybeDepNameFromContext of
-        Nothing ->
-          -- If no context name, the ref itself might be a full "name@version" string.
-          nub $
-            concatMap
-              ( \ver -> case parseSnapshotKeyPreservingPeers ver of
-                  Just (name, versionWithPeers) ->
-                    let base = name <> "@" <> versionWithPeers
-                     in [base, "/" <> base]
-                  Nothing -> []
-              )
-              versionCandidates
-        Just depName ->
-          nub $
-            concatMap
-              ( \ver ->
-                  let base = depName <> "@" <> ver
-                   in [base, "/" <> base]
-              )
-              versionCandidates
+      -- 3. Combine each version string with a package name context
+      nameAndVersionCandidates =
+        case maybeDepNameFromContext of
+          Nothing ->
+            -- The raw ref itself might be a full name@ver string
+            nub
+              . concatMap
+                ( \ver -> case parseSnapshotKeyPreservingPeers ver of
+                    Just (nm, verWithPeers) ->
+                      let base = nm <> "@" <> verWithPeers in [base, "/" <> base]
+                    Nothing -> []
+                )
+              $ versionCandidates
+          Just depName ->
+            nub
+              . concatMap
+                ( \ver ->
+                    let base = depName <> "@" <> ver in [base, "/" <> base]
+                )
+              $ versionCandidates
    in nub $ rawKeyCandidates ++ nameAndVersionCandidates
 
-lookupSnapshotV9 :: (Has Logger sig m, Has Diagnostics sig m) => Map Text SnapshotPackageData -> Maybe Text -> Text -> GrapherC Dependency m (Maybe (SnapshotPackageData, Text))
+lookupSnapshotV9 :: (Has Logger sig m, Has Diagnostics sig m) => Map SnapshotKey SnapshotPackageData -> Maybe Text -> SnapshotKey -> GrapherC Dependency m (Maybe (SnapshotPackageData, SnapshotKey))
 lookupSnapshotV9 snapshotsMap maybeDepNameFromContext snapKeyRefFromParent = do
   let candidates = generateCandidateSnapshotKeysV9 maybeDepNameFromContext snapKeyRefFromParent
   let existingCandidates = filter (`Map.member` snapshotsMap) candidates
@@ -775,7 +788,7 @@ resolveSnapshotDependencyOrFallback ::
   Text ->
   Text ->
   GrapherC Dependency m ()
-resolveSnapshotDependencyOrFallback v9ctx _ entryIsDev originalDepName depVersionRef = do
+resolveSnapshotDependencyOrFallback v9ctx _ entryIsDev originalDepName (depVersionRef :: SnapshotKey) = do
   mSnapshot <- lookupSnapshotV9 (ctxSnapshots v9ctx) (Just originalDepName) depVersionRef
   case mSnapshot of
     Just (snapData, snapKey) -> do
@@ -865,7 +878,7 @@ processSingleImporterEntryV9 v9ctx rootDep importerKey entryIsDev originalDepNam
   context "processSingleImporterEntryV9" $ logWarn $ pretty $ "[PNPM v9] Processing importer " <> importerKey <> " dep: " <> originalDepName <> "@" <> depVersionRef
   if "link:" `Text.isPrefixOf` depVersionRef
     then resolveLinkDependency v9ctx rootDep importerKey originalDepName depVersionRef entryIsDev
-    else resolveSnapshotDependencyOrFallback v9ctx rootDep entryIsDev originalDepName depVersionRef
+    else resolveSnapshotDependencyOrFallback v9ctx rootDep entryIsDev originalDepName (depVersionRef :: SnapshotKey)
 
 processImporterEntriesV9 :: (Has Logger sig m, Has Diagnostics sig m) => PnpmLockfile -> GrapherC Dependency m ()
 processImporterEntriesV9 lockFile = do
@@ -874,9 +887,9 @@ processImporterEntriesV9 lockFile = do
     let allDirectDependencies =
           Map.toList (directDependencies projectSnapshot)
             <> Map.toList (directDevDependencies projectSnapshot)
-    let rootDep = createRootDepV9 "."
+    let rootDep = createRootDepV9 syntheticRootPath
     for_ allDirectDependencies $ \(depName, ProjectMapDepMetadata version) ->
-      processSingleImporterEntryV9 v9ctx rootDep "." False depName version
+      processSingleImporterEntryV9 v9ctx rootDep syntheticRootPath False depName version
 
 createDepSimple :: DepType -> Text -> Maybe Text -> Bool -> Dependency
 createDepSimple depType name versionM isDev =
@@ -912,3 +925,17 @@ resolveLinkPath importerPath linkPath =
           then cleanLink
           else normalizePath $ cleanImporter <> "/" <> cleanLink
    in Text.strip resolvedPath
+
+-- -----------------------------------------------------------------------------
+-- Constants / helpers shared across legacy and v9 builders
+-- -----------------------------------------------------------------------------
+
+-- | The key that pnpm uses to represent the workspace root importer in
+--   `importers` (i.e. the package.json at repository root).
+syntheticRootPath :: Text
+syntheticRootPath = "."
+
+-- | Predicate for the synthetic workspace-root dependency node we synthesize
+--   in v9 graphs (type @UserType@ and name ".").
+isSyntheticRootDep :: Dependency -> Bool
+isSyntheticRootDep dep = dependencyType dep == UserType && dependencyName dep == syntheticRootPath

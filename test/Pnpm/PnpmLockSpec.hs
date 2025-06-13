@@ -4,7 +4,11 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
+import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Stack (runStack)
 import Data.ByteString.Char8 qualified as BS8
+import Data.List (find)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -17,6 +21,8 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Result (Result (..))
+import Effect.Logger (ignoreLogger)
 import GraphUtil (
   expectDirect,
   expectEdge,
@@ -28,26 +34,20 @@ import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (PnpmLockFileVersion (..), PnpmLockfile (..), buildGraph, dispatchPnpmGraphBuilder)
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, pendingWith, runIO, shouldBe, shouldSatisfy)
 
--- Added for V9 tests
-
-import Control.Carrier.Diagnostics (runDiagnostics)
-import Control.Carrier.Lift (runM)
-import Control.Carrier.Stack (runStack)
-import Data.List (find)
-import Diag.Result (Result (..))
-import Effect.Logger (ignoreLogger)
-
 -- Helper function to explicitly run the graph builder in IO
--- TODO: Revisit this section. There's a persistent type inference issue
--- with GHC and fused-effects when calling `buildGraph` (which is the polymorphic
--- `dispatchPnpmGraphBuilder` from PnpmLock.hs) in this test file.
--- GHC incorrectly infers `buildGraph lf` as `Graphing Dependency` instead of
--- the effectful `m (Graphing Dependency)`, even with various attempts to guide it
--- (explicit type sigs, intermediate bindings, effectful operations in legacy path).
--- The core issue seems to be how GHC specializes the dispatcher's polymorphic type
--- when its legacy path (`pure $ somePureComputation`) is considered.
--- For now, the test suite for pnpm (especially legacy versions) might not build correctly
--- due to this type error, though the main `fossa` binary functionality is unaffected.
+-- NOTE: `dispatchPnpmGraphBuilder` is polymorphic in the carrier stack that
+-- executes its effects.  When the *legacy* code-path is selected the
+-- function is pure, but when the *v9+* code-path is taken it performs IO
+-- through `fused-effects`.  Unfortunately GHC struggles to infer the more
+-- general `m (Graphing Dependency)` type in this mixed scenario and will
+-- default to the pure interpretation, producing an ambiguous-type error in
+-- this test module.
+--
+-- To keep the individual specs tidy we centralise that work-around in
+-- `getGraphIO`: we inspect the `lockFileVersion` and either execute the
+-- effectful builder (for v9/v9+) or fall back to the pure legacy builder.
+-- This sidesteps the inference issue without forcing explicit type
+-- applications at every call-site.
 getGraphIO :: PnpmLockfile -> IO (Graphing Dependency)
 getGraphIO lf =
   case lockFileVersion lf of
@@ -190,6 +190,7 @@ spec = do
         Left err -> expectationFailure $ prettyPrintParseException err
 
   inlineV9LinkFallbackSpec
+  inlineV9EdgeCasesSpec
 
 -- END V9 CHANGES
 
@@ -539,3 +540,76 @@ inlineV9LinkFallbackSpec =
         it "does not surface link dependency once local packages are dropped" $ do
           let direct = Graphing.directList graph
           find ((== "local-lib") . dependencyName) direct `shouldBe` Nothing
+
+-- ------------------------------------------------------------------
+-- Additional edge-case inline fixtures (aliases, deep peer deps, etc.)
+-- ------------------------------------------------------------------
+
+inlineV9EdgeCasesSpec :: Spec
+inlineV9EdgeCasesSpec = describe "inline v9 edge-case fixtures" $ do
+  -- 1. Snapshot key that uses npm: alias and multiple peer suffixes
+  it "resolves npm: alias with multi-peer suffix" $ do
+    let yamlAlias =
+          BS8.pack . unlines $
+            [ "lockfileVersion: 9.0"
+            , "snapshots:"
+            , "  npm:foo@1.2.3(bar@2.0.0)(baz@3.1.0): {}"
+            , "importers:"
+            , "  .:"
+            , "    dependencies:"
+            , "      foo:"
+            , "        specifier: ^1.0.0"
+            , "        version: npm:foo@1.2.3(bar@2.0.0)(baz@3.1.0)"
+            ]
+    case Yaml.decodeEither' yamlAlias of
+      Left err -> expectationFailure (Yaml.prettyPrintParseException err)
+      Right (lf :: PnpmLockfile) -> do
+        graph <- getGraphIO lf
+        let direct = Graphing.directList graph
+        direct `shouldSatisfy` \d -> mkDepWithEnv "foo" "npm:foo@1.2.3" EnvProduction `elem` d
+
+  -- 2. link: dependency whose metadata is only in snapshots
+  it "resolves link: target via snapshots when packages entry exists" $ do
+    let yamlLinkSnap =
+          BS8.pack . unlines $
+            [ "lockfileVersion: 9.0"
+            , "snapshots:"
+            , "  /bar@0.1.0: {}"
+            , "packages:"
+            , "  bar:"
+            , "    name: bar"
+            , "    version: 0.1.0"
+            , "    resolution: {directory: ../bar}"
+            , "importers:"
+            , "  .:"
+            , "    dependencies:"
+            , "      bar:"
+            , "        specifier: '*'"
+            , "        version: link:../bar"
+            ]
+    case Yaml.decodeEither' yamlLinkSnap of
+      Left err -> expectationFailure (Yaml.prettyPrintParseException err)
+      Right lf -> do
+        graph <- getGraphIO lf
+        Graphing.directList graph `shouldSatisfy` \d -> mkDepWithEnv "bar" "0.1.0" EnvProduction `elem` d
+
+  -- 3. Invalid peer-suffix → fallback node
+  it "creates fallback dep when snapshot missing / invalid" $ do
+    let yamlFallback =
+          BS8.pack . unlines $
+            [ "lockfileVersion: 9.0"
+            , "importers:"
+            , "  .:"
+            , "    dependencies:"
+            , "      baz:"
+            , "        specifier: '*'"
+            , "        version: baz@1.0.0"
+            ]
+    case Yaml.decodeEither' yamlFallback of
+      Left err -> expectationFailure (Yaml.prettyPrintParseException err)
+      Right lf -> do
+        graph <- getGraphIO lf
+        let maybeBaz = find ((== "baz") . dependencyName) (Graphing.directList graph)
+        maybeBaz `shouldSatisfy` \case
+          Just (Dependency _ _ (Just (CEq v)) _ _ _) -> v == "baz@1.0.0"
+          _ -> False
