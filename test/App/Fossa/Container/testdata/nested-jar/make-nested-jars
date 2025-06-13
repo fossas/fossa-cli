@@ -1,4 +1,3 @@
-#!/opt/homebrew/bin/bash
 rm -rf nested-jar
 mkdir nested-jar
 cd nested-jar || exit
