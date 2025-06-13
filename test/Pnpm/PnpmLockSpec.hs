@@ -4,26 +4,69 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
+import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Lift (runM)
+import Control.Carrier.Stack (runStack)
+import Data.ByteString.Char8 qualified as BS8
+import Data.List (find)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Yaml (decodeFileEither, prettyPrintParseException)
+import Data.Yaml (ParseException, decodeFileEither, prettyPrintParseException)
+import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType),
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Result (Result (..))
+import Effect.Logger (ignoreLogger)
 import GraphUtil (
   expectDirect,
   expectEdge,
  )
 import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (buildGraph)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
+import Strategy.Node.Pnpm.PnpmLock (PnpmLockFileVersion (..), PnpmLockfile (..), buildGraph, dispatchPnpmGraphBuilder)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, pendingWith, runIO, shouldBe, shouldSatisfy)
+
+-- Helper function to explicitly run the graph builder in IO
+-- NOTE: `dispatchPnpmGraphBuilder` is polymorphic in the carrier stack that
+-- executes its effects.  When the *legacy* code-path is selected the
+-- function is pure, but when the *v9+* code-path is taken it performs IO
+-- through `fused-effects`.  Unfortunately GHC struggles to infer the more
+-- general `m (Graphing Dependency)` type in this mixed scenario and will
+-- default to the pure interpretation, producing an ambiguous-type error in
+-- this test module.
+--
+-- To keep the individual specs tidy we centralise that work-around in
+-- `getGraphIO`: we inspect the `lockFileVersion` and either execute the
+-- effectful builder (for v9/v9+) or fall back to the pure legacy builder.
+-- This sidesteps the inference issue without forcing explicit type
+-- applications at every call-site.
+getGraphIO :: PnpmLockfile -> IO (Graphing Dependency)
+getGraphIO lf =
+  case lockFileVersion lf of
+    PnpmLock9 -> runEffectful lf
+    PnpmLockGt9 _ -> runEffectful lf
+    _ -> pure (buildGraph lf)
+  where
+    runEffectful lfile = do
+      let computationToRun = runStack $ ignoreLogger $ runDiagnostics $ dispatchPnpmGraphBuilder lfile
+      finalResult <- runM computationToRun
+      case finalResult of
+        Success _warnings graph -> pure graph
+        Failure _warnings err -> do
+          expectationFailure ("getGraphIO failed: " ++ show err)
+          pure mempty
+
+-- Ensure ParseException is imported if not already
+-- For Data.Yaml, if it's `import Data.Yaml (decodeFileEither, prettyPrintParseException)`
+-- it needs to become `import Data.Yaml (decodeFileEither, prettyPrintParseException, ParseException)`
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -32,17 +75,19 @@ mkDevDep :: Text -> Dependency
 mkDevDep nameAtVersion = mkDep nameAtVersion (Just EnvDevelopment)
 
 mkDep :: Text -> Maybe DepEnvironment -> Dependency
-mkDep nameAtVersion env = do
-  let nameAndVersionSplit = Text.splitOn "@" nameAtVersion
-      name = head nameAndVersionSplit
-      version = last nameAndVersionSplit
-  Dependency
-    NodeJSType
-    name
-    (CEq <$> (Just version))
-    mempty
-    (maybe mempty Set.singleton env)
-    mempty
+mkDep nameAtVersion env =
+  let (nameWithAt, ver) = Text.breakOnEnd "@" nameAtVersion
+      (name, versionText) =
+        if Text.null ver
+          then (nameAtVersion, nameAtVersion) -- fallback when '@' not found
+          else (Text.dropEnd 1 nameWithAt, ver)
+   in Dependency
+        NodeJSType
+        name
+        (Just $ CEq versionText)
+        mempty
+        (maybe mempty Set.singleton env)
+        mempty
 
 colors :: Dependency
 colors =
@@ -74,13 +119,16 @@ lodash =
     (Set.singleton EnvProduction)
     mempty
 
-checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
-checkGraph pathToFixture buildGraphSpec = do
+checkGraphLegacy :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkGraphLegacy pathToFixture buildGraphSpecFn = do
   eitherDecodedLockFile <- runIO $ decodeFileEither (toString pathToFixture)
   case eitherDecodedLockFile of
-    Right pnpmLock -> buildGraphSpec (buildGraph pnpmLock)
+    Right pnpmLock -> do
+      -- TODO: This call site is affected by the type inference issue noted above for `getGraphIO`.
+      graph <- runIO $ getGraphIO pnpmLock
+      buildGraphSpecFn graph
     Left err ->
-      describe "pnpm-lock" $
+      describe "pnpm-lock legacy" $
         it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
 
 spec :: Spec
@@ -89,16 +137,62 @@ spec = do
   let pnpmLockPath = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock.yaml")
   let pnpmLockWithoutWorkspacePath = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-without-workspace.yaml")
 
-  checkGraph pnpmLockPath pnpmLockGraphSpec
-  checkGraph pnpmLockWithoutWorkspacePath pnpmLockGraphWithoutWorkspaceSpec
+  checkGraphLegacy pnpmLockPath pnpmLockGraphSpec
+  checkGraphLegacy pnpmLockWithoutWorkspacePath pnpmLockGraphWithoutWorkspaceSpec
 
   -- v6 format
   let pnpmLockV6 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
   let pnpmLockV6WithWorkspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6-workspace.yaml")
 
   describe "can work with v6.0 format" $ do
-    checkGraph pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
-    checkGraph pnpmLockV6 pnpmLockV6GraphSpec
+    checkGraphLegacy pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
+    checkGraphLegacy pnpmLockV6 pnpmLockV6GraphSpec
+
+  -- v9 format - START V9 CHANGES
+  let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9.yaml")
+  let pnpmLockV9Test = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9-test.yaml")
+
+  describe "can work with v9.0 format" $ do
+    describe "with real-world pnpm repo lockfile" $ do
+      eitherDecodedLockFile <- runIO $ decodeFileEither (toString pnpmLockV9)
+      case eitherDecodedLockFile of
+        Right pnpmLock -> do
+          graph <- runIO $ getGraphIO pnpmLock
+          pnpmLockV9GraphSpec graph
+        Left err ->
+          describe "pnpm-lock v9" $
+            it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
+
+    describe "with test dependencies" $ do
+      eitherDecodedLockFile <- runIO $ decodeFileEither (toString pnpmLockV9Test)
+      case eitherDecodedLockFile of
+        Right pnpmLock -> do
+          graph <- runIO $ getGraphIO pnpmLock
+          pnpmLockV9TestGraphSpec graph
+        Left err ->
+          describe "pnpm-lock v9 test" $
+            it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
+
+  let pnpmLockV9Snapshot = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v9-snapshot.yaml")
+
+  describe "can work with v9.0 snapshot fixture" $ do
+    eitherDecodedLockFile <- runIO $ decodeFileEither (toString pnpmLockV9Snapshot)
+    case eitherDecodedLockFile of
+      Right pnpmLock -> do
+        graph <- runIO $ getGraphIO pnpmLock
+        pnpmLockV9SnapshotGraphSpec graph
+      Left err ->
+        it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
+    it "parses settings, importers, and catalogs sections" $ do
+      eitherDecoded <- (decodeFileEither (toString pnpmLockV9Snapshot) :: IO (Either ParseException PnpmLockfile))
+      case eitherDecoded of
+        Right _ -> pure () -- We're just testing that it parses successfully
+        Left err -> expectationFailure $ prettyPrintParseException err
+
+  inlineV9LinkFallbackSpec
+  inlineV9EdgeCasesSpec
+
+-- END V9 CHANGES
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -360,3 +454,162 @@ pnpmLockV6GraphSpec graph = do
       --   └── js-tokens 4.0.0
       hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
       hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
+
+-- START V9 TEST SPECS
+pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
+pnpmLockV9GraphSpec graph = do
+  describe "buildGraph with v9 format" $ do
+    it "should include key root dependencies as direct (subset match)" $ do
+      let expectedSubset =
+            [ mkDepWithEnv "@babel/core" "7.26.10" EnvProduction
+            , mkDepWithEnv "@pnpm/exec" "2.0.0" EnvProduction
+            , mkDepWithEnv "chalk" "4.1.2" EnvProduction
+            , mkDepWithEnv "lodash.kebabcase" "4.1.1" EnvProduction
+            ]
+      let direct = Graphing.directList graph
+      direct `shouldSatisfy` \d -> all (`elem` d) expectedSubset
+
+pnpmLockV9TestGraphSpec :: Graphing Dependency -> Spec
+pnpmLockV9TestGraphSpec graph = do
+  describe "buildGraph with v9 test dependencies" $ do
+    it "should include primary root deps as direct (subset match)" $ do
+      let expectedSubset =
+            [ mkDepWithEnv "aws-sdk" "2.1148.0" EnvProduction
+            , mkDepWithEnv "chalk" "5.3.0" EnvProduction
+            , mkDepWithEnv "colors" "github.com/Marak/colors.js/6bc50e79eeaa1d87369bb3e7e608ebed18c5cf26" EnvProduction
+            , mkDepWithEnv "lodash" "@github.com/lodash/lodash/archive/refs/heads/master.tar.gz" EnvProduction
+            , mkDepWithEnv "react" "18.1.0" EnvProduction
+            ]
+      let direct = Graphing.directList graph
+      direct `shouldSatisfy` \d -> all (`elem` d) expectedSubset
+
+    it "deep dependency edges from snapshots are present (subset)" $ do
+      pendingWith "snapshot traversal for v9-test fixture still WIP"
+
+pnpmLockV9SnapshotGraphSpec :: Graphing Dependency -> Spec
+pnpmLockV9SnapshotGraphSpec graph = do
+  describe "buildGraph with v9 snapshot fixture" $ do
+    it "should include dependencies of root package as direct" $ do
+      expectDirect
+        [ mkDepWithEnv "@scope/pkg" "1.0.0" EnvProduction
+        , mkDepWithEnv "a" "1.0.0" EnvProduction
+        ]
+        graph
+
+mkDepWithEnv :: Text -> Text -> DepEnvironment -> Dependency
+mkDepWithEnv name version env =
+  Dependency
+    NodeJSType
+    name
+    (Just $ CEq version)
+    mempty
+    (Set.singleton env)
+    mempty
+
+-- ------------------------------------------------------------------
+-- Inline minimal v9 fixtures to test link: fallbacks and mixed deps
+-- ------------------------------------------------------------------
+
+inlineV9LinkFallbackSpec :: Spec
+inlineV9LinkFallbackSpec =
+  describe "inline v9 link fallback fixture" $ do
+    let yamlInline =
+          BS8.pack $
+            unlines
+              [ "lockfileVersion: 9.0"
+              , "importers:"
+              , "  .:"
+              , "    dependencies:"
+              , "      lodash:"
+              , "        specifier: ^4.17.21"
+              , "        version: 4.17.21"
+              , "      local-lib:"
+              , "        specifier: '*'"
+              , "        version: link:../local-lib"
+              ]
+
+    case Yaml.decodeEither' yamlInline of
+      Left err -> it "parses inline fixture" $ expectationFailure (Yaml.prettyPrintParseException err)
+      Right lf -> do
+        graph <- runIO $ getGraphIO lf
+
+        it "includes registry dependency as direct" $ do
+          let direct = Graphing.directList graph
+          direct `shouldSatisfy` \d -> mkDepWithEnv "lodash" "4.17.21" EnvProduction `elem` d
+
+        it "does not surface link dependency once local packages are dropped" $ do
+          let direct = Graphing.directList graph
+          find ((== "local-lib") . dependencyName) direct `shouldBe` Nothing
+
+-- ------------------------------------------------------------------
+-- Additional edge-case inline fixtures (aliases, deep peer deps, etc.)
+-- ------------------------------------------------------------------
+
+inlineV9EdgeCasesSpec :: Spec
+inlineV9EdgeCasesSpec = describe "inline v9 edge-case fixtures" $ do
+  -- 1. Snapshot key that uses npm: alias and multiple peer suffixes
+  it "resolves npm: alias with multi-peer suffix" $ do
+    let yamlAlias =
+          BS8.pack . unlines $
+            [ "lockfileVersion: 9.0"
+            , "snapshots:"
+            , "  npm:foo@1.2.3(bar@2.0.0)(baz@3.1.0): {}"
+            , "importers:"
+            , "  .:"
+            , "    dependencies:"
+            , "      foo:"
+            , "        specifier: ^1.0.0"
+            , "        version: npm:foo@1.2.3(bar@2.0.0)(baz@3.1.0)"
+            ]
+    case Yaml.decodeEither' yamlAlias of
+      Left err -> expectationFailure (Yaml.prettyPrintParseException err)
+      Right (lf :: PnpmLockfile) -> do
+        graph <- getGraphIO lf
+        let direct = Graphing.directList graph
+        direct `shouldSatisfy` \d -> mkDepWithEnv "foo" "npm:foo@1.2.3" EnvProduction `elem` d
+
+  -- 2. link: dependency whose metadata is only in snapshots
+  it "resolves link: target via snapshots when packages entry exists" $ do
+    let yamlLinkSnap =
+          BS8.pack . unlines $
+            [ "lockfileVersion: 9.0"
+            , "snapshots:"
+            , "  /bar@0.1.0: {}"
+            , "packages:"
+            , "  bar:"
+            , "    name: bar"
+            , "    version: 0.1.0"
+            , "    resolution: {directory: ../bar}"
+            , "importers:"
+            , "  .:"
+            , "    dependencies:"
+            , "      bar:"
+            , "        specifier: '*'"
+            , "        version: link:../bar"
+            ]
+    case Yaml.decodeEither' yamlLinkSnap of
+      Left err -> expectationFailure (Yaml.prettyPrintParseException err)
+      Right lf -> do
+        graph <- getGraphIO lf
+        Graphing.directList graph `shouldSatisfy` \d -> mkDepWithEnv "bar" "0.1.0" EnvProduction `elem` d
+
+  -- 3. Invalid peer-suffix → fallback node
+  it "creates fallback dep when snapshot missing / invalid" $ do
+    let yamlFallback =
+          BS8.pack . unlines $
+            [ "lockfileVersion: 9.0"
+            , "importers:"
+            , "  .:"
+            , "    dependencies:"
+            , "      baz:"
+            , "        specifier: '*'"
+            , "        version: baz@1.0.0"
+            ]
+    case Yaml.decodeEither' yamlFallback of
+      Left err -> expectationFailure (Yaml.prettyPrintParseException err)
+      Right lf -> do
+        graph <- getGraphIO lf
+        let maybeBaz = find ((== "baz") . dependencyName) (Graphing.directList graph)
+        maybeBaz `shouldSatisfy` \case
+          Just (Dependency _ _ (Just (CEq v)) _ _ _) -> v == "baz@1.0.0"
+          _ -> False
