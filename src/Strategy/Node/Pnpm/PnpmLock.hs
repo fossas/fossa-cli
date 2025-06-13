@@ -20,7 +20,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Set qualified as Set
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Read (decimal)
@@ -28,13 +28,9 @@ import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (CEq))
 import Effect.Grapher (GrapherC, deep, direct, edge, evalGrapher)
-import Effect.Logger (
-  Logger,
-  logWarn,
-  pretty,
- )
+import Effect.Logger (Logger, logWarn, pretty)
 import Effect.ReadFS (ReadFS, readContentsYaml)
-import Graphing (Graphing, shrink)
+import Graphing (Graphing, edgesList, promoteToDirect, shrink)
 import Path (Abs, File, Path)
 
 -- Helper to create DepEnvironment set from a boolean (True for Development)
@@ -57,8 +53,10 @@ parseSnapshotKey rawKey =
                 else Just (name, version)
         Nothing -> Nothing
 
+-- | Remove local packages (UserType) **except** the synthetic workspace root ".".
+--   Keeping that node lets us inspect importer-level relationships later if needed.
 withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
-withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType)
+withoutLocalPackages = shrink (\dep -> dependencyType dep /= UserType || dependencyName dep == ".")
 
 -- Sometimes package versions include resolved peer dependency version
 -- in parentheses. This is used by pnpm for dependency resolution, we do
@@ -230,6 +228,8 @@ withoutSymConstraint version = fst $ Text.breakOn "_" version
 data PnpmLockfile = PnpmLockfile
   { importers :: Map Text ProjectMap
   , packages :: Map Text PackageData
+  , catalogs :: Map Text CatalogMap
+  , snapshots :: Map Text SnapshotPackageData
   , lockFileVersion :: PnpmLockFileVersion
   }
   deriving (Show, Eq, Ord)
@@ -247,6 +247,8 @@ instance FromJSON PnpmLockfile where
     rawLockFileVersion <- getVersion =<< obj .:? "lockfileVersion" .!= (TextLike mempty)
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
+    catalogs <- obj .:? "catalogs" .!= mempty
+    snapshots <- obj .:? "snapshots" .!= mempty
 
     -- Map pnpm non-workspace lockfile format to pnpm workspace lockfile format.
     --
@@ -265,7 +267,7 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile refinedImporters packages rawLockFileVersion
+    pure $ PnpmLockfile refinedImporters packages catalogs snapshots rawLockFileVersion
     where
       getVersion (TextLike verText) =
         -- Attempt to parse the major version number from the start of the string.
@@ -374,6 +376,28 @@ instance FromJSON Resolution where
 
       gitRes :: Object -> Parser Resolution
       gitRes obj = GitResolve <$> (GitResolution <$> obj .: "repo" <*> obj .: "commit")
+
+-- | Catalog map contains package versions and their metadata
+newtype CatalogMap = CatalogMap
+  { catalogEntries :: Map Text CatalogEntry
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON CatalogMap where
+  parseJSON = Yaml.withObject "CatalogMap" $ \obj ->
+    CatalogMap <$> traverse Yaml.parseJSON (Map.mapKeys Key.toText $ KeyMap.toMap obj)
+
+data CatalogEntry = CatalogEntry
+  { specifier :: Text
+  , catalogVersion :: Text
+  }
+  deriving (Show, Eq, Ord)
+
+instance FromJSON CatalogEntry where
+  parseJSON = Yaml.withObject "CatalogEntry" $ \obj ->
+    CatalogEntry
+      <$> obj .: "specifier"
+      <*> obj .: "version"
 
 -- | Analyzes a pnpm lockfile and returns a graph of dependencies.
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
@@ -560,7 +584,26 @@ buildGraphWithSnapshots ::
   (Has Logger sig m, Has Diagnostics sig m) =>
   PnpmLockfile ->
   m (Graphing Dependency)
-buildGraphWithSnapshots lockFile = withoutLocalPackages <$> evalGrapher (processImporterEntriesV9 lockFile)
+buildGraphWithSnapshots lockFile = do
+  -- First build the raw graph (including the synthetic workspace root " . ")
+  initial <- evalGrapher (processImporterEntriesV9 lockFile)
+
+  -- Identify all nodes that have the synthetic workspace root as their ONLY parent.
+  let dotChildren =
+        Set.fromList
+          [ child
+          | (parent, child) <- edgesList initial
+          , dependencyType parent == UserType
+          , dependencyName parent == "."
+          ]
+
+  let promotePredicate dep =
+        (Set.member dep dotChildren) && (not (any (\(p', c) -> (c == dep) && (dependencyName p' /= ".")) (edgesList initial)))
+
+  -- Promote those nodes to direct, then drop other local packages (but keep ".").
+  let promoted = promoteToDirect promotePredicate initial
+
+  pure $ withoutLocalPackages promoted
 
 --
 -- V9+ Graph Building Helpers
@@ -618,16 +661,34 @@ generateVersionCandidates ver = nub $ ver : go ver
 generateCandidateSnapshotKeysV9 :: Maybe Text -> Text -> [Text]
 generateCandidateSnapshotKeysV9 maybeDepNameFromContext snapKeyRefFromParent =
   let -- First, treat the raw ref as a potential key itself, with and without slash.
-      rawKeyCandidates = [snapKeyRefFromParent, Text.drop 1 snapKeyRefFromParent]
+      rawKeyCandidates =
+        let normalized = normalizeRawSnapshotKeyRef snapKeyRefFromParent
+         in nub [snapKeyRefFromParent, "/" <> snapKeyRefFromParent, normalized, "/" <> normalized]
 
-      -- Next, try to parse the key into name and version, and generate candidates based on that.
-      nameAndVersionCandidates =
-        case parseSnapshotKeyPreservingPeers snapKeyRefFromParent of
-          Just (name, version) ->
-            let baseVersionCandidates = generateVersionCandidates version
-                versionCandidates = fmap (name <>) baseVersionCandidates
-             in nub versionCandidates
-          Nothing -> []
+      -- Second, generate candidates by stripping peer dependencies from the ref.
+      versionCandidates = generateVersionCandidates snapKeyRefFromParent
+
+      -- For each version string, combine it with the context name if available.
+      nameAndVersionCandidates = case maybeDepNameFromContext of
+        Nothing ->
+          -- If no context name, the ref itself might be a full "name@version" string.
+          nub $
+            concatMap
+              ( \ver -> case parseSnapshotKeyPreservingPeers ver of
+                  Just (name, versionWithPeers) ->
+                    let base = name <> "@" <> versionWithPeers
+                     in [base, "/" <> base]
+                  Nothing -> []
+              )
+              versionCandidates
+        Just depName ->
+          nub $
+            concatMap
+              ( \ver ->
+                  let base = depName <> "@" <> ver
+                   in [base, "/" <> base]
+              )
+              versionCandidates
    in nub $ rawKeyCandidates ++ nameAndVersionCandidates
 
 lookupSnapshotV9 :: (Has Logger sig m, Has Diagnostics sig m) => Map Text SnapshotPackageData -> Maybe Text -> Text -> GrapherC Dependency m (Maybe (SnapshotPackageData, Text))
@@ -660,7 +721,7 @@ createDepFromUnresolvedV9 parentDep childDepName childDepVersionRef reason =
   let message = reason <> " (Parent: " <> dependencyName parentDep <> ", ChildRef: " <> childDepName <> "@" <> childDepVersionRef <> ")"
    in createDepSimple NodeJSType childDepName (Just message) False
 
-buildThisDepV9 :: (Has Logger sig m, Has Diagnostics sig m) => Map Text PackageData -> Maybe Dependency -> Text -> SnapshotPackageData -> Text -> GrapherC Dependency m Dependency
+buildThisDepV9 :: (Has Logger sig m) => Map Text PackageData -> Maybe Dependency -> Text -> SnapshotPackageData -> Text -> GrapherC Dependency m Dependency
 buildThisDepV9 packagesMetaMap maybeParentDep depKeyName snapshotData resolvedSnapKey = do
   let maybePackageMeta = Map.lookup resolvedSnapKey packagesMetaMap
   let declaredName = name =<< maybePackageMeta
@@ -693,7 +754,7 @@ processSnapshotTreeV9 v9ctx currentDep currentSnapshotData visited = do
         Map.toList (snapshotDependencies currentSnapshotData)
           <> Map.toList (snapshotOptionalDependencies currentSnapshotData)
   for_ childRefs $ \(childKeyName, childSnapKeyRef) -> do
-    let mResolvedChildSnap = lookupSnapshotV9 (ctxSnapshots v9ctx) (Just childKeyName) childSnapKeyRef
+    mResolvedChildSnap <- lookupSnapshotV9 (ctxSnapshots v9ctx) (Just childKeyName) childSnapKeyRef
     case mResolvedChildSnap of
       Just (childSnapshotData, childResolvedSnapKey) ->
         if Set.member childResolvedSnapKey visited
@@ -706,7 +767,7 @@ processSnapshotTreeV9 v9ctx currentDep currentSnapshotData visited = do
         let fallbackDep = createDepFromUnresolvedV9 currentDep childKeyName childSnapKeyRef "Snapshot missing, fallback for child in processSnapshotTree"
         deep fallbackDep
 
-processRegularDepV9 ::
+resolveSnapshotDependencyOrFallback ::
   (Has Logger sig m, Has Diagnostics sig m) =>
   V9GraphingContext ->
   Dependency ->
@@ -714,16 +775,113 @@ processRegularDepV9 ::
   Text ->
   Text ->
   GrapherC Dependency m ()
-processRegularDepV9 v9ctx rootDep entryIsDev originalDepName depVersionRef = do
-  let mSnapshot = lookupSnapshotV9 (ctxSnapshots v9ctx) (Just originalDepName) depVersionRef
+resolveSnapshotDependencyOrFallback v9ctx _ entryIsDev originalDepName depVersionRef = do
+  mSnapshot <- lookupSnapshotV9 (ctxSnapshots v9ctx) (Just originalDepName) depVersionRef
   case mSnapshot of
     Just (snapData, snapKey) -> do
-      createdDep <- buildThisDepV9 (ctxPackages v9ctx) (Just rootDep) originalDepName snapData snapKey
-      deep createdDep
+      context "resolveSnapshotDependencyOrFallback" $ logWarn $ pretty $ "[PNPM v9] Snapshot found for " <> originalDepName <> "@" <> depVersionRef <> " using key: " <> snapKey
+      createdDep <- buildThisDepV9 (ctxPackages v9ctx) Nothing originalDepName snapData snapKey
+      direct createdDep
       processSnapshotTreeV9 v9ctx createdDep snapData (Set.singleton snapKey)
     Nothing -> do
+      context "resolveSnapshotDependencyOrFallback" $ logWarn $ pretty $ "[PNPM v9] Snapshot MISSING for " <> originalDepName <> "@" <> depVersionRef
       let dep = createDepSimple NodeJSType originalDepName (Just depVersionRef) entryIsDev
-      edge rootDep dep
+      direct dep
+
+resolveLinkDependency ::
+  (Has Logger sig m, Has Diagnostics sig m) =>
+  V9GraphingContext ->
+  Dependency ->
+  Text ->
+  Text ->
+  Text ->
+  Bool ->
+  GrapherC Dependency m ()
+resolveLinkDependency v9ctx _ importerKey depName depVersionRef entryIsDev = do
+  let linkTarget = Text.drop (Text.length "link:") depVersionRef
+      resolvedPath = resolveLinkPath importerKey linkTarget
+
+  context "resolveLinkDependency" $
+    logWarn $
+      pretty
+        ( "[PNPM v9] Resolving link dependency:"
+            <> "\n  Importer: "
+            <> importerKey
+            <> "\n  Target: "
+            <> depVersionRef
+            <> "\n  Resolved Path: "
+            <> resolvedPath
+        )
+  case Map.lookup resolvedPath (ctxPackages v9ctx) of
+    Just pkgMeta -> do
+      let linkedName = fromMaybe depName (name pkgMeta)
+          isDevDep = isDev pkgMeta || entryIsDev
+      case pkgVersion pkgMeta of
+        Just ver -> do
+          -- The linked package has a version, try to find it in snapshots to traverse deeper.
+          mSnap <- lookupSnapshotV9 (ctxSnapshots v9ctx) (Just linkedName) ver
+          case mSnap of
+            Just (snapData, key) -> do
+              -- Found in snapshots, build the full dependency tree from here.
+              dep <- buildThisDepV9 (ctxPackages v9ctx) Nothing linkedName snapData key
+              direct dep
+              processSnapshotTreeV9 v9ctx dep snapData (Set.singleton key)
+            Nothing -> do
+              -- Not in snapshots, so it's a terminal node.
+              let fallbackDep = createDepSimple NodeJSType linkedName (Just ver) isDevDep
+              direct fallbackDep
+        Nothing -> do
+          -- No version, so it's a UserType dependency (local workspace package not published).
+          let fallbackDep = createDepSimple UserType linkedName Nothing isDevDep
+          direct fallbackDep
+    Nothing -> do
+      -- The resolved path doesn't match any package. This is a problem.
+      logWarn $
+        pretty
+          ( "[PNPM v9] Could not find package metadata for linked dependency."
+              <> "\n  Importer Key: "
+              <> importerKey
+              <> "\n  Dependency Name: "
+              <> depName
+              <> "\n  Version Ref (Link): "
+              <> depVersionRef
+              <> "\n  Resolved Path: "
+              <> resolvedPath
+          )
+      -- Create a fallback dependency to not lose the information entirely.
+      let fallbackDep = createDepSimple UserType depName (Just depVersionRef) entryIsDev
+      direct fallbackDep
+
+processSingleImporterEntryV9 ::
+  (Has Logger sig m, Has Diagnostics sig m) =>
+  V9GraphingContext ->
+  Dependency ->
+  Text ->
+  Bool ->
+  Text ->
+  Text ->
+  GrapherC Dependency m ()
+processSingleImporterEntryV9 v9ctx rootDep importerKey entryIsDev originalDepName depVersionRef = do
+  context "processSingleImporterEntryV9" $ logWarn $ pretty $ "[PNPM v9] Processing importer " <> importerKey <> " dep: " <> originalDepName <> "@" <> depVersionRef
+  if "link:" `Text.isPrefixOf` depVersionRef
+    then resolveLinkDependency v9ctx rootDep importerKey originalDepName depVersionRef entryIsDev
+    else resolveSnapshotDependencyOrFallback v9ctx rootDep entryIsDev originalDepName depVersionRef
+
+processImporterEntriesV9 :: (Has Logger sig m, Has Diagnostics sig m) => PnpmLockfile -> GrapherC Dependency m ()
+processImporterEntriesV9 lockFile = do
+  let v9ctx = V9GraphingContext (snapshots lockFile) (packages lockFile)
+  for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
+    let allDirectDependencies =
+          Map.toList (directDependencies projectSnapshot)
+            <> Map.toList (directDevDependencies projectSnapshot)
+    let rootDep = createRootDepV9 "."
+    for_ allDirectDependencies $ \(depName, ProjectMapDepMetadata version) ->
+      processSingleImporterEntryV9 v9ctx rootDep "." False depName version
+
+createDepSimple :: DepType -> Text -> Maybe Text -> Bool -> Dependency
+createDepSimple depType name versionM isDev =
+  let cleanedVersionM = withoutPeerDepSuffix <$> versionM
+   in Dependency depType name (CEq <$> cleanedVersionM) mempty (toEnv isDev) mempty
 
 -- | Normalizes a path by:
 --   1. Converting to a proper path format
@@ -754,55 +912,3 @@ resolveLinkPath importerPath linkPath =
           then cleanLink
           else normalizePath $ cleanImporter <> "/" <> cleanLink
    in Text.strip resolvedPath
-
-processSingleImporterEntryV9 ::
-  (Has Logger sig m, Has Diagnostics sig m) =>
-  V9GraphingContext ->
-  Dependency ->
-  Text ->
-  Bool ->
-  Text ->
-  Text ->
-  GrapherC Dependency m ()
-processSingleImporterEntryV9 v9ctx rootDep importerKey entryIsDev originalDepName depVersionRef = do
-  case Text.stripPrefix "link:" depVersionRef of
-    Just linkPath -> do
-      let resolvedPath = resolveLinkPath importerKey linkPath
-      -- Try to find the package in the packages map using the resolved path
-      case Map.lookup resolvedPath (ctxPackages v9ctx) of
-        Just packageMeta -> do
-          let linkedName = fromMaybe originalDepName (name packageMeta)
-          let linkedVersion = pkgVersion packageMeta
-          -- Create dependency based on package metadata
-          let dep = case linkedVersion of
-                Just ver -> createDepSimple NodeJSType linkedName (Just ver) (isDev packageMeta || entryIsDev)
-                Nothing -> createDepSimple UserType linkedName Nothing (isDev packageMeta || entryIsDev)
-          edge rootDep dep
-        Nothing -> do
-          -- If not found in packages, try looking up in snapshots
-          case Map.lookup resolvedPath (ctxSnapshots v9ctx) of
-            Just _ -> do
-              let dep = createDepSimple UserType originalDepName Nothing entryIsDev
-              edge rootDep dep
-            Nothing -> do
-              -- Create a fallback dependency
-              let dep = createDepSimple UserType originalDepName Nothing entryIsDev
-              edge rootDep dep
-    Nothing -> processRegularDepV9 v9ctx rootDep entryIsDev originalDepName depVersionRef
-
-processImporterEntriesV9 :: (Has Logger sig m, Has Diagnostics sig m) => PnpmLockfile -> GrapherC Dependency m ()
-processImporterEntriesV9 lockFile = do
-  let v9ctx = V9GraphingContext (snapshots lockFile) (packages lockFile)
-  for_ (Map.toList $ importers lockFile) $ \(_, projectSnapshot) -> do
-    let allDirectDependencies =
-          Map.toList (directDependencies projectSnapshot)
-            <> Map.toList (directDevDependencies projectSnapshot)
-    let rootDep = createRootDepV9 "."
-    for_ allDirectDependencies $ \(depName, ProjectMapDepMetadata version) ->
-      processSingleImporterEntryV9 v9ctx rootDep "." False depName version
-
--- | Creates a simple Dependency record.
-createDepSimple :: DepType -> Text -> Maybe Text -> Bool -> Dependency
-createDepSimple depType name versionM isDev =
-  let cleanedVersionM = withoutPeerDepSuffix <$> versionM
-   in Dependency depType name (CEq <$> cleanedVersionM) mempty (toEnv isDev) mempty
