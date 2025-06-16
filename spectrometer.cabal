@@ -548,8 +548,6 @@ executable fossa
   build-depends:  spectrometer
   ghc-options:    -threaded
 
--- test/Pnpm/PnpmLockSpec.hs is the canonical pnpm lockfile test file. Any Strategy/Node/Pnpm path is obsolete and should not be referenced.
-
 test-suite unit-tests
   import:             lang
   import:             deps
