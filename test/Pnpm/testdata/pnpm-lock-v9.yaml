@@ -1,0 +1,17 @@
+lockfileVersion: "9.0"
+
+importers:
+  .:
+    dependencies:
+      "@babel/core":
+        specifier: ^7.26.0
+        version: 7.26.10
+      "@pnpm/exec":
+        specifier: ^2.0.0
+        version: 2.0.0
+      chalk:
+        specifier: ^4.0.0
+        version: 4.1.2
+      lodash.kebabcase:
+        specifier: ^4.1.1
+        version: 4.1.1 

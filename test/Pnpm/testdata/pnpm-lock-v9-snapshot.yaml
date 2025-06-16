@@ -1,0 +1,272 @@
+lockfileVersion: "9.0"
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  .:
+    dependencies:
+      a: "1.0.0"
+      "@scope/pkg": "1.0.0"
+
+snapshots:
+  "a@1.0.0":
+    dependencies:
+      b: "2.0.0"
+      c: "3.0.0"
+  "b@2.0.0":
+    dependencies:
+      d: "4.0.0"
+  "c@3.0.0":
+    dependencies:
+      e: "5.0.0"
+  "d@4.0.0":
+    dependencies:
+      f: "6.0.0"
+  "e@5.0.0":
+    dependencies:
+      f: "6.0.0"
+  "f@6.0.0":
+    dependencies: {}
+  "@scope/pkg@1.0.0":
+    dependencies: {}
+
+packages:
+  "a@1.0.0":
+    dependencies:
+      b: "2.0.0"
+      c: "3.0.0"
+    resolution:
+      integrity: sha512-placeholder-a
+  "b@2.0.0":
+    dependencies:
+      d: "4.0.0"
+    peerDependencies:
+      react: "^17.0.0"
+    peerDependenciesMeta:
+      react:
+        optional: true
+    resolution:
+      integrity: sha512-abc123
+    engines:
+      node: ">=14"
+    specifier: "^2.0.0"
+  "c@3.0.0":
+    dependencies:
+      e: "5.0.0"
+    resolution:
+      integrity: sha512-placeholder-c
+  "d@4.0.0":
+    dependencies:
+      f: "6.0.0"
+    resolution:
+      integrity: sha512-placeholder-d
+  "e@5.0.0":
+    dependencies:
+      f: "6.0.0"
+    resolution:
+      integrity: sha512-placeholder-e
+  "f@6.0.0":
+    dependencies: {}
+    resolution:
+      integrity: sha512-placeholder-f
+  "@scope/pkg@1.0.0":
+    dependencies: {}
+    resolution:
+      integrity: sha512-test
+
+catalogs:
+  default:
+    '@gwhitney/detect-indent':
+      specifier: 7.0.1
+      version: 7.0.1
+    '@pnpm/builder.policy':
+      specifier: 3.0.1
+      version: 3.0.1
+    '@pnpm/byline':
+      specifier: ^1.0.0
+      version: 1.0.0
+    '@pnpm/colorize-semver-diff':
+      specifier: ^1.0.1
+      version: 1.0.1
+    '@pnpm/config.env-replace':
+      specifier: 3.0.1
+      version: 3.0.1
+    '@pnpm/exec':
+      specifier: ^2.0.0
+      version: 2.0.0
+    '@pnpm/fs.packlist':
+      specifier: 2.0.0
+      version: 2.0.0
+    '@pnpm/log.group':
+      specifier: 3.0.1
+      version: 3.0.1
+    '@pnpm/meta-updater':
+      specifier: 2.0.5
+      version: 2.0.5
+    '@pnpm/network.agent':
+      specifier: ^2.0.2
+      version: 2.0.2
+    '@pnpm/nopt':
+      specifier: ^0.2.1
+      version: 0.2.1
+    '@pnpm/npm-conf':
+      specifier: 3.0.0
+      version: 3.0.0
+    '@pnpm/npm-lifecycle':
+      specifier: ^1000.0.2
+      version: 1000.0.2
+    '@pnpm/npm-package-arg':
+      specifier: ^1.0.0
+      version: 1.0.0
+    '@pnpm/os.env.path-extender':
+      specifier: ^2.0.2
+      version: 2.0.2
+    '@pnpm/patch-package':
+      specifier: 0.0.1
+      version: 0.0.1
+    '@pnpm/registry-mock':
+      specifier: 4.3.0
+      version: 4.3.0
+    '@pnpm/semver-diff':
+      specifier: ^1.1.0
+      version: 1.1.0
+    '@pnpm/tabtab':
+      specifier: ^0.5.4
+      version: 0.5.4
+    '@pnpm/util.lex-comparator':
+      specifier: 3.0.1
+      version: 3.0.1
+    '@reflink/reflink':
+      specifier: 0.1.18
+      version: 0.1.18
+    '@rushstack/worker-pool':
+      specifier: 0.4.9
+      version: 0.4.9
+    '@types/adm-zip':
+      specifier: ^0.5.7
+      version: 0.5.7
+    '@types/archy':
+      specifier: 0.0.33
+      version: 0.0.33
+    '@types/cross-spawn':
+      specifier: ^6.0.6
+      version: 6.0.6
+    '@types/fs-extra':
+      specifier: ^9.0.13
+      version: 9.0.13
+    '@types/graceful-fs':
+      specifier: ^4.1.9
+      version: 4.1.9
+    '@types/hosted-git-info':
+      specifier: ^3.0.5
+      version: 3.0.5
+    '@types/ini':
+      specifier: 1.3.31
+      version: 1.3.31
+    '@types/is-gzip':
+      specifier: 2.0.0
+      version: 2.0.0
+    '@types/is-windows':
+      specifier: ^1.0.2
+      version: 1.0.2
+    '@types/js-yaml':
+      specifier: ^4.0.9
+      version: 4.0.9
+    '@types/lodash.kebabcase':
+      specifier: 4.1.9
+      version: 4.1.9
+    '@types/lodash.throttle':
+      specifier: 4.1.7
+      version: 4.1.7
+    '@types/micromatch':
+      specifier: ^4.0.9
+      version: 4.0.9
+    '@types/node':
+      specifier: ^18.19.34
+      version: 18.19.34
+    '@types/normalize-package-data':
+      specifier: ^2.4.4
+      version: 2.4.4
+    '@types/normalize-path':
+      specifier: ^3.0.2
+      version: 3.0.2
+    '@types/object-hash':
+      specifier: 3.0.6
+      version: 3.0.6
+    '@types/parse-json':
+      specifier: ^4.0.2
+      version: 4.0.2
+    '@types/pnpm__byline':
+      specifier: npm:@types/byline@^4.2.36
+      version: 4.2.36
+    '@types/proxyquire':
+      specifier: ^1.3.31
+      version: 1.3.31
+    '@types/ramda':
+      specifier: 0.29.12
+      version: 0.29.12
+    '@types/retry':
+      specifier: ^0.12.5
+      version: 0.12.5
+    '@types/rimraf':
+      specifier: ^3.0.2
+      version: 3.0.2
+    '@types/semver':
+      specifier: 7.5.3
+      version: 7.5.3
+    '@types/shell-quote':
+      specifier: ^1.7.5
+      version: 1.7.5
+    '@types/signal-exit':
+      specifier: ^3.0.4
+      version: 3.0.4
+    '@types/sinon':
+      specifier: ^10.0.20
+      version: 10.0.20
+    '@types/ssri':
+      specifier: ^7.1.5
+      version: 7.1.5
+    '@types/tar':
+      specifier: ^6.1.13
+      version: 6.1.13
+    '@types/tar-stream':
+      specifier: ^2.2.3
+      version: 2.2.3
+    '@types/touch':
+      specifier: ^3.1.5
+      version: 3.1.5
+    '@types/uuid':
+      specifier: ^8.3.4
+      version: 8.3.4
+    '@types/validate-npm-package-name':
+      specifier: ^4.0.2
+      version: 4.0.2
+    '@types/which':
+      specifier: ^2.0.2
+      version: 2.0.2
+    '@types/write-file-atomic':
+      specifier: ^4.0.3
+      version: 4.0.3
+    '@types/yarnpkg__lockfile':
+      specifier: ^1.1.9
+      version: 1.1.9
+    '@types/zkochan__table':
+      specifier: npm:@types/table@6.0.0
+      version: 6.0.0
+    '@yarnpkg/core':
+      specifier: 4.0.5
+      version: 4.0.5
+    '@yarnpkg/extensions':
+      specifier: 2.0.3
+      version: 2.0.3
+    '@yarnpkg/lockfile':
+      specifier: ^1.1.0
+      version: 1.1.0
+    '@yarnpkg/nm':
+      specifier: 4.0.5
+      version: 4.0.5
+    '@yarnpkg/parsers':
+      specifier: 3.0.0
+      version: 3.0.0 
