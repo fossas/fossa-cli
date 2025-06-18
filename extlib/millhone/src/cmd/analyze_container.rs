@@ -159,7 +159,7 @@ fn recursive_jars_in_jars(
     let mut archive = match zip::ZipArchive::new(std::io::Cursor::new(jar_contents)) {
         Ok(archive) => archive,
         Err(e) => {
-            warn!("failed to unzip jar: {e:?}");
+            info!("failed to unzip jar: {e:?}");
             return Ok(vec![]);
         }
     };
@@ -337,7 +337,7 @@ mod tests {
               }},
               {{
               "kind": "v1.discover.binary.jar",
-              "path": "jars/middle.jar/deepest.jar",
+              "path": "jars/middle.jar{separator}deepest.jar",
               "fingerprints": {{
                   "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
                   "sha_256": "B9xDxlBKbxTTHLa3CAfodX1tOMLWYV5gieAIM2SkWVQ=",
@@ -373,7 +373,7 @@ mod tests {
               }},
               {{
               "kind": "v1.discover.binary.jar",
-              "path": "jars/top.jar/middle.jar",
+              "path": "jars/top.jar{separator}middle.jar",
               "fingerprints": {{
                   "sha_256": "Srz1ON5jIwbfK7zhlqfN/qNZYkkAhB+oVIrvdrstSgM=",
                   "v1.raw.jar": "YyWengyl+oBo6uX9EdpcuRQt8HC3E+8Pp3vi3PnqdWM=",
@@ -383,7 +383,7 @@ mod tests {
               }},
               {{
               "kind": "v1.discover.binary.jar",
-              "path": "jars/top.jar/middle.jar/deepest.jar",
+              "path": "jars/top.jar{separator}middle.jar{separator}deepest.jar",
               "fingerprints": {{
                   "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
                   "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
@@ -407,6 +407,7 @@ mod tests {
           }}
         }}
         "#,
+            separator = std::path::MAIN_SEPARATOR_STR.replace("\\", "\\\\")
         );
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
