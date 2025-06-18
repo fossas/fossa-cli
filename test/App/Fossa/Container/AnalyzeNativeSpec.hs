@@ -251,8 +251,8 @@ nestedJarsInContainerSpec :: Spec
 nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> nestedJarsInContainerImage
-      baseLayerId = "sha256:3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992"
-      otherLayerId = "sha256:6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096"
+      baseLayerId = "sha256:6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096"
+      otherLayerId = "sha256:df6140348c22a9d05d469db1cc951cebd577ad4b353fa5fb29dfb2d7b7b2734f"
 
   it' "Reads and merges the layers correctly" $ do
     ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
