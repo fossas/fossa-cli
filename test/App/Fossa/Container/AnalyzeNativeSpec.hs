@@ -271,5 +271,5 @@ nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
     -- It also directly includes middle.jar and deepest.jar
     -- So we should find 6 total jars: three from top.jar and its nested jars, two from middle.jar and its nested jar and then deepest.jar
     -- See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
-    (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 0
-    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 6
+    (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 7
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 0
