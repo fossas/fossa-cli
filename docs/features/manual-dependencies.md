@@ -49,7 +49,7 @@ Supported dependency types:
 <!-- markdown-link-check-disable-next-line -->
 - `cran` - Dependencies located on the [CRAN](https://cran.r-project.org/) like repository.
 - `gem` - Dependencies which can be found at [RubyGems.org](https://rubygems.org/).
-- `git` - Github projects (which appear as dependencies in many package managers). Specified as the full GitHub repository `https://github.com/fossas/fossa-cli`.
+- `git` - Git projects (which may appear as dependencies in many package managers). Specified as the full link to the Git repo. GitHub project example: `https://github.com/fossas/fossa-cli`.
 - `go` - Go specific dependency. Many Go dependencies are located on Github, but there are some which look like the following `go.mongodb.org/mongo-driver` that have custom Go URLs.
 - `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
 - `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
