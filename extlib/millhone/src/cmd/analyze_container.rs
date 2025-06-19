@@ -159,7 +159,7 @@ fn recursive_jars_in_jars(
     let mut archive = match zip::ZipArchive::new(std::io::Cursor::new(jar_contents)) {
         Ok(archive) => archive,
         Err(e) => {
-            info!("failed to unzip jar: {e:?}");
+            warn!("failed to unzip jar: {e:?}");
             return Ok(vec![]);
         }
     };
