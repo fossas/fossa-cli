@@ -1,7 +1,62 @@
 # FOSSA CLI Changelog
 
-## Unreleased
-- Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error
+## 3.10.9
+
+- CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
+
+## 3.10.8
+
+- Custom license scans: Apply `licenseScanPathFilters` to custom license scans ([#1535](https://github.com/fossas/fossa-cli/pull/1535)).
+
+## 3.10.7
+
+- Report: Allow generating SBOMs attribution reports using fossa-cli. ([#1534](https://github.com/fossas/fossa-cli/pull/1534))
+
+## 3.10.6
+- Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
+- Licensing: Adds support for the NREL disclaimer
+
+## 3.10.5
+
+Container scanning: Resolved a large number of issues with scanning containers ([#1514](https://github.com/fossas/fossa-cli/pull/1514), [#1521](https://github.com/fossas/fossa-cli/pull/1521))
+- Pulling containers from recent versions of Docker are properly supported.
+- OCI container hosts are better supported.
+- Scanning exported containers from recent versions of Docker are properly supported.
+- Authentication is better supported overall, it now integrates with native Docker authentication providers.
+- The old container scanning functionality still exists in FOSSA CLI as a fallback if the new functionality fails.
+
+> [!NOTE]
+> FOSSA built a separate binary to handle pulling images; refer to [its repository](https://github.com/fossas/circe) for details.
+> This binary is bundled into FOSSA CLI, you don't need to do anything special to use it.
+
+## 3.10.4
+- Erlang: Rebar config parsing bug fixes ([#1524](https://github.com/fossas/fossa-cli/pull/1522))
+
+## 3.10.3
+- PDM Parser: Proper parsing for PDM platform_machine line ([#1521](https://github.com/fossas/fossa-cli/pull/1521))
+- License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
+
+## 3.10.2
+- Cargo: Do not create Cargo.lock if it already exists ([#1516](https://github.com/fossas/fossa-cli/pull/1516))
+
+## 3.10.1
+- Swift: Add support for parsing path dependencies with names ([#1515](https://github.com/fossas/fossa-cli/pull/1515))
+
+## 3.10.0
+- Support for user-provided dependency labels in `fossa-deps` ([#1505](https://github.com/fossas/fossa-cli/pull/1505)).
+  For details, see the [`fossa-deps` documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md).
+
+## 3.9.48
+- General: Fix a bug where directory traversal could fail if the user does not have permission to read a directory ([#1508](https://github.com/fossas/fossa-cli/pull/1508)).
+- Performance: Fix timeout issues when uploading large numbers of license scans by processing them in smaller batches ([#1509](https://github.com/fossas/fossa-cli/pull/1509)).
+
+## 3.9.47
+- Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
+- NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
+
+## 3.9.46
+- Licensing: Fix a bug where the tzdata debian package copyright was not detected as a public domain license ([#1504](https://github.com/fossas/fossa-cli/pull/1504))
+- Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error ([#1500](https://github.com/fossas/fossa-cli/pull/1500))
 
 ## 3.9.45
 - Preflight: Fix a bug where the preflight checks fail for SBOM team analysis ([#1499](https://github.com/fossas/fossa-cli/pull/1499))

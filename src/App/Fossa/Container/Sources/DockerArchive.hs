@@ -87,7 +87,8 @@ import Srclib.Converter qualified as Srclib
 import Srclib.Types (SourceUnit)
 import Types (DiscoveredProject (..))
 
--- | Analyzes Docker Image from Exported Tarball Source.
+-- | Analyzes a Docker archive that has been normalized through Circe,
+-- or is already in a format that can be directly analyzed.
 analyzeFromDockerArchive ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m

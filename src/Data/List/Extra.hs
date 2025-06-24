@@ -2,6 +2,7 @@ module Data.List.Extra (
   (!?),
   head',
   singleton,
+  chunk,
 ) where
 
 import Data.Maybe (listToMaybe)
@@ -21,3 +22,11 @@ head' = listToMaybe
 -- | Create a one-item list from the item given
 singleton :: a -> [a]
 singleton = (: [])
+
+-- | Chunk the list into a list of lists.
+-- If chunk size is 0 or lower, returns a single chunk containing the entire list.
+chunk :: Int -> [a] -> [[a]]
+chunk _ [] = []
+chunk size as
+  | size <= 0 = [as]
+  | otherwise = take size as : chunk size (drop size as)

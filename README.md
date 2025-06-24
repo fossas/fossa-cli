@@ -87,7 +87,7 @@ fossa analyze
 Set-ExecutionPolicy Bypass -Scope Process -Force; iex  ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/fossas/fossa-cli/master/install-latest.ps1'))
 
 # Set your API key. Get this from the FOSSA web application.
-$env:FOSSA_API_KEY=XXXX
+$env:FOSSA_API_KEY="XXXX"
 
 # Run an analysis in your project's directory.
 cd $MY_PROJECT_DIR

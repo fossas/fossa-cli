@@ -21,8 +21,8 @@ let package = Package(
 
         // pkg version
         .package(
-            name: "PlayingCard", 
-            url: "https://github.com/apple/example-package-playingcard.git", 
+            name: "PlayingCard",
+            url: "https://github.com/apple/example-package-playingcard.git",
             from: "3.0.0"
         ),
         .package(url: "https://github.com/kaishin/Gifu.git", .from("3.2.2")),
@@ -33,7 +33,7 @@ let package = Package(
 
         // upToNextMajor
         .package(url: "https://github.com/dankogai/swift-sion", .upToNextMajor(from: "0.0.1")),
-        
+
         // upToNextMinor
         .package(url: "git@github.com:behrang/YamlSwift.git", .upToNextMinor(from: "3.4.0")),
 
@@ -48,6 +48,10 @@ let package = Package(
         // range
         .package(url: "https://github.com/LeoNatan/LNPopupController.git", "2.5.0"..<"2.5.6"),
         .package(url: "https://github.com/Polidea/RxBluetoothKit.git", "3.0.5"..."3.0.7"),
+
+        // path
+        .package(path: "../.."),
+        .package(name: "package-with-name", path: "../.."),
     ],
     targets: [
         .target(

@@ -21,6 +21,7 @@ extra-source-files:
   target/release/berkeleydb.exe
   target/release/millhone
   target/release/millhone.exe
+  vendor-bins/circe
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
@@ -233,6 +234,7 @@ library
     App.Fossa.Container.AnalyzeNative
     App.Fossa.Container.ListTargets
     App.Fossa.Container.Scan
+    App.Fossa.Container.Sources.Circe
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
@@ -486,6 +488,7 @@ library
     Strategy.Node.YarnV2.Lockfile
     Strategy.Node.YarnV2.Resolvers
     Strategy.Node.YarnV2.YarnLock
+    Strategy.NuGet
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
@@ -565,6 +568,7 @@ test-suite unit-tests
     App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.CirceSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.ReleaseGroup.CreateSpec
     App.Fossa.Config.TestSpec

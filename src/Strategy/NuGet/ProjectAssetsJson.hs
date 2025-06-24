@@ -1,11 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.ProjectAssetsJson (
-  discover,
-  findProjects,
-  getDeps,
-  mkProject,
   buildGraph,
+  analyze',
   ProjectAssetsJson (..),
 
   -- * for testing
@@ -13,21 +10,18 @@ module Strategy.NuGet.ProjectAssetsJson (
   FrameworkName (..),
 ) where
 
-import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
   run,
  )
-import Control.Effect.Reader (Reader)
 import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey (..),
   FromJSONKeyFunction (FromJSONKeyTextParser),
   Key,
   Object,
-  ToJSON,
   Value,
   withObject,
   (.!=),
@@ -50,60 +44,19 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (
-  WalkStep (WalkContinue),
-  findFileNamed,
-  walkWithFilters',
- )
 import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap)
-import Path (Abs, Dir, File, Path, parent)
+import Path (Abs, File, Path)
 import Text.Read (readMaybe)
 import Types (
   DependencyResults (..),
-  DiscoveredProject (..),
-  DiscoveredProjectType (ProjectAssetsJsonProjectType),
   GraphBreadth (Complete),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ProjectAssetsJsonProject]
-discover = simpleDiscover findProjects mkProject ProjectAssetsJsonProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectAssetsJsonProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
-  case findFileNamed "project.assets.json" files of
-    Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([ProjectAssetsJsonProject file], WalkContinue)
-
-newtype ProjectAssetsJsonProject = ProjectAssetsJsonProject
-  { projectAssetsJsonFile :: Path Abs File
-  }
-  deriving (Eq, Ord, Show, Generic)
-
 newtype FrameworkName = FrameworkName Text
   deriving (Eq, Ord, Show, Generic, FromJSONKey)
-
-instance ToJSON ProjectAssetsJsonProject
-
-instance AnalyzeProject ProjectAssetsJsonProject where
-  analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps
-
-mkProject :: ProjectAssetsJsonProject -> DiscoveredProject ProjectAssetsJsonProject
-mkProject project =
-  DiscoveredProject
-    { projectType = ProjectAssetsJsonProjectType
-    , projectBuildTargets = mempty
-    , projectPath = parent $ projectAssetsJsonFile project
-    , projectData = project
-    }
-
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => ProjectAssetsJsonProject -> m DependencyResults
-getDeps = context "ProjectAssetsJson" . context "Static analysis" . analyze' . projectAssetsJsonFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do

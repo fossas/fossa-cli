@@ -11,7 +11,13 @@ FOSSA CLI supports 3 types of manual dependencies:
 2. Custom dependencies: Used to add a unique dependency to your dependency graph and the metadata you wish to associate with it.
 3. Remote dependencies: Used when all you have is the URL to an archive.
 
-Referenced dependencies are the only type that supports vulnerabilities, custom and remote dependencies do not.
+| Manual Dependency Type | Supports Licenses | Supports Vulnerabilities | Performance |
+|----------------------|----------------|----------------------|-------------|
+| [Referenced](#referenced-dependencies) | Yes | Yes* | Caches by (type, name, version) |
+| [Remote](#remote-dependencies) | Yes | No | Caches by (name, url, version) |
+| [Custom](#custom-dependencies) | Yes | No | No caching |
+
+*Referenced dependencies are the only type that supports vulnerabilities, custom and remote dependencies do not. Reference dependencies of type `url` also do not support vulnerabilities.
 
 > Tip: Use a script to generate this file before running `fossa analyze` to keep your results updated.
 
@@ -58,7 +64,7 @@ Supported dependency types:
 
 The following dependency types are also supported but they require `arch`, `os`, and `osVersion` attributes:
 
-- `apk` - Alpine packages. 
+- `apk` - Alpine packages.
 - `deb` - Debian packages.
 - `rpm-generic` - Rpm packages.
 
@@ -180,7 +186,7 @@ If `version` is not provided, the system assumes the version is "latest", and ca
 
 For dependency types that require `arch`, `os`, and `osVersion` attributes, these fields are additionally considered for the cache.
 
-In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency: 
+In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency:
 Click the dependency in the UI and then click "Reanalyze".
 This button enqueues a background job to rebuild the dependency, which should resolve after a few minutes.
 
@@ -192,6 +198,6 @@ This button enqueues a background job to rebuild the dependency, which should re
 
 `remote-dependencies` are cached by their `(name, url, version)` fields, which are all required.
 
-In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency: 
+In the event caching is causing problems, FOSSA can be made to rebuild this kind of dependency:
 Click the dependency in the UI and then click "Reanalyze".
 This button enqueues a background job to rebuild the dependency, which should resolve after a few minutes.

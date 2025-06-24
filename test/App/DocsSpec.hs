@@ -35,7 +35,7 @@ import Strategy.Swift.Errors (
   swiftPackageResolvedRef,
   xcodeCoordinatePkgVersion,
  )
-import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, shouldBe, xit)
 import Text.URI (mkURI)
 
 shouldRespondToGETWithHttpCode :: Text -> Int -> Expectation
@@ -73,9 +73,11 @@ urlsToCheck =
   , fossaContainerAnalyzeDefaultFilterDocUrl
   ]
 
+-- GITHUB_TOKEN probably useful here
+-- Always an environment variable, just try authing that as a PR against master.
 spec :: Spec
 spec = do
   describe "Documentation links provided in application are reachable" $
     for_ urlsToCheck $ \url ->
-      it (toString url <> " should be reachable") $
+      xit (toString url <> " should be reachable") $
         url `shouldRespondToGETWithHttpCode` 200
