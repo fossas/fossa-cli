@@ -154,8 +154,15 @@ fn recursive_jars_in_jars(
         return Ok(vec![]);
     }
     let mut discoveries = Vec::new();
-    let mut archive =
-        zip::ZipArchive::new(std::io::Cursor::new(jar_contents)).context("unzipping jar")?;
+    // If the jar is a symlink we find empty contents and run into an error when trying to unzip it.
+    // Due to this, we have decided to warn instead of error and skip the jar.
+    let mut archive = match zip::ZipArchive::new(std::io::Cursor::new(jar_contents)) {
+        Ok(archive) => archive,
+        Err(e) => {
+            warn!("failed to unzip jar: {e:?}");
+            return Ok(vec![]);
+        }
+    };
     for path in archive.clone().file_names() {
         debug!("file_name: {path}");
         if !path.ends_with(".jar") {
@@ -317,70 +324,82 @@ mod tests {
             r#"
         {{
           "discovered_jars": {{
-            "blobs/sha256/3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992": [
-              {{
-                "kind": "v1.discover.binary.jar",
-                "path": "jars/deepest.jar",
-                "fingerprints": {{
-                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
-                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
-                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
-                }}
-              }}
-            ],
-            "blobs/sha256/5ee98bff2cf0e70d115677fc37f734d26848435eef5fe52e905229ff7a7d87fb": [
+            "88a896b18358cbccbf66cc1c3dcd0d2d61504c5bf41284c551e47f230675534f/layer.tar": [
               {{
                 "kind": "v1.discover.binary.jar",
                 "path": "jars/middle.jar",
                 "fingerprints": {{
-                  "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k=",
-                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-                  "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
-                  "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI="
+                  "v1.mavencentral.jar": "zpVxCUcFUE/F+WFYr7bUWEyA0Go=",
+                  "v1.raw.jar": "b/9aNwWFlSqOwk+nZaG9zot8q+PENy/tn8Y0Xe/y3XY=",
+                  "sha_256": "5Vh9z8oEKud8flIitzCE/rLMfbFlszhGkQbVxfHgg8U=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
                 }}
               }},
               {{
                 "kind": "v1.discover.binary.jar",
                 "path": "jars/middle.jar{separator}deepest.jar",
                 "fingerprints": {{
-                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
-                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
-                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+                  "sha_256": "vpyhj/ImCwcAx4HZTP23XV9yTdNdRF5NQFj8eV5NOHM=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.mavencentral.jar": "yPAF7stJN1sIjsM4/hSWcGilyz8=",
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
                 }}
               }}
             ],
-            "blobs/sha256/6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096": [],
-            "blobs/sha256/931c525b52485e01ab5e2926a4b3c884f1c7325782dca13bd11e345f46cc34c3": [],
-            "blobs/sha256/10bb0e91eb016af401369ecaadccfea9f4768776e54d46ad4e9a0309c82f1d7f": [
+            "2cd0dec90e9f3f920397ed6bf0ba740493620a99bb20b79d2c4c8159948439e4/layer.tar": [],
+            "5a99cb0cd20c916ca7444b625ff06e3afe6a1b4349c44c3ba11eb054daf5fda4/layer.tar": [],
+            "9fea496e8349f2c33fe177df27e4369f08cff62ad40168183493d9de3d6832e5/layer.tar": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "jars/deepest.jar",
+                "fingerprints": {{
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "sha_256": "vpyhj/ImCwcAx4HZTP23XV9yTdNdRF5NQFj8eV5NOHM=",
+                  "v1.mavencentral.jar": "yPAF7stJN1sIjsM4/hSWcGilyz8=",
+                  "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM="
+                }}
+              }}
+            ],
+            "c65b9197c11847b3f36c822b9c57f417af6f721ae6719f8eb3bd334c3516796e/layer.tar": [],
+            "792ccfdf114be140500ea1d6b99ae7ff0cae6a19b247f886328d4b8a01b8869c/layer.tar": [
+              {{
+                "kind": "v1.discover.binary.jar",
+                "path": "sym-link-test/sym.jar",
+                "fingerprints": {{
+                  "comment_stripped:sha_256": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "sha_256": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+                  "v1.mavencentral.jar": "2jmj7l5rSw0yVb/vlWAYkK/YBwk="
+                }}
+              }}
+            ],
+            "d8abb0d1e8708fb1b5b79bcdd098898becfe22019d6b70781974743a90415724/layer.tar": [
               {{
                 "kind": "v1.discover.binary.jar",
                 "path": "jars/top.jar",
                 "fingerprints": {{
-                  "v1.raw.jar": "TNW7ezd3fqw3MULVTrexg68Q1x2PTDGk2DkltAqUefk=",
-                  "v1.mavencentral.jar": "TtwsgEXwLd/8UFTohsFhJqYMJ74=",
-                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-                  "sha_256": "l9XTA5PwWJhnFlz9t0SWKvr2cHDmcytIVvPsr6vqFis="
+                  "v1.raw.jar": "Qvy1Y7ZCnHpGfy12XszUCq8zyzsTeZ2f0HiMkZKRkzY=",
+                  "sha_256": "RXo50J5YsgsHl56Vfcc3Ee9epeJ2XXmO56Zi/4DAQZM=",
+                  "v1.mavencentral.jar": "NWCmsGqwY5JV85qtij8Nf/IQidw=",
+                  "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
                 }}
               }},
               {{
                 "kind": "v1.discover.binary.jar",
                 "path": "jars/top.jar{separator}middle.jar",
                 "fingerprints": {{
-                  "v1.mavencentral.jar": "2XA3GFJJkvvpEbAM9nLnAypojEo=",
+                  "sha_256": "5Vh9z8oEKud8flIitzCE/rLMfbFlszhGkQbVxfHgg8U=",
                   "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
-                  "v1.raw.jar": "36i3JNvrLMWCMfjB2c9bjQt4Vhmvfq29cb+Hqrb6XeI=",
-                  "sha_256": "nKFXVngFtkHIv4FC/rr5o4k+v/KSKzWJ0B9uBuRb+4k="
+                  "v1.mavencentral.jar": "zpVxCUcFUE/F+WFYr7bUWEyA0Go=",
+                  "v1.raw.jar": "b/9aNwWFlSqOwk+nZaG9zot8q+PENy/tn8Y0Xe/y3XY="
                 }}
               }},
               {{
                 "kind": "v1.discover.binary.jar",
                 "path": "jars/top.jar{separator}middle.jar{separator}deepest.jar",
                 "fingerprints": {{
+                  "v1.mavencentral.jar": "yPAF7stJN1sIjsM4/hSWcGilyz8=",
+                  "sha_256": "vpyhj/ImCwcAx4HZTP23XV9yTdNdRF5NQFj8eV5NOHM=",
                   "v1.raw.jar": "UMQ1yS7xM6tF4YMvAWz8UP6+qAIRq3JauBoiTlVUNkM=",
-                  "sha_256": "LsXfP24XYFIZnkS3Z7RaNim1o8/TtGnueThkZv9hCok=",
-                  "v1.mavencentral.jar": "1+4xPh5QS5IW0H6lfbxamjtVVdk=",
                   "v1.class.jar": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
                 }}
               }}
