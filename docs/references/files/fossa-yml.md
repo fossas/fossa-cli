@@ -176,7 +176,7 @@ An external link that will appear in the FOSSA UI for this specific project.
 The URL of your project that will appear in FOSSA. This URL is intended to be the URL to the repository of this project.
 
 #### `project.jiraProjectKey:`
-The Jira Project Key to associate with your project for improved issue triage. Refer to the [FOSSA docs](https://docs.fossa.com/docs/atlassian-jira#linking-fossa-projects-to-jira-projects) for more information.
+The Jira Project Key to associate with your project for improved issue triage. Refer to the [FOSSA docs](https://docs.fossa.com/docs/atlassian-jira) for more information.
 
 #### `project.releaseGroup:`
 The `name:` and `release:` of the release group's release to add your project to in the FOSSA dashboard.
