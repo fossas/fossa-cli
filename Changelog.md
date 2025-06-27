@@ -1,5 +1,13 @@
 # FOSSA CLI Changelog
 
+## 3.10.11
+
+- container scanning: fix unzipping JARs that symlink to other layers #1555 ([#1555](https://github.com/fossas/fossa-cli/pull/1555))
+  
+## 3.10.10
+
+- go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
+
 ## 3.10.9
 
 - CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
