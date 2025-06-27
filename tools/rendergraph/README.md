@@ -1,16 +1,12 @@
-# fossa-rendergraph
+# rendergraph
 
 Utility to render the output of `fossa analyze -o` as a graph.
 
 This program isn't _guaranteed_ to not be broken by new FOSSA CLI releases,
 but we'll try to keep it from doing so especially since we try to keep output of FOSSA CLI stable.
 
-# Installation from source
-
-0. Install `rust`: https://www.rust-lang.org/tools/install
-1. Clone this repo locally
-2. Run `cargo install --path rendergraph` from the parent directory.
-3. Use as `fossa analyze -o | rendergraph` (you can also `cat output.json | rendergraph`- any stdin works)
+`rendergraph` is unlikely to get additional features; we'll almost definitely roll this into other tooling
+such as FOSSA CLI or `ficus` itself if we choose to make changes to how this works.
 
 # What to expect
 
@@ -27,13 +23,6 @@ a
 ```
 
 This tool outputs all dependencies found by FOSSA and doesn't currently account for FOSSA's "unused dependencies" graph pruning.
-
-# Future work
-
-A list of things I've thought of to add. Have an idea? Add it to this list via PR!
-
-- [ ] Account for graph pruning (use source units to do this)
-- [ ] Support graphviz output
 
 # Example output
 
@@ -226,3 +215,13 @@ github.com/fossas/fossa-cli@v1.1.10
 ├─ github.com/Masterminds/semver@v1.5.0
 └─ github.com/BurntSushi/toml@v0.3.1
 ```
+
+# Installation from source
+
+You should be able to manually download `rendergraph` from the FOSSA CLI github releases.
+However if you have to or want to build manually:
+
+0. Install `rust`: https://www.rust-lang.org/tools/install
+1. Clone this repo locally
+2. Run `cargo install --path rendergraph` from the parent directory.
+3. Use as `fossa analyze -o | rendergraph` (you can also `cat output.json | rendergraph`- any stdin works)
