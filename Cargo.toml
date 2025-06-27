@@ -3,6 +3,7 @@ members = [
   "extlib/berkeleydb",
   "extlib/millhone",
   "tools/diagnose",
+  "tools/rendergraph",
 ]
 
 # This field is documented as accepting globs but apparently only prefix matches:
