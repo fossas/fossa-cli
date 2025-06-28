@@ -1,4 +1,4 @@
-module Strategy.Python.Poetry.PyProject (
+module Strategy.Python.PyProject.PyProjectToml (
   PyProject (..),
   PyProjectMetadata (..),
   PyProjectTool (..),
