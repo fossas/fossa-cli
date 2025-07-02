@@ -49,6 +49,7 @@ import Discovery.Filters (AllFilters, withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
+  findFirstMatchingFile,
   walkWithFilters',
  )
 import Effect.Logger (
@@ -59,6 +60,7 @@ import Effect.ReadFS (
   doesFileExist,
   readContentsBSLimit,
   readContentsJson,
+  readContentsYaml,
  )
 import GHC.Generics (Generic)
 import Path (
@@ -84,13 +86,14 @@ import Strategy.Node.PackageJson (
   PkgJsonGraph (..),
   PkgJsonLicense (LicenseObj, LicenseText),
   PkgJsonLicenseObj (licenseUrl),
-  PkgJsonWorkspaces (unWorkspaces),
+  PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces),
   Production,
   WorkspacePackageNames (WorkspacePackageNames),
   pkgFileList,
  )
 import Strategy.Node.PackageJson qualified as PackageJson
 import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
+import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs))
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
 import Types (
@@ -118,8 +121,8 @@ discover ::
   m [DiscoveredProject NodeProject]
 discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType] $
   context "NodeJS" $ do
-    manifestList <- context "Finding nodejs projects" $ collectManifests dir
-    manifestMap <- context "Reading package.json files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
+    manifestList <- context "Finding nodejs/pnpm projects" $ collectManifests dir
+    manifestMap <- context "Reading manifest files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
     if Map.null manifestMap
       then -- If the map is empty, we found no JS projects, we return early.
         pure []
@@ -281,9 +284,14 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
 loadPackage :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Maybe (Manifest, PackageJson))
 loadPackage (Manifest file) = do
   result <- recover $ readContentsJson @PackageJson file
-  case result of
-    Nothing -> pure Nothing
-    Just contents -> pure $ Just (Manifest file, contents)
+  -- PNPM projects using v9 of the lockfile have their own way to specify workspaces/child projects.
+  -- Since there is still a package.json, inject the pnpm-workspace.yaml projects into the ones for that manifest.
+  let possiblePnpmWorkspaceFile = Path.parent file </> $(mkRelFile "pnpm-workspace.yaml")
+  pnpmResult <- recover $ readContentsYaml @PnpmWorkspace possiblePnpmWorkspaceFile
+  pure $ do
+    contents@PackageJson{packageWorkspaces} <- result
+    let pnpmGlobs = maybe [] workspaceSpecs pnpmResult
+    Just (Manifest file, contents{packageWorkspaces = PkgJsonWorkspaces pnpmGlobs <> packageWorkspaces})
 
 buildManifestGraph :: Map Manifest PackageJson -> PkgJsonGraph
 buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap

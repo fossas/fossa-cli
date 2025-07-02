@@ -484,6 +484,7 @@ library
     Strategy.Node.Npm.PackageLockV3
     Strategy.Node.PackageJson
     Strategy.Node.Pnpm.PnpmLock
+    Strategy.Node.Pnpm.Workspace
     Strategy.Node.YarnV1.YarnLock
     Strategy.Node.YarnV2.Lockfile
     Strategy.Node.YarnV2.Resolvers

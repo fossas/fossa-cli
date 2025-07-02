@@ -12,6 +12,7 @@ import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
 import Data.Maybe (listToMaybe)
+import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -33,7 +34,6 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
-import qualified Data.Maybe as Maybe
 
 -- | Pnpm Lockfile
 --
@@ -221,8 +221,8 @@ data Resolution
   deriving (Show, Eq, Ord)
 
 data GitResolution = GitResolution
-  { gitUrl :: Text,
-    revision :: Text
+  { gitUrl :: Text
+  , revision :: Text
   }
   deriving (Show, Eq, Ord)
 
