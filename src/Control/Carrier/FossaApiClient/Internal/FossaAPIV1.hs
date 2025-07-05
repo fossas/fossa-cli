@@ -322,11 +322,17 @@ allow401' err = case err of
 cliVersion :: Text
 cliVersion = fromMaybe "" versionNumber
 
-uploadUrl :: Url scheme -> Url scheme
-uploadUrl baseurl = baseurl /: "api" /: "builds" /: "custom"
+uploadUrl :: AnalysisService -> Url scheme -> Url scheme
+uploadUrl service baseurl =
+  case service of
+    Core -> baseurl /: "api" /: "builds" /: "custom"
+    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "v1" /: "provided_build" /: "finalize"
 
-uploadWithFirstPartyUrl :: Url scheme -> Url scheme
-uploadWithFirstPartyUrl baseurl = baseurl /: "api" /: "builds" /: "custom_with_first_party"
+uploadWithFirstPartyUrl :: AnalysisService -> Url scheme -> Url scheme
+uploadWithFirstPartyUrl service baseurl =
+  case service of
+    Core -> baseurl /: "api" /: "builds" /: "custom_with_first_party"
+    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "v1" /: "provided_build" /: "finalize_with_first_party_licenses"
 
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: OrgId -> Locator -> Text
@@ -698,7 +704,7 @@ req method url body resp scheme = context "Calling FOSSA API" $
     Req.req method url body resp scheme
 
 uploadAnalysis ::
-  APIClientEffs sig m =>
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m, Has (Reader HTTP.Manager) sig m) =>
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
@@ -708,8 +714,9 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
-        "locator"
-          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+        baseOpts
+          <> "locator"
+            =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
             =: cliVersion
           <> "managedBuild"
@@ -717,8 +724,18 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
+  resp <- uploadToSparkle baseUrl sourceUnits opts <||> uploadToCore baseUrl sourceUnits opts
   pure (responseBody resp)
+  where
+    sparkleUrl = uploadUrl Sparkle
+    coreUrl = uploadUrl Core
+    upload url units = req POST url (ReqBodyJson units) jsonResponse
+
+    uploadToSparkle baseUrl units opts =
+      warnOnErr @Text "analysis upload to new analysis service failed, falling back to core analysis."
+        . errCtx ("Upload to new analysis service at " <> renderUrl (sparkleUrl baseUrl))
+        $ upload (sparkleUrl baseUrl) units opts
+    uploadToCore baseUrl = upload (coreUrl baseUrl)
 
 customUploadPermissionUrl :: Url scheme -> Url scheme
 customUploadPermissionUrl baseurl = baseurl /: "api" /: "cli" /: "custom_build_permissions"
@@ -746,7 +763,7 @@ getCustomBuildUploadPermissions apiOpts ProjectRevision{..} metadata = fossaReq 
   pure (responseBody resp)
 
 uploadAnalysisWithFirstPartyLicenses ::
-  APIClientEffs sig m => -- (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m) =>
+  (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m, Has (Reader HTTP.Manager) sig m) =>
   ApiOpts ->
   ProjectRevision ->
   ProjectMetadata ->
@@ -756,8 +773,9 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
-        "locator"
-          =: renderLocator (Locator "custom" projectName (Just projectRevision))
+        baseOpts
+          <> "locator"
+            =: renderLocator (Locator "custom" projectName (Just projectRevision))
           <> "cliVersion"
             =: cliVersion
           <> "managedBuild"
@@ -767,8 +785,18 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
-  resp <- req POST (uploadWithFirstPartyUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)
+  resp <- uploadToSparkle baseUrl opts <||> uploadToCore baseUrl opts
   pure (responseBody resp)
+  where
+    sparkleUrl = uploadWithFirstPartyUrl Sparkle
+    coreUrl = uploadWithFirstPartyUrl Core
+    uploadFirstPartyAnalysis url = req POST url (NoReqBody) jsonResponse
+
+    uploadToSparkle baseUrl opts =
+      warnOnErr @Text "First party license scan upload to new analysis service failed, falling back to core analysis."
+        . errCtx ("Upload to new analysis service at " <> renderUrl (sparkleUrl baseUrl))
+        $ uploadFirstPartyAnalysis (sparkleUrl baseUrl) opts
+    uploadToCore baseUrl = uploadFirstPartyAnalysis (coreUrl baseUrl)
 
 mkMetadataOpts :: ProjectMetadata -> Text -> Option scheme
 mkMetadataOpts ProjectMetadata{..} projectName = mconcat totalOptions
