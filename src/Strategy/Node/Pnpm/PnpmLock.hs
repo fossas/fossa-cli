@@ -145,7 +145,7 @@ newtype PnpmLockFileSnapshots = PnpmLockFileSnapshots
 instance FromJSON PnpmLockFileSnapshots where
   parseJSON v = do
     let readTransitiveDepPairs o = o .:? "dependencies" .!= mempty
-    snapshots <- traverse (withObject "Read PnpmLockFileSnapshots" readTransitiveDepPairs) =<< parseJSON v
+    snapshots <- withObject "Read PnpmLockFileSnapshots" readTransitiveDepPairs =<< parseJSON v
     pure $
       PnpmLockFileSnapshots{snapshots}
 
