@@ -1,23 +1,27 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Strategy.Node.Pnpm.PnpmLock (
   analyze,
 
   -- * for testing
   buildGraph,
-) where
+)
+where
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
-import Data.Maybe (listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Yaml (FromJSON, Object, Parser, (.!=), (.:), (.:?))
+import Data.Yaml (Object, Parser, (.!=), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -124,8 +128,26 @@ data PnpmLockfile = PnpmLockfile
   { importers :: Map Text ProjectMap
   , packages :: Map Text PackageData
   , lockFileVersion :: PnpmLockFileVersion
+  , lockFileSnapshots :: PnpmLockFileSnapshots
+  -- ^ Dependency graph in lockfile version > 9
   }
   deriving (Show, Eq, Ord)
+
+type SnapshotDepName = Text
+
+type SnapShotDepRev = Text
+
+-- | Lockfile versions > 9 use snapshots to represent the dependency graph.
+newtype PnpmLockFileSnapshots = PnpmLockFileSnapshots
+  {snapshots :: Map SnapshotDepName [(SnapshotDepName, SnapShotDepRev)]}
+  deriving (Show, Eq, Ord, Semigroup, Monoid)
+
+instance FromJSON PnpmLockFileSnapshots where
+  parseJSON v = do
+    let readTransitiveDepPairs o = o .:? "dependencies" .!= mempty
+    snapshots <- traverse (withObject "Read PnpmLockFileSnapshots" readTransitiveDepPairs) =<< parseJSON v
+    pure $
+      PnpmLockFileSnapshots{snapshots}
 
 data PnpmLockFileVersion
   = PnpmLockLt4 Text
@@ -140,6 +162,8 @@ instance FromJSON PnpmLockfile where
     rawLockFileVersion <- getVersion =<< obj .:? "lockfileVersion" .!= (TextLike mempty)
     importers <- obj .:? "importers" .!= mempty
     packages <- obj .:? "packages" .!= mempty
+    -- PNPM 9 snapshots
+    snapshots <- obj .:? "snapshots" .!= mempty
 
     -- Map pnpm non-workspace lockfile format to pnpm workspace lockfile format.
     --
@@ -158,7 +182,7 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile refinedImporters packages rawLockFileVersion
+    pure $ PnpmLockfile{importers = refinedImporters, packages = packages, lockFileVersion = rawLockFileVersion, lockFileSnapshots = snapshots}
     where
       getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
         (Just '1') -> pure $ PnpmLockLt4 ver
@@ -262,7 +286,7 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 buildGraph :: PnpmLockfile -> Graphing Dependency
 buildGraph lockFile = withoutLocalPackages $
   run . evalGrapher $ do
-    for_ (toList $ importers lockFile) $ \(_, projectSnapshot) -> do
+    for_ (toList lockFile.importers) $ \(_, projectSnapshot) -> do
       let allDirectDependencies =
             toList (directDependencies projectSnapshot)
               <> toList (directDevDependencies projectSnapshot)
@@ -288,10 +312,11 @@ buildGraph lockFile = withoutLocalPackages $
     -- >      events: 1.1.1
     -- >    dev: false
     -- @
-    for_ (toList $ packages lockFile) $ \(pkgKey, pkgMeta) -> do
+    for_ (toList lockFile.packages) $ \(pkgKey, pkgMeta) -> do
       let deepDependencies =
-            toList (dependencies pkgMeta)
-              <> toList (peerDependencies pkgMeta)
+            Map.toList (dependencies pkgMeta)
+              <> Map.toList (peerDependencies pkgMeta)
+              <> fromMaybe mempty (Map.lookup pkgKey lockFile.lockFileSnapshots.snapshots)
 
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
