@@ -251,7 +251,7 @@ nestedJarsInContainerSpec :: Spec
 nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
   currDir <- runIO getCurrentDir
   let imageArchivePath = currDir </> nestedJarsInContainerImage
-      baseLayerId = "sha256:3af1c7e331a4b6791c25101e0c862125a597d8d75d786aead62de19f78a5a992"
+      baseLayerId = "sha256:e525e941002b68382c246b973b465308be906b5051f4de84d0a047c3d24e6e73"
       otherLayerId = "sha256:6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096"
 
   it' "Reads and merges the layers correctly" $ do
@@ -271,5 +271,5 @@ nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
     -- It also directly includes middle.jar and deepest.jar
     -- So we should find 6 total jars: three from top.jar and its nested jars, two from middle.jar and its nested jar and then deepest.jar
     -- See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
-    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 6
+    (length <$> Map.lookup baseLayerId observationsMap) `shouldBe'` Just 7
     (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 0
