@@ -285,7 +285,6 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 
   case lockFileVersion pnpmLockFile of
     PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
-    PnpmLockV678 raw -> logWarn . pretty $ "pnpm-lock file is using newer lockFileVersion: " <> raw <> " of, which is not officially supported!"
     _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
