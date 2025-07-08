@@ -2,7 +2,7 @@
 
 ## 3.10.12
 
-- PNPM: Initial support for lockfile version 9.0 ((#1561)[https://github.com/fossas/fossa-cli/pull/1561])
+- PNPM: Initial support for lockfile version 9.0 ([#1561](https://github.com/fossas/fossa-cli/pull/1561))
 
 ## 3.10.11
 
