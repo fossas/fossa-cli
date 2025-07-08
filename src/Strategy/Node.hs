@@ -36,7 +36,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (decodeUtf8)
+import Data.String.Conversion (decodeUtf8, toString)
 import Data.Tagged (applyTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -49,7 +49,6 @@ import Discovery.Filters (AllFilters, withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
-  findFirstMatchingFile,
   walkWithFilters',
  )
 import Effect.Logger (
@@ -325,7 +324,14 @@ buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap
 
     -- True if qualified glob pattern matches the given file.
     filterfunc :: Manifest -> Glob Rel -> Manifest -> Bool
-    filterfunc root glob (Manifest candidate) = candidate `Glob.matches` qualifyGlobPattern root glob
+    filterfunc root glob (Manifest candidate) = candidate `globMatches` qualifyGlobPattern root glob
+
+    -- PNPM workspaces can negate their globs with '!'.
+    globMatches :: Path Abs File -> Glob Abs -> Bool
+    globMatches p g = case toString g of
+      -- labeled unsafe, but we already had a glob before putting it back together again
+      ('!' : rest) -> not $ p `Glob.matches` (Glob.unsafeGlobAbs rest)
+      _ -> p `Glob.matches` g
 
     -- Yarn appends the filename to the glob, so we match that behavior
     -- https://github.com/yarnpkg/yarn/blob/master/src/config.js#L821
