@@ -372,8 +372,6 @@ pnpmLockV6GraphSpec graph = do
 
 pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV9GraphSpec graph = do
-  let hasEdge = expectEdge graph
-
   describe "buildGraph" $ do
     it "should mark direct dependencies of project as direct" $ do
       expectDirect
