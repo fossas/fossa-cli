@@ -140,6 +140,16 @@ type SnapshotDepName = Text
 type SnapShotDepRev = Text
 
 -- | Lockfile versions > 9 use snapshots to represent the dependency graph.
+-- Example:
+--   snapshots:
+--
+--     colorjs@0.1.9: {}
+--
+--     punycode@2.3.1: {}
+--
+--     uri-js@4.4.1:
+--       dependencies:
+--       punycode: 2.3.1
 newtype PnpmLockFileSnapshots = PnpmLockFileSnapshots
   {snapshots :: Map SnapshotDepName [(SnapshotDepName, SnapShotDepRev)]}
   deriving (Show, Eq, Ord, Semigroup, Monoid)
@@ -159,7 +169,6 @@ instance FromJSON PnpmLockFileSnapshots where
 data PnpmLockFileVersion
   = PnpmLockLt4 Text
   | PnpmLock4Or5
-  | PnpmLock6
   | PnpmLockV678 Text
   | PnpmLockV9
   deriving (Show, Eq, Ord)
@@ -197,8 +206,7 @@ instance FromJSON PnpmLockfile where
         (Just '3') -> pure $ PnpmLockLt4 ver
         (Just '4') -> pure PnpmLock4Or5
         (Just '5') -> pure PnpmLock4Or5
-        (Just '6') -> pure PnpmLock6
-        (Just x) | x `elem` ['7', '8'] -> pure $ PnpmLockV678 ver
+        (Just x) | x `elem` ['6', '7', '8'] -> pure $ PnpmLockV678 ver
         (Just '9') -> pure PnpmLockV9
         _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
 
@@ -339,7 +347,6 @@ buildGraph lockFile = withoutLocalPackages $
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion = case lockFileVersion lockFile of
       PnpmLock4Or5 -> getPkgNameVersionV5
-      PnpmLock6 -> getPkgNameVersionV6
       PnpmLockLt4 _ -> getPkgNameVersionV5 -- v3 or below are deprecated and are not used in practice, fallback to closest
       PnpmLockV678 _ -> getPkgNameVersionV6 -- at the time of writing there is no v7, so default to closest
       PnpmLockV9 -> getPkgNameVersionV9
@@ -431,7 +438,6 @@ buildGraph lockFile = withoutLocalPackages $
     mkPkgKey :: Text -> Text -> Text
     mkPkgKey name version = case lockFileVersion lockFile of
       PnpmLock4Or5 -> "/" <> name <> "/" <> version
-      PnpmLock6 -> "/" <> name <> "@" <> version
       -- v3 or below are deprecated and are not used in practice, fallback to closest
       PnpmLockLt4 _ -> "/" <> name <> "/" <> version
       -- at the time of writing there is no v7, so default to closest
