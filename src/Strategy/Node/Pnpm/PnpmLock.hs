@@ -38,6 +38,8 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing, shrink)
 import Path (Abs, File, Path)
+import Data.Aeson.KeyMap (toHashMapText)
+import qualified Data.HashMap.Strict as HashMap
 
 -- | Pnpm Lockfile
 --
@@ -143,11 +145,14 @@ newtype PnpmLockFileSnapshots = PnpmLockFileSnapshots
   deriving (Show, Eq, Ord, Semigroup, Monoid)
 
 instance FromJSON PnpmLockFileSnapshots where
-  parseJSON v = do
-    let readTransitiveDepPairs o = o .:? "dependencies" .!= mempty
-    snapshots <- withObject "Read PnpmLockFileSnapshots" readTransitiveDepPairs =<< parseJSON v
-    pure $
-      PnpmLockFileSnapshots{snapshots}
+  parseJSON = withObject "Read PnpmLockFileSnapshots" $ \o ->
+    do let readTransitiveDepPairs = withObject "Parse dependencies" $
+             \ds -> do deps <- ds .:? "dependencies" .!= mempty
+                       pure . HashMap.toList $ deps
+       snapshots <- traverse readTransitiveDepPairs o
+       let snapshots' = Map.fromList . HashMap.toList . toHashMapText $ snapshots
+       pure $
+         PnpmLockFileSnapshots{snapshots = snapshots'}
 
 data PnpmLockFileVersion
   = PnpmLockLt4 Text
