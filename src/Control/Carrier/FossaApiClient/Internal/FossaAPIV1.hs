@@ -326,13 +326,13 @@ uploadUrl :: AnalysisService -> Url scheme -> Url scheme
 uploadUrl service baseurl =
   case service of
     Core -> baseurl /: "api" /: "builds" /: "custom"
-    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "v1" /: "provided_build" /: "finalize"
+    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "builds" /: "custom"
 
 uploadWithFirstPartyUrl :: AnalysisService -> Url scheme -> Url scheme
 uploadWithFirstPartyUrl service baseurl =
   case service of
     Core -> baseurl /: "api" /: "builds" /: "custom_with_first_party"
-    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "v1" /: "provided_build" /: "finalize_with_first_party_licenses"
+    Sparkle -> baseurl /: "api" /: "proxy" /: "analysis" /: "api" /: "builds" /: "custom_with_first_party"
 
 -- | This renders an organization + locator into a path piece for the fossa API
 renderLocatorUrl :: OrgId -> Locator -> Text
