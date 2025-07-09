@@ -133,7 +133,7 @@ Following CLI commands are not supported with 3.x:
    - `$FOSSA_GRADLE_COMMAND` environment variable cannot be configured. 3.x uses Gradle executable in `$PATH`.
 - Refer to [FOSSA 3.x gradle docs](references/strategies/languages/gradle/gradle.md) for more information for gradle.
 
-#### Clojure 
+#### Clojure
 - 3.x performs the `lein deps :tree` strategy by default. 
 - 3.x does not support any options - `strategy`, and `lien` for Clojure analysis.
 - Refer to [FOSSA 3.x clojure docs](references/strategies/languages/clojure/clojure.md) for more information on how 3.x performs analysis for clojure.
@@ -143,7 +143,7 @@ Following CLI commands are not supported with 3.x:
 - 3.x does not support following options: `tags`, `all-tags,` `strategy`, `lockfile`, `manifest`, `modules-vendor`, `allow-unresolved`, `allow-unresolved-prefix`, `allow-nested-vendor`, `allow-deep-vendor`, `allow-external-vendor`, `allow-external-vendor-prefix`.
 - Refer to [FOSSA 3.x Go docs](references/strategies/languages/golang/golang.md) for more information on how 3.x performs analysis for Go.
 
-#### Haskell 
+#### Haskell
 - 3.x will apply stack strategy when a project is discovered having stack.yaml file
 - 3.x will apply cabal-install strategy for projects using cabal.project or file with .cabal extension
 - 3.x does not support `strategy` option for Haskell analysis
@@ -242,7 +242,7 @@ If you run into poor dependency results with 3.x, you can get support by opening
 
 If you are integrating a private project and want to share more details, or if you're a FOSSA customer with priority support, you can file a ticket at [support.fossa.com](https://support.fossa.com) for assistance.
 
-#### How do I run only a specific analyzer for my project? 
+#### How do I run only a specific analyzer for my project?
 
 You can configure to run specific analyzer or only analyze specific paths in `.fossa.yml` file. Please refer to documentation [here](references/files/fossa-yml.md)
 

@@ -1,8 +1,7 @@
 # Analyzing the Android Open Source Project
 
-<!-- markdown-link-check-disable -->
+<!-- markdown-link-check-disable-next-line -->
 [Android Open Source Project (AOSP)](https://source.android.com/) is used to make custom Android operating system distributions.
-<!-- markdown-link-check-enable -->
 This document describes how to analyze AOSP distributions for licenses using FOSSA.
 It does not describe how to analyze AOSP distributions for dependencies and security vulnerabilities.
 
@@ -10,10 +9,9 @@ It does not describe how to analyze AOSP distributions for dependencies and secu
 
 ## Requirements
 
-<!-- markdown-link-check-disable -->
 In our testing, we have been able to analyze unmodified AOSP sources for licenses in about 2 hours and 30 minutes with 32 CPU cores and 64 GB of memory (`m5a.8xlarge` EC2 instance), with a peak system memory usage of 54 GB.
+<!-- markdown-link-check-disable-next-line -->
 This is in line with the [hardware requirements to build AOSP suggested by Google](https://source.android.com/docs/setup/build/requirements).
-<!-- markdown-link-check-enable -->
 
 ## Analyzing AOSP
 
