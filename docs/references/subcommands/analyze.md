@@ -39,7 +39,7 @@ The paths and targets filtering options allow you to specify the exact targets w
 | `--exclude-path`                 | Exclude these paths from scannig. See [paths.exclude](../files/fossa-yml.md#paths.exclude) in the fossa.yml spec.        |
 | `--include-unused-deps`          | Include all deps found, instead of filtering non-production deps.  Ignored by VSI.                                       |
 | `--debug-no-discovery-exclusion` | Ignore these filters during discovery phase.  This flag is for debugging only and may be removed without warning.        |
-| `--without-default-filters`      | Ignore default path filters. See [default path filters](./analyze.md#what-are-the-default-path-filters)                  |
+| `--without-default-filters`      | Ignore default path filters. See [default path filters](./analyze.md#what-are-the-default-filters)                       |
 
 
 ### Printing FOSSA results
@@ -184,7 +184,7 @@ Note that the `MY_RG` release group must already exist, as well as `MY_RELEASE_V
 `fossa-cli` skips analysis, if and only if
 
 - (a) Target is excluded via [fossa configuration file](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-yml.md#analysis-target-configuration) (this filtering is referred to as "exclusion filters").
-- (b) Target is excluded via [default path filters](./analyze.md#what-are-the-default-path-filters) (this filtering was previously referred to as "production path filtering").
+- (b) Target is excluded via [default path filters](./analyze.md#what-are-the-default-filters) (this filtering was previously referred to as "production path filtering").
 
 #### What are the default filters?
 
