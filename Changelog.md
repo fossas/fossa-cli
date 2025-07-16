@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Updates the `fossa test` output to include severity data on supported FOSSA instances
+
 ## 3.10.12
 
 - PNPM: Initial support for lockfile version 9.0 ([#1561](https://github.com/fossas/fossa-cli/pull/1561))
