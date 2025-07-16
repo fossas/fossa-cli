@@ -104,7 +104,7 @@ buildGraph PackageJson{..} = run . withLabeling toDependency $ do
         }
 
 newtype PkgJsonWorkspaces = PkgJsonWorkspaces {unWorkspaces :: [Glob Rel]}
-  deriving (Eq, Ord, Show, ToJSON)
+  deriving (Eq, Ord, Show, ToJSON, Semigroup, Monoid)
 
 -- Name and version are required for workspace sub-projects.
 data PackageJson = PackageJson
