@@ -785,7 +785,7 @@ renderedIssues issues = rendered
               IssueUnlicensedAndPublicDep -> "Unlicensed dependency detected in " <> nameRevision
               IssuePolicyFlag -> issuePolicyFlagMessage
               IssuePolicyConflict -> issuePolicyConflictMessage
-              IssueVulnerability -> 
+              IssueVulnerability ->
                 case issuePriorityString of
                   Just priority -> Text.toTitle priority <> " vulnerability was detected on " <> nameRevision
                   Nothing -> "A vulnerability was detected on " <> nameRevision
