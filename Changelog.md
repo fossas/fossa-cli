@@ -1,5 +1,25 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Updates the `fossa test` output to include severity data on supported FOSSA instances ([#1562](https://github.com/fossas/fossa-cli/pull/1562))
+
+## 3.10.12
+
+- PNPM: Initial support for lockfile version 9.0 ([#1561](https://github.com/fossas/fossa-cli/pull/1561))
+
+## 3.10.11
+
+- container scanning: fix unzipping JARs that symlink to other layers #1555 ([#1555](https://github.com/fossas/fossa-cli/pull/1555))
+
+## 3.10.10
+
+- go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
+
+## 3.10.9
+
+- CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
+
 ## 3.10.8
 
 - Custom license scans: Apply `licenseScanPathFilters` to custom license scans ([#1535](https://github.com/fossas/fossa-cli/pull/1535)).

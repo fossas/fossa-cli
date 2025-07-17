@@ -1,4 +1,6 @@
-#!/opt/homebrew/bin/bash
+# This script creates a nested jar in the current directory for testing purposes.
+# Refer to README.md for usage instructions.
+
 rm -rf nested-jar
 mkdir nested-jar
 cd nested-jar || exit

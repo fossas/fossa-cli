@@ -1,6 +1,6 @@
 # Pnpm
 
-[Pnpm](https://pnpm.io/) is a fast, disk space-efficient package manager. 
+[Pnpm](https://pnpm.io/) is a fast, disk space-efficient package manager.
 Unlike npm and yarn, pnpm uses symbolic links to create a nested structure
 of dependencies.
 
@@ -20,8 +20,8 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
 
 - `packages`
   - `[packagesKey]`
-    - `resolution`: infer git URL, git commit, or package source URL.  
-    - `dependencies`: list of transitive dependencies 
+    - `resolution`: infer git URL, git commit, or package source URL.
+    - `dependencies`: list of transitive dependencies
     - `peerDependencies`: list of peer dependencies (will be treated like any other dependency)
     - `dev`: to infer if this is used dependency or not. If the value is `true` by default CLI will not include this in the final analysis.
 
@@ -35,7 +35,7 @@ importers:
     specifiers:
       some-pkg: https://some-url/pkg.tar.gz
       react: '*'
-      my-local-pkg: file:../libs/my-local-pkg 
+      my-local-pkg: file:../libs/my-local-pkg
     dependencies:
       some-pkg: '@some-url/pkg.tar.gz'
       my-local-pkg: file:../libs/my-local-pkg
@@ -43,7 +43,7 @@ importers:
       react: 18.1.0
 
   # workspace project in packages/some-ws-pkg directory from root.
-  packages/some-ws-pkg: 
+  packages/some-ws-pkg:
     specifiers:
       commander: 9.2.0
     dependencies:
@@ -104,7 +104,7 @@ FOSSA will use provided `repo` and `commit` attribute to analyze this dependency
       dev: false
 ```
 
-* If the dependency was resolved using tarball (`resolution` will have `tarball` attribute) 
+* If the dependency was resolved using tarball (`resolution` will have `tarball` attribute)
 FOSSA will use provided URL address to download and analyze this dependency.
 
 ```yaml
@@ -118,11 +118,11 @@ FOSSA will use provided URL address to download and analyze this dependency.
 ```
 
 * If the dependency was resolved using the local directory (`resolution` will have the `type: directory` attribute),
-FOSSA will not analyze this dependency. Local dependency's transitive dependencies will be analyzed, 
-and they will be promoted in place of local dependency. 
+FOSSA will not analyze this dependency. Local dependency's transitive dependencies will be analyzed,
+and they will be promoted in place of local dependency.
 
 ```yaml
-    # FOSSA will not analyze this dependency, 
+    # FOSSA will not analyze this dependency,
     # But FOSSA will analyze its transitive dependency (if they are not sourced from the local directory)
     #
     # FOSSA will promote loose-envify of 1.4.0 in place of unifier.
@@ -136,7 +136,7 @@ and they will be promoted in place of local dependency.
         dev: false
 ```
 
-* If the dependency was resolved using registry resolver, FOSSA will use the registry to analyze the dependency. 
+* If the dependency was resolved using registry resolver, FOSSA will use the registry to analyze the dependency.
 CLI will infer the package name and version using `/${dependencyName}/${dependencyVersion}` scheme from the package's key.
 
 ```yaml
@@ -151,7 +151,7 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 * Pnpm workspaces are supported.
 * Development dependencies (`dev: true`) are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
 * Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
-* `fossa-cli` supports lockFileVersion: 4.x, 5.x, and 6.x.
+* `fossa-cli` supports lockFileVersion: 4.x, 5.x, 6.x, 7.x, 8.x, and 9.x.
 
 
 # F.A.Q
@@ -168,10 +168,3 @@ targets:
   only:
     - type: pnpm
 ```
-### Are all versions of `pnpm` supported?
-
-At this time, the latest version of pnpm (v9) and its associated v9 lockfiles are not correctly parsed by FOSSA. Please revert to v8 (v6 lockfile) if your dependencies are not resolved in the FOSSA UI: "FOSSA was unable to analyze this dependency. If it is behind a private registry or auth you may need to configure FOSSA's access, then rebuild this dependency." This is due to the version number being appended to the package name:
-
-<img width="796" alt="image" src="https://github.com/user-attachments/assets/d1461506-d3e7-42da-b9be-2b53a87f79f1" />
-
-Please [email](mailto:support@fossa.com) FOSSA support if you are affected by this limitation.

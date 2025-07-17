@@ -341,7 +341,7 @@ instance Pretty IssueType where
 
 data Issue = Issue
   { issueId :: Int
-  , issuePriorityString :: Maybe Text -- we only use this field for `fossa test --json`
+  , issuePriorityString :: Maybe Text
   , issueResolved :: Bool
   , issueRevisionId :: Text
   , issueType :: IssueType
@@ -785,7 +785,10 @@ renderedIssues issues = rendered
               IssueUnlicensedAndPublicDep -> "Unlicensed dependency detected in " <> nameRevision
               IssuePolicyFlag -> issuePolicyFlagMessage
               IssuePolicyConflict -> issuePolicyConflictMessage
-              IssueVulnerability -> "Critical vulnerability detected on " <> nameRevision
+              IssueVulnerability ->
+                case issuePriorityString of
+                  Just priority -> Text.toTitle priority <> " vulnerability was detected on " <> nameRevision
+                  Nothing -> "A vulnerability was detected on " <> nameRevision
               IssueUnlicensedDependency -> "Unlicensed dependency detected in " <> nameRevision
               IssueOutdatedDependency -> "Outdated dependency detected in " <> nameRevision
               IssueOther t -> t

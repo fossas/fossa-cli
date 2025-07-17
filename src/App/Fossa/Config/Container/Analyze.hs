@@ -14,6 +14,8 @@ import App.Docs (fossaContainerAnalyzeDefaultFilterDocUrl)
 import App.Fossa.Config.Analyze (WithoutDefaultFilters, branchHelp, withoutDefaultFilterParser)
 import App.Fossa.Config.Common (
   CommonOpts (CommonOpts, optDebug, optProjectName, optProjectRevision),
+  DestinationMeta (..),
+  OutputStyle (..),
   ScanDestination (..),
   collectAPIMetadata,
   collectApiOpts,
@@ -21,6 +23,7 @@ import App.Fossa.Config.Common (
   collectRevisionOverride,
   commonOpts,
   metadataOpts,
+  outputStyleArgs,
  )
 import App.Fossa.Config.ConfigFile
 import App.Fossa.Config.Container.Common (
@@ -38,7 +41,7 @@ import App.Types (
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
-import Data.Flag (Flag, flagOpt, fromFlag)
+import Data.Flag (Flag, flagOpt)
 import Data.Monoid.Extra (isMempty)
 import Data.Text (Text)
 import Discovery.Filters
@@ -84,7 +87,7 @@ instance ToJSON ContainerAnalyzeConfig where
 
 data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   { analyzeCommons :: CommonOpts
-  , containerNoUpload :: Flag NoUpload
+  , containerOutputStyle :: OutputStyle
   , containerJsonOutput :: Flag JsonOutput
   , containerBranch :: Maybe Text
   , containerMetadata :: ProjectMetadata
@@ -109,13 +112,7 @@ cliParser :: Parser ContainerAnalyzeOptions
 cliParser =
   ContainerAnalyzeOptions
     <$> commonOpts
-    <*> flagOpt
-      NoUpload
-      ( applyFossaStyle
-          <> long "output"
-          <> short 'o'
-          <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA"
-      )
+    <*> outputStyleArgs
     <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> stringToHelpDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API.")
     <*> optional
       ( strOption
@@ -173,12 +170,15 @@ collectScanDestination ::
   ContainerAnalyzeOptions ->
   m ScanDestination
 collectScanDestination maybeCfgFile envvars ContainerAnalyzeOptions{..} =
-  if fromFlag NoUpload containerNoUpload
-    then pure OutputStdout
-    else do
+  case containerOutputStyle of
+    Output -> pure OutputStdout
+    TeeOutput -> getScanUploadDest OutputAndUpload
+    Default -> getScanUploadDest UploadScan
+  where
+    getScanUploadDest constructor = do
       apiOpts <- collectApiOpts maybeCfgFile envvars analyzeCommons
       metaMerged <- collectAPIMetadata maybeCfgFile containerMetadata
-      pure $ UploadScan apiOpts metaMerged
+      pure $ constructor (DestinationMeta (apiOpts, metaMerged))
 
 collectFilters :: Maybe ConfigFile -> AllFilters
 collectFilters maybeConfig = do
