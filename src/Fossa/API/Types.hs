@@ -341,7 +341,7 @@ instance Pretty IssueType where
 
 data Issue = Issue
   { issueId :: Int
-  , issuePriorityString :: Maybe Text -- we only use this field for `fossa test --json`
+  , issuePriorityString :: Maybe Text
   , issueResolved :: Bool
   , issueRevisionId :: Text
   , issueType :: IssueType

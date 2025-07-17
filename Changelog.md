@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Updates the `fossa test` output to include severity data on supported FOSSA instances
+- Updates the `fossa test` output to include severity data on supported FOSSA instances ([#1562](https://github.com/fossas/fossa-cli/pull/1562))
 
 ## 3.10.12
 
