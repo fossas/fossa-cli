@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.10.13
 
 - Updates the `fossa test` output to include severity data on supported FOSSA instances ([#1562](https://github.com/fossas/fossa-cli/pull/1562))
 
