@@ -1,4 +1,4 @@
-module Strategy.Python.PDM.PdmLock (
+module Strategy.Python.PyProject.PdmLock (
   PdmLock (..),
   PdmLockPackage (..),
   buildGraph,
