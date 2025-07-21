@@ -116,6 +116,7 @@ data PackageJson = PackageJson
   , packageLicense :: Maybe PkgJsonLicense
   , packageLicenses :: Maybe [PkgJsonLicenseObj]
   , packagePeerDeps :: Map Text Text
+  , packageResolutions :: Map Text Text
   }
   deriving (Eq, Ord, Show)
 
@@ -175,6 +176,7 @@ instance FromJSON PackageJson where
       <*> obj .:? "license"
       <*> obj .:? "licenses"
       <*> obj .:? "peerDependencies" .!= Map.empty
+      <*> obj .:? "resolutions" .!= Map.empty
 
 instance ToJSON PackageJson where
   toJSON PackageJson{..} =
@@ -187,6 +189,7 @@ instance ToJSON PackageJson where
       , "license" .= packageLicense
       , "licenses" .= packageLicenses
       , "peerDependencies" .= packagePeerDeps
+      , "resolutions" .= packageResolutions
       ]
 
 newtype Manifest = Manifest {unManifest :: Path Abs File}
@@ -216,15 +219,16 @@ data Development
 data FlatDeps = FlatDeps
   { directDeps :: Tagged Production (Set NodePackage)
   , devDeps :: Tagged Development (Set NodePackage)
+  , resolutions :: Set NodePackage
   , manifests :: Set Manifest
   }
   deriving (Eq, Ord, Show)
 
 instance Semigroup FlatDeps where
-  (<>) (FlatDeps direct1 dev1 files1) (FlatDeps direct2 dev2 files2) = FlatDeps (direct1 <> direct2) (dev1 <> dev2) (files1 <> files2)
+  (<>) (FlatDeps direct1 dev1 res1 files1) (FlatDeps direct2 dev2 res2 files2) = FlatDeps (direct1 <> direct2) (dev1 <> dev2) (res1 <> res2) (files1 <> files2)
 
 instance Monoid FlatDeps where
-  mempty = FlatDeps mempty mempty mempty
+  mempty = FlatDeps mempty mempty mempty mempty
 
 -- TODO: decode version constraints
 data NodePackage = NodePackage

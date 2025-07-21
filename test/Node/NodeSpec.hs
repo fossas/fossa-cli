@@ -22,7 +22,8 @@ import Strategy.Node.PackageJson (
     packageName,
     packagePeerDeps,
     packageVersion,
-    packageWorkspaces
+    packageWorkspaces,
+    packageResolutions
   ),
   PkgJsonGraph (PkgJsonGraph, jsonGraph, jsonLookup),
   PkgJsonLicense (LicenseText),
@@ -86,6 +87,7 @@ discoveredWorkSpaceProj currDir =
                           , packageLicense = Just (LicenseText "ISC")
                           , packageLicenses = Nothing
                           , packagePeerDeps = Map.empty
+                          , packageResolutions = Map.empty
                           }
                       )
                     ,
@@ -100,6 +102,7 @@ discoveredWorkSpaceProj currDir =
                                     , unsafeGlobRel "nested/pkg-b"
                                     ]
                                 }
+                          , packageResolutions = Map.empty
                           , packageDeps = Map.empty
                           , packageDevDeps = Map.empty
                           , packageLicense = Just (LicenseText "ISC")
@@ -118,6 +121,7 @@ discoveredWorkSpaceProj currDir =
                           , packageLicense = Just (LicenseText "ISC")
                           , packageLicenses = Nothing
                           , packagePeerDeps = Map.empty
+                          , packageResolutions = Map.empty
                           }
                       )
                     ]

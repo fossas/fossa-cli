@@ -273,12 +273,16 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
     mapToSet :: Map Text Text -> Set NodePackage
     mapToSet = Set.fromList . map (uncurry NodePackage) . Map.toList
 
+    parseResolutions :: Map Text Text -> Set NodePackage
+    parseResolutions = Set.fromList . map (uncurry NodePackage) . Map.toList
+
     extractSingle :: PackageJson -> FlatDeps
     extractSingle PackageJson{..} =
       FlatDeps
         (applyTag @Production $ mapToSet (packageDeps `Map.union` packagePeerDeps))
         (applyTag @Development $ mapToSet packageDevDeps)
-        (Map.keysSet jsonLookup)
+        (parseResolutions packageResolutions)
+        mempty
 
 loadPackage :: (Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Manifest -> m (Maybe (Manifest, PackageJson))
 loadPackage (Manifest file) = do

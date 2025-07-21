@@ -19,11 +19,13 @@ import DepTypes (
  )
 import Effect.ReadFS (ReadFS, readContentsBS)
 import GraphUtil (expectDeps', expectDirect', expectEdges')
+import Debug.Trace (traceShow)
+import Graphing qualified
 import Path
 import Path.IO (getCurrentDir)
 import Strategy.Node.PackageJson (Development, FlatDeps (FlatDeps), NodePackage (NodePackage), Production)
 import Strategy.Node.YarnV1.YarnLock (buildGraph, mangleParseErr)
-import Test.Effect (it')
+import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Yarn.Lock qualified as YL
 
@@ -139,6 +141,7 @@ simpleFlatDeps =
     (applyTag @Production $ Set.fromList [NodePackage "packageOne" "^1.0.0", NodePackage "once" "^1.3.0", NodePackage "packageSeven" "^7.0.0"])
     (applyTag @Development $ Set.fromList [NodePackage "packageSix" "^6.0.0"])
     mempty
+    mempty
 
 parseFile :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Lift IO) sig m) => Path Rel File -> m YL.Lockfile
 parseFile name = do
@@ -176,3 +179,20 @@ spec = do
         , (devPackageSix, prodDevPackageThree)
         ]
         graph
+
+  describe "Yarn resolutions have precedence over yarn.lock collisions" $
+    it' "Fails until resolutions are respected" $ do
+      yarnLock <- parseFile $(mkRelFile "yarn.lock.override")
+      let flatDeps =
+            FlatDeps
+              (applyTag @Production $ Set.fromList [NodePackage "unzipper" "^0.10.14"])
+              mempty
+              (Set.fromList [NodePackage "unzipper" "^0.12.3"])
+              mempty
+      graph <- buildGraph yarnLock flatDeps
+      let allDeps = Graphing.toList graph
+      traceShow allDeps $ do
+        let hasOld = any (\d -> dependencyName d == "unzipper" && dependencyVersion d == Just (CEq "0.10.14")) allDeps
+            hasNew = any (\d -> dependencyName d == "unzipper" && dependencyVersion d == Just (CEq "0.12.3")) allDeps
+        hasOld `shouldBe'` False
+        hasNew `shouldBe'` True

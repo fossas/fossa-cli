@@ -313,4 +313,5 @@ e2eFlatDeps =
     { directDeps = applyTag @Production $ Set.fromList [onceNodePkg, semverNodePkg]
     , devDeps = applyTag @Development $ Set.fromList [acornJsxNodePkg, isFqdnNodePkg]
     , manifests = mempty
+    , resolutions = mempty
     }

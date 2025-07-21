@@ -54,6 +54,7 @@ pkgJsonMock license licenses =
     , packageLicense = license
     , packageLicenses = licenses
     , packagePeerDeps = Map.empty
+    , packageResolutions = Map.empty
     }
 
 mockInput :: PackageJson
@@ -244,6 +245,7 @@ packageJsonGen = do
       , packageLicense = license
       , packageLicenses = licenses
       , packagePeerDeps = pkgPeerDeps
+      , packageResolutions = Map.empty
       }
 
 pkgJsonParseSpec :: Spec

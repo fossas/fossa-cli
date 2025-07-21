@@ -76,19 +76,19 @@ buildGraph ::
   FlatDeps ->
   m (Graphing Dependency)
 buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependency $
-  for_ (map extractPkgTriple $ MKM.toList lockfile) $ \(pkgName, keys, pkg) -> do
+  for_ (map extractPkgTriple $ MKM.toList filteredLockfile) $ \(pkgName, keys, pkg) -> do
     let parent :: YarnV1Package
         parent = YarnV1Package pkgName $ YL.version pkg
 
         allKeysAsNodePackages :: [NodePackage]
         allKeysAsNodePackages = toNodePackage <$> keys
 
+        -- Fetch dependencies and their resolved versions from the lockfile
+        -- Logs a debug message if a map lookup error occurs.
         childrenSpecs :: [YL.PackageKey]
         childrenSpecs = YL.dependencies pkg
 
-    -- Fetch dependencies and their resolved versions from the lockfile
-    -- Logs a debug message if a map lookup error occurs.
-    children <- catMaybes <$> traverse (resolveVersion lockfile) childrenSpecs
+    children <- catMaybes <$> traverse (resolveVersion filteredLockfile) childrenSpecs
 
     -- Insert all deps as deep to prevent missing isolated deps.
     deep parent
@@ -106,6 +106,74 @@ buildGraph lockfile FlatDeps{..} = fmap hydrateDepEnvs . withLabeling toDependen
     -- Mark as dev if present in any relevant package.json dev list
     promote EnvProduction $ unTag @Production directDeps
     promote EnvDevelopment $ unTag @Development devDeps
+  where
+    filteredLockfile :: YL.Lockfile
+    filteredLockfile =
+      if Set.null resolutions
+        then lockfile
+        else filterLockfileByResolutions lockfile resolutions
+
+-- | Filter a Yarn lockfile to respect package.json "resolutions".
+--
+-- This function takes a lockfile (a MultiKeyedMap of all resolved packages)
+-- and a set of NodePackages representing resolution overrides.
+-- It produces a new lockfile containing only the resolved versions specified
+-- by resolutions, plus all other packages not affected by resolutions.
+--
+-- Internally, the MultiKeyedMap requires an intermediate key type ('ik')
+-- that is Ord, Enum, and Bounded. We use 'Int' for this purpose via
+-- 'YL.lockfileIkProxy', which matches the construction used by the parser.
+-- This is crucial: the lockfile parser and all downstream consumers expect
+-- the intermediate key to be 'Int', so we must use the same proxy here.
+--
+-- The filtering logic:
+--   - For each lockfile entry, if its package name matches a resolution,
+--     only keep it if the full NodePackage (name + version spec) matches
+--     a resolution entry.
+--   - All other packages are kept as-is.
+--
+-- This ensures that only the correct resolved versions (and their transitive
+-- dependencies) are present in the graph, and overridden versions are excluded.
+-- Caveat: this errs on the side of leaving e.g. orphaned packages from the lockfile in place.
+filterLockfileByResolutions :: YL.Lockfile -> Set NodePackage -> YL.Lockfile
+filterLockfileByResolutions lockfile resolutions =
+ MKM.fromList YL.lockfileIkProxy
+   [ (keys, pkg)
+   | (keys, pkg) <- MKM.toList lockfile
+   , let npkgs = map toNodePackage (NE.toList keys)
+   , shouldKeep npkgs
+   ]
+ where
+   pkgName (NodePackage n _) = n
+   shouldKeep :: [NodePackage] -> Bool
+   shouldKeep npkgs =
+     let namesInRes = [pkgName r | r <- Set.toList resolutions]
+         hasResName = any (\np -> pkgName np `elem` namesInRes) npkgs
+         hasResExact = any (`Set.member` resolutions) npkgs
+     in if hasResName then hasResExact else True
+
+
+-- | Convert NodePackage to YL.PackageKey for lockfile lookup
+toPackageKey :: NodePackage -> YL.PackageKey
+toPackageKey (NodePackage n v) =
+  case YL.parsePackageKeyName n of
+    Just nm -> YL.PackageKey nm v
+    Nothing -> YL.PackageKey (YL.SimplePackageKey n) v
+
+-- | Recursively collect all reachable packages from the given roots in the lockfile,
+--   only following allowed keys.
+reachablePackages :: YL.Lockfile -> Set YL.PackageKey -> Set YL.PackageKey -> Set YL.PackageKey
+reachablePackages lockfile roots allowedKeysSet = go Set.empty (Set.toList roots)
+  where
+    go visited [] = visited
+    go visited (key:rest)
+      | key `Set.member` visited = go visited rest
+      | otherwise =
+          case MKM.lookup key lockfile of
+            Just pkg ->
+              let children = filter (`Set.member` allowedKeysSet) (YL.dependencies pkg)
+              in go (Set.insert key visited) (children ++ rest)
+            Nothing  -> go visited rest
 
 getLocations :: Maybe YL.Remote -> [Text]
 getLocations = \case
