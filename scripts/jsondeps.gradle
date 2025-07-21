@@ -114,8 +114,11 @@ allprojects {
                             printDebugToFossa("Could not resolve dependency: ${resolvedDep.getAttempted()}", "resolvedConfigToJSON")
                             return
                         }
-
                         def resolvedDependencyId = resolvedDep.getSelected().getId()
+                        if (resolvedDep.isConstraint()) {
+                            printDebugToFossa("Skipping constraint dependency: ${resolvedDependencyId}", "resolvedConfigToJSON")
+                            return
+                        }
                         if (resolvedDependencyId != resolvedComponent.getId()) {
                             adjacencyMap.get(resolvedComponent, []) << resolvedDependencyId
                         }
