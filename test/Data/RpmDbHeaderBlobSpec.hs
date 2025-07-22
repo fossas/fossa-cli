@@ -88,6 +88,7 @@ readPackageSpec = do
             , pkgRelease = Just "17.el8"
             , pkgArch = Just "s390x"
             , pkgEpoch = Nothing
+            , pkgLicense = Nothing
             }
 
     it "Reads little-endian bdb package: centos5 Vim" $
@@ -99,6 +100,7 @@ readPackageSpec = do
             , pkgRelease = Just "7.2.el5"
             , pkgArch = Just "x86_64"
             , pkgEpoch = Just 2
+            , pkgLicense = Nothing
             }
 
     it "Reads ndb package: suse15 libncurses6" $
@@ -110,6 +112,7 @@ readPackageSpec = do
             , pkgRelease = Just "5.9.1"
             , pkgArch = Just "x86_64"
             , pkgEpoch = Nothing
+            , pkgLicense = Nothing
             }
 
   it "Reads package blob with a v3 header centos6-devtools gpg pubkey" $ do
