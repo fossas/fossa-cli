@@ -47,8 +47,8 @@ readNDB file = do
     -- RPM packages that don't have all the required fields are dropped from the
     -- parsed list.
     parsePkgInfo :: PkgInfo -> Maybe NdbEntry
-    parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) =
-      Just $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+    parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch pkgLicense) =
+      Just $ NdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch) pkgLicense
     parsePkgInfo _ = Nothing
 
 -- When parsing ByteStrings, the associated token is a Word8 (a byte).
@@ -65,6 +65,7 @@ data NdbEntry = NdbEntry
   , ndbEntryPackage :: Text
   , ndbEntryVersion :: Text
   , ndbEntryEpoch :: Maybe Text
+  , ndbEntryLicense :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 

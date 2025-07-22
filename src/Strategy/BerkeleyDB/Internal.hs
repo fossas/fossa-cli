@@ -25,12 +25,13 @@ data BdbEntry = BdbEntry
   , bdbEntryPackage :: Text
   , bdbEntryVersion :: Text
   , bdbEntryEpoch :: Maybe Text
+  , bdbEntryLicense :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
 -- | FOSSA _requires_ that architecture is provided: https://github.com/fossas/FOSSA/blob/e61713dec1ef80dc6b6114f79622c14df5278235/modules/fetchers/README.md#locators-for-linux-packages
 parsePkgInfo :: (Has Diagnostics sig m, Has Logger sig m) => PkgInfo -> m (Maybe BdbEntry)
-parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch) = pure $ Just $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch)
+parsePkgInfo (PkgInfo (Just pkgName) (Just pkgVersion) (Just pkgRelease) (Just pkgArch) pkgEpoch pkgLicense) = pure $ Just $ BdbEntry pkgArch pkgName (pkgVersion <> "-" <> pkgRelease) (fmap (toText . show) pkgEpoch) pkgLicense
 parsePkgInfo pkg = do
   logDebug . pretty $ "Ignoring package '" <> show pkg <> "' is missing one or more fields; all fields are required"
   pure Nothing

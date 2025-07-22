@@ -60,6 +60,7 @@ data RpmTag
   | TagVersion -- 1001
   | TagRelease -- 1002
   | TagEpoch -- 1003
+  | TagLicense -- 1014
   | TagArchitecture -- 1022
   | -- | Tag values that we aren't interested in that aren't in spec/reference implementation.
     -- This allows reading those tag entries without failing on unknown tags.
@@ -78,6 +79,7 @@ intToRpmTag t =
     1001 -> TagVersion
     1002 -> TagRelease
     1003 -> TagEpoch
+    1014 -> TagLicense
     1022 -> TagArchitecture
     n -> TagOther n
 
@@ -469,6 +471,7 @@ data PkgInfo = PkgInfo
   -- According to the tag [documentation](https://rpm-software-management.github.io/rpm/manual/tags.html) it is int32.
   -- There seems to be code which does dereference it properly,
   -- so this appears to be a bug in the print statements than in the implementation.
+  , pkgLicense :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -482,6 +485,7 @@ getPkgInfo ies =
     <*> readTextTag TagRelease
     <*> readTextTag TagArchitecture
     <*> readInt32Tag TagEpoch
+    <*> readTextTag TagLicense
   where
     tagMap :: Map.Map RpmTag TagValueData
     tagMap =

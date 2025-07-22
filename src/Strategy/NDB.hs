@@ -127,13 +127,17 @@ buildGraph (OsInfo os osVersion) = directs . map toDependency
   where
     toDependency :: NdbEntry -> Dependency
     toDependency pkg =
-      Dependency
-        LinuxRPM
-        (ndbEntryPackage pkg <> "#" <> os <> "#" <> osVersion)
-        (Just $ version pkg)
-        mempty
-        mempty
-        mempty
+      let baseDep = Dependency
+            LinuxRPM
+            (ndbEntryPackage pkg <> "#" <> os <> "#" <> osVersion)
+            (Just $ version pkg)
+            mempty
+            mempty
+            mempty
+          withLicense = case ndbEntryLicense pkg of
+            Just license -> insertTag "license" license baseDep
+            Nothing -> baseDep
+      in withLicense
 
     version :: NdbEntry -> VerConstraint
     version pkg = CEq $ (ndbEntryArch pkg) <> "#" <> epoch pkg <> (ndbEntryVersion pkg)
