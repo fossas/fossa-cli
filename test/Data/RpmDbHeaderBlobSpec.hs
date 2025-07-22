@@ -124,6 +124,7 @@ readPackageSpec = do
           , pkgRelease = Just "4e0fd3a3"
           , pkgArch = Nothing
           , pkgEpoch = Nothing
+          , pkgLicense = Nothing
           }
 
 dataLengthSpec :: Spec
@@ -298,6 +299,7 @@ headerBlobSpec bs = describe "header blob parsing" $ do
             , pkgRelease = Just "1.fc35"
             , pkgArch = Just "x86_64"
             , pkgEpoch = Nothing
+            , pkgLicense = Nothing
             }
 
 headerBlobErrSpec :: Spec

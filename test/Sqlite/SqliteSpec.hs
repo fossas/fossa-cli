@@ -36,143 +36,143 @@ readDBPackagesSpec = do
 
 expectedPackages :: [PkgInfo]
 expectedPackages =
-  [ PkgInfo (Just "libgcc") (Just "11.2.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "crypto-policies") (Just "20210819") (Just "1.gitd0fdcfb.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "tzdata") (Just "2021e") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "fedora-release-identity-container") (Just "35") (Just "35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "python-setuptools-wheel") (Just "57.4.0") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "publicsuffix-list-dafsa") (Just "20210518") (Just "2.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "pcre2-syntax") (Just "10.37") (Just "4.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "ncurses-base") (Just "6.2") (Just "8.20210508.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "libssh-config") (Just "0.9.6") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "libreport-filesystem") (Just "2.15.2") (Just "6.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "dnf-data") (Just "4.9.0") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "fedora-gpg-keys") (Just "35") (Just "1") (Just "noarch") (Nothing)
-  , PkgInfo (Just "fedora-release-container") (Just "35") (Just "35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "fedora-repos") (Just "35") (Just "1") (Just "noarch") (Nothing)
-  , PkgInfo (Just "fedora-release-common") (Just "35") (Just "35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "setup") (Just "2.13.9.1") (Just "2.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "filesystem") (Just "3.14") (Just "7.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "basesystem") (Just "11") (Just "12.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "bash") (Just "5.1.8") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "ncurses-libs") (Just "6.2") (Just "8.20210508.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "glibc-common") (Just "2.34") (Just "8.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "glibc-minimal-langpack") (Just "2.34") (Just "8.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "glibc") (Just "2.34") (Just "8.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "zlib") (Just "1.2.11") (Just "30.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "bzip2-libs") (Just "1.0.8") (Just "9.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "xz-libs") (Just "5.2.5") (Just "7.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libzstd") (Just "1.5.0") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "sqlite-libs") (Just "3.36.0") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gmp") (Just "6.2.0") (Just "7.fc35") (Just "x86_64") (Just 1)
-  , PkgInfo (Just "libcap") (Just "2.48") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "popt") (Just "1.18") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libgpg-error") (Just "1.43") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libxml2") (Just "2.9.12") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libcom_err") (Just "1.46.3") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libstdc++") (Just "11.2.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libxcrypt") (Just "4.4.26") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "lua-libs") (Just "5.4.3") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "elfutils-libelf") (Just "0.185") (Just "5.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "file-libs") (Just "5.40") (Just "9.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libattr") (Just "2.5.1") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libacl") (Just "2.3.1") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libffi") (Just "3.1") (Just "29.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "p11-kit") (Just "0.23.22") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libunistring") (Just "0.9.10") (Just "14.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libidn2") (Just "2.3.2") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libuuid") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "readline") (Just "8.1") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libassuan") (Just "2.5.5") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "expat") (Just "2.4.1") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "json-c") (Just "0.15") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "keyutils-libs") (Just "1.6.1") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libsigsegv") (Just "2.13") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libsmartcols") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libtasn1") (Just "4.16.0") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "pcre") (Just "8.45") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "grep") (Just "3.6") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gdbm-libs") (Just "1.22") (Just "1.fc35") (Just "x86_64") (Just 1)
-  , PkgInfo (Just "libsepol") (Just "3.3") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libcomps") (Just "0.1.18") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libpsl") (Just "0.21.1") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "mpdecimal") (Just "2.5.1") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libgcrypt") (Just "1.9.4") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libksba") (Just "1.6.0") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "mpfr") (Just "4.1.0") (Just "8.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gawk") (Just "5.1.0") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "nettle") (Just "3.7.3") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "alternatives") (Just "1.19") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "p11-kit-trust") (Just "0.23.22") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gnutls") (Just "3.7.2") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libbrotli") (Just "1.0.9") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libcap-ng") (Just "0.8.2") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "audit-libs") (Just "3.0.6") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libdb") (Just "5.3.28") (Just "50.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libeconf") (Just "0.4.0") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libgomp") (Just "11.2.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libnghttp2") (Just "1.45.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libverto") (Just "0.3.2") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libyaml") (Just "0.2.5") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "lz4-libs") (Just "1.9.3") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "npth") (Just "1.6") (Just "7.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "pcre2") (Just "10.37") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libselinux") (Just "3.3") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "sed") (Just "4.8") (Just "8.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libsemanage") (Just "3.3") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "shadow-utils") (Just "4.9") (Just "7.fc35") (Just "x86_64") (Just 2)
-  , PkgInfo (Just "vim-minimal") (Just "8.2.3642") (Just "1.fc35") (Just "x86_64") (Just 2)
-  , PkgInfo (Just "elfutils-default-yama-scope") (Just "0.185") (Just "5.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "elfutils-libs") (Just "0.185") (Just "5.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "coreutils-common") (Just "8.32") (Just "31.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "openssl-libs") (Just "1.1.1l") (Just "2.fc35") (Just "x86_64") (Just 1)
-  , PkgInfo (Just "coreutils") (Just "8.32") (Just "31.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "ca-certificates") (Just "2021.2.50") (Just "3.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "krb5-libs") (Just "1.19.2") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libtirpc") (Just "1.3.2") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libnsl2") (Just "1.3.0") (Just "4.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "zchunk-libs") (Just "1.1.15") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libfsverity") (Just "1.4") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "cyrus-sasl-lib") (Just "2.1.27") (Just "13.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "openldap") (Just "2.4.59") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gnupg2") (Just "2.3.3") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gpgme") (Just "1.15.1") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libssh") (Just "0.9.6") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libcurl") (Just "7.79.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "tpm2-tss") (Just "3.1.0") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "ima-evm-utils") (Just "1.3.2") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "curl") (Just "7.79.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python-pip-wheel") (Just "21.2.3") (Just "4.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "python3") (Just "3.10.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-libs") (Just "3.10.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-libcomps") (Just "0.1.18") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-gpg") (Just "1.15.1") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "gzip") (Just "1.10") (Just "5.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "cracklib") (Just "2.9.6") (Just "27.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libpwquality") (Just "1.4.4") (Just "6.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "pam") (Just "1.5.2") (Just "5.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libblkid") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libmount") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "glib2") (Just "2.70.1") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "librepo") (Just "1.14.2") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libarchive") (Just "3.5.2") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "rpm-libs") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "rpm") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libmodulemd") (Just "2.13.0") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libsolv") (Just "0.7.19") (Just "3.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "libdnf") (Just "0.64.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-libdnf") (Just "0.64.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-hawkey") (Just "0.64.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "rpm-build-libs") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "rpm-sign-libs") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-rpm") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "python3-dnf") (Just "4.9.0") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "dnf") (Just "4.9.0") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "yum") (Just "4.9.0") (Just "1.fc35") (Just "noarch") (Nothing)
-  , PkgInfo (Just "sudo") (Just "1.9.7p2") (Just "2.fc35") (Just "x86_64") (Nothing)
-  , PkgInfo (Just "tar") (Just "1.34") (Just "2.fc35") (Just "x86_64") (Just 2)
-  , PkgInfo (Just "fedora-repos-modular") (Just "35") (Just "1") (Just "noarch") (Nothing)
-  , PkgInfo (Just "rootfiles") (Just "8.1") (Just "30.fc35") (Just "noarch") (Nothing)
+  [ PkgInfo (Just "libgcc") (Just "11.2.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "crypto-policies") (Just "20210819") (Just "1.gitd0fdcfb.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "tzdata") (Just "2021e") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "fedora-release-identity-container") (Just "35") (Just "35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "python-setuptools-wheel") (Just "57.4.0") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "publicsuffix-list-dafsa") (Just "20210518") (Just "2.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "pcre2-syntax") (Just "10.37") (Just "4.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "ncurses-base") (Just "6.2") (Just "8.20210508.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "libssh-config") (Just "0.9.6") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "libreport-filesystem") (Just "2.15.2") (Just "6.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "dnf-data") (Just "4.9.0") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "fedora-gpg-keys") (Just "35") (Just "1") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "fedora-release-container") (Just "35") (Just "35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "fedora-repos") (Just "35") (Just "1") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "fedora-release-common") (Just "35") (Just "35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "setup") (Just "2.13.9.1") (Just "2.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "filesystem") (Just "3.14") (Just "7.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "basesystem") (Just "11") (Just "12.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "bash") (Just "5.1.8") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "ncurses-libs") (Just "6.2") (Just "8.20210508.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "glibc-common") (Just "2.34") (Just "8.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "glibc-minimal-langpack") (Just "2.34") (Just "8.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "glibc") (Just "2.34") (Just "8.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "zlib") (Just "1.2.11") (Just "30.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "bzip2-libs") (Just "1.0.8") (Just "9.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "xz-libs") (Just "5.2.5") (Just "7.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libzstd") (Just "1.5.0") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "sqlite-libs") (Just "3.36.0") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gmp") (Just "6.2.0") (Just "7.fc35") (Just "x86_64") (Just 1) Nothing
+  , PkgInfo (Just "libcap") (Just "2.48") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "popt") (Just "1.18") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libgpg-error") (Just "1.43") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libxml2") (Just "2.9.12") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libcom_err") (Just "1.46.3") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libstdc++") (Just "11.2.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libxcrypt") (Just "4.4.26") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "lua-libs") (Just "5.4.3") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "elfutils-libelf") (Just "0.185") (Just "5.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "file-libs") (Just "5.40") (Just "9.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libattr") (Just "2.5.1") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libacl") (Just "2.3.1") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libffi") (Just "3.1") (Just "29.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "p11-kit") (Just "0.23.22") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libunistring") (Just "0.9.10") (Just "14.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libidn2") (Just "2.3.2") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libuuid") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "readline") (Just "8.1") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libassuan") (Just "2.5.5") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "expat") (Just "2.4.1") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "json-c") (Just "0.15") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "keyutils-libs") (Just "1.6.1") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libsigsegv") (Just "2.13") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libsmartcols") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libtasn1") (Just "4.16.0") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "pcre") (Just "8.45") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "grep") (Just "3.6") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gdbm-libs") (Just "1.22") (Just "1.fc35") (Just "x86_64") (Just 1) Nothing
+  , PkgInfo (Just "libsepol") (Just "3.3") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libcomps") (Just "0.1.18") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libpsl") (Just "0.21.1") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "mpdecimal") (Just "2.5.1") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libgcrypt") (Just "1.9.4") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libksba") (Just "1.6.0") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "mpfr") (Just "4.1.0") (Just "8.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gawk") (Just "5.1.0") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "nettle") (Just "3.7.3") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "alternatives") (Just "1.19") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "p11-kit-trust") (Just "0.23.22") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gnutls") (Just "3.7.2") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libbrotli") (Just "1.0.9") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libcap-ng") (Just "0.8.2") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "audit-libs") (Just "3.0.6") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libdb") (Just "5.3.28") (Just "50.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libeconf") (Just "0.4.0") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libgomp") (Just "11.2.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libnghttp2") (Just "1.45.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libverto") (Just "0.3.2") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libyaml") (Just "0.2.5") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "lz4-libs") (Just "1.9.3") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "npth") (Just "1.6") (Just "7.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "pcre2") (Just "10.37") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libselinux") (Just "3.3") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "sed") (Just "4.8") (Just "8.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libsemanage") (Just "3.3") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "shadow-utils") (Just "4.9") (Just "7.fc35") (Just "x86_64") (Just 2) Nothing
+  , PkgInfo (Just "vim-minimal") (Just "8.2.3642") (Just "1.fc35") (Just "x86_64") (Just 2) Nothing
+  , PkgInfo (Just "elfutils-default-yama-scope") (Just "0.185") (Just "5.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "elfutils-libs") (Just "0.185") (Just "5.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "coreutils-common") (Just "8.32") (Just "31.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "openssl-libs") (Just "1.1.1l") (Just "2.fc35") (Just "x86_64") (Just 1) Nothing
+  , PkgInfo (Just "coreutils") (Just "8.32") (Just "31.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "ca-certificates") (Just "2021.2.50") (Just "3.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "krb5-libs") (Just "1.19.2") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libtirpc") (Just "1.3.2") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libnsl2") (Just "1.3.0") (Just "4.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "zchunk-libs") (Just "1.1.15") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libfsverity") (Just "1.4") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "cyrus-sasl-lib") (Just "2.1.27") (Just "13.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "openldap") (Just "2.4.59") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gnupg2") (Just "2.3.3") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gpgme") (Just "1.15.1") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libssh") (Just "0.9.6") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libcurl") (Just "7.79.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "tpm2-tss") (Just "3.1.0") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "ima-evm-utils") (Just "1.3.2") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "curl") (Just "7.79.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python-pip-wheel") (Just "21.2.3") (Just "4.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "python3") (Just "3.10.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-libs") (Just "3.10.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-libcomps") (Just "0.1.18") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-gpg") (Just "1.15.1") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "gzip") (Just "1.10") (Just "5.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "cracklib") (Just "2.9.6") (Just "27.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libpwquality") (Just "1.4.4") (Just "6.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "pam") (Just "1.5.2") (Just "5.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libblkid") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libmount") (Just "2.37.2") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "glib2") (Just "2.70.1") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "librepo") (Just "1.14.2") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libarchive") (Just "3.5.2") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "rpm-libs") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "rpm") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libmodulemd") (Just "2.13.0") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libsolv") (Just "0.7.19") (Just "3.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "libdnf") (Just "0.64.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-libdnf") (Just "0.64.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-hawkey") (Just "0.64.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "rpm-build-libs") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "rpm-sign-libs") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-rpm") (Just "4.17.0") (Just "1.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "python3-dnf") (Just "4.9.0") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "dnf") (Just "4.9.0") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "yum") (Just "4.9.0") (Just "1.fc35") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "sudo") (Just "1.9.7p2") (Just "2.fc35") (Just "x86_64") Nothing Nothing
+  , PkgInfo (Just "tar") (Just "1.34") (Just "2.fc35") (Just "x86_64") (Just 2) Nothing
+  , PkgInfo (Just "fedora-repos-modular") (Just "35") (Just "1") (Just "noarch") Nothing Nothing
+  , PkgInfo (Just "rootfiles") (Just "8.1") (Just "30.fc35") (Just "noarch") Nothing Nothing
   , -- The next package is has no architecture and will cause a warning when running a full container scan
-    PkgInfo (Just "gpg-pubkey") (Just "9867c58f") (Just "601c49ca") (Nothing) (Nothing)
+    PkgInfo (Just "gpg-pubkey") (Just "9867c58f") (Just "601c49ca") Nothing Nothing Nothing
   ]
