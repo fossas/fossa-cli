@@ -32,6 +32,7 @@ import Types (
   DiscoveredProjectType (..),
   GraphBreadth (Complete),
   VerConstraint (CEq),
+  insertTag,
  )
 
 data NdbLocation = NdbLocation

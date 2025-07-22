@@ -35,6 +35,7 @@ import Types (
   DiscoveredProjectType (BerkeleyDBProjectType),
   GraphBreadth (Complete),
   VerConstraint (CEq),
+  insertTag,
  )
 
 data BerkeleyDatabase = BerkeleyDatabase
