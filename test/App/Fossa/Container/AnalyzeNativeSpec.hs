@@ -51,10 +51,10 @@ import Types (DiscoveredProjectType (SetuptoolsProjectType), GraphBreadth (..), 
 
 spec :: Spec
 spec = do
-  -- dockerEngineSpec
+  dockerEngineSpec
   analyzeSpec
-  -- jarsInContainerSpec
-  -- nestedJarsInContainerSpec
+  jarsInContainerSpec
+  nestedJarsInContainerSpec
 
 dockerEngineSpec :: Spec
 dockerEngineSpec = describe "parseDockerEngineSource" $ do
