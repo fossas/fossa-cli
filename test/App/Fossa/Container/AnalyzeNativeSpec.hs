@@ -115,7 +115,7 @@ analyzeSpec = describe "analyze" $ do
   it' "should get os-info from any layer" $ do
     containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) osInfoArchive
     let osInfo = imageData containerScan
-    (imageOs osInfo) `shouldBe'` Just "Fake OS"
+    (imageOs osInfo) `shouldBe'` Just "fakeos"
 
 buildImportsOf :: ContainerScan -> [Locator]
 buildImportsOf scan =
