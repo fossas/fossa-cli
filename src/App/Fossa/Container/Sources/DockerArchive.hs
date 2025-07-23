@@ -350,7 +350,7 @@ listTargetsFromDockerArchive tarball = do
   context "Analyzing From Base Layer" $ listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
 
   case layersFs of
-    Nothing -> logInfo "No other layers found in the image."
+    Nothing -> pure ()
     Just fs -> do
       void . context "Analyzing from Other Layers" $ listTargetLayer capabilities osInfo fs tarball "Other Layers"
 
