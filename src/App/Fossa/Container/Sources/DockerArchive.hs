@@ -123,9 +123,10 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   let imageBaseLayer = baseLayer image
       baseDigest = layerDigest imageBaseLayer
   baseFs <- context "Building Base Layer FS" $ mkFsFromChangeset $ baseLayer image
-  layersFs <- if hasOtherLayers image
-    then pure <$> context "Building Other Layers FS" (mkFsFromChangeset (otherLayersSquashed image))
-    else pure Nothing
+  layersFs <- 
+    if hasOtherLayers image
+      then pure <$> context "Building Other Layers FS" (mkFsFromChangeset (otherLayersSquashed image))
+      else pure Nothing
   osInfo <- getOsInfoFromLayers layersFs baseFs tarball
 
   when (isNothing osInfo) $
@@ -340,14 +341,15 @@ listTargetsFromDockerArchive tarball = do
   logInfo "Analyzing Base Layer"
 
   baseFs <- mkFsFromChangeset $ baseLayer image
-  layersFs <- if hasOtherLayers image
-    then pure <$> context "Building squashed FS from other layers" (mkFsFromChangeset $ otherLayersSquashed image)
-    else pure Nothing
+  layersFs <-
+    if hasOtherLayers image
+      then pure <$> context "Building squashed FS from other layers" (mkFsFromChangeset $ otherLayersSquashed image)
+      else pure Nothing
   osInfo <- getOsInfoFromLayers layersFs baseFs tarball
 
   context "Analyzing From Base Layer" $ listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
 
-  case layersFs  of
+  case layersFs of
     Nothing -> logInfo "No other layers found in the image."
     Just fs -> do
       void . context "Analyzing from Other Layers" $ listTargetLayer capabilities osInfo fs tarball "Other Layers"
@@ -400,7 +402,7 @@ getOsInfoFromLayers ::
   Path Abs File ->
   m (Maybe OsInfo)
 getOsInfoFromLayers layersFs baseFs tarball =
-   context "Retrieving OS Information" $ do
+  context "Retrieving OS Information" $ do
     layersFSOsInfo <- case layersFs of
       Just fs -> warnThenRecover @Text "Could not retrieve OS info from other layers, falling back to base layer." $ runTarballReadFSIO fs tarball getOsInfo
       Nothing -> pure Nothing
