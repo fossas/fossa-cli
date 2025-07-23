@@ -123,7 +123,7 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
   let imageBaseLayer = baseLayer image
       baseDigest = layerDigest imageBaseLayer
   baseFs <- context "Building Base Layer FS" $ mkFsFromChangeset $ baseLayer image
-  layersFs <- 
+  layersFs <-
     if hasOtherLayers image
       then pure <$> context "Building Other Layers FS" (mkFsFromChangeset (otherLayersSquashed image))
       else pure Nothing
