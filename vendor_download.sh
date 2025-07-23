@@ -171,14 +171,14 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $FI
 
   case "$(uname -s)" in
     Darwin)
-      tar -zxf $OUTPUT --strip-components 1 --exclude LICENSE --exclude README.md --directory vendor-bins
+      tar -zxf "$OUTPUT" --strip-components 1 --exclude LICENSE --exclude README.md --directory vendor-bins
       ;;
     Linux)
-      tar -zxf $OUTPUT --strip-components 1 --exclude LICENSE --exclude README.md --directory vendor-bins
+      tar -zxf "$OUTPUT" --strip-components 1 --exclude LICENSE --exclude README.md --directory vendor-bins
       ;;
     *)
       echo "Warn: Assuming $(uname -s) is Windows"
-      unzip $OUTPUT ficus.exe -d vendor-bins
+      unzip "$OUTPUT" ficus.exe -d vendor-bins
       ;;
   esac
   rm $OUTPUT
