@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- gradle: Do not report version constraints, version contraints are contained within an`DependencyResult`, filter out any constraints by checking [`isConstraint()`](https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html#isConstraint()). ([#1563](https://github.com/fossas/fossa-cli/pull/1563))
+
 ## 3.10.13
 
 - Updates the `fossa test` output to include severity data on supported FOSSA instances ([#1562](https://github.com/fossas/fossa-cli/pull/1562))
