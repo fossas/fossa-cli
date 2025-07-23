@@ -3,6 +3,7 @@
 ## Unreleased
 
 - gradle: Do not report version constraints, version contraints are contained within an`DependencyResult`, filter out any constraints by checking [`isConstraint()`](https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html#isConstraint()). ([#1563](https://github.com/fossas/fossa-cli/pull/1563))
+- container scanning: search all layers for os information. ([#1566](https://github.com/fossas/fossa-cli/pull/1566))
 
 ## 3.10.13
 
