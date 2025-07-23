@@ -120,13 +120,13 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
 
   -- Analyze Base Layer
   logInfo "Analyzing Base Layer"
-  baseFs <- context "Building base layer FS" $ mkFsFromChangeset $ baseLayer image
   let imageBaseLayer = baseLayer image
       baseDigest = layerDigest imageBaseLayer
-  osInfo <-
-    context "Retrieving OS Information"
-      . warnThenRecover @Text "Could not retrieve OS info"
-      $ runTarballReadFSIO baseFs tarball getOsInfo
+  baseFs <- context "Building Base Layer FS" $ mkFsFromChangeset $ baseLayer image
+  layersFs <- if hasOtherLayers image
+    then pure <$> context "Building Other Layers FS" (mkFsFromChangeset (otherLayersSquashed image))
+    else pure Nothing
+  osInfo <- getOsInfoFromLayers layersFs baseFs tarball
 
   when (isNothing osInfo) $
     logInfo "No image system information detected. System dependencies will not be included with this scan."
@@ -163,11 +163,12 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
 
   let baseScanImageLayer = ContainerScanImageLayer baseDigest baseUnits baseObservations
 
-  if hasOtherLayers image
-    then do
+  case layersFs of
+    Nothing -> do
+      pure $ mkScan [baseScanImageLayer]
+    Just fs -> do
       logInfo "Analyzing Other Layers"
       let squashedDigest = layerDigest . otherLayersSquashed $ image
-      fs <- context "Building squashed FS from other layers" . mkFsFromChangeset $ otherLayersSquashed image
       otherUnits <-
         context "Analyzing from Other Layers" $
           analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
@@ -178,7 +179,6 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
               , ContainerScanImageLayer squashedDigest otherUnits otherObservations
               ]
       pure scan
-    else pure $ mkScan [baseScanImageLayer]
 
 analyzeLayer ::
   ( Has Diagnostics sig m
@@ -338,17 +338,19 @@ listTargetsFromDockerArchive tarball = do
   logWarn "fossa container list-targets only lists targets for experimental-scanner (when analyzed with --experimental-scanner flag)."
 
   logInfo "Analyzing Base Layer"
-  baseFs <- context "Building Base Layer FS" $ mkFsFromChangeset $ baseLayer image
-  osInfo <-
-    context "Retrieving OS Information"
-      . warnThenRecover @Text "Could not retrieve OS info"
-      $ runTarballReadFSIO baseFs tarball getOsInfo
+
+  baseFs <- mkFsFromChangeset $ baseLayer image
+  layersFs <- if hasOtherLayers image
+    then pure <$> context "Building squashed FS from other layers" (mkFsFromChangeset $ otherLayersSquashed image)
+    else pure Nothing
+  osInfo <- getOsInfoFromLayers layersFs baseFs tarball
+
   context "Analyzing From Base Layer" $ listTargetLayer capabilities osInfo baseFs tarball "Base Layer"
 
-  when (hasOtherLayers image) $ do
-    logInfo "Analyzing Other Layers"
-    fs <- context "Building squashed FS from other layers" $ mkFsFromChangeset $ otherLayersSquashed image
-    void . context "Analyzing from Other Layers" $ listTargetLayer capabilities osInfo fs tarball "Other Layers"
+  case layersFs  of
+    Nothing -> logInfo "No other layers found in the image."
+    Just fs -> do
+      void . context "Analyzing from Other Layers" $ listTargetLayer capabilities osInfo fs tarball "Other Layers"
 
 listTargetLayer ::
   ( Has Diagnostics sig m
@@ -384,3 +386,25 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     run = traverse_ findTargets $ layerAnalyzers osInfo False
     findTargets (DiscoverFunc f) = withDiscoveredProjects f basedir (renderLayerTarget basedir layerType)
     basedir = Path $ toString fixedVfsRoot
+
+-- | Retrieves OS information from the layers of a Docker image.
+-- It first checks the squashed layers, then the base layer.
+-- This is because layers are squashed in the order they are applied,
+-- so the last layer is the one that should have the most accurate OS info.
+getOsInfoFromLayers ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  ) =>
+  Maybe (SomeFileTree TarEntryOffset) ->
+  SomeFileTree TarEntryOffset ->
+  Path Abs File ->
+  m (Maybe OsInfo)
+getOsInfoFromLayers layersFs baseFs tarball =
+   context "Retrieving OS Information" $ do
+    layersFSOsInfo <- case layersFs of
+      Just fs -> warnThenRecover @Text "Could not retrieve OS info from other layers, falling back to base layer." $ runTarballReadFSIO fs tarball getOsInfo
+      Nothing -> pure Nothing
+    if isNothing layersFSOsInfo
+      then do
+        warnThenRecover @Text "Could not retrieve OS info from base layer" $ runTarballReadFSIO baseFs tarball getOsInfo
+      else pure layersFSOsInfo
