@@ -4,12 +4,14 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths,
+  Ficus,
   Lernie,
   ThemisIndex,
   ThemisBins (..),
   toPath,
   withThemisAndIndex,
   withBerkeleyBinary,
+  withFicusBinary,
   withLernieBinary,
   withMillhoneBinary,
   withCirceBinary,
@@ -57,6 +59,7 @@ data PackagedBinary
   = Themis
   | ThemisIndex
   | BerkeleyDB
+  | Ficus
   | Lernie
   | Millhone
   | Circe
@@ -76,6 +79,8 @@ data ThemisBinary
 data ThemisIndex
 
 data Lernie
+
+data Ficus
 
 data Circe
 
@@ -116,6 +121,9 @@ withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
 withLernieBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withLernieBinary = withEmbeddedBinary Lernie
 
+withFicusBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
+withFicusBinary = withEmbeddedBinary Ficus
+
 withMillhoneBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withMillhoneBinary = withEmbeddedBinary Millhone
 
@@ -148,6 +156,7 @@ writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
   Themis -> embeddedBinaryThemis
   ThemisIndex -> embeddedBinaryThemisIndex
   BerkeleyDB -> embeddedBinaryBerkeleyDB
+  Ficus -> embeddedBinaryFicus
   Lernie -> embeddedBinaryLernie
   Millhone -> embeddedBinaryMillhone
   Circe -> embeddedBinaryCirce
@@ -163,6 +172,7 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
+  Ficus -> $(mkRelFile "ficus")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
   Circe -> $(mkRelFile "circe")
@@ -210,6 +220,9 @@ embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
 
 embeddedBinaryCirce :: ByteString
 embeddedBinaryCirce = $(embedFileIfExists "vendor-bins/circe")
+
+embeddedBinaryFicus :: ByteString
+embeddedBinaryFicus = $(embedFileIfExists "vendor-bins/ficus")
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS
