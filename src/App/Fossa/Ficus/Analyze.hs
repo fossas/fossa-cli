@@ -14,6 +14,20 @@ module App.Fossa.Ficus.Analyze (
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusResults (..),
+  FicusConfig (..),
+  FicusRegex (..),
+  FicusScanType (..),
+  FicusMessage (..),
+  FicusMessages (..),
+  FicusMatch (..),
+  FicusMatchData (..),
+  FicusWarning (..),
+  FicusError (..),
+ )
+import App.Fossa.Lernie.Types (
+  GrepEntry (..),
+  GrepOptions (..),
+  OrgWideCustomLicenseConfigPolicy (..),
  )
 import App.Types (FileUpload (..))
 import Control.Carrier.Debug (Debug)
@@ -65,29 +79,9 @@ analyzeWithFicus ::
   m (Maybe FicusResults)
 analyzeWithFicus rootDir maybeApiOpts grepOptions filters = do
   case (maybeApiOpts, orgWideCustomLicenseScanConfigPolicy grepOptions) of
-    (_, Ignore) -> analyzeWithFicusMain rootDir grepOptions filters FileUploadMatchData
-    (Nothing, Use) -> analyzeWithFicusMain rootDir grepOptions filters FileUploadMatchData
+    (_, Ignore) -> analyzeWithFicusMain rootDir grepOptions filters
+    (Nothing, Use) -> analyzeWithFicusMain rootDir grepOptions filters
     (Just apiOpts, Use) -> runFossaApiClient apiOpts $ analyzeWithFicusWithOrgInfo rootDir grepOptions filters
-
-analyzeWithFicusWithOrgInfo ::
-  ( Has Diagnostics sig m
-  , Has FossaApiClient sig m
-  , Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
-  , Has Telemetry sig m
-  ) =>
-  Path Abs Dir ->
-  GrepOptions ->
-  Maybe LicenseScanPathFilters ->
-  m (Maybe FicusResults)
-analyzeWithFicusWithOrgInfo rootDir grepOptions filters = do
-  org <- getOrganization
-  let orgWideCustomLicenses = orgCustomLicenseScanConfigs org
-      uploadKind = orgFileUpload org
-
-  let options = grepOptions{customLicenseSearch = nub $ orgWideCustomLicenses <> customLicenseSearch grepOptions}
-  analyzeWithFicusMain rootDir options filters uploadKind
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -99,10 +93,9 @@ analyzeWithFicusMain ::
   Path Abs Dir ->
   GrepOptions ->
   Maybe LicenseScanPathFilters ->
-  FileUpload ->
   m (Maybe FicusResults)
-analyzeWithFicusMain rootDir grepOptions filters uploadKind = do
-  let maybeFicusConfig = grepOptionsToFicusConfig rootDir grepOptions filters uploadKind
+analyzeWithFicusMain rootDir grepOptions filters = do
+  let maybeFicusConfig = grepOptionsToFicusConfig rootDir grepOptions filters
   case maybeFicusConfig of
     Just ficusConfig -> do
       unless (null $ customLicenseSearch grepOptions) $ trackUsage CustomLicenseSearchUsage
@@ -116,16 +109,25 @@ grepOptionsToFicusConfig :: Path Abs Dir -> GrepOptions -> Maybe LicenseScanPath
 grepOptionsToFicusConfig rootDir grepOptions filters uploadKind =
   case (customLicenseSearches <> keywordSearches) of
     [] -> Nothing
-    res -> Just . FicusConfig rootDir res filters $ case uploadKind of
-      FileUploadMatchData -> False
-      FileUploadFullContent -> True
+    res -> Just $ FicusConfig
+      { ficusRootDir = rootDir
+      , ficusRegexes = res
+      , ficusLicenseScanPathFilters = filters
+      , ficusFullFiles = case uploadKind of
+          FileUploadMatchData -> False
+          FileUploadFullContent -> True
+      }
   where
-    customLicenseSearches = map (grepEntryToFicusRegex CustomLicense) (customLicenseSearch grepOptions)
-    keywordSearches = map (grepEntryToFicusRegex KeywordSearch) (keywordSearch grepOptions)
+    customLicenseSearches = map (grepEntryToFicusRegex FicusCustomLicense) (customLicenseSearch grepOptions)
+    keywordSearches = map (grepEntryToFicusRegex FicusKeywordSearch) (keywordSearch grepOptions)
 
 grepEntryToFicusRegex :: FicusScanType -> GrepEntry -> FicusRegex
 grepEntryToFicusRegex scanType grepEntry =
-  FicusRegex (grepEntryMatchCriteria grepEntry) (grepEntryName grepEntry) scanType
+  FicusRegex
+    { ficusPat = grepEntryMatchCriteria grepEntry
+    , ficusName = grepEntryName grepEntry
+    , ficusScanType = scanType
+    }
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -182,8 +184,8 @@ ficusMessagesToFicusResults FicusMessages{..} rootDir =
     , ficusResultsSourceUnit = sourceUnit
     }
   where
-    keywordSearches = filterFicusMessages ficusMessageMatches KeywordSearch
-    customLicenses = filterFicusMessages ficusMessageMatches CustomLicense
+    keywordSearches = filterFicusMessages ficusMessageMatches FicusKeywordSearch
+    customLicenses = filterFicusMessages ficusMessageMatches FicusCustomLicense
     sourceUnit = case NE.nonEmpty customLicenses of
       Nothing -> Nothing
       Just licenses -> ficusMatchToSourceUnit (NE.toList licenses) rootDir
