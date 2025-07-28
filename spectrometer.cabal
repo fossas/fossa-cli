@@ -754,6 +754,7 @@ test-suite integration-tests
     Analysis.CocoapodsSpec
     Analysis.ElixirSpec
     Analysis.ErlangSpec
+    Analysis.FicusSpec
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
     Analysis.GoSpec

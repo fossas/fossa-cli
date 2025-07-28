@@ -139,7 +139,6 @@ cleanupExtractedBinaries (BinaryPaths binPath _) = sendIO $ removeDirRecur binPa
 extractEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> m BinaryPaths
 extractEmbeddedBinary bin = do
   container <- sendIO extractDir
-  -- Determine paths to which we should write the binaries
   let binPath = extractedPath bin
   -- Write the binary
   sendIO $ writeBinary (container </> binPath) bin
@@ -152,14 +151,15 @@ dumpEmbeddedBinary dir bin = writeBinary path bin
     path = dir </> extractedPath bin
 
 writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
-writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
-  Themis -> embeddedBinaryThemis
-  ThemisIndex -> embeddedBinaryThemisIndex
-  BerkeleyDB -> embeddedBinaryBerkeleyDB
-  Ficus -> embeddedBinaryFicus
-  Lernie -> embeddedBinaryLernie
-  Millhone -> embeddedBinaryMillhone
-  Circe -> embeddedBinaryCirce
+writeBinary dest bin = do
+  sendIO . writeExecutable dest $ case bin of
+    Themis -> embeddedBinaryThemis
+    ThemisIndex -> embeddedBinaryThemisIndex
+    BerkeleyDB -> embeddedBinaryBerkeleyDB
+    Ficus -> embeddedBinaryFicus
+    Lernie -> embeddedBinaryLernie
+    Millhone -> embeddedBinaryMillhone
+    Circe -> embeddedBinaryCirce
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do

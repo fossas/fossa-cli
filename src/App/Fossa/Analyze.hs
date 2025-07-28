@@ -51,7 +51,6 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -299,6 +298,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
+      enableSnippetScan = Config.xSnippetScan cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -339,11 +339,16 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           else pure Nothing
   maybeFicusResults <-
     Diag.errorBoundaryIO . diagToDebug $
-      if filterIsVSIOnly filters
+      if not enableSnippetScan
         then do
-          logInfo "Running in VSI only mode, skipping snippet-scan"
+          logInfo "Skipping ficus snippet scanning (--x-snippet-scan not set)"
           pure Nothing
-        else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions --TODO: fix these options
+        else
+          if filterIsVSIOnly filters
+            then do
+              logInfo "Running in VSI only mode, skipping snippet-scan"
+              pure Nothing
+            else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision $ Config.licenseScanPathFilters vendoredDepsOptions
   let ficusResults = join . resultToMaybe $ maybeFicusResults
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -452,16 +457,16 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
+  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
   where
-    sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
+    sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults =
       let doUpload (DestinationMeta (apiOpts, metadata)) =
             Diag.context "upload-results"
               . runFossaApiClient apiOpts
               $ do
-                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
+                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults
                 doAssertRevisionBinaries iatAssertion locator
        in case destination of
             OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result

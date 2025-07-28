@@ -95,6 +95,7 @@ import Fossa.API.Types (
 
 import Fossa.API.CoreTypes qualified as CoreTypes
 
+import App.Fossa.Ficus.Types (FicusSnippetScanResults)
 import Path (File, Path, Rel)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
 
@@ -147,11 +148,13 @@ data FossaApiClientF a where
     ProjectRevision ->
     ProjectMetadata ->
     [SourceUnit] ->
+    Maybe FicusSnippetScanResults ->
     FossaApiClientF UploadResponse
   UploadAnalysisWithFirstPartyLicenses ::
     ProjectRevision ->
     ProjectMetadata ->
     FileUpload ->
+    Maybe FicusSnippetScanResults ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
@@ -199,12 +202,12 @@ getApiOpts :: (Has FossaApiClient sig m) => m ApiOpts
 getApiOpts = sendSimple GetApiOpts
 
 -- | Uploads the results of an analysis and associates it to a project
-uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnit] -> m UploadResponse
-uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
+uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnit] -> Maybe FicusSnippetScanResults -> m UploadResponse
+uploadAnalysis revision metadata units ficusResults = sendSimple (UploadAnalysis revision metadata units ficusResults)
 
 -- | Uploads the results of a first-party analysis and associates it to a project
-uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata uploadKind)
+uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> Maybe FicusSnippetScanResults -> m UploadResponse
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
