@@ -265,6 +265,6 @@ genPoms projectDir = do
     Nothing -> fatalText ("Could not parse pom paths from:\n" <> Text.unlines pomLines)
     Just [] -> fatalText "No sbt projects found"
     Just paths -> do
-      globalClosure <- buildGlobalClosure paths
+      globalClosure <- buildGlobalClosure projectDir paths
 
       pure $ buildProjectClosures projectDir globalClosure
