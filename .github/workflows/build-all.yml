@@ -196,6 +196,7 @@ jobs:
         ./release/fossa.exe --version
         cp target/release/diagnose.exe release
         cp target/release/millhone.exe release
+        cp target/release/rendergraph.exe release
 
     - name: Find and move binaries (non-Windows)
       if: ${{ !contains(matrix.os, 'windows') }}
@@ -205,6 +206,7 @@ jobs:
         ./release/fossa --version
         cp target/release/diagnose release
         cp target/release/millhone release
+        cp target/release/rendergraph release
 
     - name: Strip binaries
       run: |
@@ -251,6 +253,7 @@ jobs:
         fi
         codesign --options runtime -s 'FOSSA, Inc.' release/diagnose
         codesign --options runtime -s 'FOSSA, Inc.' release/millhone
+        codesign --options runtime -s 'FOSSA, Inc.' release/rendergraph
 
         # Perform notarization
         zip -rj notarization-archive.zip release
@@ -325,10 +328,12 @@ jobs:
           cosign sign-blob --yes --bundle "$linux_kind-binaries/fossa.bundle" "$linux_kind-binaries/fossa"
           cosign sign-blob --yes --bundle "$linux_kind-binaries/diagnose.bundle" "$linux_kind-binaries/diagnose"
           cosign sign-blob --yes --bundle "$linux_kind-binaries/millhone.bundle" "$linux_kind-binaries/millhone"
+          cosign sign-blob --yes --bundle "$linux_kind-binaries/rendergraph.bundle" "$linux_kind-binaries/rendergraph"
 
           cosign verify-blob --bundle "$linux_kind-binaries/fossa.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/fossa"
           cosign verify-blob --bundle "$linux_kind-binaries/diagnose.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/diagnose"
           cosign verify-blob --bundle "$linux_kind-binaries/millhone.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/millhone"
+          cosign verify-blob --bundle "$linux_kind-binaries/rendergraph.bundle" --certificate-oidc-issuer "https://token.actions.githubusercontent.com" --certificate-identity "https://github.com/$GITHUB_WORKFLOW_REF" "$linux_kind-binaries/rendergraph"
 
         done
 
@@ -347,12 +352,16 @@ jobs:
         LINUX_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
         LINUX_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
         LINUX_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
+        LINUX_RENDERGRAPH_TAR_PATH: "release/rendergraph_${{ steps.get-version.outputs.VERSION }}_linux_amd64.tar"
+        LINUX_RENDERGRAPH_ZIP_PATH: "release/rendergraph_${{ steps.get-version.outputs.VERSION }}_linux_amd64.zip"
         LINUX_ARM_FOSSA_TAR_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
         LINUX_ARM_FOSSA_ZIP_PATH: "release/fossa_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
         LINUX_ARM_DIAGNOSE_TAR_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
         LINUX_ARM_DIAGNOSE_ZIP_PATH: "release/diagnose_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
         LINUX_ARM_MILLHONE_TAR_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
         LINUX_ARM_MILLHONE_ZIP_PATH: "release/millhone_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
+        LINUX_ARM_RENDERGRAPH_TAR_PATH: "release/rendergraph_${{ steps.get-version.outputs.VERSION }}_linux_arm64.tar"
+        LINUX_ARM_RENDERGRAPH_ZIP_PATH: "release/rendergraph_${{ steps.get-version.outputs.VERSION }}_linux_arm64.zip"
 
       run: |
         mkdir release
@@ -364,55 +373,67 @@ jobs:
         zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa
         zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose
         zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone
+        zip -j "$LINUX_RENDERGRAPH_ZIP_PATH" Linux-binaries/rendergraph
         tar --create --verbose --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa
         tar --create --verbose --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose
         tar --create --verbose --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone
+        tar --create --verbose --file "$LINUX_RENDERGRAPH_TAR_PATH" --directory Linux-binaries rendergraph
 
         zip -j "$LINUX_ARM_FOSSA_ZIP_PATH" Linux-arm-binaries/fossa
         zip -j "$LINUX_ARM_DIAGNOSE_ZIP_PATH" Linux-arm-binaries/diagnose
         zip -j "$LINUX_ARM_MILLHONE_ZIP_PATH" Linux-arm-binaries/millhone
+        zip -j "$LINUX_ARM_RENDERGRAPH_ZIP_PATH" Linux-arm-binaries/rendergraph
         tar --create --verbose --file "$LINUX_ARM_FOSSA_TAR_PATH" --directory Linux-arm-binaries fossa
         tar --create --verbose --file "$LINUX_ARM_DIAGNOSE_TAR_PATH" --directory Linux-arm-binaries diagnose
         tar --create --verbose --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone
+        tar --create --verbose --file "$LINUX_ARM_RENDERGRAPH_TAR_PATH" --directory Linux-arm-binaries rendergraph
 
         if [ "$GITHUB_REF_TYPE" = "tag" ]; then
           tar --append --file "$LINUX_FOSSA_TAR_PATH" --directory Linux-binaries fossa.bundle
           tar --append --file "$LINUX_DIAGNOSE_TAR_PATH" --directory Linux-binaries diagnose.bundle
           tar --append --file "$LINUX_MILLHONE_TAR_PATH" --directory Linux-binaries millhone.bundle
+          tar --append --file "$LINUX_RENDERGRAPH_TAR_PATH" --directory Linux-binaries rendergraph.bundle
           zip -j "$LINUX_FOSSA_ZIP_PATH" Linux-binaries/fossa.bundle
           zip -j "$LINUX_DIAGNOSE_ZIP_PATH" Linux-binaries/diagnose.bundle
           zip -j "$LINUX_MILLHONE_ZIP_PATH" Linux-binaries/millhone.bundle
+          zip -j "$LINUX_RENDERGRAPH_ZIP_PATH" Linux-binaries/rendergraph.bundle
 
           tar --append --file "$LINUX_ARM_FOSSA_TAR_PATH" --directory Linux-arm-binaries fossa.bundle
           tar --append --file "$LINUX_ARM_DIAGNOSE_TAR_PATH" --directory Linux-arm-binaries diagnose.bundle
           tar --append --file "$LINUX_ARM_MILLHONE_TAR_PATH" --directory Linux-arm-binaries millhone.bundle
+          tar --append --file "$LINUX_ARM_RENDERGRAPH_TAR_PATH" --directory Linux-arm-binaries rendergraph.bundle
           zip -j "$LINUX_ARM_FOSSA_ZIP_PATH" Linux-arm-binaries/fossa.bundle
           zip -j "$LINUX_ARM_DIAGNOSE_ZIP_PATH" Linux-arm-binaries/diagnose.bundle
           zip -j "$LINUX_ARM_MILLHONE_ZIP_PATH" Linux-arm-binaries/millhone.bundle
+          zip -j "$LINUX_ARM_RENDERGRAPH_ZIP_PATH" Linux-arm-binaries/rendergraph.bundle
 
         fi
 
         gzip "$LINUX_FOSSA_TAR_PATH"
         gzip "$LINUX_DIAGNOSE_TAR_PATH"
         gzip "$LINUX_MILLHONE_TAR_PATH"
+        gzip "$LINUX_RENDERGRAPH_TAR_PATH"
 
         gzip "$LINUX_ARM_FOSSA_TAR_PATH"
         gzip "$LINUX_ARM_DIAGNOSE_TAR_PATH"
-        gzip "$LINUX_ARM_MILLHONE_TAR_PATH"
+        gzip "$LINUX_ARM_RENDERGRAPH_TAR_PATH"
 
         chmod +x macOS-intel-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/fossa
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/diagnose
         zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/millhone
+        zip -j release/rendergraph_${{ steps.get-version.outputs.VERSION }}_darwin_amd64.zip macOS-intel-binaries/rendergraph
         chmod +x macOS-arm64-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/fossa
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/diagnose
         zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/millhone
+        zip -j release/rendergraph_${{ steps.get-version.outputs.VERSION }}_darwin_arm64.zip macOS-arm64-binaries/rendergraph
 
         chmod +x Windows-binaries/*
         zip -j release/fossa_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/fossa.exe
         zip -j release/diagnose_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/diagnose.exe
         zip -j release/millhone_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/millhone.exe
+        zip -j release/rendergraph_${{ steps.get-version.outputs.VERSION }}_windows_amd64.zip Windows-binaries/rendergraph.exe
 
     - name: Create checksums
       # We have to run from within the release dir so that "release" isn't prepended to the relative path of the zip file.

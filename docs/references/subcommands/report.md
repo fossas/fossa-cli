@@ -45,16 +45,16 @@ After using [`fossa sbom analyze`](./sbom.md), you can specify an SBOM that you 
 fossa report attribution --format json ~/my-project-sbom.txt
 ```
 
-#### Project Arguments
+#### Common FOSSA Project Flags
 
 All `fossa` commands support the following FOSSA-project-related flags:
 
-| Name                               | Short | Description                                                                                                                                            |
-| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                                     |
-| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                                |
-| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                                            |
-| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                                                                                 |
+| Name                               | Short | Description                                                                                                                              |
+|------------------------------------|-------|------------------------------------------------------------------------------------------------------------------------------------------|
+| `--project 'some project'`         | `-p`  | Override the detected project name                                                                                                       |
+| `--revision 'some revision'`       | `-r`  | -Override the detected project revision                                                                                                  |
+| `--fossa-api-key 'my-api-key'`     |       | An alternative to using the `FOSSA_API_KEY` environment variable to specify a FOSSA API key                                              |
+| `--endpoint 'https://example.com'` | `-e`  | Override the FOSSA API server base URL                                                                                                   |
 | `--config /path/to/file`           | `-c`  | Path to a [configuration file](../files/fossa-yml.md) including filename. By default we look for `.fossa.yml` in base working directory. |
 
 In this case, FOSSA will attempt to fetch any report it can find matching the `project` and `revision` criteria.
