@@ -46,7 +46,9 @@ import Data.Functor (void)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.List (find)
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -76,7 +78,7 @@ import Effect.Grapher (
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
-import Graphing (Graphing, stripRoot)
+import Graphing (Graphing, shrink, stripRoot)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
 import Text.Megaparsec (
   Parsec,
@@ -406,10 +408,29 @@ addEdge node = do
     edge parentId $ nodePkg dep
 
 buildGraph :: CargoMetadata -> Graphing Dependency
-buildGraph meta = stripRoot $
+buildGraph meta = stripRoot . shrink isNotWorkspaceMember $
   run . withLabeling toDependency $ do
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
+  where
+    -- Create a set of workspace members that have no external dependencies
+    isolatedWorkspaceMembers = Set.fromList $ map packageKey $ filter hasNoDependencies $ metadataWorkspaceMembers meta
+    packageKey :: PackageId -> (Text, Text)
+    packageKey pkg = (pkgIdName pkg, pkgIdVersion pkg)
+    
+    -- Check if a workspace member has no dependencies by looking at resolve nodes
+    hasNoDependencies :: PackageId -> Bool
+    hasNoDependencies pkgId = 
+      case find (\node -> resolveNodeId node == pkgId) (resolvedNodes $ metadataResolve meta) of
+        Just node -> null (resolveNodeDeps node)
+        Nothing -> True -- If not found in resolve, assume no dependencies
+
+    -- Filter out isolated workspace members only
+    isNotWorkspaceMember :: Dependency -> Bool
+    isNotWorkspaceMember dep =
+      case dependencyVersion dep of
+        Just (CEq version) -> (dependencyName dep, version) `Set.notMember` isolatedWorkspaceMembers
+        _ -> True
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
