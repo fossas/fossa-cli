@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- cargo: Fix Cargo analyzer incorrectly reporting library projects as dependencies of themselves when they have no external dependencies ([#1569](https://github.com/fossas/fossa-cli/pull/1569))
+
 ## 3.10.10
 
 - go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
