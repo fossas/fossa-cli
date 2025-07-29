@@ -4,6 +4,23 @@
 
 - cargo: Fix Cargo analyzer incorrectly reporting library projects as dependencies of themselves when they have no external dependencies ([#1569](https://github.com/fossas/fossa-cli/pull/1569))
 
+## 3.10.14
+
+- gradle: Do not report version constraints, version contraints are contained within an`DependencyResult`, filter out any constraints by checking [`isConstraint()`](https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html#isConstraint()). ([#1563](https://github.com/fossas/fossa-cli/pull/1563))
+- container scanning: search all layers for os information. ([#1566](https://github.com/fossas/fossa-cli/pull/1566))
+
+## 3.10.13
+
+- Updates the `fossa test` output to include severity data on supported FOSSA instances ([#1562](https://github.com/fossas/fossa-cli/pull/1562))
+
+## 3.10.12
+
+- PNPM: Initial support for lockfile version 9.0 ([#1561](https://github.com/fossas/fossa-cli/pull/1561))
+
+## 3.10.11
+
+- container scanning: fix unzipping JARs that symlink to other layers #1555 ([#1555](https://github.com/fossas/fossa-cli/pull/1555))
+
 ## 3.10.10
 
 - go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
