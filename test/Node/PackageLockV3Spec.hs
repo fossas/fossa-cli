@@ -48,6 +48,9 @@ multiLevelVendorLockPath = $(mkRelFile "multi-level-vendor-package-lock.json")
 workspaceNestedModulePackageLockPath :: Path Rel File
 workspaceNestedModulePackageLockPath = $(mkRelFile "ws-nested-module-package-lock.json")
 
+devDependenciesLockPath :: Path Rel File
+devDependenciesLockPath = $(mkRelFile "dev-dependencies-package-lock.json")
+
 spec :: Spec
 spec = do
   currentDir <- runIO getCurrentDir
@@ -66,6 +69,7 @@ spec = do
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> workspaceNestedModulePackageLockPath) workspaceNestedModulePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> multiLevelVendorLockPath) multiLevelVendorLockGraphSpec
+  checkGraph (graphingFixtureDir </> devDependenciesLockPath) devDependenciesLockGraphSpec
 
 vendorPrefixesSpec :: Spec
 vendorPrefixesSpec = do
@@ -422,6 +426,22 @@ mkDep nameAtVersion env = do
     ["https://registry.npmjs.org/" <> name <> "/-/" <> name <> "-" <> version <> ".tgz"]
     (maybe mempty Set.singleton env)
     mempty
+
+devDependenciesLockGraphSpec :: Graphing Dependency -> Spec
+devDependenciesLockGraphSpec graph = do
+  let hasDep :: Dependency -> Expectation
+      hasDep dep = expectDep dep graph
+
+  describe "buildGraph with devDependency environment propagation" $ do
+    it "should correctly assign environments to all dependencies" $ do
+      let allExpectedDeps =
+            [ mkProdDep "prod-dep@1.0.0"
+            , mkProdDep "prod-transitive@1.0.0"
+            , mkDevDep "dev-dep@1.0.0"
+            , mkDevDep "dev-transitive@1.0.0"
+            , mkDevDep "shared-dep@1.0.0"
+            ]
+      mapM_ hasDep allExpectedDeps
 
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
 checkGraph pathToFixture buildGraphSpec = do

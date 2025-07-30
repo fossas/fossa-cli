@@ -221,6 +221,9 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 --  --
 buildGraph :: PackageLockV3 -> Graphing Dependency
 buildGraph pkgLockV3 = run . evalGrapher $ do
+  let initialDevDepPaths = Set.fromList $ map toTopLevelPackage $ Map.keys $ plV3PkgDevDependencies $ rootPackage pkgLockV3
+  let allDevDepPaths = collectAllTransitivePaths initialDevDepPaths
+
   for_ (Map.toList $ packages pkgLockV3) $ \(pkgPathKey, pkgMetadata) -> do
     case pkgPathKey of
       -- For root package,
@@ -262,7 +265,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   ]
 
         let resolvedDeps :: [Dependency]
-            resolvedDeps = mapMaybe toDependency directDeps
+            resolvedDeps = mapMaybe (toDependency allDevDepPaths) directDeps
 
         traverse_ direct resolvedDeps
 
@@ -300,8 +303,11 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   , plV3PkgOptionalDependencies pkgMetadata
                   ]
 
+        let workspaceDevDeps = Set.fromList $ map (vendoredPathElseTopLevelPath workspaceRootPath) $ Map.keys $ plV3PkgDevDependencies pkgMetadata
+        let workspaceAllDevDeps = allDevDepPaths `Set.union` workspaceDevDeps
+
         let resolvedDeps :: [Dependency]
-            resolvedDeps = mapMaybe toDependency directDeps
+            resolvedDeps = mapMaybe (toDependency workspaceAllDevDeps) directDeps
 
         traverse_ direct resolvedDeps
 
@@ -329,7 +335,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
       -- For each transitive dependency, Adds edge between parent package, and transitive dep.
       PackageLockV3PathKey prefixPath depPackageName -> do
         let currentDep :: Maybe Dependency
-            currentDep = toDependency (PackageLockV3PathKey prefixPath depPackageName)
+            currentDep = toDependency allDevDepPaths (PackageLockV3PathKey prefixPath depPackageName)
 
         let vendorPathPrefix :: Text
             vendorPathPrefix = prefixPath <> (unPackageName depPackageName)
@@ -345,13 +351,45 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   ]
 
         let resolvedDeepDeps :: [Dependency]
-            resolvedDeepDeps = mapMaybe toDependency deepDeps
+            resolvedDeepDeps = mapMaybe (toDependency allDevDepPaths) deepDeps
 
         case currentDep of
           Nothing -> pure () -- This will never happen, given that we are iterating on same package path.
           Just parentDep -> do
             for_ resolvedDeepDeps $ edge parentDep
   where
+    -- Returns the set of all paths that are transitive to the given set of paths.
+    collectAllTransitivePaths :: Set.Set PackagePath -> Set.Set PackagePath
+    collectAllTransitivePaths paths = 
+      let go visited toVisit
+            | Set.null toVisit = visited
+            | otherwise = 
+                let (current, rest) = Set.deleteFindMin toVisit
+                in if Set.member current visited 
+                   then go visited rest
+                   else 
+                     let newChildren = collectTransitivePaths current
+                         newVisited = Set.insert current visited
+                         newToVisit = rest `Set.union` (newChildren `Set.difference` newVisited)
+                     in go newVisited newToVisit
+      in go Set.empty paths
+
+    -- Returns the set of all transitive paths for given package path.
+    collectTransitivePaths :: PackagePath -> Set.Set PackagePath
+    collectTransitivePaths pkgPath = 
+      case Map.lookup pkgPath (packages pkgLockV3) of
+        Nothing -> Set.empty
+        Just pkgMetadata -> 
+          let vendorPrefix = case pkgPath of
+                PackageLockV3PathKey prefix pkgName -> prefix <> unPackageName pkgName
+                _ -> ""
+              directDeps = concatMap Map.keys 
+                [ plV3PkgDependencies pkgMetadata
+                , plV3PkgPeerDependencies pkgMetadata  
+                , plV3PkgOptionalDependencies pkgMetadata
+                ]
+          in Set.fromList $ map (vendoredPathElseTopLevelPath vendorPrefix) directDeps
+
     -- Prefer resolution path in following order of precedent:
     --
     --  1) {prefix}/node_modules/{pkgName}
@@ -374,8 +412,8 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
       map (`PackageLockV3PathKey` pkgName) $
         vendorPrefixes prefix (getRootWorkspace prefix)
 
-    toDependency :: PackagePath -> Maybe Dependency
-    toDependency pkgPath =
+    toDependency :: Set.Set PackagePath -> PackagePath -> Maybe Dependency
+    toDependency devPaths pkgPath =
       case (pkgPath, Map.lookup pkgPath $ packages pkgLockV3) of
         (PackageLockV3PathKey _ packageName, Just meta) ->
           Just $
@@ -385,7 +423,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
               , dependencyVersion = CEq <$> (plV3PkgVersion meta)
               , dependencyLocations = catMaybes [unNpmLockV3Resolved $ plV3PkgResolved meta]
               , dependencyEnvironments =
-                  if plV3PkgDev meta
+                  if plV3PkgDev meta || Set.member pkgPath devPaths
                     then Set.singleton EnvDevelopment
                     else Set.singleton EnvProduction
               , dependencyTags = Map.empty
