@@ -14,7 +14,7 @@ module Discovery.Walk (
 ) where
 
 import Control.Carrier.Writer.Church
-import Control.Effect.Diagnostics (Diagnostics, context, fatal)
+import Control.Effect.Diagnostics (Diagnostics, context, fatal, recover, warn)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
@@ -191,12 +191,7 @@ walkDir ::
   -- | Directory where traversal begins
   Path Abs Dir ->
   m ()
-walkDir handler topdir =
-  context "Walking the filetree" $
-    void $
-      -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
-      -- makeAbsolute topdir >>= walkAvoidLoop Set.empty
-      walkAvoidLoop Set.empty topdir
+walkDir handler topdir = context "Walking the filetree" . void $ walkAvoidLoop Set.empty topdir
   where
     walkAvoidLoop traversed curdir = do
       mRes <- checkLoop traversed curdir
@@ -204,24 +199,29 @@ walkDir handler topdir =
         Nothing -> pure $ Just ()
         Just traversed' -> walktree traversed' curdir
     walktree traversed curdir = do
-      (subdirs, files) <- listDir curdir
-      action <- handler curdir subdirs files
-      case action of
-        WalkFinish -> pure Nothing
-        WalkExclude xdirs ->
-          case subdirs \\ xdirs of
-            [] -> pure $ Just ()
-            ds ->
-              runMaybeT $
-                mapM_
-                  (MaybeT . walkAvoidLoop traversed)
-                  ds
+      listing <- recover $ listDir curdir
+      case listing of
+        Just (subdirs, files) -> do
+          action <- handler curdir subdirs files
+          case action of
+            WalkFinish -> pure Nothing
+            WalkExclude xdirs ->
+              case subdirs \\ xdirs of
+                [] -> pure $ Just ()
+                ds -> runMaybeT $ mapM_ (MaybeT . walkAvoidLoop traversed) ds
+        Nothing -> do
+          warn $ "skipping remaining files in: " <> toText (toFilePath curdir)
+          pure $ Just ()
     checkLoop traversed dir = do
-      identifier <- getIdentifier dir
-      pure $
-        if Set.member identifier traversed
-          then Nothing
-          else Just (Set.insert identifier traversed)
+      recover (getIdentifier dir) >>= \case
+        Just identifier ->
+          pure $
+            if Set.member identifier traversed
+              then Nothing
+              else Just (Set.insert identifier traversed)
+        Nothing -> do
+          warn $ "unable to get identifier for: " <> toText (toFilePath dir)
+          pure Nothing
 
 data WalkAction b
   = -- | Finish the entire walk altogether

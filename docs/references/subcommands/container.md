@@ -11,13 +11,9 @@ The `fossa container` subcommand supports analysis and testing of containers for
 
 `fossa container analyze` scans container images from:
 
-1) Docker archive
+1) Docker archive, e.g. `docker save redis:alpine > redis.tar`
 2) Docker Engine (accessed via unix socket `/var/lib/docker.sock`)
 3) OCI Registry
-
-> Note: `fossa-cli` currently does not support exported OCI images (image archives in OCI format).
-> For such scenarios, we recommend, you perform: `docker save <IMG>:<TAG> > img.tar`, 
-> and use `img.tar` for your analysis, with `fossa container analyze img.tar`.
 
 No arguments are required to specify the kind of image being analyzed:
 `fossa-cli` automatically identifies the appropriate image source.
@@ -25,29 +21,44 @@ No arguments are required to specify the kind of image being analyzed:
 For example:
 
 ```bash
-# Exported container image in archive format (via `docker save redis:alpine > redis.tar`)
-fossa container analyze redis.tar
+# Local image via Docker Engine
+#
+# Note: when pulling Docker Engine, the tag is required;
+# otherwise the image is inferred to be `docker.io/library/<image>`.
+fossa container analyze alpine:3.16.0
 
-# Local image (via Docker engine)
-fossa container analyze redis:alpine
-
-# Resolved from hub.docker.com/_/debian
+# Infers to `docker.io/library/debian:latest` and pulls the image from there.
 fossa container analyze debian
 
-# Explicit remote image via docker.your-org.com
-fossa container analyze docker.your-org.com/project/image
+# Tries to use the local Docker Engine, but if that fails
+# infers to `docker.io/library/debian:latest`
+# and pulls the image from there.
+fossa container analyze debian:latest
+
+# Explicit remote image with a host and namespace
+fossa container analyze cgr.dev/chainguard/wolfi-base:latest
+
+# Exported container image
+# `docker save redis:latest > redis.tar`
+fossa container analyze redis.tar
 ```
-You can provide, `--only-system-deps` to only analyze dependencies originating from following package managers:
+
+You can provide `--only-system-deps` to only analyze dependencies originating from following system package managers:
 
 - dpkg
 - rpm
 - alpine
 
-> Performing `fossa container analyze <IMAGE> --only-system-deps` will match the behavior of
-> the previous FOSSA CLI container scanner (same as all CLI prior to v3.5.0)
-
 You can refer to [scanner](./container/scanner.md) documentation, to learn
 more about how FOSSA CLI performs scan on a container image.
+
+> [!NOTE]
+>
+> FOSSA CLI uses [`circe`](https://github.com/fossas/circe), another binary
+> maintained by FOSSA, to download and export container images.
+>
+> For more details on how this works refer to the Circe documentation;
+> you can also always try running `circe` directly if you encounter any issues.
 
 ## `fossa container test <ARG>`
 
@@ -60,7 +71,7 @@ For example:
 fossa container test redis:alpine
 ```
 
-To render results in JSON format: 
+To render results in JSON format:
 
 ```bash
 fossa container test redis:alpine --format json
@@ -77,7 +88,7 @@ fossa container analyze redis:alpine --output
 ## Ignore default filters
 
 Default filters are filters which `fossa-cli` applies by default. These filters,
-provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory, 
+provide sensible non-production target exclusion. As `fossa-cli` relies on manifest and lock files provided in the project's directory,
 default filters, intentionally skip `node_modules/` and such directories. If `fossa-cli` discovers and
 analyzes project found in `node_modules/`: `fossa-cli` will not be able to infer
 the dependency's scope (development or production) and may double count dependencies.
@@ -135,6 +146,6 @@ fossa container test redis.tar
 3. How can I exclude certain projects or targets from container image?
 
 You can use [fossa configuration](./../files/fossa-yml.md) file to exclude
-specific directory or projects. 
+specific directory or projects.
 
 Refer to [target exclusion walk-through](./../../concepts/analysis-and-analyzers.md).

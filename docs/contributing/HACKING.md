@@ -61,6 +61,8 @@ If you build without these binaries, a compiler warning will be emitted.  If ghc
 
 There is no supported way for Non-FOSSA users to obtain these binaries, though we are working on a solution to allow this in the future.  As a result, **we cannot accept pull requests from any forked repository**, since those builds will fail in CI.  This means that outside contributions are possible, but a FOSSA employee needs to cherry pick the commits and create a new PR with them.
 
+Here's a document that explains [how we do this](./forks.md) while making sure that you get credit for your PR.
+
 ### Running tests
 
 > You will need to run `git lfs pull` to retrieve testdata stored in git lfs. If you do not have git-lfs installed on your system,

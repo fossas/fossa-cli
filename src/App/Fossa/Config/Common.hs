@@ -35,6 +35,11 @@ module App.Fossa.Config.Common (
 
   -- * Configuration Types
   ScanDestination (..),
+  OutputStyle (..),
+  DestinationMeta (..),
+  destinationMetadata,
+  destinationApiOpts,
+  outputStyleArgs,
 
   -- * Global Defaults
   defaultTimeoutDuration,
@@ -48,6 +53,7 @@ module App.Fossa.Config.Common (
   titleHelp,
   -- Deprecation
   applyReleaseGroupDeprecationWarning,
+  collectBaseFile,
 ) where
 
 import App.Fossa.Config.ConfigFile (
@@ -126,6 +132,8 @@ import Options.Applicative (
   argument,
   auto,
   eitherReader,
+  flag,
+  flag',
   long,
   metavar,
   option,
@@ -150,11 +158,41 @@ import Text.Megaparsec (errorBundlePretty, runParser)
 import Text.URI (URI, mkURI)
 import Types (TargetFilter)
 
+newtype DestinationMeta = DestinationMeta (ApiOpts, ProjectMetadata)
+  deriving (Eq, Ord, Show, Generic)
+
+destinationApiOpts :: DestinationMeta -> ApiOpts
+destinationApiOpts (DestinationMeta m) = fst m
+
+instance ToJSON DestinationMeta where
+  toEncoding = genericToEncoding defaultOptions
+
+-- | CLI options describing what to do with analysis results.
+data OutputStyle
+  = -- | Upload results
+    Default
+  | -- | Output results to stdout, but do not upload
+    Output
+  | -- | Upload results as with `Upload`, but also output them to stdout as with `Output`
+    TeeOutput
+  deriving (Ord, Eq, Show)
+
+outputStyleArgs :: Parser OutputStyle
+outputStyleArgs =
+  flag' Output (applyFossaStyle <> long "output" <> short 'o' <> stringToHelpDoc "Output results to stdout instead of uploading to FOSSA")
+    <|> flag Default TeeOutput (applyFossaStyle <> long "tee-output" <> stringToHelpDoc "Like --output, but upload in addition to outputting to stdout.")
+
 data ScanDestination
   = -- | upload to fossa with provided api key and base url
-    UploadScan ApiOpts ProjectMetadata
+    UploadScan DestinationMeta
+  | OutputAndUpload DestinationMeta
   | OutputStdout
   deriving (Eq, Ord, Show, Generic)
+
+destinationMetadata :: ScanDestination -> Maybe DestinationMeta
+destinationMetadata (UploadScan meta) = Just meta
+destinationMetadata (OutputAndUpload meta) = Just meta
+destinationMetadata _ = Nothing
 
 instance ToJSON ScanDestination where
   toEncoding = genericToEncoding defaultOptions
@@ -259,6 +297,8 @@ pathOpt = first show . parseRelDir
 targetOpt :: String -> Either String TargetFilter
 targetOpt = first errorBundlePretty . runParser targetFilterParser "(Command-line arguments)" . toText
 
+-- | Argument for the base dir for FOSSA to operate out of.
+-- Defaults to the current directory, ".".
 baseDirArg :: Parser String
 baseDirArg = argument str (applyFossaStyle <> metavar "DIR" <> helpDoc baseDirDoc <> value ".")
   where
@@ -277,6 +317,15 @@ collectBaseDir ::
   FilePath ->
   m BaseDir
 collectBaseDir = fmap BaseDir . validateDir
+
+collectBaseFile ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has ReadFS sig m
+  ) =>
+  FilePath ->
+  m (Path Abs File)
+collectBaseFile = validateFile
 
 validateDir ::
   ( Has Diagnostics sig m

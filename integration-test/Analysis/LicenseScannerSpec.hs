@@ -47,6 +47,7 @@ vendoredDep =
     "vendor/foo.tar.gz"
     (Just "0.0.1")
     Nothing
+    []
 
 -- the contents of the archive look like this. The `FOO_LICENSE` files contain an MIT license.
 -- `bar_apache.rb` and `something.rb` contain an Apache-2.0 license.
@@ -101,8 +102,8 @@ spec = do
         Success _ us -> do
           length us `shouldBe` 3
           NE.sort (NE.map licenseUnitName us) `shouldBe` NE.fromList ["No_license_found", "apache-2.0", "mit"]
-          NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo/bar/MIT_LICENSE", "vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
-          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
+          NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo.tar.gz/foo/bar.tar.gz/bar/MIT_LICENSE", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/SOMETHING_LICENSE", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/quux.tar.gz/quux/QUUX_LICENSE"]
+          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo.tar.gz/foo/bar.tar.gz/bar/bar_apache.rb", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/something.rb"]
           -- matchData should exist
           let matchData = concatMap NE.toList $ NE.toList (fromMaybe (NE.fromList []) . licenseUnitDataMatchData <$> licenseUnitData mitUnit)
           licenseUnitMatchDataMatchString <$> matchData `shouldBe` [Just mitLicense, Just mitLicense, Just mitLicense]
@@ -124,8 +125,8 @@ spec = do
         Success _ us -> do
           length us `shouldBe` 3
           NE.sort (NE.map licenseUnitName us) `shouldBe` NE.fromList ["No_license_found", "apache-2.0", "mit"]
-          NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo/bar/MIT_LICENSE", "vendor/foo/bar/baz/SOMETHING_LICENSE", "vendor/foo/bar/baz/quux/QUUX_LICENSE"]
-          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
+          NE.sort (licenseUnitFiles mitUnit) `shouldBe` NE.fromList ["vendor/foo.tar.gz/foo/bar.tar.gz/bar/MIT_LICENSE", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/SOMETHING_LICENSE", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/quux.tar.gz/quux/QUUX_LICENSE"]
+          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo.tar.gz/foo/bar.tar.gz/bar/bar_apache.rb", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/something.rb"]
           -- We should get Contents since we're running themis with --srclib-with-full-files
           licenseUnitDataContents <$> licenseUnitData mitUnit `shouldBe` NE.fromList [Just mitLicense, Just mitLicense, Just mitLicense]
           -- matchData should be all Nothing
@@ -148,7 +149,7 @@ spec = do
         Success _ us -> do
           length us `shouldBe` 1
           NE.sort (NE.map licenseUnitName us) `shouldBe` NE.fromList ["apache-2.0"]
-          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo/bar/bar_apache.rb", "vendor/foo/bar/baz/something.rb"]
+          NE.sort (licenseUnitFiles apacheUnit) `shouldBe` NE.fromList ["vendor/foo.tar.gz/foo/bar.tar.gz/bar/bar_apache.rb", "vendor/foo.tar.gz/foo/bar.tar.gz/bar/baz.tar.gz/baz/something.rb"]
           where
             apacheUnit :: LicenseUnit
             apacheUnit = fromMaybe emptyLicenseUnit (head' $ NE.filter (\u -> licenseUnitName u == "apache-2.0") us)

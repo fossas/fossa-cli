@@ -10,7 +10,8 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
 import App.Fossa.Config.Common (
-  ScanDestination (OutputStdout, UploadScan),
+  DestinationMeta (..),
+  ScanDestination (..),
   applyReleaseGroupDeprecationWarning,
  )
 import App.Fossa.Config.Container.Analyze (
@@ -114,14 +115,19 @@ analyze cfg = do
         let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
         logInfo ("Using branch: `" <> pretty branchText <> "`")
 
+  let doUpload apiOpts projectMetadata = runFossaApiClient apiOpts $ do
+        orgInfo <- preflightChecks $ AnalyzeChecks revision projectMetadata
+        logProjectInfo
+        void $ uploadScan orgInfo revision projectMetadata (jsonOutput cfg) scannedImage
+
+  let scannedImageToStdout = do
+        logProjectInfo
+        logStdout . decodeUtf8 $ Aeson.encode scannedImage
+
   case scanDestination cfg of
-    OutputStdout -> do
-      logProjectInfo
-      logStdout . decodeUtf8 $ Aeson.encode scannedImage
-    UploadScan apiOpts projectMetadata -> runFossaApiClient apiOpts $ do
-      orgInfo <- preflightChecks $ AnalyzeChecks revision projectMetadata
-      logProjectInfo
-      void $ uploadScan orgInfo revision projectMetadata (jsonOutput cfg) scannedImage
+    OutputStdout -> scannedImageToStdout
+    UploadScan (DestinationMeta (apiOpts, projectMetadata)) -> doUpload apiOpts projectMetadata
+    OutputAndUpload (DestinationMeta (apiOpts, projectMetadata)) -> scannedImageToStdout >> doUpload apiOpts projectMetadata
 
   pure scannedImage
 
