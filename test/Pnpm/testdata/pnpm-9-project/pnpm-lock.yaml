@@ -1,0 +1,39 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      uri-js:
+        specifier: ^4.4.1
+        version: 4.4.1
+    devDependencies:
+      colorjs:
+        specifier: ^0.1.9
+        version: 0.1.9
+
+packages:
+
+  colorjs@0.1.9:
+    resolution: {integrity: sha512-filDwoNvVLqcLB4zMmWa65rgNHW/ff26wn3/q+XpYrI9EFts6fwnLIPYGOr8G+9cECMsxfCm9a2QzXdf+imY7A==}
+
+  punycode@2.3.1:
+    resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
+    engines: {node: '>=6'}
+
+  uri-js@4.4.1:
+    resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+snapshots:
+
+  colorjs@0.1.9: {}
+
+  punycode@2.3.1: {}
+
+  uri-js@4.4.1:
+    dependencies:
+      punycode: 2.3.1

@@ -7,7 +7,7 @@ import App.Fossa.Container.Scan (
   parseDockerEngineSource,
  )
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
-import Container.Types (ContainerScan (ContainerScan, imageData), ContainerScanImage (ContainerScanImage, imageLayers), layerId, observations, srcUnits)
+import Container.Types (ContainerScan (ContainerScan, imageData), ContainerScanImage (ContainerScanImage, imageLayers, imageOs), layerId, observations, srcUnits)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, Has)
 import Control.Carrier.Stack (StackC, runStack)
@@ -81,6 +81,7 @@ analyzeSpec :: Spec
 analyzeSpec = describe "analyze" $ do
   currDir <- runIO getCurrentDir
   let imageArchive = currDir </> appDepsImage
+  let osInfoArchive = currDir </> osInfoImage
 
   it' "should not analyze application dependencies when only-system-dependencies are requested" $ do
     containerScan <- analyzeFromDockerArchive True mempty (toFlag' False) imageArchive
@@ -110,6 +111,11 @@ analyzeSpec = describe "analyze" $ do
     containerScan <- analyzeFromDockerArchive False (excludePath appAPath) (toFlag' False) imageArchive
     buildImportsOf containerScan `shouldNotContain'` [black]
     buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy]
+
+  it' "should get os-info from any layer" $ do
+    containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) osInfoArchive
+    let osInfo = imageData containerScan
+    (imageOs osInfo) `shouldBe'` Just "fakeos"
 
 buildImportsOf :: ContainerScan -> [Locator]
 buildImportsOf scan =
@@ -155,6 +161,9 @@ runWithMockDockerEngineEff =
 
 appDepsImage :: Path Rel File
 appDepsImage = $(mkRelFile "test/Container/testdata/app_deps_example.tar")
+
+osInfoImage :: Path Rel File
+osInfoImage = $(mkRelFile "test/Container/testdata/osinfo_example.tar")
 
 -- | From "app/services/a/" project.
 numpy :: Locator
