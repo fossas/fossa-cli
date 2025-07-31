@@ -23,6 +23,7 @@ module App.Fossa.Config.Analyze (
   GoDynamicTactic (..),
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
+  SnippetScan (..),
   StrictMode (..),
   mkSubCommand,
   loadConfig,
@@ -141,6 +142,7 @@ data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 data StaticOnlyTactics = StaticOnlyTactics deriving (Generic)
 data StrictMode = StrictMode deriving (Generic, Show)
+data SnippetScan = SnippetScan deriving (Generic, Show)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -233,6 +235,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeStaticOnlyTactics :: Flag StaticOnlyTactics
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
   , analyzeStrictMode :: Flag StrictMode
+  , analyzeSnippetScan :: Flag SnippetScan
   }
   deriving (Eq, Ord, Show)
 
@@ -272,6 +275,7 @@ data AnalyzeConfig = AnalyzeConfig
   , reachabilityConfig :: ReachabilityConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
+  , xSnippetScan :: Flag SnippetScan
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -342,6 +346,7 @@ cliParser =
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
+    <*> flagOpt SnippetScan (applyFossaStyle <> long "x-snippet-scan" <> stringToHelpDoc "Enable fingerprint snippet scanning")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -556,6 +561,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> resolveReachabilityOptions reachabilityConfig
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
+    <*> pure analyzeSnippetScan
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>

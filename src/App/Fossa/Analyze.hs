@@ -50,6 +50,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
+import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -297,6 +298,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
+      snippetScan = Config.xSnippetScan cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -343,6 +345,17 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
   let lernieResults = join . resultToMaybe $ maybeLernieResults
+
+  maybeFicusResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if filterIsVSIOnly filters
+        then do
+          logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
+          pure Nothing
+        else
+          Diag.context "snippet scan" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision $ Config.licenseScanPathFilters vendoredDepsOptions
+  let ficusResults = join . resultToMaybe $ maybeFicusResults
+
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
