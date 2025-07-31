@@ -43,10 +43,10 @@ import Data.Aeson.Types (
 import Data.Bifunctor (bimap, first)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
+import Data.List (find)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
-import Data.List (find)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
@@ -417,10 +417,10 @@ buildGraph meta = stripRoot . shrink isNotWorkspaceMember $
     isolatedWorkspaceMembers = Set.fromList $ map packageKey $ filter hasNoDependencies $ metadataWorkspaceMembers meta
     packageKey :: PackageId -> (Text, Text)
     packageKey pkg = (pkgIdName pkg, pkgIdVersion pkg)
-    
+
     -- Check if a workspace member has no dependencies by looking at resolve nodes
     hasNoDependencies :: PackageId -> Bool
-    hasNoDependencies pkgId = 
+    hasNoDependencies pkgId =
       case find (\node -> resolveNodeId node == pkgId) (resolvedNodes $ metadataResolve meta) of
         Just node -> null (resolveNodeDeps node)
         Nothing -> True -- If not found in resolve, assume no dependencies
