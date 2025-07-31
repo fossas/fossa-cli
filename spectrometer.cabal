@@ -246,6 +246,7 @@ library
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
     App.Fossa.Ficus.Analyze
+    App.Fossa.Ficus.Types
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze

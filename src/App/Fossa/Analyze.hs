@@ -353,7 +353,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
         else
-          Diag.context "snippet scan" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision $ Config.licenseScanPathFilters vendoredDepsOptions
+          Diag.context "snippet scan" . runStickyLogger SevInfo $ analyzeWithFicus snippetScan basedir maybeApiOpts revision $ Config.licenseScanPathFilters vendoredDepsOptions
   let ficusResults = join . resultToMaybe $ maybeFicusResults
 
 
