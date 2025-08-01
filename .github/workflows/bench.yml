@@ -96,7 +96,7 @@ jobs:
         mkdir vendor-bins
         ./vendor_download.sh
       env:
-        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.ANALYSIS_VENDOR_DOWNLOAD_TOKEN }}
 
     - name: Build
       env:
