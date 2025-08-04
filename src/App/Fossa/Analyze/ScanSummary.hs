@@ -193,7 +193,7 @@ renderDefaultSkippedTargetHelp =
   ]
 
 summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize cfg endpointVersion (AnalysisScanResult dps vsi binary ficus manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
+summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else

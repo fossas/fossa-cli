@@ -181,7 +181,7 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $FI
       unzip "$OUTPUT" ficus.exe -d vendor-bins
       ;;
   esac
-  rm $OUTPUT
+  rm "$OUTPUT"
 
 
 done

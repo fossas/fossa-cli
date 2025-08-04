@@ -44,7 +44,7 @@ import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, File, Path, toFilePath)
 import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
-import Text.URI.Builder (PathComponent (..), TrailingSlash (..), setPath)
+import Text.URI.Builder ()
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
 import Prelude hiding (unwords)
 
@@ -132,14 +132,19 @@ runFicus ::
 runFicus ficusConfig = do
   withFicusBinary $ \bin -> do
     cmd <- ficusCommand ficusConfig bin
-    logDebug $ "Executing ficus"
+    logDebug "Executing ficus"
     result <- execThrow' cmd
     let messages = parseFicusJson result Nothing
 
     -- Log summary of results
-    logDebug $ "Ficus returned " <> pretty (length $ ficusMessageErrors messages) <> " errors, "
-             <> pretty (length $ ficusMessageDebugs messages) <> " debug messages, "
-             <> pretty (length $ ficusMessageFindings messages) <> " findings"
+    logDebug $
+      "Ficus returned "
+        <> pretty (length $ ficusMessageErrors messages)
+        <> " errors, "
+        <> pretty (length $ ficusMessageDebugs messages)
+        <> " debug messages, "
+        <> pretty (length $ ficusMessageFindings messages)
+        <> " findings"
 
     -- Handle errors - log them as warnings instead of fatal errors
     -- Many ficus errors are expected (like binary file detection) and shouldn't stop analysis
@@ -168,11 +173,12 @@ ficusCommand ficusConfig bin = do
     Just baseUri -> do
       pure $ render baseUri
     Nothing -> pure ""
-  pure $ Command
-    { cmdName = toText $ toPath bin
-    , cmdArgs = configArgs endpoint
-    , cmdAllowErr = Never
-    }
+  pure $
+    Command
+      { cmdName = toText $ toPath bin
+      , cmdArgs = configArgs endpoint
+      , cmdAllowErr = Never
+      }
   where
     configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore"] ++ configExcludes ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
