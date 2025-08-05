@@ -360,35 +360,37 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
   where
     -- Returns the set of all paths that are transitive to the given set of paths.
     collectAllTransitivePaths :: Set.Set PackagePath -> Set.Set PackagePath
-    collectAllTransitivePaths paths = 
+    collectAllTransitivePaths paths =
       let go visited toVisit
             | Set.null toVisit = visited
-            | otherwise = 
+            | otherwise =
                 let (current, rest) = Set.deleteFindMin toVisit
-                in if Set.member current visited 
-                   then go visited rest
-                   else 
-                     let newChildren = collectTransitivePaths current
-                         newVisited = Set.insert current visited
-                         newToVisit = rest `Set.union` (newChildren `Set.difference` newVisited)
-                     in go newVisited newToVisit
-      in go Set.empty paths
+                 in if Set.member current visited
+                      then go visited rest
+                      else
+                        let newChildren = collectTransitivePaths current
+                            newVisited = Set.insert current visited
+                            newToVisit = rest `Set.union` (newChildren `Set.difference` newVisited)
+                         in go newVisited newToVisit
+       in go Set.empty paths
 
     -- Returns the set of all transitive paths for given package path.
     collectTransitivePaths :: PackagePath -> Set.Set PackagePath
-    collectTransitivePaths pkgPath = 
+    collectTransitivePaths pkgPath =
       case Map.lookup pkgPath (packages pkgLockV3) of
         Nothing -> Set.empty
-        Just pkgMetadata -> 
+        Just pkgMetadata ->
           let vendorPrefix = case pkgPath of
                 PackageLockV3PathKey prefix pkgName -> prefix <> unPackageName pkgName
                 _ -> ""
-              directDeps = concatMap Map.keys 
-                [ plV3PkgDependencies pkgMetadata
-                , plV3PkgPeerDependencies pkgMetadata  
-                , plV3PkgOptionalDependencies pkgMetadata
-                ]
-          in Set.fromList $ map (vendoredPathElseTopLevelPath vendorPrefix) directDeps
+              directDeps =
+                concatMap
+                  Map.keys
+                  [ plV3PkgDependencies pkgMetadata
+                  , plV3PkgPeerDependencies pkgMetadata
+                  , plV3PkgOptionalDependencies pkgMetadata
+                  ]
+           in Set.fromList $ map (vendoredPathElseTopLevelPath vendorPrefix) directDeps
 
     -- Prefer resolution path in following order of precedent:
     --
