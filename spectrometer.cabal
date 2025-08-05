@@ -22,6 +22,7 @@ extra-source-files:
   target/release/millhone
   target/release/millhone.exe
   vendor-bins/circe
+  vendor-bins/ficus
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
