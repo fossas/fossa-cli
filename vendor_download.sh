@@ -59,21 +59,29 @@ case "$(uname -s)" in
   Linux)
     case "$(uname -m)" in
       aarch64)
-        ASSET_POSTFIX="linux"
-        THEMIS_ASSET_POSTFIX="linux-arm64"
-        FICUS_ASSET_POSTFIX="aarch64-linux.tar.gz"
-        LERNIE_ASSET_POSTFIX="aarch64-linux"
-        CIRCE_ASSET_POSTFIX="aarch64-unknown-linux-musl"
-      ;;
-
+        ARCH="aarch64"
+        ;;
+      x86_64)
+        ARCH="x86_64"
+        ;;
       *)
-        ASSET_POSTFIX="linux"
-        THEMIS_ASSET_POSTFIX="linux-amd64"
-        FICUS_ASSET_POSTFIX="x86_64-linux.tar.gz"
-        LERNIE_ASSET_POSTFIX="x86_64-linux"
-        CIRCE_ASSET_POSTFIX="x86_64-unknown-linux-musl"
+        echo "Unsupported architecture: $(uname -m)"
+        exit 1
         ;;
     esac
+
+    # Detect libc (musl or gnu)
+    if ldd --version 2>&1 | grep -q musl; then
+      LIBC="musl"
+    else
+      LIBC="gnu"
+    fi
+
+    ASSET_POSTFIX="linux"
+    THEMIS_ASSET_POSTFIX="linux-amd64"
+    FICUS_ASSET_POSTFIX="$ARCH-unknown-linux-$LIBC.tar.gz"
+    LERNIE_ASSET_POSTFIX="${ARCH}-linux"
+    CIRCE_ASSET_POSTFIX="${ARCH}-unknown-linux-musl"
     ;;
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
