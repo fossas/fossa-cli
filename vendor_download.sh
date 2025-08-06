@@ -87,7 +87,7 @@ case "$(uname -s)" in
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
     THEMIS_ASSET_POSTFIX="windows-amd64"
-    FICUS_ASSET_POSTFIX="x86_64-windows.exe.zip"
+    FICUS_ASSET_POSTFIX="x86_64-pc-windows-msvc.zip"
     LERNIE_ASSET_POSTFIX="x86_64-windows.exe"
     CIRCE_ASSET_POSTFIX="x86_64-pc-windows-msvc"
     ;;
@@ -187,6 +187,7 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $FI
     *)
       echo "Warn: Assuming $(uname -s) is Windows"
       unzip "$OUTPUT" ficus.exe -d vendor-bins
+      mv vendor-bins/ficus.exe vendor-bins/ficus
       ;;
   esac
   rm "$OUTPUT"
