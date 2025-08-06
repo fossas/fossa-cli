@@ -60,9 +60,11 @@ case "$(uname -s)" in
     case "$(uname -m)" in
       aarch64)
         ARCH="aarch64"
+        THEMIS_ARCH="arm64"
         ;;
       x86_64)
         ARCH="x86_64"
+        THEMIS_ARCH="amd64"
         ;;
       *)
         echo "Unsupported architecture: $(uname -m)"
@@ -78,7 +80,7 @@ case "$(uname -s)" in
     fi
 
     ASSET_POSTFIX="linux"
-    THEMIS_ASSET_POSTFIX="linux-amd64"
+    THEMIS_ASSET_POSTFIX="linux-${THEMIS_ARCH}"
     FICUS_ASSET_POSTFIX="$ARCH-unknown-linux-$LIBC.tar.gz"
     LERNIE_ASSET_POSTFIX="${ARCH}-linux"
     CIRCE_ASSET_POSTFIX="${ARCH}-unknown-linux-musl"
