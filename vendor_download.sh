@@ -59,27 +59,37 @@ case "$(uname -s)" in
   Linux)
     case "$(uname -m)" in
       aarch64)
-        ASSET_POSTFIX="linux"
-        THEMIS_ASSET_POSTFIX="linux-arm64"
-        FICUS_ASSET_POSTFIX="aarch64-linux.tar.gz"
-        LERNIE_ASSET_POSTFIX="aarch64-linux"
-        CIRCE_ASSET_POSTFIX="aarch64-unknown-linux-musl"
-      ;;
-
+        ARCH="aarch64"
+        THEMIS_ARCH="arm64"
+        ;;
+      x86_64)
+        ARCH="x86_64"
+        THEMIS_ARCH="amd64"
+        ;;
       *)
-        ASSET_POSTFIX="linux"
-        THEMIS_ASSET_POSTFIX="linux-amd64"
-        FICUS_ASSET_POSTFIX="x86_64-linux.tar.gz"
-        LERNIE_ASSET_POSTFIX="x86_64-linux"
-        CIRCE_ASSET_POSTFIX="x86_64-unknown-linux-musl"
+        echo "Unsupported architecture: $(uname -m)"
+        exit 1
         ;;
     esac
+
+    # Detect libc (musl or gnu)
+    if ldd --version 2>&1 | grep -q musl; then
+      LIBC="musl"
+    else
+      LIBC="gnu"
+    fi
+
+    ASSET_POSTFIX="linux"
+    THEMIS_ASSET_POSTFIX="linux-${THEMIS_ARCH}"
+    FICUS_ASSET_POSTFIX="$ARCH-unknown-linux-$LIBC.tar.gz"
+    LERNIE_ASSET_POSTFIX="${ARCH}-linux"
+    CIRCE_ASSET_POSTFIX="${ARCH}-unknown-linux-musl"
     ;;
   *)
     echo "Warn: Assuming $(uname -s) is Windows"
     ASSET_POSTFIX="windows.exe"
     THEMIS_ASSET_POSTFIX="windows-amd64"
-    FICUS_ASSET_POSTFIX="x86_64-windows.exe.zip"
+    FICUS_ASSET_POSTFIX="x86_64-pc-windows-msvc.zip"
     LERNIE_ASSET_POSTFIX="x86_64-windows.exe"
     CIRCE_ASSET_POSTFIX="x86_64-pc-windows-msvc"
     ;;
@@ -179,9 +189,10 @@ jq -c ".assets | map({url: .url, name: .name}) | map(select($FILTER)) | .[]" $FI
     *)
       echo "Warn: Assuming $(uname -s) is Windows"
       unzip "$OUTPUT" ficus.exe -d vendor-bins
+      mv vendor-bins/ficus.exe vendor-bins/ficus
       ;;
   esac
-  rm $OUTPUT
+  rm "$OUTPUT"
 
 
 done
