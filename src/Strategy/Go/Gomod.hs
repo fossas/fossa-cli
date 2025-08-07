@@ -231,7 +231,7 @@ gomodParser = do
     statement =
       (singleton <$> goDebugStatements) -- singleton wraps the Parser Statement into a Parser [Statement]
         <|> (singleton <$> toolChainStatements)
-        <|> (singleton <$> toolStatements)
+        <|> toolStatements
         <|> (singleton <$> goVersionStatement)
         <|> requireStatements
         <|> replaceStatements
@@ -248,10 +248,18 @@ gomodParser = do
     toolChainStatements :: Parser Statement
     toolChainStatements = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
 
-    -- top-level tool statement
-    -- e.g., tool golang.org/x/tools/cmd/stringer
-    toolStatements :: Parser Statement
-    toolStatements = ToolStatement <$ lexeme (chunk "tool") <*> anyToken
+    -- top-level tool statements
+    -- e.g.:
+    --   tool golang.org/x/tools/cmd/stringer
+    --   tool (
+    --       github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+    --       github.com/fossa/fossa-cli
+    --   )
+    toolStatements :: Parser [Statement]
+    toolStatements = block "tool" singleTool
+
+    -- parse the body of a single tool (without the leading "tool" lexeme)
+    singleTool = ToolStatement <$> packageName
 
     -- top-level godebug statement
     -- e.g., godebug asynctimerchan=0
