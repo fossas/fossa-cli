@@ -50,6 +50,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
+import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -108,7 +109,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (resultToMaybe)
+import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -297,6 +298,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
+      enableSnippetScan = Config.xSnippetScan cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -335,6 +337,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
+  maybeFicusResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if not enableSnippetScan
+        then do
+          logInfo "Skipping ficus snippet scanning (--x-snippet-scan not set)"
+          pure Nothing
+        else
+          if filterIsVSIOnly filters
+            then do
+              logInfo "Running in VSI only mode, skipping snippet-scan"
+              pure Nothing
+            else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision $ Config.licenseScanPathFilters vendoredDepsOptions
+  let ficusResults = join . resultToMaybe $ maybeFicusResults
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -422,7 +437,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
@@ -442,16 +457,16 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
+  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
   where
-    sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
+    sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults =
       let doUpload (DestinationMeta (apiOpts, metadata)) =
             Diag.context "upload-results"
               . runFossaApiClient apiOpts
               $ do
-                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
+                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults
                 doAssertRevisionBinaries iatAssertion locator
        in case destination of
             OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result

@@ -672,6 +672,7 @@ standardAnalyzeConfig =
     , ANZ.reachabilityConfig = mempty
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
+    , ANZ.xSnippetScan = False
     }
 
 sampleJarParsedContent :: Text

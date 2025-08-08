@@ -10,6 +10,7 @@ module App.Fossa.Analyze.Upload (
 import App.Docs (vulnReachabilityProductDocsUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
+import App.Fossa.Ficus.Types (FicusSnippetScanResults)
 import App.Fossa.Reachability.Types (SourceUnitReachability)
 import App.Fossa.Reachability.Upload (upload)
 import App.Types (
@@ -107,8 +108,9 @@ uploadSuccessfulAnalysis ::
   ProjectRevision ->
   ScanUnits ->
   [SourceUnitReachability] ->
+  Maybe FicusSnippetScanResults ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults =
   context "Uploading analysis" $ do
     dieOnMonorepoUpload revision
     org <- getOrganization
@@ -126,13 +128,13 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
     uploadResult <- case scanUnits of
-      SourceUnitOnly units -> uploadAnalysis revision metadata units
+      SourceUnitOnly units -> uploadAnalysis revision metadata units ficusResults
       LicenseSourceUnitOnly licenseSourceUnit -> do
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
-        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits $ orgFileUpload org
+        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults $ orgFileUpload org
       SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
-        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits $ orgFileUpload org
+        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults $ orgFileUpload org
 
     emitBuildWarnings uploadResult
 
@@ -167,11 +169,12 @@ uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
   ProjectRevision ->
   ProjectMetadata ->
   NE.NonEmpty FullSourceUnit ->
+  Maybe FicusSnippetScanResults ->
   FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits uploadKind = do
+uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults uploadKind = do
   _ <- uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits
-  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind
+  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults
 
 uploadAnalysisWithFirstPartyLicensesToS3 ::
   ( Has Diagnostics sig m

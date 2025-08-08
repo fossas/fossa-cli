@@ -22,6 +22,7 @@ extra-source-files:
   target/release/millhone
   target/release/millhone.exe
   vendor-bins/circe
+  vendor-bins/ficus
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
@@ -245,6 +246,8 @@ library
     App.Fossa.DependencyMetadata
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.Ficus.Analyze
+    App.Fossa.Ficus.Types
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze
@@ -752,6 +755,7 @@ test-suite integration-tests
     Analysis.CocoapodsSpec
     Analysis.ElixirSpec
     Analysis.ErlangSpec
+    Analysis.FicusSpec
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
     Analysis.GoSpec

@@ -114,6 +114,7 @@ import Options.Applicative (
   InfoMod,
   Parser,
   eitherReader,
+  help,
   helpDoc,
   hidden,
   long,
@@ -233,6 +234,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeStaticOnlyTactics :: Flag StaticOnlyTactics
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
   , analyzeStrictMode :: Flag StrictMode
+  , analyzeSnippetScan :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -272,6 +274,7 @@ data AnalyzeConfig = AnalyzeConfig
   , reachabilityConfig :: ReachabilityConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
+  , xSnippetScan :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -342,6 +345,7 @@ cliParser =
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
+    <*> switch (applyFossaStyle <> long "x-snippet-scan" <> help "Enable ficus snippet scanning")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -556,6 +560,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> resolveReachabilityOptions reachabilityConfig
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
+    <*> pure analyzeSnippetScan
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
