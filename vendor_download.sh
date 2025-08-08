@@ -166,6 +166,7 @@ curl -sSL \
     -H "Authorization: token $GITHUB_TOKEN" \
     -H "Accept: application/vnd.github.v3.raw" \
     https://api.github.com/repos/fossas/ficus/releases/latest > $FICUS_RELEASE_JSON
+cat "$FICUS_RELEASE_JSON"
 
 FICUS_TAG=$(jq -cr ".name" $FICUS_RELEASE_JSON)
 # Strip the leading 'v' off of the tag
