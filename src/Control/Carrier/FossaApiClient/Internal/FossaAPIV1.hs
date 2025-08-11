@@ -184,6 +184,7 @@ import Fossa.API.Types (
   useApiOpts,
  )
 
+import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
 import Control.Effect.Reader
 import Data.Foldable (traverse_)
 import Data.List.Extra (chunk)
@@ -703,8 +704,9 @@ uploadAnalysis ::
   ProjectRevision ->
   ProjectMetadata ->
   [SourceUnit] ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
+uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits ficusResults = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -717,6 +719,8 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
+          -- Don't include snippetAnalysisId if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty (("snippetAnalysisId" =:) . ficusSnippetScanResultsAnalysisId) ficusResults
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
@@ -751,8 +755,9 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectRevision ->
   ProjectMetadata ->
   FileUpload ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata uploadKind = fossaReq $ do
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata uploadKind ficusResults = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -765,8 +770,9 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload
           <> "cliLicenseScanType"
             =: toText uploadKind
           <> mkMetadataOpts metadata projectName
-          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
+          -- Don't include snippetAnalysisId if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty (("snippetAnalysisId" =:) . ficusSnippetScanResultsAnalysisId) ficusResults
   resp <- req POST (uploadWithFirstPartyUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
