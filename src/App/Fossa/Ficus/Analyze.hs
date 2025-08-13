@@ -44,9 +44,9 @@ import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, File, Path, toFilePath)
 import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
-import Text.URI.Builder ()
+import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
-import Prelude hiding (unwords)
+import Prelude
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
   deriving (Eq, Ord, Show, Hashable)
@@ -173,7 +173,7 @@ ficusCommand ficusConfig bin = do
     Just baseUri -> do
       proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
       pure $ render proxyUri
-    Nothing -> pure "https://app.fossa.com"
+    Nothing -> pure "https://app.fossa.com/api/proxy/analysis"
   pure $
     Command
       { cmdName = toText $ toPath bin
