@@ -114,7 +114,6 @@ import Options.Applicative (
   InfoMod,
   Parser,
   eitherReader,
-  help,
   helpDoc,
   hidden,
   long,
@@ -345,7 +344,7 @@ cliParser =
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
-    <*> switch (applyFossaStyle <> long "x-snippet-scan" <> help "Enable ficus snippet scanning")
+    <*> switch (applyFossaStyle <> long "x-snippet-scan" <> stringToHelpDoc "Experimental flag to enable snippet scanning to identify open source code snippets using fingerprinting.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
