@@ -171,8 +171,9 @@ ficusCommand :: Has Diagnostics sig m => FicusConfig -> BinaryPaths -> m Command
 ficusCommand ficusConfig bin = do
   endpoint <- case ficusConfigEndpoint ficusConfig of
     Just baseUri -> do
-      pure $ render baseUri
-    Nothing -> pure ""
+      proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
+      pure $ render proxyUri
+    Nothing -> pure "https://app.fossa.com"
   pure $
     Command
       { cmdName = toText $ toPath bin
