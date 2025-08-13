@@ -3,6 +3,7 @@
 ## 3.11.1
 
 - Better document `--x-snippet-scan`.
+- Fix the route used by `--x-snippet-scan` to account for proxying.
 
 ## 3.11.0
 

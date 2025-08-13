@@ -44,9 +44,9 @@ import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, File, Path, toFilePath)
 import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
-import Text.URI.Builder ()
+import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
-import Prelude hiding (unwords)
+import Prelude
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
   deriving (Eq, Ord, Show, Hashable)
@@ -171,7 +171,8 @@ ficusCommand :: Has Diagnostics sig m => FicusConfig -> BinaryPaths -> m Command
 ficusCommand ficusConfig bin = do
   endpoint <- case ficusConfigEndpoint ficusConfig of
     Just baseUri -> do
-      pure $ render baseUri
+      proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
+      pure $ render proxyUri
     Nothing -> pure ""
   pure $
     Command
