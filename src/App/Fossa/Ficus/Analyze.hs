@@ -173,7 +173,7 @@ ficusCommand ficusConfig bin = do
     Just baseUri -> do
       proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
       pure $ render proxyUri
-    Nothing -> pure ""
+    Nothing -> pure "https://app.fossa.com"
   pure $
     Command
       { cmdName = toText $ toPath bin
