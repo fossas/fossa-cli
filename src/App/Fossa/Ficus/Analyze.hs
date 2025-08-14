@@ -38,14 +38,28 @@ import Data.Foldable (fold)
 import Control.Monad (foldM)
 import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
-import Data.String.Conversion (ToText (toText))
+import Data.String.Conversion (ToText (toText), toString)
 import Data.Text.Encoding (decodeUtf8)
 import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
-import Effect.Exec (AllowErr (Never), Command (..), Exec, renderCommand, execThrow')
+import Effect.Exec (AllowErr (Never), Command (..), Exec, renderCommand)
 import App.Fossa.EmbeddedBinary (withFicusBinary)
+import System.Process.Typed (
+  createPipe,
+  getStdout,
+  getStderr,
+  proc,
+  setEnv,
+  setStderr,
+  setStdout,
+  setWorkingDir,
+  withProcessWait,
+ )
+import System.IO (Handle, hGetLine, hIsEOF, hReady)
+import Control.Exception (try, IOException)
+import Control.Concurrent.Async (async, wait)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 
@@ -141,8 +155,6 @@ runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   ) =>
   FicusConfig ->
   m FicusMessages
@@ -151,22 +163,32 @@ runFicus ficusConfig = do
   withFicusBinary $ \bin -> do
     logDebugWithTime "Ficus binary extracted, building command..."
     cmd <- ficusCommand ficusConfig bin
-    logDebugWithTime "Executing ficus with execThrow'"
+    logDebugWithTime "Executing ficus (streaming)"
     logDebug $ "Ficus command: " <> pretty (renderCommand cmd)
     logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
 
-    logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
-    
-    -- Use the standard execThrow' approach like the rest of the codebase
-    output <- execThrow' cmd
-    let outputText = Text.unpack $ decodeUtf8 $ LBS.toStrict output
-    logDebugWithTime "Ficus execution completed, processing output..."
-    
-    -- Process the output line by line
-    let outputLines = lines outputText
-    messages <- sendIO $ processOutputLines outputLines
+    logDebugWithTime "Creating process configuration..."
+    let processConfig =
+          setWorkingDir (toFilePath $ ficusConfigRootDir ficusConfig) $
+          setStdout createPipe $
+          setStderr createPipe $
+          setEnv [("RUST_LOG", "debug")] $
+          proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
 
-    -- Log summary of results
+    logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
+    logDebugWithTime "Starting Ficus process..."
+    messages <- sendIO $ withProcessWait processConfig $ \p -> do
+      getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
+      let stdoutHandle = getStdout p
+      let stderrHandle = getStderr p
+      -- Start async reading of stderr to prevent blocking
+      stderrAsync <- async $ consumeStderr stderrHandle
+      -- Read stdout in the main thread
+      result <- streamFicusOutput stdoutHandle
+      -- Wait for stderr to finish
+      _ <- wait stderrAsync
+      pure result
+
     logDebug $
       "Ficus returned "
         <> pretty (length $ ficusMessageErrors messages)
@@ -178,27 +200,46 @@ runFicus ficusConfig = do
 
     pure messages
   where
-    processOutputLines :: [String] -> IO FicusMessages
-    processOutputLines lines' = do
-      now <- getCurrentTime
-      let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-      let processLine acc line = do
-            let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ Text.pack line
-            case decode lineBS of
-              Just message -> do
-                -- Log a simple message without detailed content to avoid output mangling
-                case message of
-                  FicusMessageError _ ->
-                    putStrLn $ "[" ++ timestamp ++ "] Ficus ERROR message received"
-                  FicusMessageDebug _ ->
-                    putStrLn $ "[" ++ timestamp ++ "] Ficus DEBUG message received"  
-                  FicusMessageFinding _ ->
-                    putStrLn $ "[" ++ timestamp ++ "] Ficus FINDING message received"
-                let newMessage = singletonFicusMessage message
-                pure (acc <> newMessage)
-              Nothing -> pure acc -- Skip invalid JSON
-      
-      foldM processLine mempty lines'
+    streamFicusOutput :: Handle -> IO FicusMessages
+    streamFicusOutput handle = do
+      let loop acc = do
+            eof <- hIsEOF handle
+            if eof
+              then do
+                putStrLn "[DEBUG] Reached end of Ficus output stream"
+                pure acc
+              else do
+                line <- hGetLine handle
+                let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ Text.pack line
+                case decode lineBS of
+                  Just message -> do
+                    -- Log messages in real-time with timestamps
+                    now <- getCurrentTime
+                    let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                    case message of
+                      FicusMessageError err ->
+                        putStrLn $ "[" ++ timestamp ++ "] ERROR " <> Text.unpack (displayFicusError err)
+                      FicusMessageDebug dbg ->
+                        putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> Text.unpack (displayFicusDebug dbg)
+                      FicusMessageFinding finding ->
+                        putStrLn $ "[" ++ timestamp ++ "] FINDING " <> Text.unpack (displayFicusFinding finding)
+                    let newMessage = singletonFicusMessage message
+                    loop (acc <> newMessage)
+                  Nothing -> do
+                    -- Skip invalid JSON silently to avoid clutter
+                    loop acc
+      loop mempty
+
+    consumeStderr :: Handle -> IO ()
+    consumeStderr handle = do
+      let loop = do
+            eof <- hIsEOF handle
+            if eof
+              then pure ()
+              else do
+                _ <- hGetLine handle  -- Consume stderr silently
+                loop
+      loop
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
