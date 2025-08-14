@@ -24,23 +24,31 @@ import App.Fossa.Ficus.Types (
  )
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Effect.Logger (Logger, logDebug, logInfo, logWarn)
 import Prettyprinter (pretty)
+
+import Data.Time (getCurrentTime)
+import Data.Time.Format (formatTime, defaultTimeLocale)
 
 import Data.Aeson (Object, decode, (.:))
 import Data.Aeson.Types (parseMaybe)
 import Data.ByteString.Lazy qualified as BL
-import Data.Foldable (fold, traverse_)
+import Data.Foldable (fold)
+import Control.Monad (foldM)
 import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText))
+import Data.Text.Encoding (decodeUtf8)
+import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
-import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow')
+import Effect.Exec (AllowErr (Never), Command (..), Exec, renderCommand, execThrow')
+import App.Fossa.EmbeddedBinary (withFicusBinary)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
+
 import Path (Abs, Dir, File, Path, toFilePath)
 import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
@@ -52,6 +60,13 @@ newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
   deriving (Eq, Ord, Show, Hashable)
 newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
   deriving (Eq, Ord, Show, Hashable)
+
+-- Helper function to log with timestamp
+logDebugWithTime :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m ()
+logDebugWithTime msg = do
+  now <- sendIO getCurrentTime
+  let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+  logDebug $ "[" <> pretty timestamp <> "] " <> pretty msg
 
 -- | scan rootDir with Ficus, using the given GrepOptions. This is the main entry point to this module
 analyzeWithFicus ::
@@ -82,8 +97,9 @@ analyzeWithFicusMain ::
   Maybe LicenseScanPathFilters ->
   m (Maybe FicusSnippetScanResults)
 analyzeWithFicusMain rootDir apiOpts revision filters = do
-  logInfo $ "Running Ficus analysis on " <> pretty (toFilePath rootDir)
+  logDebugWithTime "Preparing Ficus analysis configuration..."
   messages <- runFicus ficusConfig
+  logDebugWithTime "runFicus completed, processing results..."
   let ficusResults = ficusMessagesToFicusSnippetScanResults messages
   case ficusResults of
     Just results -> do
@@ -120,21 +136,35 @@ ficusMessagesToFicusSnippetScanResults messages =
         (aid : _) -> Just $ FicusSnippetScanResults{ficusSnippetScanResultsAnalysisId = aid}
         [] -> Nothing
 
+
 runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has ReadFS sig m
-  , Has Exec sig m
   , Has Logger sig m
+  , Has Exec sig m
+  , Has ReadFS sig m
   ) =>
   FicusConfig ->
   m FicusMessages
 runFicus ficusConfig = do
+  logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
+    logDebugWithTime "Ficus binary extracted, building command..."
     cmd <- ficusCommand ficusConfig bin
-    logDebug "Executing ficus"
-    result <- execThrow' cmd
-    let messages = parseFicusJson result Nothing
+    logDebugWithTime "Executing ficus with execThrow'"
+    logDebug $ "Ficus command: " <> pretty (renderCommand cmd)
+    logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
+
+    logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
+    
+    -- Use the standard execThrow' approach like the rest of the codebase
+    output <- execThrow' cmd
+    let outputText = Text.unpack $ decodeUtf8 $ LBS.toStrict output
+    logDebugWithTime "Ficus execution completed, processing output..."
+    
+    -- Process the output line by line
+    let outputLines = lines outputText
+    messages <- sendIO $ processOutputLines outputLines
 
     -- Log summary of results
     logDebug $
@@ -146,24 +176,36 @@ runFicus ficusConfig = do
         <> pretty (length $ ficusMessageFindings messages)
         <> " findings"
 
-    -- Handle errors - log them as warnings instead of fatal errors
-    -- Many ficus errors are expected (like binary file detection) and shouldn't stop analysis
-    traverse_ (logWarn . pretty . displayFicusError) $ ficusMessageErrors messages
-
-    -- Handle debug messages - log them as debug
-    traverse_ (logDebug . pretty . displayFicusDebug) $ ficusMessageDebugs messages
-
-    -- Log findings at info level for visibility since these are the actual results
-    traverse_ (logInfo . pretty . displayFicusFinding) $ ficusMessageFindings messages
-
     pure messages
   where
+    processOutputLines :: [String] -> IO FicusMessages
+    processOutputLines lines' = do
+      now <- getCurrentTime
+      let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+      let processLine acc line = do
+            let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ Text.pack line
+            case decode lineBS of
+              Just message -> do
+                -- Log a simple message without detailed content to avoid output mangling
+                case message of
+                  FicusMessageError _ ->
+                    putStrLn $ "[" ++ timestamp ++ "] Ficus ERROR message received"
+                  FicusMessageDebug _ ->
+                    putStrLn $ "[" ++ timestamp ++ "] Ficus DEBUG message received"  
+                  FicusMessageFinding _ ->
+                    putStrLn $ "[" ++ timestamp ++ "] Ficus FINDING message received"
+                let newMessage = singletonFicusMessage message
+                pure (acc <> newMessage)
+              Nothing -> pure acc -- Skip invalid JSON
+      
+      foldM processLine mempty lines'
+
     displayFicusDebug :: FicusDebug -> Text
-    displayFicusDebug (FicusDebug FicusMessageData{..}) = "DEBUG " <> ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
+    displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
     displayFicusError :: FicusError -> Text
-    displayFicusError (FicusError FicusMessageData{..}) = "ERROR " <> ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
+    displayFicusError (FicusError FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
     displayFicusFinding :: FicusFinding -> Text
-    displayFicusFinding (FicusFinding FicusMessageData{..}) = "FINDING " <> ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
+    displayFicusFinding (FicusFinding FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
 
 -- Run Ficus, passing config-based args as configuration.
 -- Caveat! This hard-codes some flags currently which may later need to be set on a strategy-by-strategy basis.
@@ -187,17 +229,8 @@ ficusCommand ficusConfig bin = do
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = unGlobFilter <$> ficusConfigExclude ficusConfig
 
--- Parse Ficus's NDJson output by splitting on newlines (character 10) and
--- then decoding each line
-parseFicusJson :: BL.ByteString -> Maybe (Path Abs File) -> FicusMessages
-parseFicusJson out _configFile =
-  fold messages
-  where
-    messageLines = BL.splitWith (== 10) out
-    -- Once Ficus supports file filtering we'll do this by passing the config file path into Ficus
-    -- and Ficus will skip scanning the config file. But for now let's just filter post-scan
-    parsedLines = mapMaybe decode messageLines
-    messages = map singletonFicusMessage parsedLines
+
+
 
 -- add a FicusMessage to the corresponding entry of an empty FicusMessages
 singletonFicusMessage :: FicusMessage -> FicusMessages
