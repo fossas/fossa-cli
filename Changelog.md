@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.11.1
+
+- Better document `--x-snippet-scan`.
+
 ## 3.11.0
 
 - Add a dependency on Ficus, a new internal tool.
