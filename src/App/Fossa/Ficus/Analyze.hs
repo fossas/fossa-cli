@@ -25,45 +25,38 @@ import App.Fossa.Ficus.Types (
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Effect.Logger (Logger, logDebug, logInfo, logWarn)
+import Effect.Logger (Logger, logDebug, logInfo)
 import Prettyprinter (pretty)
 
 import Data.Time (getCurrentTime)
-import Data.Time.Format (formatTime, defaultTimeLocale)
+import Data.Time.Format (defaultTimeLocale, formatTime)
 
+import Control.Concurrent.Async (async, wait)
 import Data.Aeson (Object, decode, (.:))
 import Data.Aeson.Types (parseMaybe)
 import Data.ByteString.Lazy qualified as BL
-import Data.Foldable (fold)
-import Control.Monad (foldM)
 import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), toString)
-import Data.Text.Encoding (decodeUtf8)
-import Data.ByteString.Lazy qualified as LBS
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
 import Effect.Exec (AllowErr (Never), Command (..), Exec, renderCommand)
-import App.Fossa.EmbeddedBinary (withFicusBinary)
+import Effect.ReadFS (ReadFS)
+import Fossa.API.Types (ApiKey (..), ApiOpts (..))
+import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
   createPipe,
-  getStdout,
   getStderr,
+  getStdout,
   proc,
-  setEnv,
   setStderr,
   setStdout,
   setWorkingDir,
   withProcessWait,
  )
-import System.IO (Handle, hGetLine, hIsEOF, hReady)
-import Control.Exception (try, IOException)
-import Control.Concurrent.Async (async, wait)
-import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 
-import Path (Abs, Dir, File, Path, toFilePath)
+import Path (Abs, Dir, Path, toFilePath)
 import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
@@ -150,7 +143,6 @@ ficusMessagesToFicusSnippetScanResults messages =
         (aid : _) -> Just $ FicusSnippetScanResults{ficusSnippetScanResultsAnalysisId = aid}
         [] -> Nothing
 
-
 runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -170,9 +162,9 @@ runFicus ficusConfig = do
     logDebugWithTime "Creating process configuration..."
     let processConfig =
           setWorkingDir (toFilePath $ ficusConfigRootDir ficusConfig) $
-          setStdout createPipe $
-          setStderr createPipe $
-          proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
+            setStdout createPipe $
+              setStderr createPipe $
+                proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
@@ -209,23 +201,22 @@ runFicus ficusConfig = do
                 pure acc
               else do
                 line <- hGetLine handle
-                let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ Text.pack line
+                let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ toText line
                 case decode lineBS of
                   Just message -> do
-                    -- Log messages in real-time with timestamps
+                    -- Log messages as they come, with timestamps
                     now <- getCurrentTime
                     let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
                     case message of
                       FicusMessageError err ->
-                        putStrLn $ "[" ++ timestamp ++ "] ERROR " <> Text.unpack (displayFicusError err)
+                        putStrLn $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
                       FicusMessageDebug dbg ->
-                        putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> Text.unpack (displayFicusDebug dbg)
+                        putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
                       FicusMessageFinding finding ->
-                        putStrLn $ "[" ++ timestamp ++ "] FINDING " <> Text.unpack (displayFicusFinding finding)
+                        putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
                     let newMessage = singletonFicusMessage message
                     loop (acc <> newMessage)
                   Nothing -> do
-                    -- Skip invalid JSON silently to avoid clutter
                     loop acc
       loop mempty
 
@@ -236,7 +227,7 @@ runFicus ficusConfig = do
             if eof
               then pure ()
               else do
-                _ <- hGetLine handle  -- Consume stderr silently
+                _ <- hGetLine handle -- Consume stderr silently
                 loop
       loop
 
@@ -263,14 +254,11 @@ ficusCommand ficusConfig bin = do
       , cmdAllowErr = Never
       }
   where
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**" ] ++ configExcludes ++ [targetDir]
+    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = unGlobFilter <$> ficusConfigExclude ficusConfig
-
-
-
 
 -- add a FicusMessage to the corresponding entry of an empty FicusMessages
 singletonFicusMessage :: FicusMessage -> FicusMessages
