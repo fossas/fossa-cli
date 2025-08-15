@@ -68,11 +68,14 @@ newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
   deriving (Eq, Ord, Show, Hashable)
 
 -- Helper function to log with timestamp
-logDebugWithTime :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m ()
-logDebugWithTime msg = do
-  now <- sendIO getCurrentTime
-  let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-  logDebug $ "[" <> pretty timestamp <> "] " <> pretty msg
+logDebugWithTime :: (Has Logger sig m, Has (Lift IO) sig m) => Text -> m a -> m a
+logDebugWithTime msg action = do
+  let writeTime = do now <- sendIO getCurrentTime
+                                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                                 logDebug $ "[" <> pretty timestamp <> "] " <> pretty msg
+  writeTime
+  action
+  writeTime
 
 -- | scan rootDir with Ficus, using the given GrepOptions. This is the main entry point to this module
 analyzeWithFicus ::
