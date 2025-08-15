@@ -41,8 +41,7 @@ import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
-import Effect.Exec (AllowErr (Never), Command (..), Exec, renderCommand)
-import Effect.ReadFS (ReadFS)
+import Effect.Exec (AllowErr (Never), Command (..), renderCommand)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
@@ -79,8 +78,6 @@ logDebugWithTime msg = do
 analyzeWithFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   , Has Logger sig m
   ) =>
   Path Abs Dir ->
@@ -94,8 +91,6 @@ analyzeWithFicus rootDir apiOpts revision filters = do
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Exec sig m
-  , Has ReadFS sig m
   , Has Logger sig m
   ) =>
   Path Abs Dir ->
