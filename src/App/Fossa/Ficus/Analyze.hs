@@ -172,7 +172,6 @@ runFicus ficusConfig = do
           setWorkingDir (toFilePath $ ficusConfigRootDir ficusConfig) $
           setStdout createPipe $
           setStderr createPipe $
-          setEnv [("RUST_LOG", "debug")] $
           proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
@@ -264,7 +263,7 @@ ficusCommand ficusConfig bin = do
       , cmdAllowErr = Never
       }
   where
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore"] ++ configExcludes ++ [targetDir]
+    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**" ] ++ configExcludes ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
