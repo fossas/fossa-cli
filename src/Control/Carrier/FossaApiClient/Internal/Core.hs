@@ -68,6 +68,7 @@ import Fossa.API.Types (
 
 import Fossa.API.CoreTypes qualified as CoreTypes
 
+import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -130,10 +131,11 @@ uploadAnalysis ::
   ProjectRevision ->
   ProjectMetadata ->
   [SourceUnit] ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysis revision metadata units = do
+uploadAnalysis revision metadata units ficusResults = do
   apiOpts <- ask
-  API.uploadAnalysis apiOpts revision metadata units
+  API.uploadAnalysis apiOpts revision metadata units ficusResults
 
 uploadAnalysisWithFirstPartyLicenses ::
   ( API.APIClientEffs sig m
@@ -142,10 +144,11 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectRevision ->
   ProjectMetadata ->
   FileUpload ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = do
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults = do
   apiOpts <- ask
-  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata uploadKind
+  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata uploadKind ficusResults
 
 uploadNativeContainerScan ::
   ( API.APIClientEffs sig m

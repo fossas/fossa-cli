@@ -4,12 +4,14 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths,
+  Ficus,
   Lernie,
   ThemisIndex,
   ThemisBins (..),
   toPath,
   withThemisAndIndex,
   withBerkeleyBinary,
+  withFicusBinary,
   withLernieBinary,
   withMillhoneBinary,
   withCirceBinary,
@@ -57,6 +59,7 @@ data PackagedBinary
   = Themis
   | ThemisIndex
   | BerkeleyDB
+  | Ficus
   | Lernie
   | Millhone
   | Circe
@@ -76,6 +79,8 @@ data ThemisBinary
 data ThemisIndex
 
 data Lernie
+
+data Ficus
 
 data Circe
 
@@ -116,6 +121,9 @@ withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
 withLernieBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withLernieBinary = withEmbeddedBinary Lernie
 
+withFicusBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
+withFicusBinary = withEmbeddedBinary Ficus
+
 withMillhoneBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withMillhoneBinary = withEmbeddedBinary Millhone
 
@@ -131,7 +139,6 @@ cleanupExtractedBinaries (BinaryPaths binPath _) = sendIO $ removeDirRecur binPa
 extractEmbeddedBinary :: (Has (Lift IO) sig m) => PackagedBinary -> m BinaryPaths
 extractEmbeddedBinary bin = do
   container <- sendIO extractDir
-  -- Determine paths to which we should write the binaries
   let binPath = extractedPath bin
   -- Write the binary
   sendIO $ writeBinary (container </> binPath) bin
@@ -144,13 +151,15 @@ dumpEmbeddedBinary dir bin = writeBinary path bin
     path = dir </> extractedPath bin
 
 writeBinary :: (Has (Lift IO) sig m) => Path Abs File -> PackagedBinary -> m ()
-writeBinary dest bin = sendIO . writeExecutable dest $ case bin of
-  Themis -> embeddedBinaryThemis
-  ThemisIndex -> embeddedBinaryThemisIndex
-  BerkeleyDB -> embeddedBinaryBerkeleyDB
-  Lernie -> embeddedBinaryLernie
-  Millhone -> embeddedBinaryMillhone
-  Circe -> embeddedBinaryCirce
+writeBinary dest bin = do
+  sendIO . writeExecutable dest $ case bin of
+    Themis -> embeddedBinaryThemis
+    ThemisIndex -> embeddedBinaryThemisIndex
+    BerkeleyDB -> embeddedBinaryBerkeleyDB
+    Ficus -> embeddedBinaryFicus
+    Lernie -> embeddedBinaryLernie
+    Millhone -> embeddedBinaryMillhone
+    Circe -> embeddedBinaryCirce
 
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
@@ -163,6 +172,7 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
+  Ficus -> $(mkRelFile "ficus")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
   Circe -> $(mkRelFile "circe")
@@ -210,6 +220,9 @@ embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
 
 embeddedBinaryCirce :: ByteString
 embeddedBinaryCirce = $(embedFileIfExists "vendor-bins/circe")
+
+embeddedBinaryFicus :: ByteString
+embeddedBinaryFicus = $(embedFileIfExists "vendor-bins/ficus")
 
 -- To build this, run `make build` or `cargo build --release`.
 #ifdef mingw32_HOST_OS
