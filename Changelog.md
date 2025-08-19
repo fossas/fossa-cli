@@ -1,5 +1,13 @@
 # FOSSA CLI Changelog
 
+## 3.11.3
+
+- Picks up the latest version of a dependency for `--x-snippet-scan`.
+
+## 3.11.2
+
+- A performance fix for `--x-snippet-scan`.
+
 ## 3.11.1
 
 - Better document `--x-snippet-scan`.
