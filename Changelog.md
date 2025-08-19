@@ -2,11 +2,11 @@
 
 ## 3.11.3
 
-- Picks up the latest version of a dependency for `--x-snippet-scan`.
+- Picks up the latest version of a dependency for `--x-snippet-scan`. ([#1579](https://github.com/fossas/fossa-cli/pull/1579))
 
 ## 3.11.2
 
-- A performance fix for `--x-snippet-scan`.
+- A performance fix for `--x-snippet-scan`. ([#1578](https://github.com/fossas/fossa-cli/pull/1578))
 
 ## 3.11.1
 
