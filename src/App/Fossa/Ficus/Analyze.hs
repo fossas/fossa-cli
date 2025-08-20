@@ -39,7 +39,6 @@ import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
-import Data.Text qualified as T
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
 import Effect.Exec (AllowErr (Never), Command (..), renderCommand)
@@ -259,14 +258,14 @@ ficusCommand ficusConfig bin = do
 
     maskApiKeyInCommand :: Text -> Text
     maskApiKeyInCommand cmdText =
-      case T.splitOn " --secret " cmdText of
+      case Text.splitOn " --secret " cmdText of
         [before, after] ->
-          case T.words after of
+          case Text.words after of
             (_ : rest) ->
               before
                 <> " --secret "
                 <> "******"
-                <> if null rest then "" else " " <> T.unwords rest
+                <> if null rest then "" else " " <> Text.unwords rest
             [] -> cmdText
         _ -> cmdText
 

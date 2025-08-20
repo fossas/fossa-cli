@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.11.4
+
+- Stops logging a secret under `--x-snippet-scan`. ([#1579](https://github.com/fossas/fossa-cli/pull/1580))
+
 ## 3.11.3
 
 - Picks up the latest version of a dependency for `--x-snippet-scan`. ([#1579](https://github.com/fossas/fossa-cli/pull/1579))
