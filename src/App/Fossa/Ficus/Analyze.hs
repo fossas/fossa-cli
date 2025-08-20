@@ -39,6 +39,7 @@ import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
 import Effect.Exec (AllowErr (Never), Command (..), renderCommand)
@@ -151,7 +152,6 @@ runFicus ficusConfig = do
     logDebugWithTime "Ficus binary extracted, building command..."
     cmd <- ficusCommand ficusConfig bin
     logDebugWithTime "Executing ficus (streaming)"
-    logDebug $ "Ficus command: " <> pretty (renderCommand cmd)
     logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
 
     logDebugWithTime "Creating process configuration..."
@@ -235,25 +235,40 @@ runFicus ficusConfig = do
 
 -- Run Ficus, passing config-based args as configuration.
 -- Caveat! This hard-codes some flags currently which may later need to be set on a strategy-by-strategy basis.
-ficusCommand :: Has Diagnostics sig m => FicusConfig -> BinaryPaths -> m Command
+ficusCommand :: (Has Diagnostics sig m, Has Logger sig m) => FicusConfig -> BinaryPaths -> m Command
 ficusCommand ficusConfig bin = do
   endpoint <- case ficusConfigEndpoint ficusConfig of
     Just baseUri -> do
       proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
       pure $ render proxyUri
     Nothing -> pure "https://app.fossa.com/api/proxy/analysis"
-  pure $
-    Command
-      { cmdName = toText $ toPath bin
-      , cmdArgs = configArgs endpoint
-      , cmdAllowErr = Never
-      }
+  let cmd =
+        Command
+          { cmdName = toText $ toPath bin
+          , cmdArgs = configArgs endpoint
+          , cmdAllowErr = Never
+          }
+  logDebug $ "Ficus command: " <> pretty (maskApiKeyInCommand $ renderCommand cmd)
+  pure cmd
   where
     configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = unGlobFilter <$> ficusConfigExclude ficusConfig
+
+    maskApiKeyInCommand :: Text -> Text
+    maskApiKeyInCommand cmdText =
+      case T.splitOn " --secret " cmdText of
+        [before, after] ->
+          case T.words after of
+            (_ : rest) ->
+              before
+                <> " --secret "
+                <> "******"
+                <> if null rest then "" else " " <> T.unwords rest
+            [] -> cmdText
+        _ -> cmdText
 
 -- add a FicusMessage to the corresponding entry of an empty FicusMessages
 singletonFicusMessage :: FicusMessage -> FicusMessages
