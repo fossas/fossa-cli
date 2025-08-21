@@ -150,7 +150,7 @@ Snippet scanning identifies potential open source code snippets within your firs
 
 | Name                | Description                                                                                                                                                                           |
 |---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--x-snippet-scan`  | Enable snippet scanning during analysis. This experimental feature fingerprints your source files and checks them against FOSSA's snippet database via ScanOSS integration.        |
+| `--x-snippet-scan`  | Enable snippet scanning during analysis. This experimental feature fingerprints your source files and checks them against FOSSA's snippet database.        |
 
 #### How Snippet Scanning Works
 
@@ -160,7 +160,7 @@ When `--x-snippet-scan` is enabled, the CLI:
 2. **Checks Necessity of Fingerprinting**: Checks with FOSSA servers to determine which file hashes are already known
 3. **Fingerprints New or Changed Files**: Uses the Ficus fingerprinting engine (written in Rust) to create cryptographic fingerprints only for files not previously seen
 4. **Filters Content**: By default, skips directories like `.git/`, and hidden directories. This includes, from `.fossa.yml`, `vendoredDependencies.licenseScanPathFilters.exclude`, documented further below.
-5. **Uploads Fingerprints**: Sends only the fingerprints to FOSSA's servers via ScanOSS integration
+5. **Uploads Fingerprints**: Sends only the fingerprints to FOSSA's servers 
 6. **Receives Matches**: Gets back information about any matching open source components
 7. **Uploads Match Contents**: For files that have matches, uploads source code content temporarily to FOSSA servers.
 
@@ -170,7 +170,7 @@ When `--x-snippet-scan` is enabled, the CLI:
 - CRC64 hashes of all files, to avoid re-fingerprinting unchanged files.
 
 **For Fingerprinting:**
-- ScanOSS-compatible fingerprints of source code to identify matches.
+- Fingerprints of source code to identify matches.
 
 **For Matched Files Only:**
 - The actual source code content of files that contain snippet matches.
