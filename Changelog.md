@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.11.5
+
+- Remove spurious log message. ([#1582](https://github.com/fossas/fossa-cli/pull/1582))
+
 ## 3.11.4
 
 - Stops logging a secret under `--x-snippet-scan`. ([#1579](https://github.com/fossas/fossa-cli/pull/1580))
