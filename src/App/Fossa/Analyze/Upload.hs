@@ -7,7 +7,6 @@ module App.Fossa.Analyze.Upload (
   ScanUnits (..),
 ) where
 
-import App.Docs (vulnReachabilityProductDocsUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.Ficus.Types (FicusSnippetScanResults)
@@ -63,7 +62,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
+import Fossa.API.Types (Organization (orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
