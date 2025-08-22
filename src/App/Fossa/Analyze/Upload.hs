@@ -7,7 +7,6 @@ module App.Fossa.Analyze.Upload (
   ScanUnits (..),
 ) where
 
-import App.Docs (vulnReachabilityProductDocsUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.Ficus.Types (FicusSnippetScanResults)
@@ -63,7 +62,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
+import Fossa.API.Types (Organization (orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -115,11 +114,9 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     dieOnMonorepoUpload revision
     org <- getOrganization
 
-    if (orgSupportsReachability org)
-      then void $ upload revision metadata reachabilityUnits
-      else do
-        logInfo . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability. Skipping reachability analysis upload."
-        logInfo . pretty $ "For reachability, refer to: " <> vulnReachabilityProductDocsUrl
+    when (orgSupportsReachability org) $
+      void $
+        upload revision metadata reachabilityUnits
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
