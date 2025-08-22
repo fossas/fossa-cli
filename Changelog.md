@@ -1,12 +1,9 @@
 # FOSSA CLI Changelog
 
-## 3.11.6
-
-- Update latest version of a dependency for `--x-snippet-scan`. This change will speed up scans ([#1583](https://github.com/fossas/fossa-cli/pull/1583))
-
 ## 3.11.5
 
 - Remove spurious log message. ([#1582](https://github.com/fossas/fossa-cli/pull/1582))
+- Update latest version of a dependency for `--x-snippet-scan`. This change will speed up scans ([#1583](https://github.com/fossas/fossa-cli/pull/1583))
 
 ## 3.11.4
 
