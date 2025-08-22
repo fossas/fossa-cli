@@ -115,11 +115,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     dieOnMonorepoUpload revision
     org <- getOrganization
 
-    if (orgSupportsReachability org)
-      then void $ upload revision metadata reachabilityUnits
-      else do
-        logInfo . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability. Skipping reachability analysis upload."
-        logInfo . pretty $ "For reachability, refer to: " <> vulnReachabilityProductDocsUrl
+    when (orgSupportsReachability org) $
+      void $ upload revision metadata reachabilityUnits
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
