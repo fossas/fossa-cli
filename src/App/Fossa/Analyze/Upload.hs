@@ -115,7 +115,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     org <- getOrganization
 
     when (orgSupportsReachability org) $
-      void $ upload revision metadata reachabilityUnits
+      void $
+        upload revision metadata reachabilityUnits
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
