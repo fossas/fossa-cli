@@ -259,7 +259,7 @@ gomodParser = do
     toolStatements = block "tool" singleTool
 
     -- parse the body of a single tool (without the leading "tool" lexeme)
-    singleTool = ToolStatement <$> packageName
+    singleTool = ToolStatement <$> anyToken
 
     -- top-level godebug statement
     -- e.g., godebug asynctimerchan=0
