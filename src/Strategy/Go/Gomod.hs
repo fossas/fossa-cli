@@ -230,7 +230,7 @@ gomodParser = do
   where
     statement =
       goDebugStatements
-        <|> toolChainStatements
+        <|> (singleton <$> toolChainStatement)
         <|> toolStatements
         <|> (singleton <$> goVersionStatement)
         <|> requireStatements
@@ -245,8 +245,8 @@ gomodParser = do
 
     -- top-level toolchain statement
     -- e.g., toolchain go1.21.1
-    toolChainStatements :: Parser Statement
-    toolChainStatements = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
+    toolChainStatement :: Parser Statement
+    toolChainStatement = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
 
     -- top-level tool statements
     -- e.g.:
