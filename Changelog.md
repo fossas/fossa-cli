@@ -1,4 +1,6 @@
 # FOSSA CLI Changelog
+## 3.11.6
+- Update latest version of a dependency for `--x-snippet-scan`. This change fixes a bug where snippet scans with large fingerprints were failing ([#1584](https://github.com/fossas/fossa-cli/pull/1584))
 
 ## 3.11.5
 
