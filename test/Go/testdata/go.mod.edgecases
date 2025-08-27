@@ -9,12 +9,6 @@ toolchain go1.21.1
 
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
-tool (
-	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
-	github.com/fossa/fossa-cli
-)
-
-godebug asynctimerchan=0
 
 godebug (
 	asynctimerchan=0
