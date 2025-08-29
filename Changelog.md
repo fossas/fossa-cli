@@ -1,4 +1,8 @@
 # FOSSA CLI Changelog
+## 3.11.7
+
+- Update latest version of a dependency for `--x-snippet-scan`. This change makes snippet scanning more resilient to network errors and ignores the `RUST_LOG` environment variable ([#1585](https://github.com/fossas/fossa-cli/pull/1585))
+
 ## 3.11.6
 - Update latest version of a dependency for `--x-snippet-scan`. This change fixes a bug where snippet scans with large fingerprints were failing ([#1584](https://github.com/fossas/fossa-cli/pull/1584))
 
