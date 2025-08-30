@@ -229,9 +229,9 @@ gomodParser = do
   pure (toGomod name statements')
   where
     statement =
-      (singleton <$> goDebugStatements) -- singleton wraps the Parser Statement into a Parser [Statement]
-        <|> (singleton <$> toolChainStatements)
-        <|> (singleton <$> toolStatements)
+      goDebugStatements
+        <|> (singleton <$> toolChainStatement)
+        <|> toolStatements
         <|> (singleton <$> goVersionStatement)
         <|> requireStatements
         <|> replaceStatements
@@ -245,18 +245,33 @@ gomodParser = do
 
     -- top-level toolchain statement
     -- e.g., toolchain go1.21.1
-    toolChainStatements :: Parser Statement
-    toolChainStatements = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
+    toolChainStatement :: Parser Statement
+    toolChainStatement = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
 
-    -- top-level tool statement
-    -- e.g., tool golang.org/x/tools/cmd/stringer
-    toolStatements :: Parser Statement
-    toolStatements = ToolStatement <$ lexeme (chunk "tool") <*> anyToken
+    -- top-level tool statements
+    -- e.g.:
+    --   tool golang.org/x/tools/cmd/stringer
+    --   tool (
+    --       github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+    --       github.com/fossa/fossa-cli
+    --   )
+    toolStatements :: Parser [Statement]
+    toolStatements = block "tool" singleTool
+
+    -- parse the body of a single tool (without the leading "tool" lexeme)
+    singleTool = ToolStatement <$> anyToken
 
     -- top-level godebug statement
     -- e.g., godebug asynctimerchan=0
-    goDebugStatements :: Parser Statement
-    goDebugStatements = GoDebugStatements <$ lexeme (chunk "godebug") <*> anyToken
+    -- goDebugStatements :: Parser Statement
+    -- goDebugStatements = GoDebugStatements <$ lexeme (chunk "godebug") <*> anyToken
+
+    -- top-level godebug statements
+    -- e.g., godebug asynctimerchan=0
+    goDebugStatements :: Parser [Statement]
+    goDebugStatements = block "godebug" singleGoDebug
+    -- parse the body of a single tool (without the leading "tool" lexeme)
+    singleGoDebug = GoDebugStatements <$> anyToken
 
     -- top-level require statements
     -- e.g.:
