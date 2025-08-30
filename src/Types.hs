@@ -97,6 +97,7 @@ data DiscoveredProjectType
   | PipenvProjectType
   | PnpmProjectType
   | PoetryProjectType
+  | GenericPyProjectType
   | ProjectAssetsJsonProjectType
   | ProjectJsonProjectType
   | PubProjectType
@@ -148,6 +149,7 @@ projectTypeToText = \case
   PipenvProjectType -> "pipenv"
   PnpmProjectType -> "pnpm"
   PoetryProjectType -> "poetry"
+  GenericPyProjectType -> "generic-pyproject"
   ProjectAssetsJsonProjectType -> "projectassetsjson"
   ProjectJsonProjectType -> "projectjson"
   PubProjectType -> "pub"

@@ -1,0 +1,14 @@
+[project]
+name = "example-project"
+version = "0.1.0"
+description = "PEP 621 example project"
+dependencies = ["requests>=2.25.1", "pyyaml>=5.1", "urllib3<2.0.0", "certifi>=2021.10.8"]
+
+[project.optional-dependencies]
+dev = ["pytest>=6.2.5", "black>=21.5b2", "mypy>=0.910"]
+docs = ["sphinx>=4.0.0", "mkdocs>=1.2.0"]
+test = ["pytest>=6.2.5", "pytest-cov>=2.12.0"]
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
