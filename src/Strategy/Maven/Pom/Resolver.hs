@@ -20,12 +20,14 @@ import Control.Effect.Diagnostics (
   recover,
   (<||>),
  )
-import Control.Monad (unless)
+import Control.Effect.Reader (Reader, ask)
+import Control.Monad (unless, when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS (
   ReadFS,
   ReadFSErr (FileReadError),
@@ -35,6 +37,7 @@ import Effect.ReadFS (
   resolveFile,
  )
 import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
+import Path.IO qualified as PIO
 import Strategy.Maven.Pom.PomFile (
   MavenCoordinate,
   Pom (pomCoord, pomParentCoord),
@@ -49,9 +52,16 @@ data GlobalClosure = GlobalClosure
   }
   deriving (Eq, Ord, Show)
 
-buildGlobalClosure :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m GlobalClosure
-buildGlobalClosure files = do
-  (loadResults, ()) <- runState @LoadResults Map.empty $ traverse_ recursiveLoadPom files
+buildGlobalClosure ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir ->
+  [Path Abs File] ->
+  m GlobalClosure
+buildGlobalClosure rootDir files = do
+  (loadResults, ()) <- runState @LoadResults Map.empty $ traverse_ (recursiveLoadPom rootDir) files
 
   -- TODO: diagnostics/warnings?
   let validated :: Map (Path Abs File) Pom
@@ -85,8 +95,19 @@ indexBy f = Map.fromList . map (\v -> (f v, v))
 type LoadResults = Map (Path Abs File) (Maybe RawPom)
 
 -- Recursively load a pom and its adjacent poms (parent, submodules)
-recursiveLoadPom :: forall sig m. (Has ReadFS sig m, Has (State LoadResults) sig m, Has Diagnostics sig m) => Path Abs File -> m ()
-recursiveLoadPom path = do
+recursiveLoadPom ::
+  forall sig m.
+  ( Has ReadFS sig m
+  , Has (State LoadResults) sig m
+  , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  -- | analysis root
+  Path Abs Dir ->
+  -- | pom to load
+  Path Abs File ->
+  m ()
+recursiveLoadPom rootDir path = do
   results <- get @LoadResults
 
   case Map.lookup path results of
@@ -113,7 +134,16 @@ recursiveLoadPom path = do
     recurseRelative :: Text {- relative filepath -} -> m ()
     recurseRelative rel = do
       resolvedPath :: Maybe (Path Abs File) <- recover $ resolvePomPath (parent path) rel
-      traverse_ recursiveLoadPom resolvedPath
+      traverse_ tryRecurse resolvedPath
+
+    -- Decide whether a resolved pom should be loaded based on path filters.
+    tryRecurse :: Path Abs File -> m ()
+    tryRecurse p = do
+      filters <- ask @AllFilters
+      let dirP = parent p
+      case PIO.makeRelative rootDir dirP of
+        Nothing -> pure () -- outside of analysis root, ignore
+        Just relDir -> when (pathAllowed filters relDir) $ recursiveLoadPom rootDir p
 
 -- resolve a Filepath (in Text) that may either point to a directory or an exact
 -- pom file. when it's a directory, we default to pointing at the "pom.xml" in

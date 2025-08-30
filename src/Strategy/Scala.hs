@@ -239,7 +239,7 @@ analyzeWithSbtDepTree (ScalaProject maybeDepTree _ closure) = context "Analyzing
 makePomCmd :: Command
 makePomCmd = mkSbtCommand "makePom"
 
-genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [MavenProjectClosure]
+genPoms :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MavenProjectClosure]
 genPoms projectDir = do
   stdoutBL <- context "Generating poms" $ execThrow projectDir makePomCmd
 
@@ -265,6 +265,6 @@ genPoms projectDir = do
     Nothing -> fatalText ("Could not parse pom paths from:\n" <> Text.unlines pomLines)
     Just [] -> fatalText "No sbt projects found"
     Just paths -> do
-      globalClosure <- buildGlobalClosure paths
+      globalClosure <- buildGlobalClosure projectDir paths
 
       pure $ buildProjectClosures projectDir globalClosure

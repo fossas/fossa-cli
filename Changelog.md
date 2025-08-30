@@ -32,6 +32,10 @@
 - Add a dependency on Ficus, a new internal tool.
 - Add the `--x-snippet-scan` flag, an experimental flag for using Ficus.
 
+## Unreleased
+
+- maven: Apply path filters at discovery stage for Maven POM resolution, preventing excluded directories from being traversed during closure graph building ([#1568](https://github.com/fossas/fossa-cli/pull/1568))
+
 ## 3.10.14
 
 - gradle: Do not report version constraints, version contraints are contained within an`DependencyResult`, filter out any constraints by checking [`isConstraint()`](https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html#isConstraint()). ([#1563](https://github.com/fossas/fossa-cli/pull/1563))

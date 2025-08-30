@@ -34,7 +34,7 @@ import Discovery.Filters (AllFilters)
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- context "Finding pom files" $ findPomFiles basedir
-  globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
+  globalClosure <- context "Building global closure" $ buildGlobalClosure basedir pomFiles
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
 findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Path Abs File]
