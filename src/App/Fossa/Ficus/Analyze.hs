@@ -84,9 +84,10 @@ analyzeWithFicus ::
   Maybe ApiOpts ->
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
+  Maybe Int ->
   m (Maybe FicusSnippetScanResults)
-analyzeWithFicus rootDir apiOpts revision filters = do
-  analyzeWithFicusMain rootDir apiOpts revision filters
+analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays = do
+  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -97,8 +98,9 @@ analyzeWithFicusMain ::
   Maybe ApiOpts ->
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
+  Maybe Int ->
   m (Maybe FicusSnippetScanResults)
-analyzeWithFicusMain rootDir apiOpts revision filters = do
+analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
   messages <- runFicus ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
@@ -118,6 +120,7 @@ analyzeWithFicusMain rootDir apiOpts revision filters = do
         , ficusConfigSecret = apiOptsApiKey <$> apiOpts
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
+        , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         }
 
 ficusMessagesToFicusSnippetScanResults :: FicusMessages -> Maybe FicusSnippetScanResults
@@ -250,7 +253,8 @@ ficusCommand ficusConfig bin = do
   logDebug $ "Ficus command: " <> pretty (maskApiKeyInCommand $ renderCommand cmd)
   pure cmd
   where
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ [targetDir]
+    snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
+    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ [targetDir] ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
