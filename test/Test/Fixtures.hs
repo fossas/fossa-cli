@@ -143,6 +143,7 @@ organization =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
     , orgSubscription = Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
 
 organizationWithPreflightChecks :: API.Organization
@@ -164,6 +165,7 @@ organizationWithPreflightChecks =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = True
     , orgSubscription = Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
 
 organizationWithPremiumSubscription :: API.Organization
@@ -185,6 +187,7 @@ organizationWithPremiumSubscription =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = True
     , orgSubscription = Premium
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
 
 pushToken :: API.TokenTypeResponse
