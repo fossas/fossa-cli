@@ -509,6 +509,7 @@ data Organization = Organization
   , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
   , orgSubscription :: Subscription
+  , orgSnippetScanSourceCodeRetentionDays :: Maybe Int
   }
   deriving (Eq, Ord, Show)
 
@@ -535,6 +536,7 @@ blankOrganization =
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
     , orgSubscription = Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
 
 instance FromJSON Organization where
@@ -556,6 +558,7 @@ instance FromJSON Organization where
       <*> obj .:? "supportsReachability" .!= False
       <*> obj .:? "supportsPreflightChecks" .!= False
       <*> obj .:? "subscription" .!= Free
+      <*> obj .:? "snippetScanSourceCodeRetentionDays" .!= Nothing
 
 data TokenType
   = Push
