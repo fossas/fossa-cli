@@ -254,7 +254,7 @@ ficusCommand ficusConfig bin = do
   pure cmd
   where
     snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ [targetDir] ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays
+    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
