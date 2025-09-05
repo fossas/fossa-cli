@@ -236,8 +236,8 @@ runFicus ficusConfig = do
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
                 let msg = "[" ++ timestamp ++ "] STDERR " <> line
-                -- Keep at most the last 10 lines of stderr
-                let newAcc = drop (max 0 (length acc - 9)) (acc <> [toText msg])
+                -- Keep at most the last 50 lines of stderr
+                let newAcc = drop (max 0 (length acc - 49)) (acc <> [toText msg])
                 loop newAcc
       loop []
 
