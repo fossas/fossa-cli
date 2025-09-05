@@ -41,7 +41,7 @@ import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
-import Effect.Exec (AllowErr (Never), Command (..), renderCommand)
+import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
@@ -52,6 +52,7 @@ import System.Process.Typed (
   setStderr,
   setStdout,
   setWorkingDir,
+  waitExitCode,
   withProcessWait,
  )
 
@@ -162,7 +163,7 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
-    messages <- sendIO $ withProcessWait processConfig $ \p -> do
+    (messages, exitCode) <- sendIO $ withProcessWait processConfig $ \p -> do
       getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
@@ -172,8 +173,13 @@ runFicus ficusConfig = do
       result <- streamFicusOutput stdoutHandle
       -- Wait for stderr to finish
       _ <- wait stderrAsync
-      pure result
+      exitCode <- waitExitCode p
+      putStrLn $ "Ficus process returned exit code: " <> show exitCode
+      pure (result, exitCode)
 
+    if exitCode /= ExitSuccess
+      then logInfo $ "*** FICUS EXIT CODE: Ficus process returned non-zero exit code: " <> pretty (show exitCode)
+      else logInfo "*** FICUS SUCCESS: Ficus exited successfully"
     logDebug $
       "Ficus returned "
         <> pretty (length $ ficusMessageErrors messages)
@@ -221,7 +227,10 @@ runFicus ficusConfig = do
             if eof
               then pure ()
               else do
-                _ <- hGetLine handle -- Consume stderr silently
+                line <- hGetLine handle -- output stderr
+                now <- getCurrentTime
+                let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                putStrLn $ "[" ++ timestamp ++ "] STDERR " <> line
                 loop
       loop
 
