@@ -140,6 +140,7 @@ data FicusConfig = FicusConfig
   , ficusConfigSecret :: Maybe ApiKey
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`
   , ficusConfigFlags :: [FicusPerStrategyFlag]
+  , ficusConfigSnippetScanRetentionDays :: Maybe Int
   }
   deriving (Show, Eq, Generic)
 
