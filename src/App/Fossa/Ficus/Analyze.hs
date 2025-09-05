@@ -163,7 +163,7 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
-    (messages, exitCode) <- sendIO $ withProcessWait processConfig $ \p -> do
+    (messages, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
       getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
@@ -172,13 +172,18 @@ runFicus ficusConfig = do
       -- Read stdout in the main thread
       result <- streamFicusOutput stdoutHandle
       -- Wait for stderr to finish
-      _ <- wait stderrAsync
+      stdErrLines <- wait stderrAsync
       exitCode <- waitExitCode p
       putStrLn $ "Ficus process returned exit code: " <> show exitCode
-      pure (result, exitCode)
+      pure (result, exitCode, stdErrLines)
 
     if exitCode /= ExitSuccess
-      then logInfo $ "*** FICUS EXIT CODE: Ficus process returned non-zero exit code: " <> pretty (show exitCode)
+      then do
+        logInfo $
+          "*** FICUS EXIT CODE: Ficus process returned non-zero exit code: "
+            <> pretty (show exitCode)
+        logInfo $
+          "*** FICUS STDERR LINES: \n" <> pretty (Text.unlines stdErrLines)
       else logInfo "*** FICUS SUCCESS: Ficus exited successfully"
     logDebug $
       "Ficus returned "
@@ -220,19 +225,19 @@ runFicus ficusConfig = do
                     loop acc
       loop mempty
 
-    consumeStderr :: Handle -> IO ()
+    consumeStderr :: Handle -> IO [Text]
     consumeStderr handle = do
-      let loop = do
+      let loop acc = do
             eof <- hIsEOF handle
             if eof
-              then pure ()
+              then pure acc
               else do
                 line <- hGetLine handle -- output stderr
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                putStrLn $ "[" ++ timestamp ++ "] STDERR " <> line
-                loop
-      loop
+                let msg = "[" ++ timestamp ++ "] STDERR " <> line
+                loop (acc <> [toText msg])
+      loop []
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
