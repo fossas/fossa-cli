@@ -227,10 +227,10 @@ runFicus ficusConfig = do
 
     consumeStderr :: Handle -> IO [Text]
     consumeStderr handle = do
-      let loop acc = do
+      let loop acc (count :: Int) = do
             eof <- hIsEOF handle
             if eof
-              then pure acc
+              then pure (reverse acc) -- Reverse at the end to get correct order
               else do
                 line <- hGetLine handle -- output stderr
                 now <- getCurrentTime
@@ -240,9 +240,14 @@ runFicus ficusConfig = do
                 -- I came up with 50 lines by looking at a few different error traces and making
                 -- sure that we captured all of the relevant error output, and then going a bit higher
                 -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
-                let newAcc = drop (max 0 (length acc - 49)) (acc <> [toText msg])
-                loop newAcc
-      loop []
+                -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
+                let newAcc =
+                      if count >= 50
+                        then take 50 (toText msg : acc)
+                        else toText msg : acc
+                let newCount = min (count + 1) 50
+                loop newAcc newCount
+      loop [] 0
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
