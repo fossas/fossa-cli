@@ -237,6 +237,9 @@ runFicus ficusConfig = do
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
                 let msg = "[" ++ timestamp ++ "] STDERR " <> line
                 -- Keep at most the last 50 lines of stderr
+                -- I came up with 50 lines by looking at a few different error traces and making
+                -- sure that we captured all of the relevant error output, and then going a bit higher
+                -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
                 let newAcc = drop (max 0 (length acc - 49)) (acc <> [toText msg])
                 loop newAcc
       loop []
