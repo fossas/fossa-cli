@@ -174,19 +174,19 @@ runFicus ficusConfig = do
       -- Wait for stderr to finish
       stdErrLines <- wait stderrAsync
       exitCode <- waitExitCode p
-      putStrLn $ "Ficus process returned exit code: " <> show exitCode
+      putStrLn $ "[Ficus] Ficus process returned exit code: " <> show exitCode
       pure (result, exitCode, stdErrLines)
 
     if exitCode /= ExitSuccess
       then do
         logInfo $
-          "*** FICUS EXIT CODE: Ficus process returned non-zero exit code: "
-            <> pretty (show exitCode)
-        logInfo $
-          "*** FICUS STDERR LINES: \n" <> pretty (Text.unlines stdErrLines)
-      else logInfo "*** FICUS SUCCESS: Ficus exited successfully"
+          "[Ficus] Ficus process returned non-zero exit code. Printing last 50 lines of stderr: " <> pretty (show exitCode)
+        logInfo "\n==== BEGIN Ficus STDERR ====\n"
+        logInfo $ pretty (Text.unlines stdErrLines)
+        logInfo "\n==== END Ficus STDERR ====\n"
+      else logInfo "[Ficus] Ficus exited successfully"
     logDebug $
-      "Ficus returned "
+      "[Ficus] Ficus returned "
         <> pretty (length $ ficusMessageErrors messages)
         <> " errors, "
         <> pretty (length $ ficusMessageDebugs messages)
