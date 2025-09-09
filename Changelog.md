@@ -1,4 +1,8 @@
 # FOSSA CLI Changelog
+## 3.11.8
+
+- Update latest version of a dependency for `--x-snippet-scan`. This change outputs errors from the snippet scanning CLI so that we can debug more easily ([#1587](https://github.com/fossas/fossa-cli/pull/1587))
+
 ## 3.11.7
 
 - Update latest version of a dependency for `--x-snippet-scan`. This change makes snippet scanning more resilient to errors when POSTing fingerprints and hashes, and ignores the `RUST_LOG` environment variable ([#1585](https://github.com/fossas/fossa-cli/pull/1585))
