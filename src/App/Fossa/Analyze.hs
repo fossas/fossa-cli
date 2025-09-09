@@ -315,9 +315,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
       )
 
-  -- TODO: just pass this into ficus. No need to log it here
-  let snippetScanSourceCodeRetentionDays = orgSnippetScanSourceCodeRetentionDays =<< orgInfo
-  logDebug $ "Snippet scan source code retention days: " <> pretty (show snippetScanSourceCodeRetentionDays)
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
   vsiResults <- Diag.errorBoundaryIO . diagToDebug $
