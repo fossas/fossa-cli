@@ -174,7 +174,6 @@ runFicus ficusConfig = do
       -- Wait for stderr to finish
       stdErrLines <- wait stderrAsync
       exitCode <- waitExitCode p
-      putStrLn $ "[Ficus] Ficus process returned exit code: " <> show exitCode
       pure (result, exitCode, stdErrLines)
 
     if exitCode /= ExitSuccess
