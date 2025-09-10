@@ -259,7 +259,7 @@ gomodParser = do
     toolStatements = block "tool" singleTool
 
     -- parse the body of a single tool (without the leading "tool" lexeme)
-    singleTool = ToolStatement <$> anyToken
+    singleTool = ToolStatement <*> anyToken
 
     -- top-level godebug statement
     -- e.g., godebug asynctimerchan=0
@@ -271,7 +271,7 @@ gomodParser = do
     goDebugStatements :: Parser [Statement]
     goDebugStatements = block "godebug" singleGoDebug
     -- parse the body of a single tool (without the leading "tool" lexeme)
-    singleGoDebug = GoDebugStatements <$> anyToken
+    singleGoDebug = GoDebugStatements <*> anyToken
 
     -- top-level require statements
     -- e.g.:
