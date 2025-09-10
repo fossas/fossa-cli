@@ -41,7 +41,7 @@ import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
-import Effect.Exec (AllowErr (Never), Command (..), renderCommand)
+import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
@@ -52,6 +52,7 @@ import System.Process.Typed (
   setStderr,
   setStdout,
   setWorkingDir,
+  waitExitCode,
   withProcessWait,
  )
 
@@ -151,7 +152,6 @@ runFicus ficusConfig = do
     logDebugWithTime "Ficus binary extracted, building command..."
     cmd <- ficusCommand ficusConfig bin
     logDebugWithTime "Executing ficus (streaming)"
-    logDebug $ "Ficus command: " <> pretty (renderCommand cmd)
     logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
 
     logDebugWithTime "Creating process configuration..."
@@ -163,7 +163,7 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
-    messages <- sendIO $ withProcessWait processConfig $ \p -> do
+    (messages, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
       getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
@@ -172,11 +172,20 @@ runFicus ficusConfig = do
       -- Read stdout in the main thread
       result <- streamFicusOutput stdoutHandle
       -- Wait for stderr to finish
-      _ <- wait stderrAsync
-      pure result
+      stdErrLines <- wait stderrAsync
+      exitCode <- waitExitCode p
+      pure (result, exitCode, stdErrLines)
 
+    if exitCode /= ExitSuccess
+      then do
+        logInfo $
+          "[Ficus] Ficus process returned non-zero exit code. Printing last 50 lines of stderr: " <> pretty (show exitCode)
+        logInfo "\n==== BEGIN Ficus STDERR ====\n"
+        logInfo $ pretty (Text.unlines stdErrLines)
+        logInfo "\n==== END Ficus STDERR ====\n"
+      else logInfo "[Ficus] Ficus exited successfully"
     logDebug $
-      "Ficus returned "
+      "[Ficus] Ficus returned "
         <> pretty (length $ ficusMessageErrors messages)
         <> " errors, "
         <> pretty (length $ ficusMessageDebugs messages)
@@ -215,16 +224,29 @@ runFicus ficusConfig = do
                     loop acc
       loop mempty
 
-    consumeStderr :: Handle -> IO ()
+    consumeStderr :: Handle -> IO [Text]
     consumeStderr handle = do
-      let loop = do
+      let loop acc (count :: Int) = do
             eof <- hIsEOF handle
             if eof
-              then pure ()
+              then pure (reverse acc) -- Reverse at the end to get correct order
               else do
-                _ <- hGetLine handle -- Consume stderr silently
-                loop
-      loop
+                line <- hGetLine handle -- output stderr
+                now <- getCurrentTime
+                let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                let msg = "[" ++ timestamp ++ "] STDERR " <> line
+                -- Keep at most the last 50 lines of stderr
+                -- I came up with 50 lines by looking at a few different error traces and making
+                -- sure that we captured all of the relevant error output, and then going a bit higher
+                -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
+                -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
+                let newAcc =
+                      if count >= 50
+                        then take 50 (toText msg : acc)
+                        else toText msg : acc
+                let newCount = min (count + 1) 50
+                loop newAcc newCount
+      loop [] 0
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
@@ -235,25 +257,40 @@ runFicus ficusConfig = do
 
 -- Run Ficus, passing config-based args as configuration.
 -- Caveat! This hard-codes some flags currently which may later need to be set on a strategy-by-strategy basis.
-ficusCommand :: Has Diagnostics sig m => FicusConfig -> BinaryPaths -> m Command
+ficusCommand :: (Has Diagnostics sig m, Has Logger sig m) => FicusConfig -> BinaryPaths -> m Command
 ficusCommand ficusConfig bin = do
   endpoint <- case ficusConfigEndpoint ficusConfig of
     Just baseUri -> do
       proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
       pure $ render proxyUri
     Nothing -> pure "https://app.fossa.com/api/proxy/analysis"
-  pure $
-    Command
-      { cmdName = toText $ toPath bin
-      , cmdArgs = configArgs endpoint
-      , cmdAllowErr = Never
-      }
+  let cmd =
+        Command
+          { cmdName = toText $ toPath bin
+          , cmdArgs = configArgs endpoint
+          , cmdAllowErr = Never
+          }
+  logDebug $ "Ficus command: " <> pretty (maskApiKeyInCommand $ renderCommand cmd)
+  pure cmd
   where
     configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = unGlobFilter <$> ficusConfigExclude ficusConfig
+
+    maskApiKeyInCommand :: Text -> Text
+    maskApiKeyInCommand cmdText =
+      case Text.splitOn " --secret " cmdText of
+        [before, after] ->
+          case Text.words after of
+            (_ : rest) ->
+              before
+                <> " --secret "
+                <> "******"
+                <> if null rest then "" else " " <> Text.unwords rest
+            [] -> cmdText
+        _ -> cmdText
 
 -- add a FicusMessage to the corresponding entry of an empty FicusMessages
 singletonFicusMessage :: FicusMessage -> FicusMessages

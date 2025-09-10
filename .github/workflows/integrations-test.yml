@@ -103,7 +103,7 @@ jobs:
         mkdir vendor-bins
         ./vendor_download.sh
       env:
-        GITHUB_TOKEN: ${{ secrets.ANALYSIS_VENDOR_DOWNLOAD_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.FOSSABOT_ANALYSIS_VENDOR_DOWNLOAD_TOKEN }}
 
     - name: Build
       env:
