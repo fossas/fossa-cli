@@ -41,7 +41,7 @@ import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
-import Effect.Exec (AllowErr (Never), Command (..), renderCommand)
+import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
@@ -52,6 +52,7 @@ import System.Process.Typed (
   setStderr,
   setStdout,
   setWorkingDir,
+  waitExitCode,
   withProcessWait,
  )
 
@@ -165,7 +166,7 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
-    messages <- sendIO $ withProcessWait processConfig $ \p -> do
+    (messages, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
       getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
@@ -174,11 +175,20 @@ runFicus ficusConfig = do
       -- Read stdout in the main thread
       result <- streamFicusOutput stdoutHandle
       -- Wait for stderr to finish
-      _ <- wait stderrAsync
-      pure result
+      stdErrLines <- wait stderrAsync
+      exitCode <- waitExitCode p
+      pure (result, exitCode, stdErrLines)
 
+    if exitCode /= ExitSuccess
+      then do
+        logInfo $
+          "[Ficus] Ficus process returned non-zero exit code. Printing last 50 lines of stderr: " <> pretty (show exitCode)
+        logInfo "\n==== BEGIN Ficus STDERR ====\n"
+        logInfo $ pretty (Text.unlines stdErrLines)
+        logInfo "\n==== END Ficus STDERR ====\n"
+      else logInfo "[Ficus] Ficus exited successfully"
     logDebug $
-      "Ficus returned "
+      "[Ficus] Ficus returned "
         <> pretty (length $ ficusMessageErrors messages)
         <> " errors, "
         <> pretty (length $ ficusMessageDebugs messages)
@@ -217,16 +227,29 @@ runFicus ficusConfig = do
                     loop acc
       loop mempty
 
-    consumeStderr :: Handle -> IO ()
+    consumeStderr :: Handle -> IO [Text]
     consumeStderr handle = do
-      let loop = do
+      let loop acc (count :: Int) = do
             eof <- hIsEOF handle
             if eof
-              then pure ()
+              then pure (reverse acc) -- Reverse at the end to get correct order
               else do
-                _ <- hGetLine handle -- Consume stderr silently
-                loop
-      loop
+                line <- hGetLine handle -- output stderr
+                now <- getCurrentTime
+                let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                let msg = "[" ++ timestamp ++ "] STDERR " <> line
+                -- Keep at most the last 50 lines of stderr
+                -- I came up with 50 lines by looking at a few different error traces and making
+                -- sure that we captured all of the relevant error output, and then going a bit higher
+                -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
+                -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
+                let newAcc =
+                      if count >= 50
+                        then take 50 (toText msg : acc)
+                        else toText msg : acc
+                let newCount = min (count + 1) 50
+                loop newAcc newCount
+      loop [] 0
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
