@@ -229,10 +229,10 @@ gomodParser = do
   pure (toGomod name statements')
   where
     statement =
-      goDebugStatements
+        (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
         <|> (singleton <$> toolChainStatement)
+        <|> goDebugStatements
         <|> toolStatements
-        <|> (singleton <$> goVersionStatement)
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
