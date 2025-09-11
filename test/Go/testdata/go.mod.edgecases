@@ -14,7 +14,7 @@ tool (
 	github.com/wadey/gocovmerge
 )
 
-godebug godebug default=go1.21
+godebug default=go1.21
 
 godebug (
 	asynctimerchan=0
