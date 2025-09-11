@@ -229,9 +229,9 @@ gomodParser = do
   pure (toGomod name statements')
   where
     statement =
-      (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
+      goDebugStatements -- goDebugStatements is first otherwise goVersion parser overrides it.
+        <|> (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
         <|> (singleton <$> toolChainStatement)
-        <|> goDebugStatements
         <|> toolStatements
         <|> requireStatements
         <|> replaceStatements
@@ -257,9 +257,8 @@ gomodParser = do
     --   )
     toolStatements :: Parser [Statement]
     toolStatements = block "tool" singleTool
-
     -- parse the body of a single tool (without the leading "tool" lexeme)
-    singleTool = ToolStatement <*> anyToken
+    singleTool = ToolStatement <$> packageName
 
     -- top-level godebug statement
     -- e.g., godebug asynctimerchan=0
@@ -271,7 +270,7 @@ gomodParser = do
     goDebugStatements :: Parser [Statement]
     goDebugStatements = block "godebug" singleGoDebug
     -- parse the body of a single tool (without the leading "tool" lexeme)
-    singleGoDebug = GoDebugStatements <*> anyToken
+    singleGoDebug = GoDebugStatements <$> packageName
 
     -- top-level require statements
     -- e.g.:
