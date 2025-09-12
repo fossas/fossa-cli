@@ -1,4 +1,8 @@
 # FOSSA CLI Changelog
+## 3.11.9
+
+- Get the snippet-scan-retention-days setting from an organization, and pass it into Ficus ([#1586](https://github.com/fossas/fossa-cli/pull/1586))
+
 ## 3.11.8
 
 - Update latest version of a dependency for `--x-snippet-scan`. This change outputs errors from the snippet scanning CLI so that we can debug more easily ([#1587](https://github.com/fossas/fossa-cli/pull/1587))

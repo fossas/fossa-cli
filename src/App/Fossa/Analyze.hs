@@ -124,7 +124,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
-import Fossa.API.Types (Organization (Organization, orgSupportsReachability))
+import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -348,7 +348,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             then do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
-            else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision $ Config.licenseScanPathFilters vendoredDepsOptions
+            else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
   let ficusResults = join . resultToMaybe $ maybeFicusResults
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
