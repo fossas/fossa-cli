@@ -357,7 +357,7 @@ gomodParser = do
 
     -- package name, e.g., golang.org/x/text
     packageName :: Parser PackageName
-    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
+    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '='))
 
     modulePath :: Parser Text
     modulePath =
