@@ -238,17 +238,17 @@ gomodParser = do
         <|> excludeStatements
         <|> retractStatements
 
-    -- top-level go version statement
+    -- go version statement
     -- e.g., go 1.12
     goVersionStatement :: Parser Statement
     goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> goVersion
 
-    -- top-level toolchain statement
+    -- toolchain statement
     -- e.g., toolchain go1.21.1
     toolChainStatement :: Parser Statement
     toolChainStatement = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
 
-    -- top-level tool statements
+    -- tool statements
     -- e.g.:
     --   tool golang.org/x/tools/cmd/stringer
     --   tool (
@@ -261,7 +261,7 @@ gomodParser = do
     -- parse the body of a single tool (without the leading "tool" lexeme)
     singleTool = ToolStatement <$> packageName
 
-    -- top-level godebug statements
+    -- godebug statements
     -- e.g., godebug asynctimerchan=0
     -- godebug (
     --     default=go1.21
@@ -271,10 +271,10 @@ gomodParser = do
     goDebugStatements :: Parser [Statement]
     goDebugStatements = block "godebug" singleGoDebug
 
-    -- parse the body of a single tool (without the leading "godebug" lexeme)
+    -- parse the body of a single debug statement (without the leading "godebug" lexeme)
     singleGoDebug = GoDebugStatements <$> packageName
 
-    -- top-level require statements
+    -- require statements
     -- e.g.:
     --   require golang.org/x/text v1.0.0
     --   require (
@@ -287,7 +287,7 @@ gomodParser = do
     -- parse the body of a single require (without the leading "require" lexeme)
     singleRequire = RequireStatement <$> packageName <*> version
 
-    -- top-level replace statements
+    -- replace statements
     -- e.g.:
     --   replace golang.org/x/text => golang.org/x/text v3.0.0
     --   replace (
@@ -306,7 +306,7 @@ gomodParser = do
     singleLocalReplace :: Parser Statement
     singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
 
-    -- top-level exclude statements
+    -- exclude statements
     -- e.g.:
     --   exclude golang.org/x/text v3.0.0
     --   exclude (
@@ -320,7 +320,7 @@ gomodParser = do
     singleExclude :: Parser Statement
     singleExclude = ExcludeStatement <$> packageName <*> version
 
-    -- top-level retract statements
+    -- retract statements
     -- e.g.:
     --  retract v1.0.0
     --  retract [v1.0.0, v1.9.9]
