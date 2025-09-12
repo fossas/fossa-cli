@@ -140,6 +140,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import Types (DiscoveredProject (..), FoundTargets)
+import Control.Monad.IO.Unlift (MonadUnliftIO)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
@@ -154,7 +155,7 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has Telemetry sig m
+  , Has Telemetry sig m, MonadUnliftIO m
   ) =>
   AnalyzeConfig ->
   m ()
@@ -170,6 +171,7 @@ analyzeMain ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Telemetry sig m
+  , MonadUnliftIO m
   ) =>
   AnalyzeConfig ->
   m Aeson.Value
@@ -275,6 +277,7 @@ analyze ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Telemetry sig m
+  , MonadUnliftIO m
   ) =>
   AnalyzeConfig ->
   m Aeson.Value

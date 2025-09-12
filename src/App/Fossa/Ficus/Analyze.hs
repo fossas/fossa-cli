@@ -6,7 +6,8 @@ module App.Fossa.Ficus.Analyze (
   analyzeWithFicusMain,
   -- Exported for testing
   singletonFicusMessage,
-) where
+)
+where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
@@ -23,26 +24,30 @@ import App.Fossa.Ficus.Types (
   FicusSnippetScanResults (..),
  )
 import App.Types (ProjectRevision (..))
+import Conduit ((.|))
+import Conduit qualified
 import Control.Carrier.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Has, Lift, sendIO)
-import Effect.Logger (Logger, logDebug, logInfo)
-import Prettyprinter (pretty)
-
-import Data.Time (getCurrentTime)
-import Data.Time.Format (defaultTimeLocale, formatTime)
-
-import Control.Concurrent.Async (async, wait)
-import Data.Aeson (Object, decode, (.:))
+import Control.Concurrent.Async (async, wait, Async)
+import Control.Effect.Lift (Has, Lift, liftWith, sendIO)
+import Data.Aeson (Object, decode, decodeStrict, (.:))
 import Data.Aeson.Types (parseMaybe)
+import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
+import Data.Conduit.Combinators qualified as CC
 import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
+import Data.Time (getCurrentTime)
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
+import Effect.Logger (Logger, LoggerF, logDebug, logInfo, logStdout)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
+import Path (Abs, Dir, Path, toFilePath)
+import Prettyprinter (pretty)
+import Srclib.Types (Locator (..), renderLocator)
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
   createPipe,
@@ -55,16 +60,18 @@ import System.Process.Typed (
   waitExitCode,
   withProcessWait,
  )
-
-import Path (Abs, Dir, Path, toFilePath)
-import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
-import Prelude
+import Control.Monad.IO.Class
+import Control.Monad.Trans (lift)
+import Control.Monad.IO.Unlift (withRunInIO, MonadUnliftIO)
+import Data.Sequence (Seq)
+import qualified Data.Aeson as Aeson
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
   deriving (Eq, Ord, Show, Hashable)
+
 newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
   deriving (Eq, Ord, Show, Hashable)
 
@@ -79,7 +86,7 @@ logDebugWithTime msg = do
 analyzeWithFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Logger sig m
+  , Has Logger sig m, MonadUnliftIO m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
@@ -93,6 +100,7 @@ analyzeWithFicusMain ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , MonadIO m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
@@ -163,18 +171,20 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
-    (messages, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
-      getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
+    (messages, exitCode, stdErrLines) <- withProcessWait processConfig $ \p -> do
+      currentTimeStamp >>= \now -> logStdout $ "[TIMING " <> now <> "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
+
+
       -- Start async reading of stderr to prevent blocking
-      stderrAsync <- async $ consumeStderr stderrHandle
+      stderrAsync <- withRunInIO $ \runIO ->  async $ runIO (consumeStderr stderrHandle)
       -- Read stdout in the main thread
       result <- streamFicusOutput stdoutHandle
       -- Wait for stderr to finish
-      stdErrLines <- wait stderrAsync
+      stdErrLines <- sendIO $ wait stderrAsync
       exitCode <- waitExitCode p
-      putStrLn $ "[Ficus] Ficus process returned exit code: " <> show exitCode
+      logStdout $ "[Ficus] Ficus process returned exit code: " <> (toText . show $ exitCode)
       pure (result, exitCode, stdErrLines)
 
     if exitCode /= ExitSuccess
@@ -196,58 +206,70 @@ runFicus ficusConfig = do
 
     pure messages
   where
-    streamFicusOutput :: Handle -> IO FicusMessages
-    streamFicusOutput handle = do
-      let loop acc = do
-            eof <- hIsEOF handle
-            if eof
-              then do
-                putStrLn "[DEBUG] Reached end of Ficus output stream"
-                pure acc
-              else do
-                line <- hGetLine handle
-                let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ toText line
-                case decode lineBS of
-                  Just message -> do
-                    -- Log messages as they come, with timestamps
-                    now <- getCurrentTime
-                    let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                    case message of
-                      FicusMessageError err ->
-                        putStrLn $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
-                      FicusMessageDebug dbg ->
-                        putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
-                      FicusMessageFinding finding ->
-                        putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let newMessage = singletonFicusMessage message
-                    loop (acc <> newMessage)
-                  Nothing -> do
-                    loop acc
-      loop mempty
+    decodeFicusLine ::
+      (Has Logger sig m,
+       Has (Lift IO) sig m
+      ) =>
+      Text -> m FicusMessages
+    decodeFicusLine line = case Aeson.decodeStrictText line of
+      Just message -> do
+        -- Log messages as they come, with timestamps
+        timestamp <- currentTimeStamp
+        case message of
+          FicusMessageError err ->
+            logStdout $ "[" <> timestamp <> "] ERROR " <> displayFicusError err
+          FicusMessageDebug dbg ->
+            logStdout $ "[" <> timestamp <> "] DEBUG " <> displayFicusDebug dbg
+          FicusMessageFinding finding ->
+            logStdout $ "[" <> timestamp <> "] FINDING " <> displayFicusFinding finding
+        pure $ singletonFicusMessage message
+      Nothing -> pure mempty
 
-    consumeStderr :: Handle -> IO [Text]
-    consumeStderr handle = do
-      let loop acc (count :: Int) = do
-            eof <- hIsEOF handle
-            if eof
-              then pure (reverse acc) -- Reverse at the end to get correct order
-              else do
-                line <- hGetLine handle -- output stderr
-                now <- getCurrentTime
-                let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                let msg = "[" ++ timestamp ++ "] STDERR " <> line
-                -- Keep at most the last 50 lines of stderr
-                -- I came up with 50 lines by looking at a few different error traces and making
-                -- sure that we captured all of the relevant error output, and then going a bit higher
-                -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
-                -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
-                let newAcc =
-                      if count >= 50
-                        then take 50 (toText msg : acc)
-                        else toText msg : acc
-                let newCount = min (count + 1) 50
-                loop newAcc newCount
-      loop [] 0
+    -- TODO: decodeUtf8Lenient replaces bad codepoints with its own thing.
+    lineStream :: (MonadIO m) => Handle -> Conduit.ConduitT a Text m ()
+    lineStream handle = CC.sourceHandle handle .| CC.decodeUtf8Lenient .| CC.linesUnbounded
+
+    streamFicusOutput :: (Has Logger sig m, MonadIO m, Has (Lift IO) sig m) => Handle -> m FicusMessages
+    streamFicusOutput handle =
+        Conduit.runConduit $
+        lineStream handle
+        .| CC.foldMapM decodeFicusLine
+
+    currentTimeStamp :: (Has (Lift IO) sig m) => m Text
+    currentTimeStamp = do
+      now <- sendIO getCurrentTime
+      pure . toText . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
+
+    consumeStderr :: (MonadIO m, Has (Lift IO) sig m) => Handle -> m [Text]
+    consumeStderr handle =
+      Conduit.runConduit $
+       lineStream handle
+      .| CC.mapM (\line -> do timestamp <- currentTimeStamp
+                              pure $ "[" <> timestamp <> "] STDERR " <> line)
+        -- Keep at most the last 50 lines of stderr
+        -- I came up with 50 lines by looking at a few different error traces and making
+        -- sure that we captured all of the relevant error output, and then going a bit higher
+        -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
+        -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
+        .| CC.slidingWindow 50
+        .| CC.lastDef mempty
+
+-- let loop acc (count :: Int) = do
+      --       eof <- hIsEOF handle
+      --       if eof
+      --         then pure (reverse acc) -- Reverse at the end to get correct order
+      --         else do
+      --           line <- hGetLine handle -- output stderr
+      --           now <- getCurrentTime
+      --           let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+      --           let msg = "[" ++ timestamp ++ "] STDERR " <> line
+      --           let newAcc =
+      --                 if count >= 50
+      --                   then take 50 (toText msg : acc)
+      --                   else toText msg : acc
+      --           let newCount = min (count + 1) 50
+      --           loop newAcc newCount
+      -- loop [] 0
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
