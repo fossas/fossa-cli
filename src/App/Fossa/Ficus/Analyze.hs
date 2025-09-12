@@ -6,7 +6,8 @@ module App.Fossa.Ficus.Analyze (
   analyzeWithFicusMain,
   -- Exported for testing
   singletonFicusMessage,
-) where
+)
+where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
@@ -23,26 +24,31 @@ import App.Fossa.Ficus.Types (
   FicusSnippetScanResults (..),
  )
 import App.Types (ProjectRevision (..))
+import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Has, Lift, sendIO)
-import Effect.Logger (Logger, logDebug, logInfo)
-import Prettyprinter (pretty)
-
-import Data.Time (getCurrentTime)
-import Data.Time.Format (defaultTimeLocale, formatTime)
-
 import Control.Concurrent.Async (async, wait)
-import Data.Aeson (Object, decode, (.:))
+import Control.Effect.Lift (Has, Lift, sendIO)
+import Data.Aeson (Object, decode, decodeStrictText, (.:))
 import Data.Aeson.Types (parseMaybe)
 import Data.ByteString.Lazy qualified as BL
+import Data.Conduit ((.|))
+import Data.Conduit qualified as Conduit
+import Data.Conduit.Combinators qualified as CC
+import Data.Conduit.List qualified as CCL
 import Data.Hashable (Hashable)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding qualified as Text.Encoding
+import Data.Time (getCurrentTime)
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
+import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
+import Path (Abs, Dir, Path, toFilePath)
+import Prettyprinter (pretty)
+import Srclib.Types (Locator (..), renderLocator)
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
   createPipe,
@@ -55,9 +61,6 @@ import System.Process.Typed (
   waitExitCode,
   withProcessWait,
  )
-
-import Path (Abs, Dir, Path, toFilePath)
-import Srclib.Types (Locator (..), renderLocator)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
@@ -65,6 +68,7 @@ import Prelude
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
   deriving (Eq, Ord, Show, Hashable)
+
 newtype CustomLicenseTitle = CustomLicenseTitle {unCustomLicenseTitle :: Text}
   deriving (Eq, Ord, Show, Hashable)
 
@@ -103,13 +107,12 @@ analyzeWithFicusMain ::
   m (Maybe FicusSnippetScanResults)
 analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
-  messages <- runFicus ficusConfig
+  ficusResults <- runFicus ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
-  let ficusResults = ficusMessagesToFicusSnippetScanResults messages
   case ficusResults of
     Just results -> do
       logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
-      logDebug $ "Found " <> pretty (length $ ficusMessageFindings messages) <> " findings from Ficus"
+    -- logDebug $ "Found " <> pretty (length $ ficusMessageFindings messages) <> " findings from Ficus"
     Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
   pure ficusResults
   where
@@ -123,6 +126,14 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         }
+
+extractAnalysisId :: FicusFinding -> Maybe Int
+extractAnalysisId (FicusFinding (FicusMessageData strategy payload))
+  | Text.toLower strategy == "fingerprint" =
+      case decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload) :: Maybe Object of
+        Just obj -> parseMaybe (.: "analysis_id") obj
+        Nothing -> Nothing
+extractAnalysisId _ = Nothing
 
 ficusMessagesToFicusSnippetScanResults :: FicusMessages -> Maybe FicusSnippetScanResults
 ficusMessagesToFicusSnippetScanResults messages =
@@ -148,7 +159,7 @@ runFicus ::
   , Has Logger sig m
   ) =>
   FicusConfig ->
-  m FicusMessages
+  m (Maybe FicusSnippetScanResults)
 runFicus ficusConfig = do
   logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
@@ -166,7 +177,7 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
-    (messages, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
+    (result, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
       getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
@@ -187,45 +198,45 @@ runFicus ficusConfig = do
         logInfo $ pretty (Text.unlines stdErrLines)
         logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
-    logDebug $
-      "[Ficus] Ficus returned "
-        <> pretty (length $ ficusMessageErrors messages)
-        <> " errors, "
-        <> pretty (length $ ficusMessageDebugs messages)
-        <> " debug messages, "
-        <> pretty (length $ ficusMessageFindings messages)
-        <> " findings"
+    -- logDebug $
+    --   "[Ficus] Ficus returned "
+    --     <> pretty (length $ ficusMessageErrors messages)
+    --     <> " errors, "
+    --     <> pretty (length $ ficusMessageDebugs messages)
+    --     <> " debug messages, "
+    --     <> pretty (length $ ficusMessageFindings messages)
+    --     <> " findings"
 
-    pure messages
+    pure result
   where
-    streamFicusOutput :: Handle -> IO FicusMessages
-    streamFicusOutput handle = do
-      let loop acc = do
-            eof <- hIsEOF handle
-            if eof
-              then do
-                putStrLn "[DEBUG] Reached end of Ficus output stream"
-                pure acc
-              else do
-                line <- hGetLine handle
-                let lineBS = BL.fromStrict $ Text.Encoding.encodeUtf8 $ toText line
-                case decode lineBS of
-                  Just message -> do
-                    -- Log messages as they come, with timestamps
-                    now <- getCurrentTime
-                    let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                    case message of
-                      FicusMessageError err ->
-                        putStrLn $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
-                      FicusMessageDebug dbg ->
-                        putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
-                      FicusMessageFinding finding ->
-                        putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let newMessage = singletonFicusMessage message
-                    loop (acc <> newMessage)
-                  Nothing -> do
-                    loop acc
-      loop mempty
+    currentTimeStamp :: IO String
+    currentTimeStamp = do
+      now <- getCurrentTime
+      pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
+
+    streamFicusOutput :: Handle -> IO (Maybe FicusSnippetScanResults)
+    streamFicusOutput handle =
+      Conduit.runConduit $
+        CC.sourceHandle handle
+          .| CC.decodeUtf8Lenient
+          .| CC.linesUnbounded
+          .| CCL.mapMaybe decodeStrictText
+          .| CC.foldM
+            ( \acc message -> do
+                -- Log messages as they come, with timestamps
+                timestamp <- currentTimeStamp
+                case message of
+                  FicusMessageError err -> do
+                    putStrLn $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
+                    pure acc
+                  FicusMessageDebug dbg -> do
+                    putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
+                    pure acc
+                  FicusMessageFinding finding -> do
+                    putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
+                    pure $ acc <|> (FicusSnippetScanResults <$> extractAnalysisId finding)
+            )
+            Nothing
 
     consumeStderr :: Handle -> IO [Text]
     consumeStderr handle = do
