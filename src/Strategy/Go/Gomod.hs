@@ -229,36 +229,52 @@ gomodParser = do
   pure (toGomod name statements')
   where
     statement =
-      (singleton <$> goDebugStatements) -- singleton wraps the Parser Statement into a Parser [Statement]
-        <|> (singleton <$> toolChainStatements)
-        <|> (singleton <$> toolStatements)
-        <|> (singleton <$> goVersionStatement)
+      goDebugStatements -- goDebugStatements needs to be first otherwise goVersion parser overrides it.
+        <|> (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
+        <|> (singleton <$> toolChainStatement)
+        <|> toolStatements
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
         <|> retractStatements
 
-    -- top-level go version statement
+    -- go version statement
     -- e.g., go 1.12
     goVersionStatement :: Parser Statement
     goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> goVersion
 
-    -- top-level toolchain statement
+    -- toolchain statement
     -- e.g., toolchain go1.21.1
-    toolChainStatements :: Parser Statement
-    toolChainStatements = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
+    toolChainStatement :: Parser Statement
+    toolChainStatement = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
 
-    -- top-level tool statement
-    -- e.g., tool golang.org/x/tools/cmd/stringer
-    toolStatements :: Parser Statement
-    toolStatements = ToolStatement <$ lexeme (chunk "tool") <*> anyToken
+    -- tool statements
+    -- e.g.:
+    --   tool golang.org/x/tools/cmd/stringer
+    --   tool (
+    --       github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+    --       github.com/fossa/fossa-cli
+    --   )
+    toolStatements :: Parser [Statement]
+    toolStatements = block "tool" singleTool
 
-    -- top-level godebug statement
+    -- parse the body of a single tool (without the leading "tool" lexeme)
+    singleTool = ToolStatement <$> packageName
+
+    -- godebug statements
     -- e.g., godebug asynctimerchan=0
-    goDebugStatements :: Parser Statement
-    goDebugStatements = GoDebugStatements <$ lexeme (chunk "godebug") <*> anyToken
+    -- godebug (
+    --     default=go1.21
+    --     panicnil=1
+    --     asynctimerchan=0
+    -- )
+    goDebugStatements :: Parser [Statement]
+    goDebugStatements = block "godebug" singleGoDebug
 
-    -- top-level require statements
+    -- parse the body of a single debug statement (without the leading "godebug" lexeme)
+    singleGoDebug = GoDebugStatements <$> packageName
+
+    -- require statements
     -- e.g.:
     --   require golang.org/x/text v1.0.0
     --   require (
@@ -271,7 +287,7 @@ gomodParser = do
     -- parse the body of a single require (without the leading "require" lexeme)
     singleRequire = RequireStatement <$> packageName <*> version
 
-    -- top-level replace statements
+    -- replace statements
     -- e.g.:
     --   replace golang.org/x/text => golang.org/x/text v3.0.0
     --   replace (
@@ -290,7 +306,7 @@ gomodParser = do
     singleLocalReplace :: Parser Statement
     singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
 
-    -- top-level exclude statements
+    -- exclude statements
     -- e.g.:
     --   exclude golang.org/x/text v3.0.0
     --   exclude (
@@ -304,7 +320,7 @@ gomodParser = do
     singleExclude :: Parser Statement
     singleExclude = ExcludeStatement <$> packageName <*> version
 
-    -- top-level retract statements
+    -- retract statements
     -- e.g.:
     --  retract v1.0.0
     --  retract [v1.0.0, v1.9.9]
@@ -341,7 +357,7 @@ gomodParser = do
 
     -- package name, e.g., golang.org/x/text
     packageName :: Parser PackageName
-    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
+    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '='))
 
     modulePath :: Parser Text
     modulePath =

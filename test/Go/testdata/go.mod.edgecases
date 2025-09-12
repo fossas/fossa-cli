@@ -9,7 +9,17 @@ toolchain go1.21.1
 
 tool github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
-godebug asynctimerchan=0
+tool (
+	github.com/bufbuild/buf/cmd/buf
+	github.com/wadey/gocovmerge
+)
+
+godebug default=go1.21
+
+godebug (
+	asynctimerchan=0
+	panicnil=1
+)
 
 require repo/name/A v1.0.0 // indirect
 
