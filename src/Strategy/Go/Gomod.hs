@@ -229,7 +229,7 @@ gomodParser = do
   pure (toGomod name statements')
   where
     statement =
-      goDebugStatements -- goDebugStatements is first otherwise goVersion parser overrides it.
+      goDebugStatements -- goDebugStatements needs to be first otherwise goVersion parser overrides it.
         <|> (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
         <|> (singleton <$> toolChainStatement)
         <|> toolStatements
