@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "complex-dependencies-poetry"
+version = "0.1.0"
+description = "Poetry project with complex dependency specifications"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+simple = "^1.2.3"
+exact = "==1.2.3"
+range = ">=1.0.0,<2.0.0"
+wildcard = "*"
+git-simple = {git = "https://github.com/example/repo.git"}
+git-tag = {git = "https://github.com/example/repo.git", tag = "v1.0.0"}
+git-branch = {git = "https://github.com/example/repo.git", branch = "main"}
+git-rev = {git = "https://github.com/example/repo.git", rev = "abcd1234"}
+url = {url = "https://example.com/package-1.0.0.tar.gz"}
+path = {path = "../local/package/"}
+combo = {version = "^1.0.0", extras = ["dev", "test"]}
+conditional = {version = "^1.0.0", markers = "python_version < '3.9'"}
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.5"
+black = {version = "^21.5b2", markers = "python_version >= '3.6'"}
+coverage = {version = "^5.5", extras = ["toml"]}
