@@ -674,6 +674,7 @@ test-suite unit-tests
     Haskell.StackSpec
     Maven.CommonSpec
     Maven.DepTreeSpec
+    Maven.PathFilterSpec
     Maven.PluginSpec
     Maven.PluginStrategySpec
     Maven.PluginTreeSpec
