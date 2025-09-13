@@ -40,6 +40,10 @@
 - Add a dependency on Ficus, a new internal tool.
 - Add the `--x-snippet-scan` flag, an experimental flag for using Ficus.
 
+## Unreleased
+
+- cargo: Fix Cargo analyzer incorrectly reporting library projects as dependencies of themselves when they have no external dependencies ([#1569](https://github.com/fossas/fossa-cli/pull/1569))
+
 ## 3.10.14
 
 - gradle: Do not report version constraints, version contraints are contained within an`DependencyResult`, filter out any constraints by checking [`isConstraint()`](https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html#isConstraint()). ([#1563](https://github.com/fossas/fossa-cli/pull/1563))
