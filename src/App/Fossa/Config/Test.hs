@@ -58,10 +58,14 @@ import Options.Applicative (
   helpDoc,
   internal,
   long,
+  metavar,
   option,
   optional,
   progDescDoc,
+    showDefault,
   strOption,
+  switch,
+  value,
  )
 import Prettyprinter (Doc, punctuate, viaShow)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
@@ -131,6 +135,8 @@ data TestCliOpts = TestCliOpts
   , testOutputFmt :: Maybe String
   , testBaseDir :: FilePath
   , testDiffRevision :: Maybe Text
+  , testConfidence :: Bool
+  , testConfidenceThreshold :: Int
   }
   deriving (Eq, Ord, Show)
 
@@ -148,6 +154,8 @@ data TestConfig = TestConfig
   , projectRevision :: ProjectRevision
   , diffRevision :: Maybe DiffRevision
   , locatorType :: LocatorType
+  , confidence :: Bool
+  , confidenceThreshold :: Int
   }
   deriving (Show, Generic)
 
@@ -169,6 +177,20 @@ parser =
     <*> optional (strOption (applyFossaStyle <> long "format" <> helpDoc testFormatHelp))
     <*> baseDirArg
     <*> optional (strOption (applyFossaStyle <> long "diff" <> stringToHelpDoc "Checks for new issues of the revision that does not exist in provided diff revision"))
+    <*> switch
+      ( applyFossaStyle
+          <> long "confidence"
+          <> helpDoc (Just . formatDoc $ vsep ["Enable confidence-driven analysis to reduce false positives"])
+      )
+    <*> option
+      auto
+      ( applyFossaStyle
+          <> long "confidence-threshold"
+          <> metavar "SCORE"
+          <> value 70
+          <> showDefault
+          <> helpDoc (Just . formatDoc $ vsep ["Minimum confidence score (0-100) to report an issue"])
+      )
   where
     timeoutHelp :: Maybe (Doc AnsiStyle)
     timeoutHelp =
@@ -238,3 +260,5 @@ mergeOpts maybeConfig envvars TestCliOpts{..} = do
     <*> revision
     <*> pure diffRevision
     <*> pure LocatorTypeCustom
+    <*> pure testConfidence
+    <*> pure testConfidenceThreshold

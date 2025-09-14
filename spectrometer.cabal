@@ -140,6 +140,7 @@ common deps
     , pretty-simple                ^>=4.1.1.0
     , prettyprinter                >=1.6       && <1.8
     , prettyprinter-ansi-terminal  ^>=1.1.1
+    , process                      ^>=1.6.13.2
     , random                       ^>=1.2.0
     , raw-strings-qq               ^>=1.1
     , req                          ^>=3.13.0
@@ -202,6 +203,7 @@ library
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
+    App.Fossa.Confidence
     App.Fossa.Config.Analyze
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile

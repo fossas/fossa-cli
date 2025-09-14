@@ -55,3 +55,21 @@ For instance,
 
 * If the revision `v2.0.0` has issue: `A`, and the revision `34021e` has issues `A`, `B`, 
   * `fossa-cli` reports issue `B` and exits with status code of 1.
+
+### Confidence scoring
+
+`fossa test` can suppress low-confidence findings to reduce CI noise.
+
+Enable with the default threshold (70):
+
+```sh
+fossa test --confidence
+```
+
+Set a custom threshold:
+
+```sh
+fossa test --confidence --confidence-threshold 80
+```
+
+Findings are scored 0–100; only findings at or above the threshold are reported.
