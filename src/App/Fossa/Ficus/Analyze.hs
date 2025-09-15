@@ -36,7 +36,6 @@ import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Hashable (Hashable)
-import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -127,31 +126,13 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         }
 
-extractAnalysisId :: FicusFinding -> Maybe Int
-extractAnalysisId (FicusFinding (FicusMessageData strategy payload))
+findingToAnalysisId :: FicusFinding -> Maybe Int
+findingToAnalysisId (FicusFinding (FicusMessageData strategy payload))
   | Text.toLower strategy == "fingerprint" =
       case decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload) :: Maybe Object of
         Just obj -> parseMaybe (.: "analysis_id") obj
         Nothing -> Nothing
-extractAnalysisId _ = Nothing
-
-ficusMessagesToFicusSnippetScanResults :: FicusMessages -> Maybe FicusSnippetScanResults
-ficusMessagesToFicusSnippetScanResults messages =
-  let isFingerprintStrategy :: FicusFinding -> Bool
-      isFingerprintStrategy (FicusFinding (FicusMessageData strategy _)) =
-        Text.toLower strategy == "fingerprint"
-
-      extractAnalysisId :: FicusFinding -> Maybe Int
-      extractAnalysisId (FicusFinding (FicusMessageData _ payload)) =
-        case decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload) :: Maybe Object of
-          Just obj -> parseMaybe (.: "analysis_id") obj
-          Nothing -> Nothing
-
-      matchingFinding = filter isFingerprintStrategy (ficusMessageFindings messages)
-      analysisId = mapMaybe extractAnalysisId matchingFinding
-   in case analysisId of
-        (aid : _) -> Just $ FicusSnippetScanResults{ficusSnippetScanResultsAnalysisId = aid}
-        [] -> Nothing
+findingToAnalysisId _ = Nothing
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -234,7 +215,7 @@ runFicus ficusConfig = do
                     pure acc
                   FicusMessageFinding finding -> do
                     putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    pure $ acc <|> (FicusSnippetScanResults <$> extractAnalysisId finding)
+                    pure $ acc <|> (FicusSnippetScanResults <$> findingToAnalysisId finding)
             )
             Nothing
 
