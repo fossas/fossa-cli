@@ -3,6 +3,7 @@
 ## 3.11.10
 
 - Optimize snippet scanning for time and space.([#1591](https://github.com/fossas/fossa-cli/pull/1591))
+- Go - multi line godebug and tool settings are properly parsed ([#1586](https://github.com/fossas/fossa-cli/pull/1586))
 
 ## 3.11.9
 
