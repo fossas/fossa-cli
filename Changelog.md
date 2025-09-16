@@ -1,4 +1,9 @@
 # FOSSA CLI Changelog
+
+## 3.11.10
+
+- Optimize snippet scanning for time and space.([#1591](https://github.com/fossas/fossa-cli/pull/1591))
+
 ## 3.11.9
 
 - Get the snippet-scan-retention-days setting from an organization, and pass it into Ficus ([#1586](https://github.com/fossas/fossa-cli/pull/1586))
