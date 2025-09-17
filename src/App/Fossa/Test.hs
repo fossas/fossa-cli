@@ -18,10 +18,12 @@ import App.Fossa.Config.Test (
   TestOutputFormat (TestOutputJson, TestOutputPretty),
  )
 import App.Fossa.Config.Test qualified as Config
+import App.Fossa.Confidence (runConfidenceAnalysis)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (TestChecks), preflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (
   ProjectRevision (projectName, projectRevision),
+  BaseDir (unBaseDir),
  )
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
@@ -44,6 +46,7 @@ import Effect.Logger (
   vsep,
  )
 import Fossa.API.Types (Issues (..))
+import Path (toFilePath)
 
 testSubCommand :: SubCommand TestCliOpts TestConfig
 testSubCommand = Config.mkSubCommand testMain
@@ -83,7 +86,17 @@ testMain config = do
       waitForScanCompletion revision locType cancelFlag
 
       logSticky "[ Waiting for issue scan completion... ]"
-      issues <- waitForIssues revision diffRev locType cancelFlag
+      issuesRaw <- waitForIssues revision diffRev locType cancelFlag
+      issues <-
+        if Config.confidence config
+          then do
+            let rev2 = projectRevision revision
+                rev1 = case diffRev of
+                  Just (DiffRevision r) -> r
+                  Nothing -> rev2 -- no diff, use same revision for a no-op consistency check
+                projDir = toFilePath (unBaseDir (Config.baseDir config))
+            runConfidenceAnalysis projDir rev1 rev2 (Config.confidenceThreshold config) issuesRaw
+          else pure issuesRaw
       logSticky ""
       logInfo ""
 

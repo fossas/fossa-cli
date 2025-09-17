@@ -170,4 +170,6 @@ mergeOpts maybeConfig envvars SBOMTestOptions{..} = do
       , projectRevision = revision
       , diffRevision = diffRevision
       , locatorType = LocatorTypeSBOM
+      , confidence = False
+      , confidenceThreshold = 70
       }
