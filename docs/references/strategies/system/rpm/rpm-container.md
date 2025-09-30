@@ -16,7 +16,7 @@ The RedHat Package Manager (rpm).
 
 **Impact**: Customers scanning RHEL/OL-based containers may see hundreds of system packages (like `perl`, `bash`, `coreutils`) marked as "unlicensed" even though license metadata exists in the RPM database.
 
-**Workaround**: Packages can be manually licensed through the FOSSA web interface, but this creates significant overhead for continuous scanning workflows.
+**Workaround**: Packages can be manually licensed through the FOSSA web interface.
 
 **Future Enhancement**: Full RHEL/OL support is on our roadmap. If this is important to you, please reach out to support@fossa.com.
 
