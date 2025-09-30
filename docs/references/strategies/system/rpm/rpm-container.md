@@ -14,7 +14,7 @@ The RedHat Package Manager (rpm).
   - Oracle Linux EPEL repositories are not automatically recognized
   - Modern RHEL9/OL9 signature formats may cause fetcher issues
 
-**Impact**: Customers scanning RHEL/OL-based containers may see hundreds of system packages (like `perl`, `bash`, `coreutils`) marked as "unlicensed" even though license metadata exists in the RPM database.
+**Impact**: Customers scanning RHEL/OL-based containers may see system packages (like `perl`, `bash`, `coreutils`) marked as "unlicensed" even though license metadata exists in the RPM database.
 
 **Workaround**: Packages can be manually licensed through the FOSSA web interface.
 
