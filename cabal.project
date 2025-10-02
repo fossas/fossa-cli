@@ -16,4 +16,4 @@ import: ./cabal.project.common
 package *
   extra-include-dirs: /opt/homebrew/include
   extra-lib-dirs: /opt/homebrew/lib
-  ghc-options: -I/Library/Developer/CommandLineTools/SDKs/MacOSX12.sdk/usr/include/ffi
+  ghc-options: -I/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/ffi
