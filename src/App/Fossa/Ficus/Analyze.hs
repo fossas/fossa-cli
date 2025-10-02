@@ -269,7 +269,7 @@ ficusCommand ficusConfig bin = do
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
-    configExcludes = unGlobFilter <$> ficusConfigExclude ficusConfig
+    configExcludes = concatMap (\path -> ["--exclude", unGlobFilter path]) $ ficusConfigExclude ficusConfig
 
     maskApiKeyInCommand :: Text -> Text
     maskApiKeyInCommand cmdText =
