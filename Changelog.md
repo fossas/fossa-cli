@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## 3.11.11
+
+- [Bug]The Ficus command was being constructed incorrectly if there were file exclusions in .fossa.yml ([#1595](https://github.com/fossas/fossa-cli/pull/1595))
+- Update Ficus to fix a bug with Windows paths (No PR)
+
 ## 3.11.10
 
 - Optimize snippet scanning for time and space.([#1591](https://github.com/fossas/fossa-cli/pull/1591))
