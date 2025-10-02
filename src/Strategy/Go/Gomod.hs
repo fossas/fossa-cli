@@ -57,6 +57,7 @@ import Text.Megaparsec (
   count,
   many,
   oneOf,
+  option,
   optional,
   parse,
   sepBy,
@@ -218,11 +219,17 @@ parsePackageVersion lexify = parseSemOrPseudo <|> parseNonCanonical
 gomodParser :: Parser Gomod
 gomodParser = do
   _ <- scn
-  _ <- lexeme (chunk "module")
-  name <- modulePath
-  _ <- scn
-  statements <- many (statement <* scn)
-  eof
+  (name, statements) <-
+    option
+      ("empty module", [])
+      ( do
+          _ <- lexeme (chunk "module")
+          name <- modulePath
+          _ <- scn
+          statements <- many (statement <* scn)
+          eof
+          pure (name, statements)
+      )
 
   let statements' = concat statements
 
