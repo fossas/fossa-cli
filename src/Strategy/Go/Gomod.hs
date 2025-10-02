@@ -53,11 +53,11 @@ import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
   between,
+  choice,
   chunk,
   count,
   many,
   oneOf,
-  option,
   optional,
   parse,
   sepBy,
@@ -220,16 +220,22 @@ gomodParser :: Parser Gomod
 gomodParser = do
   _ <- scn
   (name, statements) <-
-    option
-      ("empty module", [])
-      ( do
-          _ <- lexeme (chunk "module")
-          name <- modulePath
-          _ <- scn
-          statements <- many (statement <* scn)
-          eof
-          pure (name, statements)
-      )
+    choice
+      [ -- Non-empty go.mod file
+        ( do
+            _ <- lexeme (chunk "module")
+            name <- modulePath
+            _ <- scn
+            statements <- many (statement <* scn)
+            eof
+            pure (name, statements)
+        )
+      , -- Empty go.mod file
+        ( do
+            eof
+            pure ("", [])
+        )
+      ]
 
   let statements' = concat statements
 
