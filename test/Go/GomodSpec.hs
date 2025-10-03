@@ -7,7 +7,7 @@ import Data.Function ((&))
 import Data.Map.Strict qualified as Map
 import Data.SemVer (version)
 import Data.SemVer.Internal (Identifier (..))
-import Data.Text (Text)
+import Data.Text (Text, empty)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepType (GoType), Dependency (..), VerConstraint (CEq))
 import Effect.Grapher (direct, evalGrapher)
@@ -15,7 +15,7 @@ import Graphing (Graphing (..))
 import Strategy.Go.Gomod (Gomod (..), PackageVersion (..), Require (..), buildGraph, gomodParser)
 import Strategy.Go.Types (graphingGolang)
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
-import Test.Hspec.Megaparsec (shouldParse)
+import Test.Hspec.Megaparsec (shouldFailOn, shouldParse)
 import Text.Megaparsec (runParser)
 import Text.RawString.QQ (r)
 
@@ -56,6 +56,16 @@ trivialGraph = run . evalGrapher $ do
   direct $ dep "github.com/pkg/one" "v1.0.0"
   direct $ dep "github.com/pkg/overridden" "overridden"
   direct $ dep "github.com/pkg/three/v3" "v3.0.0"
+
+emptyGomod :: Gomod
+emptyGomod =
+  Gomod
+    { modName = ""
+    , modRequires = []
+    , modReplaces = Map.empty
+    , modLocalReplaces = Map.empty
+    , modExcludes = []
+    }
 
 localReplaceGomod :: Gomod
 localReplaceGomod =
@@ -193,6 +203,9 @@ spec_parse = do
     it "parses a trivial example" $ do
       runParser gomodParser "" trivialInput `shouldParse` trivialGomod
 
+    it "parses empty go.mod" $ do
+      runParser gomodParser "" Data.Text.empty `shouldParse` emptyGomod
+
     it "parses each edge case" $ do
       runParser gomodParser "" edgecaseInput `shouldParse` edgeCaseGomod
 
@@ -210,6 +223,9 @@ spec_parse = do
       runParser gomodParser "" goModWithRetractComment2 `shouldParse` gomodWithRetract
       runParser gomodParser "" goModWithRetractComment3 `shouldParse` gomodWithRetract
       runParser gomodParser "" goModWithRetractComment4 `shouldParse` gomodWithRetract
+
+    it "fails to parse invalid go.mod" $ do
+      runParser gomodParser "" `shouldFailOn` "invalid input"
 
 gomodWithRetract :: Gomod
 gomodWithRetract =
