@@ -106,7 +106,7 @@ import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScope
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, pretty, vsep)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logInfo, logWarn, pretty, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -222,6 +222,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeExcludeTargets :: [TargetFilter]
   , analyzeOnlyPaths :: [Path Rel Dir]
   , analyzeExcludePaths :: [Path Rel Dir]
+  , analyzeExcludeManifestStrategies :: Flag ExcludeManifestStrategies
   , analyzeVSIMode :: Flag VSIAnalysis
   , analyzeBinaryDiscoveryMode :: Flag BinaryDiscovery
   , analyzeAssertMode :: Maybe (FilePath)
@@ -238,7 +239,6 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
   , analyzeStrictMode :: Flag StrictMode
   , analyzeSnippetScan :: Bool
-  , analyzeExcludeManifestStrategies :: Flag ExcludeManifestStrategies
   }
   deriving (Eq, Ord, Show)
 
@@ -334,6 +334,7 @@ cliParser =
     <*> many (option (eitherReader targetOpt) (applyFossaStyle <> long "exclude-target" <> stringToHelpDoc "Exclude these targets from scanning. See `targets.exclude` in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (applyFossaStyle <> long "only-path" <> stringToHelpDoc "Only scan these paths. See `paths.only` in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (applyFossaStyle <> long "exclude-path" <> stringToHelpDoc "Exclude these paths from scanning. See `paths.exclude` in the fossa.yml spec." <> metavar "PATH"))
+    <*> flagOpt ExcludeManifestStrategies (applyFossaStyle <> long "exclude-manifest-strategies" <> stringToHelpDoc "Exclude all manifest-based strategies for finding targets.")
     <*> vsiEnableOpt
     <*> flagOpt BinaryDiscovery (applyFossaStyle <> long "experimental-enable-binary-discovery" <> stringToHelpDoc "Reports binary files as unlicensed dependencies")
     <*> optional (strOption (applyFossaStyle <> long "experimental-link-project-binary" <> metavar "DIR" <> stringToHelpDoc "Links output binary files to this project in FOSSA"))
@@ -350,7 +351,6 @@ cliParser =
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
     <*> switch (applyFossaStyle <> long "x-snippet-scan" <> stringToHelpDoc "Experimental flag to enable snippet scanning to identify open source code snippets using fingerprinting.")
-    <*> flagOpt ExcludeManifestStrategies (applyFossaStyle <> long "exclude-manifest-strategies" <> stringToHelpDoc "Ignore all manifest-based strategies for finding targets.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -582,8 +582,9 @@ collectFilters ::
   AnalyzeCliOpts ->
   m AllFilters
 collectFilters maybeConfig cliOpts = do
-  let cliFilters = collectCLIFilters cliOpts
-      cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
+  let cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
+  cliFilters <- collectCLIFilters cliOpts
+
   case (isMempty cliFilters, isMempty cfgFileFilters) of
     (True, True) -> pure mempty
     (False, True) -> pure cliFilters
@@ -592,14 +593,15 @@ collectFilters maybeConfig cliOpts = do
       cliFilters
         <$ logWarn "Overriding config file filters with command-line filters"
 
-collectCLIFilters :: AnalyzeCliOpts -> AllFilters
+collectCLIFilters :: (Has Logger sig m) => AnalyzeCliOpts -> m AllFilters
 collectCLIFilters AnalyzeCliOpts{..} =
   if fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
-    then AllFilters (comboInclude [] []) (comboExclude allTargetFilters [])
+    then AllFilters (comboInclude [] []) (comboExclude allTargetFilters []) <$ logInfo "Excluding manifest-based strategies in locating targets"
     else
-      AllFilters
-        (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
-        (comboExclude analyzeExcludeTargets analyzeExcludePaths)
+      pure $
+        AllFilters
+          (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
+          (comboExclude analyzeExcludeTargets analyzeExcludePaths)
   where
     allProjectTypes :: [DiscoveredProjectType]
     allProjectTypes = enumFromTo minBound maxBound
