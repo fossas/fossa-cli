@@ -131,7 +131,7 @@ import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, indent)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), color)
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
-import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
+import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilters (..), TargetFilter (..))
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
@@ -149,6 +149,7 @@ data NoDiscoveryExclusion = NoDiscoveryExclusion deriving (Generic)
 data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
 data WithoutDefaultFilters = WithoutDefaultFilters deriving (Generic)
+data ExcludeManifestStrategies = ExcludeManifestStrategies deriving (Generic)
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
 newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe SomePath} deriving (Eq, Ord, Show, Generic)
@@ -178,6 +179,9 @@ instance ToJSON IATAssertion where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON DynamicLinkInspect where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON ExcludeManifestStrategies where
   toEncoding = genericToEncoding defaultOptions
 
 data VSIModeOptions = VSIModeOptions
@@ -234,6 +238,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
   , analyzeStrictMode :: Flag StrictMode
   , analyzeSnippetScan :: Bool
+  , analyzeExcludeManifestStrategies :: Flag ExcludeManifestStrategies
   }
   deriving (Eq, Ord, Show)
 
@@ -345,6 +350,7 @@ cliParser =
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
     <*> switch (applyFossaStyle <> long "x-snippet-scan" <> stringToHelpDoc "Experimental flag to enable snippet scanning to identify open source code snippets using fingerprinting.")
+    <*> flagOpt ExcludeManifestStrategies (applyFossaStyle <> long "exclude-manifest-strategies" <> stringToHelpDoc "Ignore all manifest-based strategies for finding targets.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -588,9 +594,17 @@ collectFilters maybeConfig cliOpts = do
 
 collectCLIFilters :: AnalyzeCliOpts -> AllFilters
 collectCLIFilters AnalyzeCliOpts{..} =
-  AllFilters
-    (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
-    (comboExclude analyzeExcludeTargets analyzeExcludePaths)
+  if fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
+    then AllFilters (comboInclude [] []) (comboExclude allTargetFilters [])
+    else
+      AllFilters
+        (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
+        (comboExclude analyzeExcludeTargets analyzeExcludePaths)
+  where
+    allProjectTypes :: [DiscoveredProjectType]
+    allProjectTypes = enumFromTo minBound maxBound
+
+    allTargetFilters = map (TypeTarget . toText) allProjectTypes
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType, analyzePathDependencies = shouldAnalyzePathDependencies} =
