@@ -218,24 +218,19 @@ parsePackageVersion lexify = parseSemOrPseudo <|> parseNonCanonical
 
 gomodParser :: Parser Gomod
 gomodParser = do
+  let emptyGoMod = do
+        eof
+        pure ("", [])
+  let nonEmptyGoMod = do
+        _ <- lexeme (chunk "module")
+        name <- modulePath
+        _ <- scn
+        statements <- many (statement <* scn)
+        eof
+        pure (name, statements)
+
   _ <- scn
-  (name, statements) <-
-    choice
-      [ -- Non-empty go.mod file
-        ( do
-            _ <- lexeme (chunk "module")
-            name <- modulePath
-            _ <- scn
-            statements <- many (statement <* scn)
-            eof
-            pure (name, statements)
-        )
-      , -- Empty go.mod file
-        ( do
-            eof
-            pure ("", [])
-        )
-      ]
+  (name, statements) <- choice [nonEmptyGoMod, emptyGoMod]
 
   let statements' = concat statements
 
