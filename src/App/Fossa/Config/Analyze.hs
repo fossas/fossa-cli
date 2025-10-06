@@ -43,6 +43,7 @@ import App.Fossa.Config.Common (
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
+  collectConfigExcludeManifestStrategies,
   collectConfigFileFilters,
   collectConfigMavenScopeFilters,
   collectRevisionData',
@@ -81,6 +82,7 @@ import App.Types (
   ProjectMetadata (projectLabel),
   ProjectRevision,
  )
+import Codec.RPM.Tags (Tag (Exclude))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -581,32 +583,45 @@ collectFilters ::
   Maybe ConfigFile ->
   AnalyzeCliOpts ->
   m AllFilters
-collectFilters maybeConfig cliOpts = do
-  let cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
-  cliFilters <- collectCLIFilters cliOpts
+collectFilters maybeConfig cliOpts@AnalyzeCliOpts{..} = do
+  let cliFilters = collectCLIFilters cliOpts
+      cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
 
-  case (isMempty cliFilters, isMempty cfgFileFilters) of
+      cliExcludeManifestStrategies = fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
+      cfgFileExcludeManifestStrategies = maybe False collectConfigExcludeManifestStrategies maybeConfig
+
+      allProjectTypes :: [DiscoveredProjectType]
+      allProjectTypes = enumFromTo minBound maxBound
+
+      allTargetFilters = map (TypeTarget . toText) allProjectTypes
+      excludeManifestStrategiesFilters = AllFilters (comboInclude [] []) (comboExclude allTargetFilters [])
+
+      resolveFilters filters True =
+        let logMessage =
+              if isMempty filters
+                then
+                  logInfo "Excluding manifest strategies in locating targets"
+                else
+                  logWarn "Ignoring explicit filters because \"exclude manifest strategies\" is set to true"
+         in excludeManifestStrategiesFilters <$ logMessage
+      resolveFilters filters False = pure filters
+
+  case (isMempty cliFilters && not cliExcludeManifestStrategies, isMempty cfgFileFilters && not cfgFileExcludeManifestStrategies) of
     (True, True) -> pure mempty
-    (False, True) -> pure cliFilters
-    (True, False) -> pure cfgFileFilters
+    (False, True) -> resolveFilters cliFilters cliExcludeManifestStrategies
+    (True, False) -> resolveFilters cfgFileFilters cfgFileExcludeManifestStrategies
     (False, False) ->
-      cliFilters
-        <$ logWarn "Overriding config file filters with command-line filters"
+      resolveFilters cliFilters cliExcludeManifestStrategies
+        <* logWarn "Overriding config file filters with command-line filters"
 
-collectCLIFilters :: (Has Logger sig m) => AnalyzeCliOpts -> m AllFilters
+collectConfigExcludeManifestStrategies :: ConfigFile -> Bool
+collectConfigExcludeManifestStrategies configFile = maybe False targetsExcludeManifestStrategies (configTargets configFile)
+
+collectCLIFilters :: AnalyzeCliOpts -> AllFilters
 collectCLIFilters AnalyzeCliOpts{..} =
-  if fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
-    then AllFilters (comboInclude [] []) (comboExclude allTargetFilters []) <$ logInfo "Excluding manifest-based strategies in locating targets"
-    else
-      pure $
-        AllFilters
-          (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
-          (comboExclude analyzeExcludeTargets analyzeExcludePaths)
-  where
-    allProjectTypes :: [DiscoveredProjectType]
-    allProjectTypes = enumFromTo minBound maxBound
-
-    allTargetFilters = map (TypeTarget . toText) allProjectTypes
+  AllFilters
+    (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
+    (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
 collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType, analyzePathDependencies = shouldAnalyzePathDependencies} =
