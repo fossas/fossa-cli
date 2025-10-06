@@ -43,7 +43,6 @@ import App.Fossa.Config.Common (
   baseDirArg,
   collectApiOpts,
   collectBaseDir,
-  collectConfigExcludeManifestStrategies,
   collectConfigFileFilters,
   collectConfigMavenScopeFilters,
   collectRevisionData',
@@ -59,6 +58,7 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigGrepEntry (..),
+  ConfigTargets (targetsExcludeManifestStrategies),
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
