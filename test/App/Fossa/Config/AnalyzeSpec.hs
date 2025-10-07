@@ -15,7 +15,7 @@ import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import Data.Text (Text)
 import Discovery.Filters (AllFilters (..), combinedTargets)
 import Path (mkAbsFile)
-import Test.Effect (it', shouldBe')
+import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Types (TargetFilter (TypeTarget))
 
@@ -73,7 +73,7 @@ spec = do
         filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
         case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
           ([], excludedTargets) -> length excludedTargets `shouldBe'` numberOfStrategies
-          _ -> error ("Incorrect filters. Got " ++ show filters)
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
 
       it' "should set correct filters when only filter is set" $ do
         let cfgFile = Nothing
@@ -81,7 +81,15 @@ spec = do
         filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
         case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
           (includedTargets, []) -> includedTargets `shouldBe'` [TypeTarget "npm"]
-          _ -> error ("Incorrect filters. Got " ++ show filters)
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
+
+      it' "should have --exclude-manifest-strategies override only/exclude filters" $ do
+        let cfgFile = Nothing
+        cliOpts <- parseArgString cliParser "--exclude-manifest-strategies --only-target npm"
+        filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
+        case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
+          ([], excludedTargets) -> length excludedTargets `shouldBe'` numberOfStrategies
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
 
     describe "only config file" $ do
       it' "should set correct filters when targets.excludeManifestStrategies is set" $ do
@@ -90,7 +98,7 @@ spec = do
         filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
         case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
           ([], excludedTargets) -> length excludedTargets `shouldBe'` numberOfStrategies
-          _ -> error ("Incorrect filters. Got " ++ show filters)
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
 
       it' "should set correct filters when targets.only is set" $ do
         let cfgFile = Just $ configFileWithTargets ["npm"] [] False
@@ -98,4 +106,29 @@ spec = do
         filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
         case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
           (includedTargets, []) -> includedTargets `shouldBe'` [TypeTarget "npm"]
-          _ -> error ("Incorrect filters. Got " ++ show filters)
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
+
+      it' "should have targets.excludeManifestStrategies override only/exclude filters" $ do
+        let cfgFile = Just $ configFileWithTargets ["npm"] [] True
+        cliOpts <- parseArgString cliParser ""
+        filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
+        case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
+          ([], excludedTargets) -> length excludedTargets `shouldBe'` numberOfStrategies
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
+
+    describe "config file and CLI options" $ do
+      it' "should ignore config file specifying targets.excludeManifestStrategies and just use CLI options" $ do
+        let cfgFile = Just $ configFileWithTargets [] [] True
+        cliOpts <- parseArgString cliParser "--only-target npm"
+        filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
+        case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
+          (includedTargets, []) -> includedTargets `shouldBe'` [TypeTarget "npm"]
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
+
+      it' "should ignore config file specifying targets.only and just use CLI options" $ do
+        let cfgFile = Just $ configFileWithTargets ["npm"] [] False
+        cliOpts <- parseArgString cliParser "--only-target gomod"
+        filters <- filterSet <$> mergeOpts cfgFile envVars cliOpts
+        case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
+          (includedTargets, []) -> includedTargets `shouldBe'` [TypeTarget "gomod"]
+          _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
