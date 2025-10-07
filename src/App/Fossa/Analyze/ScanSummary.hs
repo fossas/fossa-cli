@@ -15,12 +15,10 @@ import App.Fossa.Analyze.Types (
   AnalysisScanResult (AnalysisScanResult),
   DiscoveredProjectIdentifier (dpiProjectPath, dpiProjectType),
   DiscoveredProjectScan (..),
-  SourceUnitReachabilityAttempt (..),
  )
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (StaticOnly))
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
-import App.Fossa.Reachability.Types (SourceUnitReachability (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
@@ -193,7 +191,7 @@ renderDefaultSkippedTargetHelp =
   ]
 
 summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dynamicLinkingDeps lernie reachabilityAttempts) =
+summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dynamicLinkingDeps lernie _) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -217,13 +215,8 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dy
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
           <> summarizeSrcUnit "Custom-License Search" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
-          <> reachabilitySummary
           <> [""]
   where
-    reachabilitySummary =
-      if null reachabilityAttempts
-        then []
-        else summarizeReachability "Reachability analysis" reachabilityAttempts
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
     projects = sort dps
     totalScanCount =
@@ -336,30 +329,10 @@ summarizeProjectScan (Scanned _ (Success wg pr)) = successColorCoded wg $ render
 summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueFilter
 summarizeProjectScan (SkippedDueToDefaultFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueDefaultFilter
 
-summarizeReachability ::
-  Doc AnsiStyle ->
-  [SourceUnitReachabilityAttempt] ->
-  [Doc AnsiStyle]
-summarizeReachability analysisHeader unitAttempts =
-  [analysisHeader] <> itemize ("  *" <> listSymbol) summarizeReachabilityAttempt unitAttempts
-
-summarizeReachabilityAttempt :: SourceUnitReachabilityAttempt -> Doc AnsiStyle
-summarizeReachabilityAttempt (SourceUnitReachabilityFound _ (Success wg unit)) = successColorCoded wg $ renderReachabilityResult unit <> renderSucceeded wg
-summarizeReachabilityAttempt (SourceUnitReachabilityFound dpi (Failure _ _)) = failColorCoded $ renderDiscoveredProjectIdentifier dpi <> renderFailed
-summarizeReachabilityAttempt (SourceUnitReachabilitySkippedPartialGraph dpi) = renderDiscoveredProjectIdentifier dpi <> skippedReachabilityDueToPartialGraph
-summarizeReachabilityAttempt (SourceUnitReachabilitySkippedNotSupported dpi) = renderDiscoveredProjectIdentifier dpi <> skippedReachabilityDueToNotSupported
-summarizeReachabilityAttempt (SourceUnitReachabilitySkippedMissingDependencyAnalysis dpi) = renderDiscoveredProjectIdentifier dpi <> skippedReachabilityDueToMissingAnalysis
-
 ---------- Rendering Helpers
 
 logInfoVsep :: (Has Logger sig m) => [Doc AnsiStyle] -> m ()
 logInfoVsep = traverse_ logInfo
-
-renderReachabilityResult :: SourceUnitReachability -> Doc AnsiStyle
-renderReachabilityResult unit = annotate bold projectTypeDoc <> pathDoc
-  where
-    pathDoc = " project in " <> viaShow (srcUnitManifest unit)
-    projectTypeDoc = pretty $ srcUnitType unit
 
 renderDiscoveredProjectIdentifier :: DiscoveredProjectIdentifier -> Doc AnsiStyle
 renderDiscoveredProjectIdentifier dpi = renderProjectPathAndType (dpiProjectType dpi) (dpiProjectPath dpi)
@@ -387,15 +360,6 @@ skippedDueFilter = ": skipped (exclusion filters)"
 
 skippedDueDefaultFilter :: Doc AnsiStyle
 skippedDueDefaultFilter = ": skipped (default filters)"
-
-skippedReachabilityDueToPartialGraph :: Doc AnsiStyle
-skippedReachabilityDueToPartialGraph = ": skipped (partial graph)"
-
-skippedReachabilityDueToNotSupported :: Doc AnsiStyle
-skippedReachabilityDueToNotSupported = ": skipped (not supported)"
-
-skippedReachabilityDueToMissingAnalysis :: Doc AnsiStyle
-skippedReachabilityDueToMissingAnalysis = ": skipped (no dependency analysis)"
 
 renderSucceeded :: [EmittedWarn] -> Doc AnsiStyle
 renderSucceeded ew =
@@ -442,7 +406,6 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
               , renderSourceUnit "fossa-deps analysis" manualDeps
               , renderSourceUnit "Custom-license scan & Keyword Search" lernieResults
               ]
-            ++ renderReachability
 
   tmpDir <- sendIO getTempDir
   sendIO $ TIO.writeFile (fromAbsFile $ tmpDir </> scanSummaryFileName) doc
@@ -460,14 +423,6 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
     renderDiscoveredProjectScanResult (Scanned dpi (Failure ws eg)) = Just $ renderFailure ws eg $ summarizeProjectScan (Scanned dpi (Failure ws eg))
     renderDiscoveredProjectScanResult (Scanned dpi (Success ws res)) = renderSuccess ws $ summarizeProjectScan (Scanned dpi (Success ws res))
     renderDiscoveredProjectScanResult _ = Nothing
-
-    renderReachability :: [Doc AnsiStyle]
-    renderReachability = ["Reachability"] <> (mapMaybe renderReachabilityDetailed reachabilityAttempts)
-
-    renderReachabilityDetailed :: SourceUnitReachabilityAttempt -> Maybe (Doc AnsiStyle)
-    renderReachabilityDetailed (SourceUnitReachabilityFound _ (Success wg unit)) = renderSuccess wg $ renderReachabilityResult unit <> renderSucceeded wg
-    renderReachabilityDetailed (SourceUnitReachabilityFound dpi (Failure ws eg)) = Just $ renderFailure ws eg $ renderDiscoveredProjectIdentifier dpi <> renderFailed
-    renderReachabilityDetailed res = Just $ summarizeReachabilityAttempt res
 
 scanSummaryFileName :: Path Rel File
 scanSummaryFileName = $(mkRelFile "fossa-analyze-scan-summary.txt")
