@@ -201,20 +201,3 @@ Organization: (your orgId) does not support reachability! skipping reachability 
 ```
 
 To enable, `reachability` please contact your FOSSA account manager, or [FOSSA support](https://support.fossa.com).
-
-
-3. How do I know if my project was analyzed for reachability by FOSSA CLI?
-
-FOSSA CLI will include scan summary for reachability analysis, as part of `fossa analyze` output.
-
-```text
-Reachability analysis
-  ** maven project in "/Users/dev/code/example-projects/reachability/maven/vuln-function-used/": succeeded
-```
-
-| Summary                          | Meaning                                                                      |
-|----------------------------------|------------------------------------------------------------------------------|
-| succeeded                        | Reachability analysis was successful                                         |
-| skipped (partial graph)          | Project has partial dependency graph (e.g. missing transitive dependencies)  |
-| skipped (not supported)          | Project is not supported for reachability analysis                           |
-| skipped (no dependency analysis) | Project's dependencies were not analyzed, so reachability cannot be computed |
