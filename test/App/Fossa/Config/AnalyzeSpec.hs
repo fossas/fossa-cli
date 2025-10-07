@@ -18,7 +18,7 @@ import Discovery.Filters (AllFilters (..), combinedTargets)
 import Path (Abs, File, Path, mkAbsFile)
 import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
-import Types (TargetFilter (TypeTarget))
+import Types (DiscoveredProjectType, TargetFilter (TypeTarget))
 
 envVars :: EnvVars
 envVars =
@@ -63,7 +63,10 @@ configFileWithTargets only exclude excludeManifestStrategies =
     }
 
 numberOfStrategies :: Int
-numberOfStrategies = 47
+numberOfStrategies = length allProjectTypes
+  where
+    allProjectTypes :: [DiscoveredProjectType]
+    allProjectTypes = enumFromTo minBound maxBound
 
 spec :: Spec
 spec = do
