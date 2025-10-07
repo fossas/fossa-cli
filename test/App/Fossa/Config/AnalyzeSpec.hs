@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Config.AnalyzeSpec (spec) where
@@ -14,7 +15,7 @@ import App.Fossa.Config.Utils (itShouldFailWhenLabelsExceedFive, itShouldLoadFro
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import Data.Text (Text)
 import Discovery.Filters (AllFilters (..), combinedTargets)
-import Path (mkAbsFile)
+import Path (Abs, File, Path, mkAbsFile)
 import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Types (TargetFilter (TypeTarget))
@@ -29,6 +30,13 @@ envVars =
     , envDockerHost = Nothing
     , envCmdOverrides = mempty
     }
+
+configPath :: Path Abs File
+#ifdef mingw32_HOST_OS
+configPath = $(mkAbsFile "C:/.fossa.yml")
+#else
+configPath = $(mkAbsFile "/tmp/.fossa.yml")
+#endif
 
 configFileWithTargets :: [Text] -> [Text] -> Bool -> ConfigFile
 configFileWithTargets only exclude excludeManifestStrategies =
@@ -51,7 +59,7 @@ configFileWithTargets only exclude excludeManifestStrategies =
     , configKeywordSearch = Nothing
     , configReachability = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
-    , configConfigFilePath = $(mkAbsFile "/test/fake.yml")
+    , configConfigFilePath = configPath
     }
 
 numberOfStrategies :: Int
