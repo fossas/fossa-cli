@@ -82,7 +82,6 @@ import App.Types (
   ProjectMetadata (projectLabel),
   ProjectRevision,
  )
-import Codec.RPM.Tags (Tag (Exclude))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
