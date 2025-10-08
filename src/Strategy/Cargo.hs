@@ -48,7 +48,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
 import Data.String.Conversion (toString, toText)
-import Data.Text (Text)
+import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Diag.Diagnostic (renderDiagnostic)
@@ -93,7 +93,7 @@ import Text.Megaparsec.Char (char, digitChar, space)
 import Toml.Schema qualified
 import Types (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (CargoType),
+  DepType (CargoType, GitType, PathType),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
@@ -374,7 +374,7 @@ toDependency pkg =
   foldr
     applyLabel
     Dependency
-      { dependencyType = CargoType
+      { dependencyType = depType
       , dependencyName = pkgIdName pkg
       , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
       , dependencyLocations = []
@@ -384,6 +384,14 @@ toDependency pkg =
   where
     applyLabel :: CargoLabel -> Dependency -> Dependency
     applyLabel (CargoDepKind env) = insertEnvironment env
+
+    getDepTypeString :: Text.Text -> Text.Text
+    getDepTypeString src = fst $ breakOn "+" src
+
+    depType = case getDepTypeString $ pkgIdSource pkg of
+      "(path" -> PathType
+      "(git" -> GitType
+      _ -> CargoType
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
