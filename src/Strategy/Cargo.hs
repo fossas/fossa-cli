@@ -375,7 +375,7 @@ toDependency pkg =
     applyLabel
     Dependency
       { dependencyType = depType
-      , dependencyName = pkgIdName pkg
+      , dependencyName = depName
       , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
       , dependencyLocations = []
       , dependencyEnvironments = mempty
@@ -385,15 +385,25 @@ toDependency pkg =
     applyLabel :: CargoLabel -> Dependency -> Dependency
     applyLabel (CargoDepKind env) = insertEnvironment env
 
-    getDepTypeString :: Text.Text -> Text.Text
-    getDepTypeString src = fst $ breakOn ":" src
+    parseDepKindAndProtocol :: Text.Text -> (Text.Text, Text.Text)
+    parseDepKindAndProtocol src = case breakOn "+" $ fst $ breakOn ":" src of
+      (protocol, "") -> ("", protocol)
+      (kind, protocol) -> (kind, protocol)
 
-    depType = case getDepTypeString $ pkgIdSource pkg of
-      "file" -> UnresolvedPathType
-      "path+file" -> UnresolvedPathType
-      "ssh" -> GitType
-      "git+ssh" -> GitType
+    depType = case parseDepKindAndProtocol $ pkgIdSource pkg of
+      ("path", _) -> UnresolvedPathType
+      (_, "file") -> UnresolvedPathType
+      ("git", _) -> GitType
+      (_, "ssh") -> GitType
       _ -> CargoType
+
+    depName =
+      let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
+          sourceUrlWithoutQuery = fst $ breakOn "?" sourceUrl
+       in case depType of
+            UnresolvedPathType -> sourceUrlWithoutQuery
+            GitType -> sourceUrlWithoutQuery
+            _ -> pkgIdName pkg
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
