@@ -89,7 +89,7 @@ import Text.Megaparsec (
   takeWhile1P,
   try,
  )
-import Text.Megaparsec.Char (char, digitChar, space)
+import Text.Megaparsec.Char (char, digitChar, space, string)
 import Toml.Schema qualified
 import Types (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -369,6 +369,9 @@ instance ToDiagnostic FailedToRetrieveCargoMetadata where
     let header = "Could not retrieve machine readable cargo metadata for: " <> toText path
     Errata (Just header) [] Nothing
 
+type PackageIdSourceKind = Text.Text
+type PackageIdSourceProtocol = Text.Text
+
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =
   foldr
@@ -385,8 +388,11 @@ toDependency pkg =
     applyLabel :: CargoLabel -> Dependency -> Dependency
     applyLabel (CargoDepKind env) = insertEnvironment env
 
-    parseDepKindAndProtocol :: Text.Text -> (Text.Text, Text.Text)
-    parseDepKindAndProtocol src = case breakOn "+" $ fst $ breakOn ":" src of
+    -- For example:
+    -- path+file:///some/file/path -> ("path", "file")
+    -- file:///some/file/path      -> ("", "file")
+    parseDepKindAndProtocol :: Text.Text -> (PackageIdSourceKind, PackageIdSourceProtocol)
+    parseDepKindAndProtocol src = case breakOn "+" . Text.takeWhile (/= ':') $ src of
       (protocol, "") -> ("", protocol)
       (kind, protocol) -> (kind, protocol)
 
@@ -399,6 +405,8 @@ toDependency pkg =
       -- (_, "ssh") -> GitType
       _ -> CargoType
 
+    -- For a path dependency, use the path as the package name. For example:
+    -- path+file:///some/file/path -> /some/file/path
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of
@@ -437,10 +445,8 @@ type PkgSpecParser a = Parsec Void Text a
 -- | Parser for pre cargo v1.77.0 package ids.
 oldPkgIdParser :: PkgSpecParser PackageId
 oldPkgIdParser = do
-  name <- takeWhile1P (Just "Package name") (/= ' ')
-  void $ char ' '
-  version <- takeWhile1P (Just "Package version") (/= ' ')
-  void $ char ' ' >> char '('
+  name <- takeWhile1P (Just "Package name") (/= ' ') <* char ' '
+  version <- takeWhile1P (Just "Package version") (/= ' ') <* string " ("
   source <- takeWhile1P (Just "Package source") (/= ')')
   pure $
     PackageId
@@ -534,4 +540,4 @@ newPkgIdParser = eatSpaces (try longSpec <|> simplePkgSpec')
 parsePkgId :: MonadFail m => Text.Text -> m PackageId
 parsePkgId t = either fail pure $ first errorBundlePretty parseResult
   where
-    parseResult = parse (try oldPkgIdParser <|> try newPkgIdParser) "Cargo package spec" t
+    parseResult = parse (try oldPkgIdParser <|> newPkgIdParser) "Cargo package spec" t
