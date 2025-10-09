@@ -40,14 +40,14 @@ import Data.Aeson.Types (
   (.:),
   (.:?),
  )
-import Data.Bifunctor (bimap, first)
+import Data.Bifunctor (first)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
@@ -93,7 +93,7 @@ import Text.Megaparsec.Char (char, digitChar, space)
 import Toml.Schema qualified
 import Types (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (CargoType, GitType, PathType),
+  DepType (CargoType, GitType, UnresolvedPathType),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
@@ -386,11 +386,13 @@ toDependency pkg =
     applyLabel (CargoDepKind env) = insertEnvironment env
 
     getDepTypeString :: Text.Text -> Text.Text
-    getDepTypeString src = fst $ breakOn "+" src
+    getDepTypeString src = fst $ breakOn ":" src
 
     depType = case getDepTypeString $ pkgIdSource pkg of
-      "(path" -> PathType
-      "(git" -> GitType
+      "file" -> UnresolvedPathType
+      "path+file" -> UnresolvedPathType
+      "ssh" -> GitType
+      "git+ssh" -> GitType
       _ -> CargoType
 
 -- Possible values here are "build", "dev", and null.
@@ -423,17 +425,26 @@ buildGraph meta = stripRoot $
 type PkgSpecParser a = Parsec Void Text a
 
 -- | Parser for pre cargo v1.77.0 package ids.
-oldPkgIdParser :: Text -> Either Text PackageId
-oldPkgIdParser t =
-  case Text.splitOn " " t of
-    [a, b, c] -> Right $ PackageId a b c
-    _ -> Left $ "malformed Package ID: " <> t
+oldPkgIdParser :: PkgSpecParser PackageId
+oldPkgIdParser = do
+  name <- takeWhile1P (Just "Package name") (/= ' ')
+  void $ char ' '
+  version <- takeWhile1P (Just "Package version") (/= ' ')
+  void $ char ' ' >> char '('
+  source <- takeWhile1P (Just "Package source") (/= ')')
+  pure $
+    PackageId
+      { pkgIdName = name
+      , pkgIdVersion = version
+      , pkgIdSource = source
+      }
 
 type PkgName = Text
 type PkgVersion = Text
 
-parsePkgSpec :: PkgSpecParser PackageId
-parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
+-- | Parser for post cargo v1.77.0 package ids
+newPkgIdParser :: PkgSpecParser PackageId
+newPkgIdParser = eatSpaces (try longSpec <|> simplePkgSpec')
   where
     eatSpaces m = space *> m <* space
 
@@ -511,12 +522,6 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
 --
 -- Package Spec: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 parsePkgId :: MonadFail m => Text.Text -> m PackageId
-parsePkgId t = either fail pure $ oldPkgIdParser' t <> parseNewSpec
+parsePkgId t = either fail pure $ first errorBundlePretty parseResult
   where
-    oldPkgIdParser' = first toString . oldPkgIdParser
-
-    parseNewSpec :: Either String PackageId
-    parseNewSpec =
-      bimap errorBundlePretty (\p -> p{pkgIdSource = "(" <> p.pkgIdSource <> ")"})
-        . parse parsePkgSpec "Cargo Package Spec"
-        $ t
+    parseResult = parse (try oldPkgIdParser <|> try newPkgIdParser) "Cargo package spec" t
