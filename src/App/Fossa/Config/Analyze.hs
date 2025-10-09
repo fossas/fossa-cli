@@ -586,8 +586,8 @@ collectFilters maybeConfig cliOpts@AnalyzeCliOpts{..} = do
   let cliFilters = collectCLIFilters cliOpts
       cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
 
-      cliExcludeManifestStrategies = fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
-      cfgFileExcludeManifestStrategies = maybe False collectConfigExcludeManifestStrategies maybeConfig
+      cliExcludeManifestStrategiesFlag = fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
+      cfgFileExcludeManifestStrategiesFlag = maybe False collectConfigExcludeManifestStrategies maybeConfig
 
       allProjectTypes :: [DiscoveredProjectType]
       allProjectTypes = enumFromTo minBound maxBound
@@ -605,12 +605,12 @@ collectFilters maybeConfig cliOpts@AnalyzeCliOpts{..} = do
          in excludeManifestStrategiesFilters <$ logMessage
       resolveFilters filters False = pure filters
 
-  case (isMempty cliFilters && not cliExcludeManifestStrategies, isMempty cfgFileFilters && not cfgFileExcludeManifestStrategies) of
+  case (isMempty cliFilters && not cliExcludeManifestStrategiesFlag, isMempty cfgFileFilters && not cfgFileExcludeManifestStrategiesFlag) of
     (True, True) -> pure mempty
-    (False, True) -> resolveFilters cliFilters cliExcludeManifestStrategies
-    (True, False) -> resolveFilters cfgFileFilters cfgFileExcludeManifestStrategies
+    (False, True) -> resolveFilters cliFilters cliExcludeManifestStrategiesFlag
+    (True, False) -> resolveFilters cfgFileFilters cfgFileExcludeManifestStrategiesFlag
     (False, False) ->
-      resolveFilters cliFilters cliExcludeManifestStrategies
+      resolveFilters cliFilters cliExcludeManifestStrategiesFlag
         <* logWarn "Overriding config file filters with command-line filters"
 
 collectConfigExcludeManifestStrategies :: ConfigFile -> Bool
