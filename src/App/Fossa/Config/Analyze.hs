@@ -58,6 +58,7 @@ import App.Fossa.Config.Common (
 import App.Fossa.Config.ConfigFile (
   ConfigFile (..),
   ConfigGrepEntry (..),
+  ConfigTargets (targetsExcludeManifestStrategies),
   ConfigTelemetryScope (NoTelemetry),
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
@@ -106,7 +107,7 @@ import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScope
 import Effect.Exec (
   Exec,
  )
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn, pretty, vsep)
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logInfo, logWarn, pretty, vsep)
 import Effect.ReadFS (ReadFS, getCurrentDir, resolveDir)
 import GHC.Generics (Generic)
 import Options.Applicative (
@@ -131,7 +132,7 @@ import Path.Extra (SomePath)
 import Prettyprinter (Doc, annotate, indent)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), color)
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
-import Types (ArchiveUploadType (..), LicenseScanPathFilters (..), TargetFilter)
+import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilters (..), TargetFilter (..))
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
@@ -149,6 +150,7 @@ data NoDiscoveryExclusion = NoDiscoveryExclusion deriving (Generic)
 data UnpackArchives = UnpackArchives deriving (Generic)
 data VSIAnalysis = VSIAnalysis deriving (Generic)
 data WithoutDefaultFilters = WithoutDefaultFilters deriving (Generic)
+data ExcludeManifestStrategies = ExcludeManifestStrategies deriving (Generic)
 
 newtype IATAssertion = IATAssertion {unIATAssertion :: Maybe (Path Abs Dir)} deriving (Eq, Ord, Show, Generic)
 newtype DynamicLinkInspect = DynamicLinkInspect {unDynamicLinkInspect :: Maybe SomePath} deriving (Eq, Ord, Show, Generic)
@@ -178,6 +180,9 @@ instance ToJSON IATAssertion where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON DynamicLinkInspect where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON ExcludeManifestStrategies where
   toEncoding = genericToEncoding defaultOptions
 
 data VSIModeOptions = VSIModeOptions
@@ -218,6 +223,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeExcludeTargets :: [TargetFilter]
   , analyzeOnlyPaths :: [Path Rel Dir]
   , analyzeExcludePaths :: [Path Rel Dir]
+  , analyzeExcludeManifestStrategies :: Flag ExcludeManifestStrategies
   , analyzeVSIMode :: Flag VSIAnalysis
   , analyzeBinaryDiscoveryMode :: Flag BinaryDiscovery
   , analyzeAssertMode :: Maybe (FilePath)
@@ -329,6 +335,7 @@ cliParser =
     <*> many (option (eitherReader targetOpt) (applyFossaStyle <> long "exclude-target" <> stringToHelpDoc "Exclude these targets from scanning. See `targets.exclude` in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (applyFossaStyle <> long "only-path" <> stringToHelpDoc "Only scan these paths. See `paths.only` in the fossa.yml spec." <> metavar "PATH"))
     <*> many (option (eitherReader pathOpt) (applyFossaStyle <> long "exclude-path" <> stringToHelpDoc "Exclude these paths from scanning. See `paths.exclude` in the fossa.yml spec." <> metavar "PATH"))
+    <*> flagOpt ExcludeManifestStrategies (applyFossaStyle <> long "exclude-manifest-strategies" <> stringToHelpDoc "Exclude all manifest-based strategies for finding targets.")
     <*> vsiEnableOpt
     <*> flagOpt BinaryDiscovery (applyFossaStyle <> long "experimental-enable-binary-discovery" <> stringToHelpDoc "Reports binary files as unlicensed dependencies")
     <*> optional (strOption (applyFossaStyle <> long "experimental-link-project-binary" <> metavar "DIR" <> stringToHelpDoc "Links output binary files to this project in FOSSA"))
@@ -575,16 +582,39 @@ collectFilters ::
   Maybe ConfigFile ->
   AnalyzeCliOpts ->
   m AllFilters
-collectFilters maybeConfig cliOpts = do
+collectFilters maybeConfig cliOpts@AnalyzeCliOpts{..} = do
   let cliFilters = collectCLIFilters cliOpts
       cfgFileFilters = maybe mempty collectConfigFileFilters maybeConfig
-  case (isMempty cliFilters, isMempty cfgFileFilters) of
+
+      cliExcludeManifestStrategiesFlag = fromFlag ExcludeManifestStrategies analyzeExcludeManifestStrategies
+      cfgFileExcludeManifestStrategiesFlag = maybe False collectConfigExcludeManifestStrategies maybeConfig
+
+      allProjectTypes :: [DiscoveredProjectType]
+      allProjectTypes = enumFromTo minBound maxBound
+
+      allTargetFilters = map (TypeTarget . toText) allProjectTypes
+      excludeManifestStrategiesFilters = AllFilters (comboInclude [] []) (comboExclude allTargetFilters [])
+
+      resolveFilters filters True =
+        let logMessage =
+              if isMempty filters
+                then
+                  logInfo "Excluding manifest strategies in locating targets"
+                else
+                  logWarn "Ignoring explicit filters because \"exclude manifest strategies\" is set to true"
+         in excludeManifestStrategiesFilters <$ logMessage
+      resolveFilters filters False = pure filters
+
+  case (isMempty cliFilters && not cliExcludeManifestStrategiesFlag, isMempty cfgFileFilters && not cfgFileExcludeManifestStrategiesFlag) of
     (True, True) -> pure mempty
-    (False, True) -> pure cliFilters
-    (True, False) -> pure cfgFileFilters
+    (False, True) -> resolveFilters cliFilters cliExcludeManifestStrategiesFlag
+    (True, False) -> resolveFilters cfgFileFilters cfgFileExcludeManifestStrategiesFlag
     (False, False) ->
-      cliFilters
-        <$ logWarn "Overriding config file filters with command-line filters"
+      resolveFilters cliFilters cliExcludeManifestStrategiesFlag
+        <* logWarn "Overriding config file filters with command-line filters"
+
+collectConfigExcludeManifestStrategies :: ConfigFile -> Bool
+collectConfigExcludeManifestStrategies configFile = maybe False targetsExcludeManifestStrategies (configTargets configFile)
 
 collectCLIFilters :: AnalyzeCliOpts -> AllFilters
 collectCLIFilters AnalyzeCliOpts{..} =
