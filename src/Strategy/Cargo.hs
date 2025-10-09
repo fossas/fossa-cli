@@ -93,7 +93,7 @@ import Text.Megaparsec.Char (char, digitChar, space)
 import Toml.Schema qualified
 import Types (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (CargoType, GitType, UnresolvedPathType),
+  DepType (CargoType, UnresolvedPathType),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
@@ -393,16 +393,16 @@ toDependency pkg =
     depType = case parseDepKindAndProtocol $ pkgIdSource pkg of
       ("path", _) -> UnresolvedPathType
       (_, "file") -> UnresolvedPathType
-      ("git", _) -> GitType
-      (_, "ssh") -> GitType
+      -- Using  a git type is probably more correct, but the git type doesn't have the ability
+      -- to track the package name within a repo, and this has poor support for monorepos.
+      -- ("git", _) -> GitType
+      -- (_, "ssh") -> GitType
       _ -> CargoType
 
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
-          sourceUrlWithoutQuery = fst $ breakOn "?" sourceUrl
        in case depType of
-            UnresolvedPathType -> sourceUrlWithoutQuery
-            GitType -> sourceUrlWithoutQuery
+            UnresolvedPathType -> sourceUrl
             _ -> pkgIdName pkg
 
 -- Possible values here are "build", "dev", and null.

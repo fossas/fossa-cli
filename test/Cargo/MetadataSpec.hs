@@ -95,7 +95,7 @@ barPathNode :: ResolveNode
 barPathNode = ResolveNode barPathDepId []
 
 barDep :: Dependency
-barDep = mkDep "github.com/user/bar" "2.0.0" GitType [EnvProduction]
+barDep = mkDep "bar" "2.0.0" CargoType [EnvProduction]
 
 jfmtNodePost1_77 :: ResolveNode
 jfmtNodePost1_77 = ResolveNode jfmtId [ansiTermNodeDep, fooNodeDep, barNodeDep]
