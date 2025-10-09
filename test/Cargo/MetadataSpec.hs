@@ -86,7 +86,7 @@ fooPathNode :: ResolveNode
 fooPathNode = ResolveNode fooPathDepId []
 
 fooDep :: Dependency
-fooDep = mkDep "foo" "*" UnresolvedPathType [EnvProduction]
+fooDep = mkDep "/path/to/my/project/foo" "*" UnresolvedPathType [EnvProduction]
 
 barPathDepId :: PackageId
 barPathDepId = PackageId "bar" "2.0.0" "git+ssh://github.com/user/bar"
@@ -95,7 +95,7 @@ barPathNode :: ResolveNode
 barPathNode = ResolveNode barPathDepId []
 
 barDep :: Dependency
-barDep = mkDep "bar" "2.0.0" GitType [EnvProduction]
+barDep = mkDep "github.com/user/bar" "2.0.0" GitType [EnvProduction]
 
 jfmtNodePost1_77 :: ResolveNode
 jfmtNodePost1_77 = ResolveNode jfmtId [ansiTermNodeDep, fooNodeDep, barNodeDep]
