@@ -34,6 +34,7 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Foldable (for_, traverse_)
+import Data.List qualified as List
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -61,6 +62,7 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
   LabeledGrapher,
+  deep,
   direct,
   edge,
   label,
@@ -160,7 +162,7 @@ pipenvGraphCmd =
 
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
 buildGraph lock maybeDeps = run . withLabeling toDependency $ do
-  buildNodes lock
+  buildNodes lock maybeDeps
   traverse_ buildEdges maybeDeps
   where
     toDependency :: PipPkg -> Set PipLabel -> Dependency
@@ -193,8 +195,8 @@ data PipLabel
   | PipEnvironment DepEnvironment
   deriving (Eq, Ord, Show)
 
-buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
-buildNodes PipfileLock{..} = do
+buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> Maybe [PipenvGraphDep] -> m ()
+buildNodes PipfileLock{..} maybeGraphDeps = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = Map.fromList . map (\v -> (ix v, v))
 
@@ -210,10 +212,11 @@ buildNodes PipfileLock{..} = do
       Text -> -- dep name
       PipfileDep ->
       m ()
-    addWithEnv env sourcesMap depName dep = do
-      let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
-      -- TODO: reachable instead of direct
-      direct pkg
+    addWithEnv env sourcesMap name dep = do
+      let pkg = PipPkg name (Text.drop 2 <$> fileDepVersion dep)
+          isDirectDep = List.any (\d -> depName d == name)
+      -- If we don't have graph deps, we're unable to distinguish between direct and transitive dependencies
+      maybe direct (\g -> if isDirectDep g then direct else deep) maybeGraphDeps pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
