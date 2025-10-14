@@ -54,6 +54,7 @@ Supported dependency types:
 - `hackage` - Haskell dependencies found at [Hackage](https://hackage.haskell.org/).
 - `hex` - Erlang and Elixir dependencies that are found at [Hex.pm](https://hex.pm/).
 - `maven` - Maven dependencies that can be found at many different sources. Specified as `name: javax.xml.bind:jaxb-api` where the convention is `groupId:artifactId`.
+<!-- markdown-link-check-disable-next-line -->
 - `npm` - Javascript dependencies found at [npmjs.com](https://www.npmjs.com/).
 - `nuget` - .NET dependencies found at [NuGet.org](https://www.nuget.org/).
 - `paket` - .NET dependencies found at [fsprojects.github.io/Paket/](https://fsprojects.github.io/Paket/).

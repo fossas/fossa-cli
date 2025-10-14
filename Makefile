@@ -20,6 +20,9 @@ build: build-cargo
 build-cargo:
 	cargo build --release
 
+clean:
+	cabal clean && cargo clean
+
 # Runs units tests.
 # To run a set of unit tests matching a specific value, use ARGS
 # For example, to only run tests whose name matches the wildcard '*Node.PackageLockV3*':
@@ -185,4 +188,4 @@ ci-shell:
 bench:
 	cabal bench --benchmark-options '+RTS -T'
 
-.PHONY: build-cli test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo
+.PHONY: build-cli test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo clean

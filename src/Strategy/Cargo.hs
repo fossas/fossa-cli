@@ -40,15 +40,15 @@ import Data.Aeson.Types (
   (.:),
   (.:?),
  )
-import Data.Bifunctor (bimap, first)
+import Data.Bifunctor (first)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toString, toText)
-import Data.Text (Text)
+import Data.String.Conversion (toText)
+import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Diag.Diagnostic (renderDiagnostic)
@@ -89,11 +89,11 @@ import Text.Megaparsec (
   takeWhile1P,
   try,
  )
-import Text.Megaparsec.Char (char, digitChar, space)
+import Text.Megaparsec.Char (char, digitChar, space, string)
 import Toml.Schema qualified
 import Types (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (CargoType),
+  DepType (CargoType, UnresolvedPathType),
   Dependency (..),
   DependencyResults (..),
   DiscoveredProject (..),
@@ -369,13 +369,16 @@ instance ToDiagnostic FailedToRetrieveCargoMetadata where
     let header = "Could not retrieve machine readable cargo metadata for: " <> toText path
     Errata (Just header) [] Nothing
 
+type PackageIdSourceKind = Text.Text
+type PackageIdSourceProtocol = Text.Text
+
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =
   foldr
     applyLabel
     Dependency
-      { dependencyType = CargoType
-      , dependencyName = pkgIdName pkg
+      { dependencyType = depType
+      , dependencyName = depName
       , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
       , dependencyLocations = []
       , dependencyEnvironments = mempty
@@ -384,6 +387,31 @@ toDependency pkg =
   where
     applyLabel :: CargoLabel -> Dependency -> Dependency
     applyLabel (CargoDepKind env) = insertEnvironment env
+
+    -- For example:
+    -- path+file:///some/file/path -> ("path", "file")
+    -- file:///some/file/path      -> ("", "file")
+    parseDepKindAndProtocol :: Text.Text -> (PackageIdSourceKind, PackageIdSourceProtocol)
+    parseDepKindAndProtocol src = case breakOn "+" . Text.takeWhile (/= ':') $ src of
+      (protocol, "") -> ("", protocol)
+      (kind, protocol) -> (kind, protocol)
+
+    depType = case parseDepKindAndProtocol $ pkgIdSource pkg of
+      ("path", _) -> UnresolvedPathType
+      (_, "file") -> UnresolvedPathType
+      -- Using  a git type is probably more correct, but the git type doesn't have the ability
+      -- to track the package name within a repo, and this has poor support for monorepos.
+      -- ("git", _) -> GitType
+      -- (_, "ssh") -> GitType
+      _ -> CargoType
+
+    -- For a path dependency, use the path as the package name. For example:
+    -- path+file:///some/file/path -> /some/file/path
+    depName =
+      let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
+       in case depType of
+            UnresolvedPathType -> sourceUrl
+            _ -> pkgIdName pkg
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
@@ -415,17 +443,24 @@ buildGraph meta = stripRoot $
 type PkgSpecParser a = Parsec Void Text a
 
 -- | Parser for pre cargo v1.77.0 package ids.
-oldPkgIdParser :: Text -> Either Text PackageId
-oldPkgIdParser t =
-  case Text.splitOn " " t of
-    [a, b, c] -> Right $ PackageId a b c
-    _ -> Left $ "malformed Package ID: " <> t
+oldPkgIdParser :: PkgSpecParser PackageId
+oldPkgIdParser = do
+  name <- takeWhile1P (Just "Package name") (/= ' ') <* char ' '
+  version <- takeWhile1P (Just "Package version") (/= ' ') <* string " ("
+  source <- takeWhile1P (Just "Package source") (/= ')')
+  pure $
+    PackageId
+      { pkgIdName = name
+      , pkgIdVersion = version
+      , pkgIdSource = source
+      }
 
 type PkgName = Text
 type PkgVersion = Text
 
-parsePkgSpec :: PkgSpecParser PackageId
-parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
+-- | Parser for post cargo v1.77.0 package ids
+newPkgIdParser :: PkgSpecParser PackageId
+newPkgIdParser = eatSpaces (try longSpec <|> simplePkgSpec')
   where
     eatSpaces m = space *> m <* space
 
@@ -503,12 +538,6 @@ parsePkgSpec = eatSpaces (try longSpec <|> simplePkgSpec')
 --
 -- Package Spec: https://doc.rust-lang.org/cargo/reference/pkgid-spec.html
 parsePkgId :: MonadFail m => Text.Text -> m PackageId
-parsePkgId t = either fail pure $ oldPkgIdParser' t <> parseNewSpec
+parsePkgId t = either fail pure $ first errorBundlePretty parseResult
   where
-    oldPkgIdParser' = first toString . oldPkgIdParser
-
-    parseNewSpec :: Either String PackageId
-    parseNewSpec =
-      bimap errorBundlePretty (\p -> p{pkgIdSource = "(" <> p.pkgIdSource <> ")"})
-        . parse parsePkgSpec "Cargo Package Spec"
-        $ t
+    parseResult = parse (try oldPkgIdParser <|> newPkgIdParser) "Cargo package spec" t
