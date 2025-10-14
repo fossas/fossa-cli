@@ -124,16 +124,12 @@ depFour =
     , dependencyTags = Map.empty
     }
 
-xit :: String -> Expectation -> SpecWith (Arg Expectation)
-xit _ _ = it "is an ignored test" $ () `shouldBe` ()
-
 spec :: Spec
 spec = do
   pipLockFile <- runIO (BS.readFile "test/Python/testdata/Pipfile.lock")
 
   describe "analyzeWithCmd" $
-    -- FIXME: graphing needs to be refactored to include "reachable" alongside "direct"
-    xit "should use pipenv output for edges and tags" $ do
+    it "should use pipenv output for edges and tags" $ do
       let result = buildGraph pipfileLock (Just pipenvOutput)
 
       expectDeps [depOne, depTwo, depThree] result

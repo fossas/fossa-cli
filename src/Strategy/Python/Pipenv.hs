@@ -34,7 +34,6 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Foldable (for_, traverse_)
-import Data.List qualified as List
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
@@ -70,7 +69,7 @@ import Effect.Grapher (
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachable)
 import Path (Abs, Dir, File, Path, parent)
 import Strategy.Python.Errors (PipenvCmdFailed (..))
 import Types (
@@ -161,7 +160,7 @@ pipenvGraphCmd =
     }
 
 buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
-buildGraph lock maybeDeps = run . withLabeling toDependency $ do
+buildGraph lock maybeDeps = pruneUnreachable $ run . withLabeling toDependency $ do
   buildNodes lock maybeDeps
   traverse_ buildEdges maybeDeps
   where
@@ -214,9 +213,10 @@ buildNodes PipfileLock{..} maybeGraphDeps = do
       m ()
     addWithEnv env sourcesMap name dep = do
       let pkg = PipPkg name (Text.drop 2 <$> fileDepVersion dep)
-          isDirectDep = List.any (\d -> depName d == name)
-      -- If we don't have graph deps, we're unable to distinguish between direct and transitive dependencies
-      maybe direct (\g -> if isDirectDep g then direct else deep) maybeGraphDeps pkg
+      -- If we don't have graph deps, we're unable to distinguish between direct and transitive dependencies,
+      -- so in that case we mark every dependency as direct
+      -- If we do have graph deps, we set direct dependencies in buildEdges so treat the dependencies as deep here
+      maybe direct (const deep) maybeGraphDeps pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
