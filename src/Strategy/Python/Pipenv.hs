@@ -26,6 +26,7 @@ import Control.Effect.Diagnostics (
   warnOnErr,
  )
 import Control.Effect.Reader (Reader)
+import Control.Monad (join)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON,
@@ -33,6 +34,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Bifunctor (bimap)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -67,11 +69,12 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.ReadFS (ReadFS, readContentsJson)
+import Effect.ReadFS (ReadFS, readContentsJson, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, pruneUnreachable)
 import Path (Abs, Dir, File, Path, parent)
 import Strategy.Python.Errors (PipenvCmdFailed (..))
+import Toml.Schema qualified
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -84,9 +87,12 @@ discover = simpleDiscover findProjects mkProject PipenvProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
-  case findFileNamed "Pipfile.lock" files of
-    Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([PipenvProject file], WalkContinue)
+  case findPipenvFiles files of
+    (Nothing, _) -> pure ([], WalkContinue)
+    (_, Nothing) -> pure ([], WalkContinue)
+    (Just pipfile, Just lock) -> pure ([PipenvProject pipfile lock], WalkContinue)
+  where
+    findPipenvFiles files = join bimap (\f -> findFileNamed f files) ("Pipfile", "Pipfile.lock")
 
 getDeps ::
   ( Has ReadFS sig m
@@ -96,7 +102,8 @@ getDeps ::
   PipenvProject ->
   m DependencyResults
 getDeps project = context "Pipenv" $ do
-  lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
+  lock <- context "Getting dependencies from Pipfile.lock" $ readContentsJson (pipenvLockfile project)
+  pipfile <- context "Getting dependencies from Pipfile" $ readContentsToml (pipenvPipfile project)
 
   maybeDeps <-
     context "Getting deep dependencies"
@@ -107,7 +114,7 @@ getDeps project = context "Pipenv" $ do
         . errHelp PipenvCmdFailedHelp
       $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
-  graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
+  graph <- context "Building dependency graph" $ pure (buildGraph pipfile lock maybeDeps)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -122,8 +129,9 @@ getDepsStatically ::
   PipenvProject ->
   m DependencyResults
 getDepsStatically project = context "Pipenv" $ do
-  lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
-  graph <- context "Building dependency graph" $ pure (buildGraph lock Nothing)
+  lock <- context "Getting dependencies from Pipfile.lock" $ readContentsJson (pipenvLockfile project)
+  pipfile <- context "Getting dependencies from Pipfile" $ readContentsToml (pipenvPipfile project)
+  graph <- context "Building dependency graph" $ pure (buildGraph pipfile lock Nothing)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -140,8 +148,9 @@ mkProject project =
     , projectData = project
     }
 
-newtype PipenvProject = PipenvProject
-  { pipenvLockfile :: Path Abs File
+data PipenvProject = PipenvProject
+  { pipenvPipfile :: Path Abs File
+  , pipenvLockfile :: Path Abs File
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -159,9 +168,9 @@ pipenvGraphCmd =
     , cmdAllowErr = Never
     }
 
-buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
-buildGraph lock maybeDeps = pruneUnreachable $ run . withLabeling toDependency $ do
-  buildNodes lock maybeDeps
+buildGraph :: PipfileToml -> PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
+buildGraph pipfile lock maybeDeps = pruneUnreachable $ run . withLabeling toDependency $ do
+  buildNodes pipfile lock
   traverse_ buildEdges maybeDeps
   where
     toDependency :: PipPkg -> Set PipLabel -> Dependency
@@ -194,8 +203,8 @@ data PipLabel
   | PipEnvironment DepEnvironment
   deriving (Eq, Ord, Show)
 
-buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> Maybe [PipenvGraphDep] -> m ()
-buildNodes PipfileLock{..} maybeGraphDeps = do
+buildNodes :: forall sig m. Has PipGrapher sig m => PipfileToml -> PipfileLock -> m ()
+buildNodes PipfileToml{..} PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = Map.fromList . map (\v -> (ix v, v))
 
@@ -216,7 +225,8 @@ buildNodes PipfileLock{..} maybeGraphDeps = do
       -- If we don't have graph deps, we're unable to distinguish between direct and transitive dependencies,
       -- so in that case we mark every dependency as direct
       -- If we do have graph deps, we set direct dependencies in buildEdges so treat the dependencies as deep here
-      maybe direct (const deep) maybeGraphDeps pkg
+      let graphFn = if Map.member name pipfilePackages || Map.member name pipfileDevPackages then direct else deep
+      graphFn pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
@@ -305,3 +315,22 @@ instance FromJSON PipenvGraphDep where
       <*> obj .: "installed_version"
       <*> obj .: "required_version"
       <*> obj .: "dependencies"
+
+---------- Pipfile
+
+data PipfileToml = PipfileToml
+  -- {pipfilePackages :: Map Text (), pipfileDevPackages :: Map Text ()}
+  {pipfilePackages :: Map Text PipfilePackageVersion, pipfileDevPackages :: Map Text PipfilePackageVersion}
+  deriving (Eq, Show)
+
+instance Toml.Schema.FromValue PipfileToml where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PipfileToml
+        <$> Toml.Schema.pickKey [Toml.Schema.Key "packages" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+        <*> Toml.Schema.pickKey [Toml.Schema.Key "dev-packages" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+
+-- We don't need to parse the package versions in the Pipfile as we get version info from the lock file
+data PipfilePackageVersion = PipfilePackageVersion deriving (Eq, Ord, Show)
+instance Toml.Schema.FromValue PipfilePackageVersion where
+  fromValue _ = pure PipfilePackageVersion
