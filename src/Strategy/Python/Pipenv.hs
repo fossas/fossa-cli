@@ -122,7 +122,7 @@ getDeps project = context "Pipenv" $ do
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = [pipenvLockfile project]
+      , dependencyManifestFiles = [pipenvLockfile project, pipenvPipfile project]
       }
 
 getDepsStatically ::
