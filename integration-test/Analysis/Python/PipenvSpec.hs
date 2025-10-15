@@ -25,4 +25,4 @@ pipenv =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary NonStrict pipenv PipenvProjectType (DependencyResultsSummary 90 6 0 1 Complete)
+  testSuiteDepResultSummary NonStrict pipenv PipenvProjectType (DependencyResultsSummary 90 6 0 2 Complete)
