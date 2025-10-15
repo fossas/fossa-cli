@@ -7,11 +7,13 @@ module Strategy.Python.Pipenv (
   mkProject,
   PipenvGraphDep (..),
   PipfileLock (..),
+  PipfileToml (..),
   PipfileMeta (..),
   PipfileSource (..),
   PipfileDep (..),
   PipenvProject (..),
   buildGraph,
+  pipfilePackageList,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -38,6 +40,7 @@ import Data.Bifunctor (bimap)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isJust)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -169,7 +172,7 @@ pipenvGraphCmd =
     }
 
 buildGraph :: PipfileToml -> PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
-buildGraph pipfile lock maybeDeps = pruneUnreachable $ run . withLabeling toDependency $ do
+buildGraph pipfile lock maybeDeps = prune $ run . withLabeling toDependency $ do
   buildNodes pipfile lock
   traverse_ buildEdges maybeDeps
   where
@@ -189,6 +192,9 @@ buildGraph pipfile lock maybeDeps = pruneUnreachable $ run . withLabeling toDepe
             , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
+
+    -- We only have edges if we have graph dependencies. Only prune unreachable in this case
+    prune = if isJust maybeDeps then pruneUnreachable else id
 
 data PipPkg = PipPkg
   { pipPkgName :: Text
@@ -334,3 +340,6 @@ instance Toml.Schema.FromValue PipfileToml where
 data PipfilePackageVersion = PipfilePackageVersion deriving (Eq, Ord, Show)
 instance Toml.Schema.FromValue PipfilePackageVersion where
   fromValue _ = pure PipfilePackageVersion
+
+pipfilePackageList :: [Text] -> Map Text PipfilePackageVersion
+pipfilePackageList = Map.fromList . map (,PipfilePackageVersion)
