@@ -5,7 +5,7 @@ The python buildtool ecosystem consists of three major toolchains: setuptools
 
 | Strategy                                       | Direct Deps        | Transitive Deps    | Edges              | Container Scanning |
 | ---------------------------------------------- | ------------------ | ------------------ | ------------------ | ------------------ |
-| [pipenv](pipenv.md)                            | :heavy_check_mark: | :heavy_check_mark: | :white_check_mark: | :x:                |
+| [pipenv](pipenv.md)                            | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                |
 | [pipfile](pipenv.md)                           | :heavy_check_mark: | :heavy_check_mark: | :x:                | :x:                |
 | [requirements.txt & setuptools](setuptools.md) | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark: |
 | [setup.py & setuptools](setuptools.md)         | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark: |
