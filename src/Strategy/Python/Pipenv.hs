@@ -228,9 +228,7 @@ buildNodes PipfileToml{..} PipfileLock{..} = do
       m ()
     addWithEnv env sourcesMap name dep = do
       let pkg = PipPkg name (Text.drop 2 <$> fileDepVersion dep)
-      -- If we don't have graph deps, we're unable to distinguish between direct and transitive dependencies,
-      -- so in that case we mark every dependency as direct
-      -- If we do have graph deps, we set direct dependencies in buildEdges so treat the dependencies as deep here
+      -- Use the Pipfile as the source of truth for which dependencies are direct
       let graphFn = if Map.member name pipfilePackages || Map.member name pipfileDevPackages then direct else deep
       graphFn pkg
       label pkg (PipEnvironment env)
