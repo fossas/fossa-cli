@@ -117,7 +117,7 @@ getDeps project = context "Pipenv" $ do
         . errHelp PipenvCmdFailedHelp
       $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
-  graph <- context "Building dependency graph" $ pure (buildGraph pipfile lock maybeDeps)
+  let graph = buildGraph pipfile lock maybeDeps
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -134,7 +134,7 @@ getDepsStatically ::
 getDepsStatically project = context "Pipenv" $ do
   lock <- context "Getting dependencies from Pipfile.lock" $ readContentsJson (pipenvLockfile project)
   pipfile <- context "Getting dependencies from Pipfile" $ readContentsToml (pipenvPipfile project)
-  graph <- context "Building dependency graph" $ pure (buildGraph pipfile lock Nothing)
+  let graph = buildGraph pipfile lock Nothing
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -323,8 +323,9 @@ instance FromJSON PipenvGraphDep where
 ---------- Pipfile
 
 data PipfileToml = PipfileToml
-  -- {pipfilePackages :: Map Text (), pipfileDevPackages :: Map Text ()}
-  {pipfilePackages :: Map Text PipfilePackageVersion, pipfileDevPackages :: Map Text PipfilePackageVersion}
+  { pipfilePackages :: Map Text PipfilePackageVersion
+  , pipfileDevPackages :: Map Text PipfilePackageVersion
+  }
   deriving (Eq, Show)
 
 instance Toml.Schema.FromValue PipfileToml where
