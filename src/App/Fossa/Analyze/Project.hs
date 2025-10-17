@@ -18,11 +18,13 @@ mkResult basedir project pathPrefix dependencyResults =
     , projectResultPath = projectPath project
     , projectResultGraph =
         -- FIXME: this is a hack to work around analyzers that aren't able to
-        -- determine which dependencies are direct. Without this hack, all of
+        -- determine which dependencies are direct or have no edges. Without this hack, all of
         -- their dependencies would be filtered out. The real fix to this is to
         -- have a separate designation for "reachable" vs "direct" on nodes in a
         -- Graphing, where direct deps are inherently reachable.
-        if null (Graphing.directList graph) || shouldKeepUnreachableDeps (projectType project)
+        if null (Graphing.directList graph)
+          || null (Graphing.edgesList graph)
+          || shouldKeepUnreachableDeps (projectType project)
           then graph
           else Graphing.pruneUnreachable graph
     , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults

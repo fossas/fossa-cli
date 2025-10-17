@@ -7,11 +7,13 @@ module Strategy.Python.Pipenv (
   mkProject,
   PipenvGraphDep (..),
   PipfileLock (..),
+  PipfileToml (..),
   PipfileMeta (..),
   PipfileSource (..),
   PipfileDep (..),
   PipenvProject (..),
   buildGraph,
+  pipfilePackageList,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -26,6 +28,7 @@ import Control.Effect.Diagnostics (
   warnOnErr,
  )
 import Control.Effect.Reader (Reader)
+import Control.Monad (join)
 import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON,
@@ -33,9 +36,11 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Bifunctor (bimap)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isJust)
 import Data.Set (Set)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -61,16 +66,18 @@ import Discovery.Walk (
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
   LabeledGrapher,
+  deep,
   direct,
   edge,
   label,
   withLabeling,
  )
-import Effect.ReadFS (ReadFS, readContentsJson)
+import Effect.ReadFS (ReadFS, readContentsJson, readContentsToml)
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachable)
 import Path (Abs, Dir, File, Path, parent)
 import Strategy.Python.Errors (PipenvCmdFailed (..))
+import Toml.Schema qualified
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -83,9 +90,12 @@ discover = simpleDiscover findProjects mkProject PipenvProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
-  case findFileNamed "Pipfile.lock" files of
-    Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([PipenvProject file], WalkContinue)
+  case findPipenvFiles files of
+    (Nothing, _) -> pure ([], WalkContinue)
+    (_, Nothing) -> pure ([], WalkContinue)
+    (Just pipfile, Just lock) -> pure ([PipenvProject pipfile lock], WalkContinue)
+  where
+    findPipenvFiles files = join bimap (`findFileNamed` files) ("Pipfile", "Pipfile.lock")
 
 getDeps ::
   ( Has ReadFS sig m
@@ -95,7 +105,8 @@ getDeps ::
   PipenvProject ->
   m DependencyResults
 getDeps project = context "Pipenv" $ do
-  lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
+  lock <- context "Getting dependencies from Pipfile.lock" $ readContentsJson (pipenvLockfile project)
+  pipfile <- context "Getting dependencies from Pipfile" $ readContentsToml (pipenvPipfile project)
 
   maybeDeps <-
     context "Getting deep dependencies"
@@ -106,12 +117,12 @@ getDeps project = context "Pipenv" $ do
         . errHelp PipenvCmdFailedHelp
       $ execJson (parent (pipenvLockfile project)) pipenvGraphCmd
 
-  graph <- context "Building dependency graph" $ pure (buildGraph lock maybeDeps)
+  let graph = buildGraph pipfile lock maybeDeps
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Complete
-      , dependencyManifestFiles = [pipenvLockfile project]
+      , dependencyManifestFiles = [pipenvLockfile project, pipenvPipfile project]
       }
 
 getDepsStatically ::
@@ -121,8 +132,9 @@ getDepsStatically ::
   PipenvProject ->
   m DependencyResults
 getDepsStatically project = context "Pipenv" $ do
-  lock <- context "Getting direct dependencies" $ readContentsJson (pipenvLockfile project)
-  graph <- context "Building dependency graph" $ pure (buildGraph lock Nothing)
+  lock <- context "Getting dependencies from Pipfile.lock" $ readContentsJson (pipenvLockfile project)
+  pipfile <- context "Getting dependencies from Pipfile" $ readContentsToml (pipenvPipfile project)
+  let graph = buildGraph pipfile lock Nothing
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -139,8 +151,9 @@ mkProject project =
     , projectData = project
     }
 
-newtype PipenvProject = PipenvProject
-  { pipenvLockfile :: Path Abs File
+data PipenvProject = PipenvProject
+  { pipenvPipfile :: Path Abs File
+  , pipenvLockfile :: Path Abs File
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -158,9 +171,9 @@ pipenvGraphCmd =
     , cmdAllowErr = Never
     }
 
-buildGraph :: PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
-buildGraph lock maybeDeps = run . withLabeling toDependency $ do
-  buildNodes lock
+buildGraph :: PipfileToml -> PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency
+buildGraph pipfile lock maybeDeps = prune $ run . withLabeling toDependency $ do
+  buildNodes pipfile lock
   traverse_ buildEdges maybeDeps
   where
     toDependency :: PipPkg -> Set PipLabel -> Dependency
@@ -180,6 +193,13 @@ buildGraph lock maybeDeps = run . withLabeling toDependency $ do
             , dependencyTags = Map.empty
             }
 
+    -- We only have edges if we have graph dependencies. If running with --static-only-analysis
+    -- then there will be no graph dependencies, so this situation is not uncommon.
+    -- If we have no graph dependencies, then we have no edges, so calling `pruneUnreachable`
+    -- would result in all but the direct dependencies getting removed, and so we need to skip
+    -- pruning in this case.
+    prune = if isJust maybeDeps then pruneUnreachable else id
+
 data PipPkg = PipPkg
   { pipPkgName :: Text
   , pipPkgVersion :: Maybe Text
@@ -193,8 +213,8 @@ data PipLabel
   | PipEnvironment DepEnvironment
   deriving (Eq, Ord, Show)
 
-buildNodes :: forall sig m. Has PipGrapher sig m => PipfileLock -> m ()
-buildNodes PipfileLock{..} = do
+buildNodes :: forall sig m. Has PipGrapher sig m => PipfileToml -> PipfileLock -> m ()
+buildNodes PipfileToml{..} PipfileLock{..} = do
   let indexBy :: Ord k => (v -> k) -> [v] -> Map k v
       indexBy ix = Map.fromList . map (\v -> (ix v, v))
 
@@ -210,10 +230,11 @@ buildNodes PipfileLock{..} = do
       Text -> -- dep name
       PipfileDep ->
       m ()
-    addWithEnv env sourcesMap depName dep = do
-      let pkg = PipPkg depName (Text.drop 2 <$> fileDepVersion dep)
-      -- TODO: reachable instead of direct
-      direct pkg
+    addWithEnv env sourcesMap name dep = do
+      let pkg = PipPkg name (Text.drop 2 <$> fileDepVersion dep)
+      -- Use the Pipfile as the source of truth for which dependencies are direct
+      let graphFn = if Map.member name pipfilePackages || Map.member name pipfileDevPackages then direct else deep
+      graphFn pkg
       label pkg (PipEnvironment env)
 
       -- add label for source when it exists
@@ -302,3 +323,26 @@ instance FromJSON PipenvGraphDep where
       <*> obj .: "installed_version"
       <*> obj .: "required_version"
       <*> obj .: "dependencies"
+
+---------- Pipfile
+
+data PipfileToml = PipfileToml
+  { pipfilePackages :: Map Text PipfilePackageVersion
+  , pipfileDevPackages :: Map Text PipfilePackageVersion
+  }
+  deriving (Eq, Show)
+
+instance Toml.Schema.FromValue PipfileToml where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      PipfileToml
+        <$> Toml.Schema.pickKey [Toml.Schema.Key "packages" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+        <*> Toml.Schema.pickKey [Toml.Schema.Key "dev-packages" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
+
+-- We don't need to parse the package versions in the Pipfile as we get version info from the lock file
+data PipfilePackageVersion = PipfilePackageVersion deriving (Eq, Ord, Show)
+instance Toml.Schema.FromValue PipfilePackageVersion where
+  fromValue _ = pure PipfilePackageVersion
+
+pipfilePackageList :: [Text] -> Map Text PipfilePackageVersion
+pipfilePackageList = Map.fromList . map (,PipfilePackageVersion)
