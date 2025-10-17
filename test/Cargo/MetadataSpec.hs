@@ -10,7 +10,6 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes
 import GraphUtil
-import Graphing
 import Strategy.Cargo
 import Test.Hspec qualified as Test
 
@@ -66,7 +65,7 @@ spec = do
         Right result -> result `Test.shouldBe` expectedMetadataPre1_77
 
     Test.it "should build the correct graph" $ do
-      let graph = pruneUnreachable $ buildGraph expectedMetadataPre1_77
+      let graph = buildGraph expectedMetadataPre1_77
       expectDeps [ansiTermDep, clapDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep] graph
@@ -120,7 +119,7 @@ post1_77MetadataParseSpec =
         Right result -> result `Test.shouldBe` expectedMetadataPost1_77
 
     Test.it "should build the correct graph" $ do
-      let graph = pruneUnreachable $ buildGraph expectedMetadataPost1_77
+      let graph = buildGraph expectedMetadataPost1_77
       expectDeps [ansiTermDep, clapDep, fooDep, barDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep, fooDep, barDep] graph

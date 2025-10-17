@@ -76,7 +76,7 @@ import Effect.Grapher (
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
-import Graphing (Graphing, stripRoot)
+import Graphing (Graphing, shrinkRoots)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
 import Text.Megaparsec (
   Parsec,
@@ -434,7 +434,10 @@ addEdge node = do
     edge parentId $ nodePkg dep
 
 buildGraph :: CargoMetadata -> Graphing Dependency
-buildGraph meta = stripRoot $
+-- By construction, workspace members are the root nodes in the graph.
+-- Use shrinkRoots to remove them and promote their direct dependencies to the
+-- direct dependencies we report for the project.
+buildGraph meta = shrinkRoots $
   run . withLabeling toDependency $ do
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
