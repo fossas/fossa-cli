@@ -190,6 +190,7 @@ getImageManifest src = context "Getting Image Manifest" $ do
           (digestOf manifestIndex platformArch)
 
       parseOciManifest
+        =<< fromResponse
         =<< mkRequest manager (registryCred src) (Just supportedManifestKinds)
         =<< (manifestEndpoint $ src{registryContainerRepositoryReference = manifestDigest})
     else do
