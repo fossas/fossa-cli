@@ -1,8 +1,17 @@
 # FOSSA CLI Changelog
 
+## 3.11.12
+- Allow empty `go.mod` files ([#1596](https://github.com/fossas/fossa-cli/pull/1596))
+- Add new `--exclude-manifest-strategies` option ([#1597](https://github.com/fossas/fossa-cli/pull/1597))
+- Remove reachability output from scan summary ([#1598](https://github.com/fossas/fossa-cli/pull/1598))
+- Handle path dependencies in Cargo projects ([#1599](https://github.com/fossas/fossa-cli/pull/1599))
+- Fix Cargo workspace members showing up as dependencies ([#1600](https://github.com/fossas/fossa-cli/pull/1600))
+- Fix Pipenv projects reporting all dependencies as direct dependencies ([#1601](https://github.com/fossas/fossa-cli/pull/1601))
+- Handle HTTP errors when fetching container image manifest ([#1602](https://github.com/fossas/fossa-cli/pull/1602))
+
 ## 3.11.11
 
-- [Bug]The Ficus command was being constructed incorrectly if there were file exclusions in .fossa.yml ([#1595](https://github.com/fossas/fossa-cli/pull/1595))
+- [Bug]The Ficus command was being constructed incorrectly if there were file exclusions in `.fossa.yml` ([#1595](https://github.com/fossas/fossa-cli/pull/1595))
 - Update Ficus to fix a bug with Windows paths (No PR)
 
 ## 3.11.10
