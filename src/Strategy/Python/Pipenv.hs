@@ -193,7 +193,11 @@ buildGraph pipfile lock maybeDeps = prune $ run . withLabeling toDependency $ do
             , dependencyTags = Map.empty
             }
 
-    -- We only have edges if we have graph dependencies. Only prune unreachable in this case
+    -- We only have edges if we have graph dependencies. If running with --static-only-analysis
+    -- then there will be no graph dependencies, so this situation is not uncommon.
+    -- If we have no graph dependencies, then we have no edges, so calling `pruneUnreachable`
+    -- would result in all but the direct dependencies getting removed, and so we need to skip
+    -- pruning in this case.
     prune = if isJust maybeDeps then pruneUnreachable else id
 
 data PipPkg = PipPkg
