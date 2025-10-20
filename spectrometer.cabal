@@ -514,6 +514,7 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
+    Strategy.Python.UV
     Strategy.R
     Strategy.R.Description
     Strategy.R.Errors

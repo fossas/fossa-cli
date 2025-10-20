@@ -47,6 +47,7 @@ import Strategy.Python.PDM.Pdm qualified as Pdm
 import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
+import Strategy.Python.UV qualified as UV
 import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
 import Strategy.Sqlite qualified as Sqlite
@@ -103,6 +104,7 @@ managedDepsDiscoveryF =
   , DiscoverFunc RepoManifest.discover
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc UV.discover
   --
   -- Following can be performed only with dynamic analysis.
   -- So we don not do any discovery for them (to avoid error noise)
