@@ -1,4 +1,4 @@
-module Strategy.Python.UV (
+module Strategy.Python.Uv (
   discover,
   findProjects,
 ) where

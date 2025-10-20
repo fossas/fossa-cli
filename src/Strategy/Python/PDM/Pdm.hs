@@ -51,7 +51,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
   let pdmlockFile = findFileNamed "pdm.lock" files
 
   -- TODO: The existence if a pyproject.toml should not be enough to conclude this is a PDM project.
-  -- UV projects also use a pyproject.toml, and we don't want to incorrectly report them as PDM projects
+  -- uv projects also use a pyproject.toml, and we don't want to incorrectly report them as PDM projects
   -- See https://fossa.atlassian.net/browse/ANE-2316
   let uvlockFile = findFileNamed "uv.lock" files
   case uvlockFile of
