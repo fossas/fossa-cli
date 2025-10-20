@@ -15,6 +15,11 @@ import Control.Effect.Diagnostics (
   warnOnErr,
  )
 import Control.Effect.Reader (Reader)
+import Data.Aeson (ToJSON)
+import Data.Foldable (for_)
+import Data.Map.Strict (Map)
+import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -28,11 +33,22 @@ import DepTypes (
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
-  WalkStep (WalkContinue),
+  WalkStep (..),
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Grapher (
+  Grapher,
+  LabeledGrapher,
+  deep,
+  direct,
+  edge,
+  evalGrapher,
+  label,
+  withLabeling,
+ )
 import Effect.ReadFS (ReadFS, readContentsToml)
+import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, parent)
 import Toml.Schema qualified
@@ -50,11 +66,12 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "uv.lock" files of
     Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([UvProject file], WalkContinue)
+    Just file -> pure ([UvProject file], WalkSkipAll)
 
 newtype UvProject = UvProject
   {uvLockfile :: Path Abs File}
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+instance ToJSON UvProject
 
 mkProject :: UvProject -> DiscoveredProject UvProject
 mkProject project =
@@ -86,7 +103,34 @@ getDepsStatically project = context "uv" $ do
       }
 
 buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = undefined
+buildGraph lock = run . evalGrapher $ Map.traverseWithKey mkEdges nodes
+  where
+    nodes = findNodes lock
+
+    mkEdges :: Has (Grapher Dependency) sig m => Text -> (Dependency, [Text]) -> m ()
+    mkEdges _ (fromDep, transitiveDeps) =
+      for_ transitiveDeps $ \name ->
+        case Map.lookup name nodes of
+          Nothing -> pure ()
+          Just toDep -> edge fromDep $ fst toDep
+
+findNodes :: UvLock -> Map Text (Dependency, [Text])
+findNodes lock =
+  Map.fromList $
+    map (\p -> (uvlockPackageName p, toDepWithTransitiveDeps p)) $
+      uvlockPackages lock
+  where
+    toDepWithTransitiveDeps pkg =
+      ( Dependency
+          { dependencyType = PipType
+          , dependencyName = uvlockPackageName pkg
+          , dependencyVersion = Just $ CEq $ uvlockPackageVersion pkg
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+      , map uvlockPackageDependencyName $ uvlockPackageDependencies pkg
+      )
 
 ---------- uv.lock
 
@@ -98,7 +142,7 @@ instance Toml.Schema.FromValue UvLock where
   fromValue =
     Toml.Schema.parseTableFromValue $
       UvLock
-        <$> Toml.Schema.reqKey "packages"
+        <$> Toml.Schema.reqKey "package"
 
 data UvLockPackage = UvLockPackage
   { uvlockPackageName :: Text
@@ -115,10 +159,10 @@ instance Toml.Schema.FromValue UvLockPackage where
         <$> Toml.Schema.reqKey "name"
         <*> Toml.Schema.reqKey "version"
         <*> Toml.Schema.reqKey "source"
-        <*> Toml.Schema.reqKey "dependencies"
+        <*> (fromMaybe [] <$> Toml.Schema.optKey "dependencies")
 
 newtype UvLockPackageDependency = UvLockPackageDependency
-  {uvLockPackageDependencyName :: Text}
+  {uvlockPackageDependencyName :: Text}
   deriving (Eq, Show)
 
 instance Toml.Schema.FromValue UvLockPackageDependency where
@@ -128,11 +172,11 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
         <$> Toml.Schema.reqKey "name"
 
 newtype UvLockPackageSource = UvLockPackageSource
-  {uvLockPackageDependencyUrl :: Text}
+  {uvLockPackageDependencyUrl :: Maybe Text}
   deriving (Eq, Show)
 
 instance Toml.Schema.FromValue UvLockPackageSource where
   fromValue =
     Toml.Schema.parseTableFromValue $
       UvLockPackageSource
-        <$> Toml.Schema.reqKey "url"
+        <$> Toml.Schema.optKey "url"

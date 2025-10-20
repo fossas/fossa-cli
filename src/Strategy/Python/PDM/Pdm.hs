@@ -49,9 +49,16 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \dir _ files -> do
   let pyprojectFile = findFileNamed "pyproject.toml" files
   let pdmlockFile = findFileNamed "pdm.lock" files
-  case pyprojectFile of
-    Just pyprojectToml -> pure ([PdmProject pyprojectToml pdmlockFile dir], WalkSkipSome [".venv"])
-    Nothing -> pure ([], WalkContinue)
+
+  -- TODO: The existence if a pyproject.toml should not be enough to conclude this is a PDM project.
+  -- UV projects also use a pyproject.toml, and we don't want to incorrectly report them as PDM projects
+  -- See https://fossa.atlassian.net/browse/ANE-2316
+  let uvlockFile = findFileNamed "uv.lock" files
+  case uvlockFile of
+    Nothing -> case pyprojectFile of
+      Just pyprojectToml -> pure ([PdmProject pyprojectToml pdmlockFile dir], WalkSkipSome [".venv"])
+      Nothing -> pure ([], WalkContinue)
+    Just _ -> pure ([], WalkContinue)
 
 data PdmProject = PdmProject
   { pyproject :: Path Abs File
