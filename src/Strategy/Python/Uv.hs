@@ -16,7 +16,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Data.Foldable (for_)
+import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
@@ -67,7 +67,7 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "uv.lock" files of
     Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([UvProject file], WalkSkipAll)
+    Just file -> pure ([UvProject file], WalkSkipSome [".venv"])
 
 newtype UvProject = UvProject
   {uvLockfile :: Path Abs File}
@@ -105,16 +105,16 @@ getDepsStatically project = context "uv" $ do
 
 buildGraph :: UvLock -> Graphing Dependency
 buildGraph lock = shrinkRoots $ markDirectDeps $ run . evalGrapher $ do
-  Map.traverseWithKey mkEdges nodes
+  traverse_ mkEdges $ uvlockPackages lock
   where
-    nodes = findNodes lock
+    packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) $ uvlockPackages lock
 
-    mkEdges :: Has (Grapher Dependency) sig m => Text -> (Dependency, [Text]) -> m ()
-    mkEdges _ (fromDep, transitiveDeps) =
-      for_ transitiveDeps $ \name ->
-        case Map.lookup name nodes of
+    mkEdges :: Has (Grapher Dependency) sig m => UvLockPackage -> m ()
+    mkEdges fromPkg@UvLockPackage{uvlockPackageDependencies} =
+      for_ uvlockPackageDependencies $ \name ->
+        case Map.lookup name packagesByName of
           Nothing -> pure ()
-          Just toDep -> edge fromDep $ fst toDep
+          Just toPkg -> edge (toDependency fromPkg) (toDependency toPkg)
 
     markDirectDeps :: Graphing Dependency -> Graphing Dependency
     markDirectDeps gr = promoteToDirect (`isRootNode` gr) gr
@@ -122,23 +122,16 @@ buildGraph lock = shrinkRoots $ markDirectDeps $ run . evalGrapher $ do
     isRootNode :: Dependency -> Graphing Dependency -> Bool
     isRootNode dep gr = Set.null $ preSet dep gr
 
-findNodes :: UvLock -> Map Text (Dependency, [Text])
-findNodes lock =
-  Map.fromList $
-    map (\p -> (uvlockPackageName p, toDepWithTransitiveDeps p)) $
-      uvlockPackages lock
-  where
-    toDepWithTransitiveDeps pkg =
-      ( Dependency
-          { dependencyType = PipType
-          , dependencyName = uvlockPackageName pkg
-          , dependencyVersion = Just $ CEq $ uvlockPackageVersion pkg
-          , dependencyLocations = []
-          , dependencyEnvironments = mempty
-          , dependencyTags = Map.empty
-          }
-      , map uvlockPackageDependencyName $ uvlockPackageDependencies pkg
-      )
+    toDependency :: UvLockPackage -> Dependency
+    toDependency pkg =
+      Dependency
+        { dependencyType = PipType
+        , dependencyName = uvlockPackageName pkg
+        , dependencyVersion = Just $ CEq $ uvlockPackageVersion pkg
+        , dependencyLocations = []
+        , dependencyEnvironments = mempty
+        , dependencyTags = Map.empty
+        }
 
 ---------- uv.lock
 
@@ -156,7 +149,7 @@ data UvLockPackage = UvLockPackage
   { uvlockPackageName :: Text
   , uvlockPackageVersion :: Text
   , uvlockPackageSource :: UvLockPackageSource
-  , uvlockPackageDependencies :: [UvLockPackageDependency]
+  , uvlockPackageDependencies :: [Text]
   }
   deriving (Eq, Show)
 
@@ -167,7 +160,7 @@ instance Toml.Schema.FromValue UvLockPackage where
         <$> Toml.Schema.reqKey "name"
         <*> Toml.Schema.reqKey "version"
         <*> Toml.Schema.reqKey "source"
-        <*> (fromMaybe [] <$> Toml.Schema.optKey "dependencies")
+        <*> (maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dependencies")
 
 newtype UvLockPackageDependency = UvLockPackageDependency
   {uvlockPackageDependencyName :: Text}
@@ -180,7 +173,7 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
         <$> Toml.Schema.reqKey "name"
 
 newtype UvLockPackageSource = UvLockPackageSource
-  {uvLockPackageDependencyUrl :: Maybe Text}
+  {uvlockPackageDependencyUrl :: Maybe Text}
   deriving (Eq, Show)
 
 instance Toml.Schema.FromValue UvLockPackageSource where
