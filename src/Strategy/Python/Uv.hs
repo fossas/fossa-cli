@@ -20,6 +20,7 @@ import Data.Foldable (for_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -49,7 +50,7 @@ import Effect.Grapher (
  )
 import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
-import Graphing (Graphing)
+import Graphing (Graphing, preSet, promoteToDirect, shrinkRoots)
 import Path (Abs, Dir, File, Path, parent)
 import Toml.Schema qualified
 import Types (
@@ -103,7 +104,8 @@ getDepsStatically project = context "uv" $ do
       }
 
 buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = run . evalGrapher $ Map.traverseWithKey mkEdges nodes
+buildGraph lock = shrinkRoots $ markDirectDeps $ run . evalGrapher $ do
+  Map.traverseWithKey mkEdges nodes
   where
     nodes = findNodes lock
 
@@ -113,6 +115,12 @@ buildGraph lock = run . evalGrapher $ Map.traverseWithKey mkEdges nodes
         case Map.lookup name nodes of
           Nothing -> pure ()
           Just toDep -> edge fromDep $ fst toDep
+
+    markDirectDeps :: Graphing Dependency -> Graphing Dependency
+    markDirectDeps gr = promoteToDirect (`isRootNode` gr) gr
+
+    isRootNode :: Dependency -> Graphing Dependency -> Bool
+    isRootNode dep gr = Set.null $ preSet dep gr
 
 findNodes :: UvLock -> Map Text (Dependency, [Text])
 findNodes lock =
