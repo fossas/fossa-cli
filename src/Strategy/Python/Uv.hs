@@ -10,22 +10,15 @@ import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
-  errCtx,
-  errHelp,
-  recover,
   run,
-  warnOnErr,
  )
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
-import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (PipType),
@@ -42,18 +35,21 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Grapher (
-  Grapher,
   LabeledGrapher,
-  deep,
-  direct,
   edge,
-  evalGrapher,
   label,
   withLabeling,
  )
 import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
-import Graphing (Graphing, preSet, promoteToDirect, shrinkRoots)
+import Graphing (
+  Graphing,
+  getRootsOf,
+  gmap,
+  preSet,
+  promoteToDirect,
+  shrinkRoots,
+ )
 import Path (Abs, Dir, File, Path, parent)
 import Toml.Schema qualified
 import Types (
@@ -110,7 +106,7 @@ data UvLabel = UvSource Text | UvEnvironment DepEnvironment deriving (Eq, Ord, S
 type UvGrapher = LabeledGrapher UvLockPackage UvLabel
 
 buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = shrinkRoots $ markDirectDeps $ run . withLabeling toDependency $ do
+buildGraph lock = markDevDeps $ shrinkRoots $ markDirectDeps $ run . withLabeling toDependency $ do
   traverse_ mkEdges $ uvlockPackages lock
   where
     packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) $ uvlockPackages lock
@@ -146,6 +142,21 @@ buildGraph lock = shrinkRoots $ markDirectDeps $ run . withLabeling toDependency
             , dependencyEnvironments = mempty
             , dependencyTags = Map.empty
             }
+
+    -- We've labeled direct dependencies with the correct environment, but we need to
+    -- propagate this environment to all the transitive dependencies. This will make it so that if
+    -- package X is a dev dependency, then all the dependencies of X will also be labeled as dev
+    -- dependencies.
+    markDevDeps :: Graphing Dependency -> Graphing Dependency
+    markDevDeps gr = gmap setEnvFromRoot gr
+      where
+        setEnvFromRoot :: Dependency -> Dependency
+        setEnvFromRoot dep = dep{dependencyEnvironments = rootEnvs dep}
+
+        rootEnvs :: Dependency -> Set DepEnvironment
+        rootEnvs dep
+          | isRootNode dep gr = dependencyEnvironments dep
+          | otherwise = foldMap dependencyEnvironments $ getRootsOf gr dep
 
 ---------- uv.lock
 
@@ -205,8 +216,4 @@ newtype UvLockPackageDevDependencies = UvLockPackageDevDependencies
 instance Toml.Schema.FromValue UvLockPackageDevDependencies where
   fromValue =
     Toml.Schema.parseTableFromValue $
-      UvLockPackageDevDependencies
-        . maybe
-          []
-          (map uvlockPackageDependencyName)
-        <$> Toml.Schema.optKey "dev"
+      UvLockPackageDevDependencies . maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dev"
