@@ -3,6 +3,10 @@
 module Strategy.Python.Uv (
   discover,
   findProjects,
+  buildGraph,
+  UvLock (..),
+  UvLockPackage (..),
+  UvLockPackageSource (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -43,6 +47,7 @@ import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (
   Graphing,
+  directList,
   getRootsOf,
   gmap,
   hasPredecessors,
@@ -151,7 +156,7 @@ buildGraph lock = markDevDeps $ shrinkRoots $ markDirectDeps $ run . withLabelin
 
         rootEnvs :: Dependency -> Set DepEnvironment
         rootEnvs dep
-          | not $ hasPredecessors gr dep = dependencyEnvironments dep
+          | dep `elem` directList gr = dependencyEnvironments dep
           | otherwise = foldMap dependencyEnvironments $ getRootsOf gr dep
 
 ---------- uv.lock

@@ -704,6 +704,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    Python.UvSpec
     R.DescriptionSpec
     R.RenvSpec
     Reachability.GradleSpec
