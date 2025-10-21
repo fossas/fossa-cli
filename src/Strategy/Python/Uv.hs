@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Python.Uv (
   discover,
   findProjects,
@@ -20,6 +22,7 @@ import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -103,18 +106,25 @@ getDepsStatically project = context "uv" $ do
       , dependencyManifestFiles = [uvLockfile project]
       }
 
+data UvLabel = UvSource Text | UvEnvironment DepEnvironment deriving (Eq, Ord, Show)
+type UvGrapher = LabeledGrapher UvLockPackage UvLabel
+
 buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = shrinkRoots $ markDirectDeps $ run . evalGrapher $ do
+buildGraph lock = shrinkRoots $ markDirectDeps $ run . withLabeling toDependency $ do
   traverse_ mkEdges $ uvlockPackages lock
   where
     packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) $ uvlockPackages lock
 
-    mkEdges :: Has (Grapher Dependency) sig m => UvLockPackage -> m ()
-    mkEdges fromPkg@UvLockPackage{uvlockPackageDependencies} =
+    mkEdges :: Has UvGrapher sig m => UvLockPackage -> m ()
+    mkEdges fromPkg@UvLockPackage{..} = do
       for_ uvlockPackageDependencies $ \name ->
         case Map.lookup name packagesByName of
           Nothing -> pure ()
-          Just toPkg -> edge (toDependency fromPkg) (toDependency toPkg)
+          Just toPkg -> edge fromPkg toPkg >> label toPkg (UvEnvironment EnvProduction)
+      for_ uvlockPackageDevDependencies $ \name ->
+        case Map.lookup name packagesByName of
+          Nothing -> pure ()
+          Just toPkg -> edge fromPkg toPkg >> label toPkg (UvEnvironment EnvDevelopment)
 
     markDirectDeps :: Graphing Dependency -> Graphing Dependency
     markDirectDeps gr = promoteToDirect (`isRootNode` gr) gr
@@ -122,16 +132,20 @@ buildGraph lock = shrinkRoots $ markDirectDeps $ run . evalGrapher $ do
     isRootNode :: Dependency -> Graphing Dependency -> Bool
     isRootNode dep gr = Set.null $ preSet dep gr
 
-    toDependency :: UvLockPackage -> Dependency
-    toDependency pkg =
-      Dependency
-        { dependencyType = PipType
-        , dependencyName = uvlockPackageName pkg
-        , dependencyVersion = Just $ CEq $ uvlockPackageVersion pkg
-        , dependencyLocations = []
-        , dependencyEnvironments = mempty
-        , dependencyTags = Map.empty
-        }
+    toDependency :: UvLockPackage -> Set UvLabel -> Dependency
+    toDependency pkg = foldr applyLabel start
+      where
+        applyLabel (UvSource loc) = insertLocation loc
+        applyLabel (UvEnvironment env) = insertEnvironment env
+        start =
+          Dependency
+            { dependencyType = PipType
+            , dependencyName = uvlockPackageName pkg
+            , dependencyVersion = Just $ CEq $ uvlockPackageVersion pkg
+            , dependencyLocations = []
+            , dependencyEnvironments = mempty
+            , dependencyTags = Map.empty
+            }
 
 ---------- uv.lock
 
@@ -150,8 +164,9 @@ data UvLockPackage = UvLockPackage
   , uvlockPackageVersion :: Text
   , uvlockPackageSource :: UvLockPackageSource
   , uvlockPackageDependencies :: [Text]
+  , uvlockPackageDevDependencies :: [Text]
   }
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackage where
   fromValue =
@@ -161,10 +176,11 @@ instance Toml.Schema.FromValue UvLockPackage where
         <*> Toml.Schema.reqKey "version"
         <*> Toml.Schema.reqKey "source"
         <*> (maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dependencies")
+        <*> (maybe [] uvlockPackageDevDependenciesInt <$> Toml.Schema.optKey "dev-dependencies")
 
 newtype UvLockPackageDependency = UvLockPackageDependency
   {uvlockPackageDependencyName :: Text}
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageDependency where
   fromValue =
@@ -174,10 +190,23 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
 
 newtype UvLockPackageSource = UvLockPackageSource
   {uvlockPackageDependencyUrl :: Maybe Text}
-  deriving (Eq, Show)
+  deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageSource where
   fromValue =
     Toml.Schema.parseTableFromValue $
       UvLockPackageSource
         <$> Toml.Schema.optKey "url"
+
+newtype UvLockPackageDevDependencies = UvLockPackageDevDependencies
+  {uvlockPackageDevDependenciesInt :: [Text]}
+  deriving (Eq, Ord, Show)
+
+instance Toml.Schema.FromValue UvLockPackageDevDependencies where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      UvLockPackageDevDependencies
+        . maybe
+          []
+          (map uvlockPackageDependencyName)
+        <$> Toml.Schema.optKey "dev"
