@@ -17,7 +17,6 @@ import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict qualified as Map
 import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -46,7 +45,7 @@ import Graphing (
   Graphing,
   getRootsOf,
   gmap,
-  preSet,
+  hasPredecessors,
   promoteToDirect,
   shrinkRoots,
  )
@@ -123,10 +122,7 @@ buildGraph lock = markDevDeps $ shrinkRoots $ markDirectDeps $ run . withLabelin
           Just toPkg -> edge fromPkg toPkg >> label toPkg (UvEnvironment EnvDevelopment)
 
     markDirectDeps :: Graphing Dependency -> Graphing Dependency
-    markDirectDeps gr = promoteToDirect (`isRootNode` gr) gr
-
-    isRootNode :: Dependency -> Graphing Dependency -> Bool
-    isRootNode dep gr = Set.null $ preSet dep gr
+    markDirectDeps gr = promoteToDirect (not . hasPredecessors gr) gr
 
     toDependency :: UvLockPackage -> Set UvLabel -> Dependency
     toDependency pkg = foldr applyLabel start
@@ -155,7 +151,7 @@ buildGraph lock = markDevDeps $ shrinkRoots $ markDirectDeps $ run . withLabelin
 
         rootEnvs :: Dependency -> Set DepEnvironment
         rootEnvs dep
-          | isRootNode dep gr = dependencyEnvironments dep
+          | not $ hasPredecessors gr dep = dependencyEnvironments dep
           | otherwise = foldMap dependencyEnvironments $ getRootsOf gr dep
 
 ---------- uv.lock

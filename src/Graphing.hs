@@ -28,8 +28,6 @@ module Graphing (
   directList,
   vertexList,
   edgesList,
-  preSet,
-  postSet,
   toAdjacencyMap,
   getRootsOf,
   hasEdge,
@@ -68,7 +66,6 @@ import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Bifunctor (bimap)
 import Data.List (foldl')
 import Data.Maybe (mapMaybe)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Prelude hiding (filter)
 import Prelude qualified
@@ -248,14 +245,6 @@ vertexList gr = [node | Node node <- AM.vertexList (unGraphing gr)]
 -- | Gets a list of edges in the Graphing.
 edgesList :: Ord ty => Graphing ty -> [(ty, ty)]
 edgesList gr = AM.edgeList $ toAdjacencyMap gr
-
--- | Gets a list of vertices with an edge to the given node
-preSet :: Ord ty => ty -> Graphing ty -> Set ty
-preSet ty (Graphing gr) = Set.fromList $ [node | Node node <- Set.toList $ AM.preSet (Node ty) gr]
-
--- | Gets a list of vertices with an edge from the given node
-postSet :: Ord ty => ty -> Graphing ty -> Set ty
-postSet ty (Graphing gr) = Set.fromList $ [node | Node node <- Set.toList $ AM.preSet (Node ty) gr]
 
 -- | Convert to the underlying AdjacencyMap (without the Root element)
 toAdjacencyMap :: Ord ty => Graphing ty -> AM.AdjacencyMap ty
