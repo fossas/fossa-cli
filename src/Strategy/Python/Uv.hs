@@ -22,7 +22,7 @@ import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -149,7 +149,11 @@ buildGraph lock = processGraph $ run . evalGrapher $ do
         maybeElem list def toFind = if toFind `elem` list then Just def else Nothing
 
         prodDeps = foldMap uvlockPackageDependencies $ directList gr
-        devDeps = foldMap uvlockPackageDevDependencies $ directList gr
+        -- Legacy format has dev dependencies under the dev-dependencies field
+        -- New format has dev dependencies under optional-dependencies.dev
+        devDeps =
+          foldMap uvlockPackageDevDependencies (directList gr)
+            <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
 
     -- Locate the root nodes of the graph and mark these as direct dependencies
     -- The root node will be the uv package being scanned, not its dependencies, so we will need to later

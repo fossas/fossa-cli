@@ -4,6 +4,7 @@ module Python.UvSpec (
   spec,
 ) where
 
+import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
@@ -85,6 +86,49 @@ lock =
         ]
     }
 
+--     my-project
+--     /    \
+--   dep1  dep3 (dev)
+--           |
+--         dep6
+lockNewStyleDevDeps :: UvLock
+lockNewStyleDevDeps =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = "0.1.0"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = ["dep1", "dep2"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = Map.fromList [("dev", ["dep3"])]
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep1"
+            , uvlockPackageVersion = "1.1.0"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep3"
+            , uvlockPackageVersion = "0.9.9"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = ["dep6"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep6"
+            , uvlockPackageVersion = "1.1.1"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
   Dependency
@@ -147,6 +191,13 @@ spec = do
       expectDirect [dep1, dep2, dep3, dep4] result
       expectDeps [dep1, dep2, dep3, dep4, dep5, dep6] result
       expectEdges [(dep1, dep4), (dep3, dep6), (dep4, dep5)] result
+
+    it "should build correct graph using new style dev deps" $ do
+      let result = buildGraph lockNewStyleDevDeps
+
+      expectDirect [dep1, dep3] result
+      expectDeps [dep1, dep3, dep6] result
+      expectEdges [(dep3, dep6)] result
 
   describe "parse uv.lock" $ do
     it' "correctly parse and interpret uv.lock" $ do
