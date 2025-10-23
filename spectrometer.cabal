@@ -769,6 +769,7 @@ test-suite integration-tests
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
+    Analysis.Python.UvSpec
     Analysis.RubySpec
     Analysis.RustSpec
     Analysis.ScalaSpec

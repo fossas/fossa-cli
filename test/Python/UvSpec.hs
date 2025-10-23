@@ -32,6 +32,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = ["dep3", "dep4"]
+            , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
@@ -39,6 +40,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep4"]
             , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep2"
@@ -46,6 +48,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep3"
@@ -53,6 +56,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep4"
@@ -60,6 +64,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep5"]
             , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep5"
@@ -67,6 +72,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep6"
@@ -74,6 +80,7 @@ lock =
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
             }
         ]
     }

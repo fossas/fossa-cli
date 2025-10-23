@@ -4,6 +4,7 @@ module Strategy.Python.Uv (
   discover,
   findProjects,
   buildGraph,
+  UvProject (..),
   UvLock (..),
   UvLockPackage (..),
   UvLockPackageSource (..),
@@ -19,16 +20,17 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (PipType),
   Dependency (..),
   VerConstraint (CEq),
-  insertEnvironment,
-  insertLocation,
  )
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -38,10 +40,9 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Grapher (
-  LabeledGrapher,
+  Grapher,
   edge,
-  label,
-  withLabeling,
+  evalGrapher,
  )
 import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
@@ -63,10 +64,14 @@ import Types (
   GraphBreadth (Complete),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject UvProject]
+discover ::
+  (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
+  Path Abs Dir -> m [DiscoveredProject UvProject]
 discover = simpleDiscover findProjects mkProject PipenvProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [UvProject]
+findProjects ::
+  (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
+  Path Abs Dir -> m [UvProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "uv.lock" files of
     Nothing -> pure ([], WalkContinue)
@@ -87,15 +92,15 @@ mkProject project =
     }
 
 instance AnalyzeProject UvProject where
-  analyzeProject _ = getDepsStatically
-  analyzeProjectStaticOnly _ = getDepsStatically
+  analyzeProject _ = analyze
+  analyzeProjectStaticOnly _ = analyze
 
-getDepsStatically ::
+analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   UvProject -> m DependencyResults
-getDepsStatically project = context "uv" $ do
+analyze project = context "uv" $ do
   lock <- context "Getting dependencies from uv.lock" $ readContentsToml (uvLockfile project)
 
   let graph = buildGraph lock
@@ -106,43 +111,62 @@ getDepsStatically project = context "uv" $ do
       , dependencyManifestFiles = [uvLockfile project]
       }
 
-data UvLabel = UvSource Text | UvEnvironment DepEnvironment deriving (Eq, Ord, Show)
-type UvGrapher = LabeledGrapher UvLockPackage UvLabel
-
 buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = markDevDeps $ shrinkRoots $ markDirectDeps $ run . withLabeling toDependency $ do
+buildGraph lock = processGraph $ run . evalGrapher $ do
   traverse_ mkEdges $ uvlockPackages lock
   where
     packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) $ uvlockPackages lock
 
-    mkEdges :: Has UvGrapher sig m => UvLockPackage -> m ()
+    -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
+    -- calling `markDirectDeps` and then `shrinkRoots`.
+    mkEdges :: Has (Grapher UvLockPackage) sig m => UvLockPackage -> m ()
     mkEdges fromPkg@UvLockPackage{..} = do
       for_ uvlockPackageDependencies $ \name ->
-        case Map.lookup name packagesByName of
-          Nothing -> pure ()
-          Just toPkg -> edge fromPkg toPkg >> label toPkg (UvEnvironment EnvProduction)
+        for_ (Map.lookup name packagesByName) (edge fromPkg)
       for_ uvlockPackageDevDependencies $ \name ->
-        case Map.lookup name packagesByName of
-          Nothing -> pure ()
-          Just toPkg -> edge fromPkg toPkg >> label toPkg (UvEnvironment EnvDevelopment)
+        for_ (Map.lookup name packagesByName) (edge fromPkg)
+      for_ uvlockPackageOptionalDependencies $ traverse_ $ \name ->
+        for_ (Map.lookup name packagesByName) (edge fromPkg)
 
-    markDirectDeps :: Graphing Dependency -> Graphing Dependency
+    -- The directList currently contains the uv package being scanned. This package lists the
+    -- prod dependencies (under the dependencies field) and the dev dependencies (under the dev-dependencies field)
+    -- Use this to set the correct environment on each of these packages.
+    markRootEnvs :: Graphing UvLockPackage -> Graphing Dependency
+    markRootEnvs gr = gmap (applyLabels) gr
+      where
+        applyLabels :: UvLockPackage -> Dependency
+        applyLabels pkg = toDependency pkg $ newEnvs pkg
+
+        newEnvs :: UvLockPackage -> Set DepEnvironment
+        newEnvs UvLockPackage{..} =
+          Set.fromList $
+            catMaybes
+              [ maybeElem prodDeps EnvProduction uvlockPackageName
+              , maybeElem devDeps EnvDevelopment uvlockPackageName
+              ]
+
+        maybeElem :: (Eq a) => [a] -> b -> a -> Maybe b
+        maybeElem list def toFind = if toFind `elem` list then Just def else Nothing
+
+        prodDeps = foldMap uvlockPackageDependencies $ directList gr
+        devDeps = foldMap uvlockPackageDevDependencies $ directList gr
+
+    -- Locate the root nodes of the graph and mark these as direct dependencies
+    -- The root node will be the uv package being scanned, not its dependencies, so we will need to later
+    -- call `shrinkRoots` to remove this package and promote its dependencies to direct dependencies
+    markDirectDeps :: Graphing UvLockPackage -> Graphing UvLockPackage
     markDirectDeps gr = promoteToDirect (not . hasPredecessors gr) gr
 
-    toDependency :: UvLockPackage -> Set UvLabel -> Dependency
-    toDependency pkg = foldr applyLabel start
-      where
-        applyLabel (UvSource loc) = insertLocation loc
-        applyLabel (UvEnvironment env) = insertEnvironment env
-        start =
-          Dependency
-            { dependencyType = PipType
-            , dependencyName = uvlockPackageName pkg
-            , dependencyVersion = Just $ CEq $ uvlockPackageVersion pkg
-            , dependencyLocations = []
-            , dependencyEnvironments = mempty
-            , dependencyTags = Map.empty
-            }
+    toDependency :: UvLockPackage -> Set DepEnvironment -> Dependency
+    toDependency UvLockPackage{..} envs =
+      Dependency
+        { dependencyType = PipType
+        , dependencyName = uvlockPackageName
+        , dependencyVersion = Just $ CEq uvlockPackageVersion
+        , dependencyLocations = []
+        , dependencyEnvironments = envs
+        , dependencyTags = Map.empty
+        }
 
     -- We've labeled direct dependencies with the correct environment, but we need to
     -- propagate this environment to all the transitive dependencies. This will make it so that if
@@ -155,9 +179,17 @@ buildGraph lock = markDevDeps $ shrinkRoots $ markDirectDeps $ run . withLabelin
         setEnvFromRoot dep = dep{dependencyEnvironments = rootEnvs dep}
 
         rootEnvs :: Dependency -> Set DepEnvironment
-        rootEnvs dep
-          | dep `elem` directList gr = dependencyEnvironments dep
-          | otherwise = foldMap dependencyEnvironments $ getRootsOf gr dep
+        rootEnvs dep =
+          foldMap dependencyEnvironments (getRootsOf gr dep)
+            <> ( if dep `elem` directList gr
+                   then dependencyEnvironments dep
+                   else Set.empty
+               )
+
+    -- In order to label environments correctly with only the uv.lock file, we need to build the graph
+    -- first so that we have edges and can traverse the graph. Once we do that, we have enough information
+    -- to label all the packages with the correct environment
+    processGraph = markDevDeps . shrinkRoots . markRootEnvs . markDirectDeps
 
 ---------- uv.lock
 
@@ -177,6 +209,7 @@ data UvLockPackage = UvLockPackage
   , uvlockPackageSource :: UvLockPackageSource
   , uvlockPackageDependencies :: [Text]
   , uvlockPackageDevDependencies :: [Text]
+  , uvlockPackageOptionalDependencies :: Map Text [Text]
   }
   deriving (Eq, Ord, Show)
 
@@ -189,6 +222,12 @@ instance Toml.Schema.FromValue UvLockPackage where
         <*> Toml.Schema.reqKey "source"
         <*> (maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dependencies")
         <*> (maybe [] uvlockPackageDevDependenciesInt <$> Toml.Schema.optKey "dev-dependencies")
+        <*> Toml.Schema.pickKey
+          [ Toml.Schema.Key
+              "optional-dependencies"
+              (fmap (Map.map (map uvlockPackageDependencyName)) . Toml.Schema.fromValue)
+          , Toml.Schema.Else (pure mempty)
+          ]
 
 newtype UvLockPackageDependency = UvLockPackageDependency
   {uvlockPackageDependencyName :: Text}
