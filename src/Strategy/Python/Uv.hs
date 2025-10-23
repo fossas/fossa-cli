@@ -182,8 +182,8 @@ buildGraph lock = processGraph $ run . evalGrapher $ do
         rootEnvs dep =
           foldMap dependencyEnvironments (getRootsOf gr dep)
             <> ( if dep `elem` directList gr
-                   then dependencyEnvironments dep
-                   else Set.empty
+                  then dependencyEnvironments dep
+                  else Set.empty
                )
 
     -- In order to label environments correctly with only the uv.lock file, we need to build the graph
