@@ -20,14 +20,14 @@ jobs:
         - os: LinuxARM
           os-name: Linux-arm
           project-file: cabal.project.ci.linux
-          ghc: '9.8.2'
+          ghc: '9.8.4'
           rust-features: jemalloc
 
         - os: ubuntu-latest
           os-name: Linux
-          container: fossa/haskell-static-alpine:ghc-9.8.2
+          container: fossa/haskell-static-alpine:ghc-9.8.4
           project-file: cabal.project.ci.linux
-          ghc: '9.8.2'
+          ghc: '9.8.4'
           # Linux builds are run in Alpine, which builds them statically;
           # using jemalloc reduces the performance impact of this
           # over the default libc allocator (which performs very poorly in static builds).
@@ -40,17 +40,17 @@ jobs:
         - os: macos-latest-large
           os-name: macOS-intel
           project-file: cabal.project.ci.macos
-          ghc: '9.8.2'
+          ghc: '9.8.4'
 
         - os: windows-latest
           os-name: Windows
           project-file: cabal.project.ci.windows
-          ghc: '9.8.2'
+          ghc: '9.8.4'
 
         - os: macos-latest
           os-name: macOS-arm64
           project-file: cabal.project.ci.macos
-          ghc: '9.8.2'
+          ghc: '9.8.4'
 
     steps:
 
@@ -136,7 +136,7 @@ jobs:
     - name: Compute Cache Key (Linux Arm)
       if: ${{ matrix.os == 'LinuxARM' }}
       id: compute-cache-key-arm
-      uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+      uses: docker://fossa/haskell-static-alpine:ghc-9.8.4
       with:
         args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
 
@@ -171,7 +171,7 @@ jobs:
 
     - name: Build and Unit Test (Linux ARM)
       if: ${{ matrix.os == 'LinuxARM' }}
-      uses: docker://fossa/haskell-static-alpine:ghc-9.8.2
+      uses: docker://fossa/haskell-static-alpine:ghc-9.8.4
       with:
         args: ./.github/workflows/scripts/build-arm.sh ${{ runner.os }} ${{ matrix.project-file }} ${{ matrix.rust-features }}
 
