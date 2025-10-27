@@ -190,7 +190,7 @@ mkLayerFromOffset layerId layerPath imgOffset = build $ mempty{layerDigest = lay
     updateChangeSet offset entry containerLayer =
       if isDoubleWhiteOut (filePathOf . entryTarPath $ entry)
         || ( not (isFileOrLinkTarget entry)
-              && not (isWhiteOut $ filePathOf . entryTarPath $ entry)
+               && not (isWhiteOut $ filePathOf . entryTarPath $ entry)
            )
         then -- Do not capture Insert for non-files or non-symbolic links, as folders
         -- by themselves are not analysis relevant, and filepath information already contains
