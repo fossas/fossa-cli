@@ -109,6 +109,7 @@ data DiscoveredProjectType
   | SqliteDBProjectType
   | StackProjectType
   | SwiftProjectType
+  | UvProjectType
   | VsiProjectType
   | YarnProjectType
   deriving (Eq, Ord, Show, Enum, Bounded)
@@ -160,6 +161,7 @@ projectTypeToText = \case
   SqliteDBProjectType -> "sqlitedb"
   StackProjectType -> "stack"
   SwiftProjectType -> "swift"
+  UvProjectType -> "uv"
   VsiProjectType -> "vsi"
   YarnProjectType -> "yarn"
 
