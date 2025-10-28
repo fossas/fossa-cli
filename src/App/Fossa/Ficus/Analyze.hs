@@ -215,7 +215,14 @@ vendoredDepsToSourceUnit deps =
       SourceUnitDependency
         { sourceDepLocator = vendoredDepToLocator dep
         , sourceDepImports = []
-        , sourceDepData = Aeson.object ["path" Aeson..= ficusVendoredDependencyPath dep]
+        , sourceDepData =
+            Aeson.object
+              [ "vendored"
+                  Aeson..= Aeson.object
+                    [ "type" Aeson..= ("directory" :: Text)
+                    , "path" Aeson..= ficusVendoredDependencyPath dep
+                    ]
+              ]
         }
 
 runFicus ::
