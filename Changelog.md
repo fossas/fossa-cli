@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.12.0
+- Python: Add support for projects using uv for package management ([#1604](https://github.com/fossas/fossa-cli/pull/1604))
+
 ## 3.11.12
 - Allow empty `go.mod` files ([#1596](https://github.com/fossas/fossa-cli/pull/1596))
 - Add new `--exclude-manifest-strategies` option ([#1597](https://github.com/fossas/fossa-cli/pull/1597))
