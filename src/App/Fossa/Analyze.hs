@@ -51,6 +51,7 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -361,7 +362,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
                   (Config.licenseScanPathFilters vendoredDepsOptions)
                   (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
                   (Config.debugDir cfg)
-  let ficusResults = join $ resultToMaybe maybeFicusResults
+  let ficusResults = (snippetScanResults =<<) . join $ resultToMaybe maybeFicusResults
 
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
