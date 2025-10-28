@@ -124,10 +124,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
-    let snippetResults = snippetScanResults =<< ficusResults
-
     uploadResult <- case scanUnits of
-      SourceUnitOnly units -> uploadAnalysis revision metadata units snippetResults
+      SourceUnitOnly units -> uploadAnalysis revision metadata units (snippetScanResults =<< ficusResults)
       LicenseSourceUnitOnly licenseSourceUnit -> do
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
         runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults $ orgFileUpload org
