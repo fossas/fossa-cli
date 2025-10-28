@@ -33,6 +33,7 @@ import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
 import Data.Aeson (Object, decode, decodeStrictText, (.:))
+import Data.Aeson qualified as Aeson
 import Data.Aeson.Types (parseMaybe)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
@@ -52,7 +53,6 @@ import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
-import Data.Aeson qualified as Aeson
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
 import System.IO (Handle, hGetLine, hIsEOF)
 import System.Process.Typed (
@@ -280,10 +280,11 @@ runFicus ficusConfig = do
             [] -> Nothing
             deps -> Just $ FicusVendoredDependencyScanResults (Just $ vendoredDepsToSourceUnit deps)
 
-      pure $ FicusAnalysisResults
-        { snippetScanResults = snippetResults
-        , vendoredDependencyScanResults = vendoredResults
-        }
+      pure $
+        FicusAnalysisResults
+          { snippetScanResults = snippetResults
+          , vendoredDependencyScanResults = vendoredResults
+          }
 
     consumeStderr :: Handle -> IO [Text]
     consumeStderr handle = do
