@@ -51,7 +51,6 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -109,7 +108,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (Result (Success), resultToMaybe)
+import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -362,7 +361,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
                   (Config.licenseScanPathFilters vendoredDepsOptions)
                   (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
                   (Config.debugDir cfg)
-  let ficusResults = (snippetScanResults =<<) . join $ resultToMaybe maybeFicusResults
+  let ficusResults = join $ resultToMaybe maybeFicusResults
 
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -451,7 +450,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults maybeFicusResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
       isDebugMode = isJust (Config.debugDir cfg)
   renderScanSummary isDebugMode maybeEndpointAppVersion analysisResult cfg
 
