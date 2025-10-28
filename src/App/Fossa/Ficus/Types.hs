@@ -15,6 +15,7 @@ module App.Fossa.Ficus.Types (
   FicusSnippetScanResults (..),
   FicusScanStats (..),
   FicusPerStrategyFlag (..),
+  FicusAnalysisResults (..),
 ) where
 
 import App.Types (ProjectRevision)
@@ -26,6 +27,13 @@ import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
 import Text.URI
 import Types (GlobFilter)
+
+data FicusAnalysisResults = FicusAnalysisResults
+  { snippetScanResults :: Maybe FicusSnippetScanResults
+  , vendoredDependencyScanResults :: Maybe FicusVendoredDependencyScanResults
+  }
+
+newtype FicusVendoredDependencyScanResults = FicusVendoredDependencyScanResults ()
 
 data FicusSnippetScanResults = FicusSnippetScanResults
   { ficusSnippetScanResultsAnalysisId :: Int

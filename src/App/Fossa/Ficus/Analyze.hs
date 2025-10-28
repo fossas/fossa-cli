@@ -13,6 +13,7 @@ import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
   FicusAnalysisFlag (..),
+  FicusAnalysisResults (..),
   FicusConfig (..),
   FicusDebug (..),
   FicusError (..),
@@ -229,14 +230,14 @@ runFicus maybeDebugDir ficusConfig = do
         logInfo $ pretty (Text.unlines stdErrLines)
         logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
-    pure result
+    pure $ snippetScanResults result
   where
     currentTimeStamp :: IO String
     currentTimeStamp = do
       now <- getCurrentTime
       pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
 
-    streamFicusOutput :: Handle -> Maybe Handle -> IO (Maybe FicusSnippetScanResults)
+    streamFicusOutput :: Handle -> Maybe Handle -> IO FicusAnalysisResults
     streamFicusOutput handle maybeFile =
       Conduit.runConduit $
         CC.sourceHandle handle
@@ -263,12 +264,13 @@ runFicus maybeDebugDir ficusConfig = do
                   FicusMessageFinding finding -> do
                     hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
                     let analysisFinding = findingToSnippetScanResult finding
-                    when (isJust acc && isJust analysisFinding) $
+                    let currentSnippetResults = snippetScanResults acc
+                    when (isJust currentSnippetResults && isJust analysisFinding) $
                       hPutStrLn stderr $
                         "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
-                    pure $ acc <|> analysisFinding
+                    pure $ acc{snippetScanResults = currentSnippetResults <|> analysisFinding}
             )
-            Nothing
+            (FicusAnalysisResults{snippetScanResults = Nothing, vendoredDependencyScanResults = Nothing})
 
     consumeStderr :: Handle -> Maybe Handle -> IO [Text]
     consumeStderr handle maybeFile = do
