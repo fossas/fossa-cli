@@ -9,7 +9,7 @@ module App.Fossa.Analyze.Upload (
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
-import App.Fossa.Ficus.Types (FicusSnippetScanResults)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.Reachability.Types (SourceUnitReachability)
 import App.Fossa.Reachability.Upload (upload)
 import App.Types (
@@ -107,7 +107,7 @@ uploadSuccessfulAnalysis ::
   ProjectRevision ->
   ScanUnits ->
   [SourceUnitReachability] ->
-  Maybe FicusSnippetScanResults ->
+  Maybe FicusAnalysisResults ->
   m Locator
 uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults =
   context "Uploading analysis" $ do
@@ -124,8 +124,10 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
+    let snippetResults = snippetScanResults =<< ficusResults
+
     uploadResult <- case scanUnits of
-      SourceUnitOnly units -> uploadAnalysis revision metadata units ficusResults
+      SourceUnitOnly units -> uploadAnalysis revision metadata units snippetResults
       LicenseSourceUnitOnly licenseSourceUnit -> do
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
         runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults $ orgFileUpload org
@@ -166,12 +168,12 @@ uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
   ProjectRevision ->
   ProjectMetadata ->
   NE.NonEmpty FullSourceUnit ->
-  Maybe FicusSnippetScanResults ->
+  Maybe FicusAnalysisResults ->
   FileUpload ->
   m UploadResponse
 uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults uploadKind = do
   _ <- uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits
-  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults
+  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind (snippetScanResults =<< ficusResults)
 
 uploadAnalysisWithFirstPartyLicensesToS3 ::
   ( Has Diagnostics sig m

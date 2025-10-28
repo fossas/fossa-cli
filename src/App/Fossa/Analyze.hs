@@ -51,7 +51,6 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -110,7 +109,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (Result (Success), resultToMaybe)
+import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -350,7 +349,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
             else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
-  let ficusResults = (snippetScanResults =<<) . join . resultToMaybe $ maybeFicusResults
+  let ficusResults = join . resultToMaybe $ maybeFicusResults
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -438,7 +437,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults maybeFicusResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
