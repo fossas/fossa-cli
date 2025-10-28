@@ -24,6 +24,8 @@ import App.Fossa.Ficus.Types (
   FicusPerStrategyFlag (..),
   FicusScanStats (..),
   FicusSnippetScanResults (..),
+  FicusVendoredDependency (..),
+  FicusVendoredDependencyScanResults (..),
  )
 import App.Types (ProjectRevision (..))
 import Control.Applicative ((<|>))
@@ -32,6 +34,7 @@ import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
 import Data.Aeson (decode, decodeStrictText)
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
@@ -51,7 +54,7 @@ import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
-import Srclib.Types (Locator (..), renderLocator)
+import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
 import System.FilePath ((</>))
 import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, stderr)
 import System.Process.Typed (
@@ -68,7 +71,7 @@ import System.Process.Typed (
 import Text.Printf (printf)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
-import Types (GlobFilter (..), LicenseScanPathFilters (..))
+import Types (GlobFilter (..), GraphBreadth (..), LicenseScanPathFilters (..))
 import Prelude
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
@@ -166,6 +169,55 @@ formatFicusScanSummary results =
     formatProcessingTime :: Double -> Text
     formatProcessingTime seconds = toText (printf "%.3f" seconds :: String)
 
+findingToVendoredDependency :: FicusFinding -> Maybe FicusVendoredDependency
+findingToVendoredDependency (FicusFinding (FicusMessageData strategy payload))
+  | Text.toLower strategy == "vendored" =
+      decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
+findingToVendoredDependency _ = Nothing
+
+vendoredDepsToSourceUnit :: [FicusVendoredDependency] -> SourceUnit
+vendoredDepsToSourceUnit deps =
+  SourceUnit
+    { sourceUnitName = "ficus-vendored-dependencies"
+    , sourceUnitType = "ficus-vendored"
+    , sourceUnitManifest = "ficus-vendored-dependencies"
+    , sourceUnitBuild =
+        Just $
+          SourceUnitBuild
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports = locators
+            , buildDependencies = dependencies
+            }
+    , sourceUnitGraphBreadth = Complete
+    , sourceUnitNoticeFiles = []
+    , sourceUnitOriginPaths = map (textToOriginPath . ficusVendoredDependencyPath) deps
+    , sourceUnitLabels = Nothing
+    , additionalData = Nothing
+    }
+  where
+    locators :: [Locator]
+    locators = map vendoredDepToLocator deps
+
+    dependencies :: [SourceUnitDependency]
+    dependencies = map vendoredDepToSourceUnitDependency deps
+
+    vendoredDepToLocator :: FicusVendoredDependency -> Locator
+    vendoredDepToLocator dep =
+      Locator
+        { locatorFetcher = ficusVendoredDependencyEcosystem dep
+        , locatorProject = ficusVendoredDependencyName dep
+        , locatorRevision = ficusVendoredDependencyVersion dep
+        }
+
+    vendoredDepToSourceUnitDependency :: FicusVendoredDependency -> SourceUnitDependency
+    vendoredDepToSourceUnitDependency dep =
+      SourceUnitDependency
+        { sourceDepLocator = vendoredDepToLocator dep
+        , sourceDepImports = []
+        , sourceDepData = Aeson.object ["path" Aeson..= ficusVendoredDependencyPath dep]
+        }
+
 runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -238,39 +290,56 @@ runFicus maybeDebugDir ficusConfig = do
       pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
 
     streamFicusOutput :: Handle -> Maybe Handle -> IO FicusAnalysisResults
-    streamFicusOutput handle maybeFile =
-      Conduit.runConduit $
-        CC.sourceHandle handle
-          .| CC.decodeUtf8Lenient
-          .| CC.linesUnbounded
-          .| CC.mapM
-            ( \line -> do
-                -- Tee raw line to file if debug mode
-                traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
-                pure line
-            )
-          .| CCL.mapMaybe decodeStrictText
-          .| CC.foldM
-            ( \acc message -> do
-                -- Log messages as they come, with timestamps
-                timestamp <- currentTimeStamp
-                case message of
-                  FicusMessageError err -> do
-                    hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
-                    pure acc
-                  FicusMessageDebug dbg -> do
-                    hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
-                    pure acc
-                  FicusMessageFinding finding -> do
-                    hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let analysisFinding = findingToSnippetScanResult finding
-                    let currentSnippetResults = snippetScanResults acc
-                    when (isJust currentSnippetResults && isJust analysisFinding) $
-                      hPutStrLn stderr $
-                        "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
-                    pure $ acc{snippetScanResults = currentSnippetResults <|> analysisFinding}
-            )
-            (FicusAnalysisResults{snippetScanResults = Nothing, vendoredDependencyScanResults = Nothing})
+    streamFicusOutput handle maybeFile = do
+      accumulator <-
+        Conduit.runConduit $
+          CC.sourceHandle handle
+            .| CC.decodeUtf8Lenient
+            .| CC.linesUnbounded
+            .| CC.mapM
+              ( \line -> do
+                  -- Tee raw line to file if debug mode
+                  traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
+                  pure line
+              )
+            .| CCL.mapMaybe decodeStrictText
+            .| CC.foldM
+              ( \acc message -> do
+                  -- Log messages as they come, with timestamps
+                  timestamp <- currentTimeStamp
+                  case message of
+                    FicusMessageError err -> do
+                      hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
+                      pure acc
+                    FicusMessageDebug dbg -> do
+                      hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
+                      pure acc
+                    FicusMessageFinding finding -> do
+                      hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
+                      let analysisFinding = findingToSnippetScanResult finding
+                      let vendoredDep = findingToVendoredDependency finding
+                      let (currentSnippetResults, currentVendoredDeps) = acc
+                      when (isJust currentSnippetResults && isJust analysisFinding) $
+                        hPutStrLn stderr $
+                          "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
+                      let newSnippetResults = currentSnippetResults <|> analysisFinding
+                      let newVendoredDeps = case vendoredDep of
+                            Just dep -> dep : currentVendoredDeps
+                            Nothing -> currentVendoredDeps
+                      pure (newSnippetResults, newVendoredDeps)
+              )
+              (Nothing, [])
+
+      let (snippetResults, vendoredDeps) = accumulator
+      let vendoredResults = case vendoredDeps of
+            [] -> Nothing
+            deps -> Just $ FicusVendoredDependencyScanResults (Just $ vendoredDepsToSourceUnit deps)
+
+      pure $
+        FicusAnalysisResults
+          { snippetScanResults = snippetResults
+          , vendoredDependencyScanResults = vendoredResults
+          }
 
     consumeStderr :: Handle -> Maybe Handle -> IO [Text]
     consumeStderr handle maybeFile = do
