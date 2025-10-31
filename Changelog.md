@@ -1,4 +1,6 @@
 # FOSSA CLI Changelog
+## 3.12.1
+- Update latest version of a dependency for `--x-snippet-scan`. This change make some changes to the data we send and store so that we can more easily update snippet data in the background ([#1587](https://github.com/fossas/fossa-cli/pull/1609))
 
 ## 3.12.0
 - Python: Add support for projects using uv for package management ([#1604](https://github.com/fossas/fossa-cli/pull/1604))
