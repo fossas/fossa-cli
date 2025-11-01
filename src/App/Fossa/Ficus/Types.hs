@@ -14,18 +14,45 @@ module App.Fossa.Ficus.Types (
   FicusSnippetScanFlag,
   FicusSnippetScanResults (..),
   FicusPerStrategyFlag (..),
+  FicusAnalysisResults (..),
+  FicusVendoredDependency (..),
+  FicusVendoredDependencyScanResults (..),
 ) where
 
 import App.Types (ProjectRevision)
-import Data.Aeson (FromJSON, Value (Object), withText)
+import Data.Aeson (FromJSON, Value (Object), withObject, withText)
 import Data.Aeson qualified as A
-import Data.Aeson.Types (Parser, (.:))
+import Data.Aeson.Types (Parser, (.:), (.:?))
 import Data.Text (Text)
 import Fossa.API.Types
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
+import Srclib.Types (SourceUnit)
 import Text.URI
 import Types (GlobFilter)
+
+data FicusAnalysisResults = FicusAnalysisResults
+  { snippetScanResults :: Maybe FicusSnippetScanResults
+  , vendoredDependencyScanResults :: Maybe FicusVendoredDependencyScanResults
+  }
+
+newtype FicusVendoredDependencyScanResults = FicusVendoredDependencyScanResults (Maybe SourceUnit)
+
+data FicusVendoredDependency = FicusVendoredDependency
+  { ficusVendoredDependencyName :: Text
+  , ficusVendoredDependencyEcosystem :: Text
+  , ficusVendoredDependencyVersion :: Maybe Text
+  , ficusVendoredDependencyPath :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON FicusVendoredDependency where
+  parseJSON = withObject "FicusVendoredDependency" $ \obj ->
+    FicusVendoredDependency
+      <$> obj .: "name"
+      <*> obj .: "ecosystem"
+      <*> obj .:? "version"
+      <*> obj .: "path"
 
 newtype FicusSnippetScanResults = FicusSnippetScanResults {ficusSnippetScanResultsAnalysisId :: Int} deriving (Eq, Ord, Show, Generic)
 

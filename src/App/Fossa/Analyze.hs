@@ -51,6 +51,7 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -104,12 +105,12 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (Result (Success), resultToMaybe)
+import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -365,13 +366,22 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       vsiResults' :: [SourceUnit]
       vsiResults' = fromMaybe [] $ join (resultToMaybe vsiResults)
 
+      ficusResults' :: [SourceUnit]
+      ficusResults' =
+        maybeToList $
+          ficusResults
+            >>= vendoredDependencyScanResults
+            >>= \(FicusVendoredDependencyScanResults maybeSrcUnit) -> maybeSrcUnit
+
       additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = vsiResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
+      additionalSourceUnits = vsiResults' <> ficusResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   -- Flush logs using the original Result from VSI.
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
   -- Flush logs from lernie
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
+  -- Flush logs from ficus
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -437,7 +447,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults maybeFicusResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
   renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
