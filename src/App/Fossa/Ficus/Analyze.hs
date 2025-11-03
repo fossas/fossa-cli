@@ -23,6 +23,7 @@ import App.Fossa.Ficus.Types (
   FicusMessages (..),
   FicusPerStrategyFlag (..),
   FicusSnippetScanResults (..),
+  FicusStrategy (FicusStrategyHash, FicusStrategyNoop, FicusStrategySnippetScan, FicusStrategyVendetta),
   FicusVendoredDependency (..),
   FicusVendoredDependencyScanResults (..),
  )
@@ -93,11 +94,12 @@ analyzeWithFicus ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   ProjectRevision ->
+  [FicusStrategy] ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
   m (Maybe FicusAnalysisResults)
-analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays = do
-  Just <$> analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays
+analyzeWithFicus rootDir apiOpts revision strategies filters snippetScanRetentionDays = do
+  Just <$> analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRetentionDays
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -107,10 +109,11 @@ analyzeWithFicusMain ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   ProjectRevision ->
+  [FicusStrategy] ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
   m FicusAnalysisResults
-analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays = do
+analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRetentionDays = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
   ficusResults <- runFicus ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
@@ -129,6 +132,7 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
+        , ficusConfigOnlyStrategies = strategies
         }
 
 findingToAnalysisId :: FicusFinding -> Maybe Int
@@ -141,7 +145,7 @@ findingToAnalysisId _ = Nothing
 
 findingToVendoredDependency :: FicusFinding -> Maybe FicusVendoredDependency
 findingToVendoredDependency (FicusFinding (FicusMessageData strategy payload))
-  | Text.toLower strategy == "vendored" =
+  | Text.toLower strategy == "vendetta" =
       decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
 findingToVendoredDependency _ = Nothing
 
@@ -343,11 +347,17 @@ ficusCommand ficusConfig bin = do
   pure cmd
   where
     snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
+    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = concatMap (\path -> ["--exclude", unGlobFilter path]) $ ficusConfigExclude ficusConfig
+    configStrategies = concatMap (\strategy -> ["--only", strategyToArg strategy]) $ ficusConfigOnlyStrategies ficusConfig
+    strategyToArg = \case
+      FicusStrategySnippetScan -> "snippet-scan"
+      FicusStrategyNoop -> "noop"
+      FicusStrategyHash -> "hash"
+      FicusStrategyVendetta -> "vendetta"
 
     maskApiKeyInCommand :: Text -> Text
     maskApiKeyInCommand cmdText =
