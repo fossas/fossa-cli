@@ -51,7 +51,7 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
+import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -303,6 +303,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.xSnippetScan cfg
+      enableVendetta = Config.xVendetta cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -341,24 +342,30 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
+  let ficusStrategies = case [enableSnippetScan, enableVendetta] of
+        [True, True] -> [FicusStrategySnippetScan, FicusStrategyVendetta]
+        [True, False] -> [FicusStrategySnippetScan]
+        [False, True] -> [FicusStrategyVendetta]
+        [False, False] -> []
   maybeFicusResults <-
     Diag.errorBoundaryIO . diagToDebug $
-      if not enableSnippetScan
+      if null ficusStrategies
         then do
-          logInfo "Skipping ficus snippet scanning (--x-snippet-scan not set)"
+          logInfo "Skipping ficus scanning (--x-snippet-scan and/or x-vendetta not set)"
           pure Nothing
         else
           if filterIsVSIOnly filters
             then do
-              logInfo "Running in VSI only mode, skipping snippet-scan"
+              logInfo "Running in VSI only mode, skipping ficus scanning"
               pure Nothing
             else
-              Diag.context "snippet-scanning"
+              Diag.context "ficus-scanning"
                 . runStickyLogger SevInfo
                 $ analyzeWithFicus
                   basedir
                   maybeApiOpts
                   revision
+                  ficusStrategies
                   (Config.licenseScanPathFilters vendoredDepsOptions)
                   (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
                   (Config.debugDir cfg)

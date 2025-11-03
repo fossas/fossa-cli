@@ -240,6 +240,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
   , analyzeStrictMode :: Flag StrictMode
   , analyzeSnippetScan :: Bool
+  , analyzeVendetta :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -280,6 +281,7 @@ data AnalyzeConfig = AnalyzeConfig
   , mode :: Mode
   , xSnippetScan :: Bool
   , debugDir :: Maybe FilePath
+  , xVendetta :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -352,6 +354,7 @@ cliParser =
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
     <*> switch (applyFossaStyle <> long "x-snippet-scan" <> stringToHelpDoc "Experimental flag to enable snippet scanning to identify open source code snippets using fingerprinting.")
+    <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -568,6 +571,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> pure mode
     <*> pure analyzeSnippetScan
     <*> pure maybeDebugDir
+    <*> pure analyzeVendetta
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>

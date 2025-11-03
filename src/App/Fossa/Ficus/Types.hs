@@ -7,6 +7,7 @@ module App.Fossa.Ficus.Types (
   FicusDebug (..),
   FicusError (..),
   FicusAnalysisFlag (..),
+  FicusStrategy (..),
   FicusAllFlag (..),
   FicusWalkFlag (..),
   FicusNoopFlag (..),
@@ -14,6 +15,7 @@ module App.Fossa.Ficus.Types (
   FicusSnippetScanFlag,
   FicusSnippetScanResults (..),
   FicusScanStats (..),
+  FicusVendettaFlag,
   FicusPerStrategyFlag (..),
   FicusAnalysisResults (..),
   FicusVendoredDependency (..),
@@ -204,7 +206,15 @@ data FicusConfig = FicusConfig
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`
   , ficusConfigFlags :: [FicusPerStrategyFlag]
   , ficusConfigSnippetScanRetentionDays :: Maybe Int
+  , ficusConfigOnlyStrategies :: [FicusStrategy]
   }
+  deriving (Show, Eq, Generic)
+
+data FicusStrategy
+  = FicusStrategySnippetScan
+  | FicusStrategyNoop
+  | FicusStrategyHash
+  | FicusStrategyVendetta
   deriving (Show, Eq, Generic)
 
 -- A flag for ficus paired with a proper strategy or pseudo-strategy.
@@ -216,6 +226,7 @@ data FicusPerStrategyFlag
   | SnippetScan FicusSnippetScanFlag
   | Noop FicusNoopFlag
   | Hash FicusHashFlag
+  | Vendetta FicusVendettaFlag
   deriving (Show, Eq, Generic)
 
 data FicusAnalysisFlag
@@ -233,6 +244,11 @@ newtype FicusNoopFlag = FicusNoopFlag FicusAnalysisFlag deriving (Show, Eq)
 newtype FicusHashFlag = FicusHashFlag FicusAnalysisFlag deriving (Show, Eq)
 
 data FicusSnippetScanFlag
-  = CommonFlag FicusAnalysisFlag
-  | BatchLen Int
+  = SnippetScanCommonFlag FicusAnalysisFlag
+  | SnippetScanBatchLen Int
+  deriving (Show, Eq)
+
+data FicusVendettaFlag
+  = VendettaCommonFlag FicusAnalysisFlag
+  | VendettaBatchLen Int
   deriving (Show, Eq)
