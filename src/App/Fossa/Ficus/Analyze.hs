@@ -50,7 +50,7 @@ import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), renderLocator)
-import System.IO (Handle, hGetLine, hIsEOF)
+import System.IO (Handle, hGetLine, hIsEOF, hPutStrLn, stderr)
 import System.Process.Typed (
   createPipe,
   getStderr,
@@ -159,8 +159,9 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
+
     (result, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
-      getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
+      getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
       -- Start async reading of stderr to prevent blocking
@@ -196,20 +197,22 @@ runFicus ficusConfig = do
           .| CCL.mapMaybe decodeStrictText
           .| CC.foldM
             ( \acc message -> do
-                -- Log messages as they come, with timestamps
+                -- Log messages immediately to stderr as they stream
+                -- These messages are deliberately not included in the debug bundle, as this can cause huge increases in memory usage
+                -- and bundle size.
                 timestamp <- currentTimeStamp
                 case message of
                   FicusMessageError err -> do
-                    putStrLn $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
+                    hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
                     pure acc
                   FicusMessageDebug dbg -> do
-                    putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
+                    hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
                     pure acc
                   FicusMessageFinding finding -> do
-                    putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
+                    hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
                     let analysisFinding = FicusSnippetScanResults <$> findingToAnalysisId finding
                     when (isJust acc && isJust analysisFinding) $
-                      putStrLn $
+                      hPutStrLn stderr $
                         "[" ++ timestamp ++ "] ERROR " <> "Found multiple analysis ids."
                     pure $ acc <|> analysisFinding
             )
