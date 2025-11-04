@@ -175,11 +175,11 @@ runFicus ficusConfig = do
 
     if exitCode /= ExitSuccess
       then do
-        logDebug $
+        logInfo $
           "[Ficus] Ficus process returned non-zero exit code. Printing last 50 lines of stderr: " <> pretty (show exitCode)
-        logDebug "\n==== BEGIN Ficus STDERR ====\n"
-        logDebug $ pretty (Text.unlines stdErrLines)
-        logDebug "\n==== END Ficus STDERR ====\n"
+        logInfo "\n==== BEGIN Ficus STDERR ====\n"
+        logInfo $ pretty (Text.unlines stdErrLines)
+        logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
     pure result
   where
