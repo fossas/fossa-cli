@@ -12,18 +12,26 @@ module App.Fossa.Subcommand (
 import App.Fossa.Config.Common (CommonOpts, collectTelemetrySink)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
+import App.Fossa.DebugDir (globalDebugDirRef)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Git (GitC, runGit)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (TelemetryC, withTelemetry)
 import Control.Effect.Telemetry (setSink, trackConfig)
+import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Foldable (traverse_)
+import Data.IORef (readIORef, writeIORef)
 import Data.String.Conversion (ToText (toText), toStrict)
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
+import Discovery.Archive qualified as Archive
+import Path qualified as P
+import System.Directory qualified as Dir
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
   LoggerC,
-  Severity (SevInfo),
+  Severity (SevDebug, SevInfo),
   logInfo,
   logStdout,
   withDefaultLogger,
@@ -31,6 +39,23 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Options.Applicative (InfoMod, Parser)
 import Text.Pretty.Simple (pShowNoColor)
+
+debugBundleZipPath :: FilePath
+debugBundleZipPath = "fossa.debug.zip"
+
+-- Function to finalize debug bundle after telemetry teardown
+finalizeBundleWithTelemetry :: FilePath -> IO ()
+finalizeBundleWithTelemetry debugDir = do
+  -- Telemetry file should already be in debugDir (written there directly)
+  -- Create zip file from the entire debug directory
+  debugDirPath <- P.parseAbsDir debugDir
+  zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
+  Archive.mkZip debugDirPath zipPath
+
+  putStrLn $ "Debug bundle created: " <> debugBundleZipPath
+
+  -- Clean up the temporary debug directory
+  Dir.removeDirectoryRecursive debugDir
 
 data SubCommand cli cfg = SubCommand
   { commandName :: String
@@ -55,8 +80,31 @@ updateCommandName :: SubCommand cli cfg -> String -> SubCommand cli cfg
 updateCommandName subCmd newName = subCmd{commandName = newName}
 
 runSubCommand :: forall cli cfg. (GetCommonOpts cli, GetSeverity cli, Show cfg, ToJSON cfg) => SubCommand cli cfg -> Parser (IO ())
-runSubCommand SubCommand{..} = uncurry (runEffs) . mergeAndRun <$> parser
+runSubCommand SubCommand{..} = runWithDebugDir . mergeAndRun <$> parser
   where
+    -- Create debug directory and run effects with cleanup
+    runWithDebugDir :: (Severity, EffStack ()) -> IO ()
+    runWithDebugDir (sev, action) = do
+      -- Create debug directory if in debug mode
+      maybeDebugDir <- if sev == SevDebug
+        then do
+          tmpDir <- Dir.getTemporaryDirectory
+          suffix <- UUID.toString <$> UUID.nextRandom
+          let uniqueName = "fossa-debug-bundle-" <> suffix
+          let dirName = tmpDir <> "/" <> uniqueName
+          Dir.createDirectoryIfMissing True dirName
+          writeIORef globalDebugDirRef (Just dirName)
+          pure (Just dirName)
+        else do
+          writeIORef globalDebugDirRef Nothing
+          pure Nothing
+
+      -- Run the command
+      runEffs sev action
+
+      -- Finalize debug bundle after telemetry teardown
+      maybe (pure ()) finalizeBundleWithTelemetry maybeDebugDir
+
     -- We have to extract the severity from the options, which is not straightforward
     -- since the CLI parser is Applicative, but not Monad.
     mergeAndRun :: cli -> (Severity, EffStack ())

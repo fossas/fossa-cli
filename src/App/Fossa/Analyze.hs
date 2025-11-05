@@ -6,7 +6,6 @@ module App.Fossa.Analyze (
   runAnalyzers,
   runDependencyAnalysis,
   analyzeSubCommand,
-  finalizeBundleWithTelemetry,
 
   -- * Helpers
   toProjectResult,
@@ -97,7 +96,7 @@ import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
-import Control.Monad (join, unless, when)
+import Control.Monad (join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -105,14 +104,12 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
-import Data.IORef (writeIORef)
+import Data.IORef (readIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
-import Data.UUID qualified as UUID (toString)
-import Data.UUID.V4 qualified as UUID (nextRandom)
 import Diag.Diagnostic as DI
 import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -148,23 +145,6 @@ import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFu
 import System.Directory qualified as Dir
 import Types (DiscoveredProject (..), FoundTargets)
 
-debugBundleZipPath :: FilePath
-debugBundleZipPath = "fossa.debug.zip"
-
--- Function to finalize debug bundle after telemetry teardown
-finalizeBundleWithTelemetry :: FilePath -> IO ()
-finalizeBundleWithTelemetry debugDir = do
-  -- Telemetry file should already be in debugDir (written there directly)
-  -- Create zip file from the entire debug directory
-  debugDirPath <- P.parseAbsDir debugDir
-  zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
-  Archive.mkZip debugDirPath zipPath
-
-  putStrLn $ "Debug bundle created: " <> debugBundleZipPath
-
-  -- Clean up the temporary debug directory
-  Dir.removeDirectoryRecursive debugDir
-
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
 
@@ -179,13 +159,7 @@ dispatch ::
   ) =>
   AnalyzeConfig ->
   m ()
-dispatch cfg = do
-  (_, maybeDebugDir) <- analyzeMain cfg
-  -- Store debug directory in global IORef for post-telemetry finalization
-  case maybeDebugDir of
-    Just debugDir -> sendIO $ writeIORef globalDebugDirRef (Just debugDir)
-    Nothing -> pure ()
-  pure ()
+dispatch cfg = void $ analyzeMain cfg
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
@@ -199,37 +173,23 @@ analyzeMain ::
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
-  m (Aeson.Value, Maybe FilePath)
+  m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    -- Create debug directory upfront - all debug files will go here
-    -- Use a unique directory name for each run to avoid conflicts between
-    -- multiple simultaneous runs on the same machine and to avoid re-use of log files between runs
-    debugDir <- sendIO $ do
-      tmpDir <- Dir.getTemporaryDirectory
-      suffix <- UUID.toString <$> UUID.nextRandom
-      let uniqueName = "fossa-debug-bundle-" <> suffix
-      let dirName = tmpDir <> "/" <> uniqueName
-      Dir.createDirectoryIfMissing True dirName
-      pure dirName
+    -- Read debug directory from global ref (created in Subcommand.hs)
+    maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
 
-    -- Store in global ref so telemetry sink can access it
-    sendIO $ writeIORef globalDebugDirRef (Just debugDir)
-
-    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg (Just debugDir)
+    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg maybeDebugDir
 
     -- Write debug JSON to debug directory (uncompressed)
-    sendIO $ do
-      let debugJsonPath = debugDir <> "/fossa.debug.json"
-      BL.writeFile debugJsonPath $ Aeson.encode bundle
+    case maybeDebugDir of
+      Just debugDir -> sendIO $ do
+        let debugJsonPath = debugDir <> "/fossa.debug.json"
+        BL.writeFile debugJsonPath $ Aeson.encode bundle
+      Nothing -> pure ()
 
-    result <- Diag.rethrow res
-
-    -- Return the debug directory so dispatch can finalize it after telemetry teardown
-    pure (result, Just debugDir)
-  _ -> do
-    result <- ignoreDebug $ analyze cfg Nothing
-    pure (result, Nothing)
+    Diag.rethrow res
+  _ -> ignoreDebug $ analyze cfg Nothing
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
