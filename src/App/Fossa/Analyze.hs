@@ -15,7 +15,6 @@ module App.Fossa.Analyze (
 
 import App.Docs (userGuideUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
-import App.Fossa.Analyze.Debug qualified as Debug
 import App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
   discoverFuncs,
@@ -76,9 +75,8 @@ import App.Types (
  )
 import App.Util (FileAncestry, ancestryDirect)
 import Codec.Compression.GZip qualified as GZip
-import Control.Applicative (asum)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, Scope (scopeEvents, scopeMetadata), ScopeEvent (EventScope), debugMetadata, ignoreDebug)
+import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -108,12 +106,10 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
-import Data.IORef (IORef, newIORef, writeIORef)
+import Data.IORef (writeIORef)
 import Data.List.NonEmpty qualified as NE
-import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -149,7 +145,6 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import System.Directory qualified as Dir
-import System.IO.Unsafe (unsafePerformIO)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
