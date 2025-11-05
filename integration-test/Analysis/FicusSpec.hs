@@ -51,7 +51,7 @@ spec = do
       testDataExists <- PIO.doesDirExist testDataDir
       testDataExists `shouldBe` True
 
-      result <- runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO $ analyzeWithFicus testDataDir apiOpts revision Nothing (Just 10)
+      result <- runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO $ analyzeWithFicus testDataDir apiOpts revision Nothing (Just 10) False
 
       case result of
         Success _warnings analysisResult -> do
