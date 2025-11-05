@@ -18,7 +18,6 @@ import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
   JsonOutput (JsonOutput),
  )
-import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
 import App.Fossa.DebugDir (globalDebugDirRef)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
@@ -55,7 +54,6 @@ import Effect.Logger (
   Has,
   Logger,
   Pretty (pretty),
-  Severity (..),
   logError,
   logInfo,
   logStdout,
@@ -88,22 +86,20 @@ analyzeExperimental ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyzeExperimental cfg = do
-  case Config.severity cfg of
-    SevDebug -> do
-      -- Read debug directory from global ref (created in Subcommand.hs)
-      maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+  -- Read debug directory from global ref (created in Subcommand.hs if --debug is enabled)
+  maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
 
+  case maybeDebugDir of
+    Just debugDir -> do
       (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
       -- Write debug JSON to debug directory (uncompressed)
-      case maybeDebugDir of
-        Just debugDir -> sendIO $ do
-          let debugJsonPath = debugDir </> debugBundlePath
-          BL.writeFile debugJsonPath $ Aeson.encode bundle
-        Nothing -> pure ()
+      sendIO $ do
+        let debugJsonPath = debugDir </> debugBundlePath
+        BL.writeFile debugJsonPath $ Aeson.encode bundle
 
       Diag.rethrow res
-    _ -> ignoreDebug $ analyze cfg
+    Nothing -> ignoreDebug $ analyze cfg
 
 analyze ::
   ( Has Diagnostics sig m
