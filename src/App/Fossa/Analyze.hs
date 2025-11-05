@@ -110,6 +110,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
+import Data.Time (getCurrentTime)
+import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (Result (Success), resultToMaybe)
@@ -198,9 +200,12 @@ analyzeMain ::
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
     -- Create debug directory upfront - all debug files will go here
+    -- Use a unique directory name for each run to avoid conflicts
     debugDir <- sendIO $ do
       tmpDir <- Dir.getTemporaryDirectory
-      let dirName = tmpDir <> "/fossa-debug-bundle"
+      timestamp <- getCurrentTime
+      let uniqueName = "fossa-debug-bundle-" <> formatTime defaultTimeLocale "%Y%m%d-%H%M%S-%q" timestamp
+      let dirName = tmpDir <> "/" <> uniqueName
       Dir.createDirectoryIfMissing True dirName
       pure dirName
 
