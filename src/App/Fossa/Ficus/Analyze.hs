@@ -94,11 +94,10 @@ analyzeWithFicus ::
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
-  Bool ->
-  Maybe FilePath -> -- debugDir: if Just, write logs here instead of temp files
+  Maybe FilePath -> -- debugDir: if Just, write logs here and enable debug mode
   m FicusAnalysisResults
-analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays debugMode maybeDebugDir = do
-  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays debugMode maybeDebugDir
+analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
+  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -110,10 +109,9 @@ analyzeWithFicusMain ::
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
-  Bool ->
-  Maybe FilePath -> -- debugDir: if Just, write logs here instead of temp files
+  Maybe FilePath -> -- debugDir: if Just, write logs here and enable debug mode
   m FicusAnalysisResults
-analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays debugMode maybeDebugDir = do
+analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
   analysisResults <- runFicus ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
@@ -132,7 +130,6 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays d
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
-        , ficusConfigDebugMode = debugMode
         , ficusConfigDebugDir = maybeDebugDir
         }
 
@@ -172,7 +169,7 @@ runFicus ficusConfig = do
     -- Create files for teeing output if debug mode is enabled
     -- Use debugDir if provided, otherwise use temp files
     (stdoutFile, stderrFile) <-
-      if ficusConfigDebugMode ficusConfig
+      if isJust (ficusConfigDebugDir ficusConfig)
         then do
           (stdoutTuple, stderrTuple) <- sendIO $ case ficusConfigDebugDir ficusConfig of
             Just debugDir -> do

@@ -364,7 +364,7 @@ analyze cfg maybeDebugDir = Diag.context "fossa-analyze" $ do
             then do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
-            else fmap Just $ Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) (Config.severity cfg == SevDebug) maybeDebugDir
+            else fmap Just $ Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) maybeDebugDir
   let ficusAnalysisResults = join $ resultToMaybe maybeFicusResults
   let ficusResults = ficusAnalysisSnippetResults <$> ficusAnalysisResults
 

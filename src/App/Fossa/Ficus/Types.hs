@@ -149,8 +149,7 @@ data FicusConfig = FicusConfig
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`
   , ficusConfigFlags :: [FicusPerStrategyFlag]
   , ficusConfigSnippetScanRetentionDays :: Maybe Int
-  , ficusConfigDebugMode :: Bool
-  , ficusConfigDebugDir :: Maybe FilePath -- If Just, write logs here instead of temp files
+  , ficusConfigDebugDir :: Maybe FilePath -- If Just, write logs here and enable debug mode
   }
   deriving (Show, Eq, Generic)
 
