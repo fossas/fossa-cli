@@ -232,6 +232,13 @@ analyzeMain cfg = case Config.severity cfg of
         Just path -> Dir.copyFile path (bundleDir <> "/ficus-stderr.log")
         Nothing -> pure ()
 
+      -- Move telemetry file to the bundle directory, so it is included in the zip
+      let telemetryPath = "fossa.telemetry.json"
+      telemetryExists <- Dir.doesFileExist telemetryPath
+      when telemetryExists $ do
+        Dir.copyFile telemetryPath (bundleDir <> "/fossa.telemetry.json")
+        Dir.removeFile telemetryPath
+
       -- Create zip file
       bundleDirPath <- P.parseAbsDir bundleDir
       zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
