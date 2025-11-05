@@ -13,6 +13,7 @@ import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
   FicusAnalysisFlag (..),
+  FicusAnalysisResults (..),
   FicusConfig (..),
   FicusDebug (..),
   FicusError (..),
@@ -93,7 +94,7 @@ analyzeWithFicus ::
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
   Bool ->
-  m (Maybe FicusSnippetScanResults)
+  m FicusAnalysisResults
 analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays debugMode = do
   analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays debugMode
 
@@ -108,16 +109,16 @@ analyzeWithFicusMain ::
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
   Bool ->
-  m (Maybe FicusSnippetScanResults)
+  m FicusAnalysisResults
 analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays debugMode = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
-  ficusResults <- runFicus ficusConfig
+  analysisResults <- runFicus ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
-  case ficusResults of
+  case ficusAnalysisSnippetResults analysisResults of
     Just results ->
       logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
     Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
-  pure ficusResults
+  pure analysisResults
   where
     ficusConfig =
       FicusConfig
@@ -145,7 +146,7 @@ runFicus ::
   , Has Logger sig m
   ) =>
   FicusConfig ->
-  m (Maybe FicusSnippetScanResults)
+  m FicusAnalysisResults
 runFicus ficusConfig = do
   logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
@@ -208,7 +209,14 @@ runFicus ficusConfig = do
         logInfo $ pretty (Text.unlines stdErrLines)
         logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
-    pure result
+
+    -- Return analysis results with file paths
+    pure $
+      FicusAnalysisResults
+        { ficusAnalysisSnippetResults = result
+        , ficusAnalysisStdoutPath = fst <$> stdoutFile
+        , ficusAnalysisStderrPath = fst <$> stderrFile
+        }
   where
     currentTimeStamp :: IO String
     currentTimeStamp = do

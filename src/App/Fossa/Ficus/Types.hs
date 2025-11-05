@@ -13,6 +13,7 @@ module App.Fossa.Ficus.Types (
   FicusHashFlag (..),
   FicusSnippetScanFlag,
   FicusSnippetScanResults (..),
+  FicusAnalysisResults (..),
   FicusPerStrategyFlag (..),
 ) where
 
@@ -28,6 +29,13 @@ import Text.URI
 import Types (GlobFilter)
 
 newtype FicusSnippetScanResults = FicusSnippetScanResults {ficusSnippetScanResultsAnalysisId :: Int} deriving (Eq, Ord, Show, Generic)
+
+data FicusAnalysisResults = FicusAnalysisResults
+  { ficusAnalysisSnippetResults :: Maybe FicusSnippetScanResults
+  , ficusAnalysisStdoutPath :: Maybe FilePath
+  , ficusAnalysisStderrPath :: Maybe FilePath
+  }
+  deriving (Eq, Show, Generic)
 
 data FicusMessages = FicusMessages
   { ficusMessageDebugs :: [FicusDebug]

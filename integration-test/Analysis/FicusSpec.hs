@@ -4,7 +4,7 @@
 module Analysis.FicusSpec (spec) where
 
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..))
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
@@ -55,7 +55,7 @@ spec = do
 
       case result of
         Success _warnings analysisResult -> do
-          case analysisResult of
+          case ficusAnalysisSnippetResults analysisResult of
             Just (FicusSnippetScanResults analysisId) -> do
               analysisId `shouldSatisfy` (> 0)
             Nothing -> do

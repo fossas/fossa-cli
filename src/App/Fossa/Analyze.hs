@@ -14,6 +14,7 @@ module App.Fossa.Analyze (
 
 import App.Docs (userGuideUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
+import App.Fossa.Analyze.Debug qualified as Debug
 import App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
   discoverFuncs,
@@ -51,6 +52,7 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -73,7 +75,7 @@ import App.Types (
 import App.Util (FileAncestry, ancestryDirect)
 import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
+import Control.Carrier.Debug (Debug, Scope (scopeMetadata), debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -104,8 +106,10 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -126,6 +130,7 @@ import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
+import Path qualified as P
 import Path.IO (makeRelative)
 import Prettyprinter (
   Pretty (pretty),
@@ -139,10 +144,14 @@ import Prettyprinter.Render.Terminal (
  )
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import System.Directory qualified as Dir
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json.gz"
+
+debugBundleZipPath :: FilePath
+debugBundleZipPath = "fossa.debug.zip"
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
@@ -175,10 +184,53 @@ analyzeMain ::
   m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-    sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
+
+    -- Create bundled debug zip with Ficus logs
+    sendIO $ createDebugBundle bundle
+
     Diag.rethrow res
   _ -> ignoreDebug $ analyze cfg
+  where
+    createDebugBundle bundle = do
+      -- Extract Ficus file paths from scope metadata
+      let scope = Debug.bundleScope bundle
+      let metadata = scopeMetadata scope
+      let stdoutPath = case Map.lookup "ficus_stdout_path" metadata of
+            Just (Aeson.String path) -> Just (Text.unpack path)
+            _ -> Nothing
+      let stderrPath = case Map.lookup "ficus_stderr_path" metadata of
+            Just (Aeson.String path) -> Just (Text.unpack path)
+            _ -> Nothing
+
+      -- Create temp directory for bundling
+      tmpDir <- Dir.getTemporaryDirectory
+      bundleDir <- do
+        let dirName = tmpDir <> "/fossa-debug-bundle"
+        Dir.createDirectoryIfMissing True dirName
+        pure dirName
+
+      -- Write debug JSON to temp directory
+      let debugJsonPath = bundleDir <> "/fossa.debug.json"
+      BL.writeFile debugJsonPath $ Aeson.encode bundle
+
+      -- Copy Ficus log files if they exist
+      case stdoutPath of
+        Just path -> Dir.copyFile path (bundleDir <> "/ficus-stdout.log")
+        Nothing -> pure ()
+      case stderrPath of
+        Just path -> Dir.copyFile path (bundleDir <> "/ficus-stderr.log")
+        Nothing -> pure ()
+
+      -- Create zip file
+      bundleDirPath <- P.parseAbsDir bundleDir
+      zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
+      Archive.mkZip bundleDirPath zipPath
+
+      putStrLn $ "Debug bundle created: " <> debugBundleZipPath
+
+      -- Also write the old format for backwards compatibility
+      BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode bundle
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -348,8 +400,20 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             then do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
-            else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) (Config.severity cfg == SevDebug)
-  let ficusResults = join . resultToMaybe $ maybeFicusResults
+            else fmap Just $ Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) (Config.severity cfg == SevDebug)
+  let ficusAnalysisResults = join $ resultToMaybe maybeFicusResults
+  let ficusResults = ficusAnalysisSnippetResults <$> ficusAnalysisResults
+
+  -- Store Ficus file paths in debug metadata for later retrieval
+  case ficusAnalysisResults of
+    Just results -> do
+      case ficusAnalysisStdoutPath results of
+        Just path -> debugMetadata "ficus_stdout_path" path
+        Nothing -> pure ()
+      case ficusAnalysisStderrPath results of
+        Just path -> debugMetadata "ficus_stderr_path" path
+        Nothing -> pure ()
+    Nothing -> pure ()
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -457,7 +521,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
+  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits (join ficusResults)
 
   pure outputResult
   where
