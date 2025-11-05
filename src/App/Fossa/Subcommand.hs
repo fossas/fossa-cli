@@ -18,6 +18,7 @@ import Control.Carrier.Git (GitC, runGit)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (TelemetryC, withTelemetry)
 import Control.Effect.Telemetry (setSink, trackConfig)
+import Control.Exception (finally)
 import Control.Monad (when)
 import Data.Aeson (ToJSON)
 import Data.Foldable (traverse_)
@@ -46,6 +47,8 @@ debugBundleZipPath = "fossa.debug.zip"
 -- Function to finalize debug bundle after telemetry teardown
 finalizeBundleWithTelemetry :: FilePath -> IO ()
 finalizeBundleWithTelemetry debugDir = do
+  putStrLn $ "[DEBUG] Finalizing debug bundle from: " <> debugDir
+
   -- Telemetry file should already be in debugDir (written there directly)
   -- Create zip file from the entire debug directory
   debugDirPath <- P.parseAbsDir debugDir
@@ -99,11 +102,10 @@ runSubCommand SubCommand{..} = runWithDebugDir . mergeAndRun <$> parser
           writeIORef globalDebugDirRef Nothing
           pure Nothing
 
-      -- Run the command
-      runEffs sev action
-
-      -- Finalize debug bundle after telemetry teardown
-      maybe (pure ()) finalizeBundleWithTelemetry maybeDebugDir
+      -- Run the command, ensuring finalization happens even on exceptions
+      finally
+        (runEffs sev action)
+        (maybe (pure ()) finalizeBundleWithTelemetry maybeDebugDir)
 
     -- We have to extract the severity from the options, which is not straightforward
     -- since the CLI parser is Applicative, but not Monad.
