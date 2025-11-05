@@ -21,8 +21,10 @@ import Data.Aeson.Encode.Pretty (
 import Data.ByteString.Lazy qualified as LazyByteString
 import Data.IORef (readIORef)
 import Data.String.Conversion (toString)
-import Path (File, Path, Rel, mkRelFile, (</>))
+import Path (File, Path, Rel, mkRelFile)
+import Path qualified as P
 import Path.IO (getCurrentDir)
+import System.FilePath ((</>))
 
 fossaTelemetryDebugFile :: Path Rel File
 fossaTelemetryDebugFile = $(mkRelFile "fossa.telemetry.json")
@@ -38,11 +40,11 @@ sinkTelemetryToFile record = do
   filePath <- case maybeDebugDir of
     Just debugDir -> do
       -- Write to debug directory
-      pure $ debugDir <> "/fossa.telemetry.json"
+      pure $ debugDir </> "fossa.telemetry.json"
     Nothing -> do
       -- Fall back to current directory
       currentDir <- sendIO getCurrentDir
-      pure $ toString $ currentDir </> fossaTelemetryDebugFile
+      pure $ toString $ currentDir P.</> fossaTelemetryDebugFile
   sendIO $ encodeFile' filePath record
 
 encodeFile' :: forall a. ToJSON a => FilePath -> a -> IO ()

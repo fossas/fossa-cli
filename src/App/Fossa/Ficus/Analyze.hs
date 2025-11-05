@@ -52,6 +52,7 @@ import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), renderLocator)
 import System.Directory (getTemporaryDirectory)
+import System.FilePath ((</>))
 import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, openTempFile, stderr)
 import System.Process.Typed (
   createPipe,
@@ -176,8 +177,8 @@ runFicus ficusConfig = do
           (stdoutTuple, stderrTuple) <- sendIO $ case ficusConfigDebugDir ficusConfig of
             Just debugDir -> do
               -- Write directly to debug directory
-              let stdoutPath = debugDir <> "/ficus-stdout.log"
-              let stderrPath = debugDir <> "/ficus-stderr.log"
+              let stdoutPath = debugDir </> "ficus-stdout.log"
+              let stderrPath = debugDir </> "ficus-stderr.log"
               stdoutH <- openFile stdoutPath WriteMode
               stderrH <- openFile stderrPath WriteMode
               putStrLn $ "Teeing Ficus stdout to: " <> stdoutPath

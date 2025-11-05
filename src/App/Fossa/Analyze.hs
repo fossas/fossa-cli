@@ -143,10 +143,14 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import System.Directory qualified as Dir
+import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
+
+debugBundlePath :: FilePath
+debugBundlePath = "fossa.debug.json"
 
 dispatch ::
   ( Has Diag.Diagnostics sig m
@@ -184,7 +188,7 @@ analyzeMain cfg = case Config.severity cfg of
     -- Write debug JSON to debug directory (uncompressed)
     case maybeDebugDir of
       Just debugDir -> sendIO $ do
-        let debugJsonPath = debugDir <> "/fossa.debug.json"
+        let debugJsonPath = debugDir </> debugBundlePath
         BL.writeFile debugJsonPath $ Aeson.encode bundle
       Nothing -> pure ()
 

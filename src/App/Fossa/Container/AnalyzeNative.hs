@@ -65,6 +65,7 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path)
 import Srclib.Types (Locator (locatorRevision), locatorProject, renderLocator)
+import System.FilePath ((</>))
 
 data ContainerImageSource
   = DockerArchive (Path Abs File)
@@ -72,6 +73,7 @@ data ContainerImageSource
   | Podman Text
   | Registry RegistryImageSource
   deriving (Show, Eq)
+
 debugBundlePath :: FilePath
 debugBundlePath = "fossa.debug.json"
 
@@ -96,7 +98,7 @@ analyzeExperimental cfg = do
       -- Write debug JSON to debug directory (uncompressed)
       case maybeDebugDir of
         Just debugDir -> sendIO $ do
-          let debugJsonPath = debugDir <> debugBundlePath
+          let debugJsonPath = debugDir </> debugBundlePath
           BL.writeFile debugJsonPath $ Aeson.encode bundle
         Nothing -> pure ()
 
