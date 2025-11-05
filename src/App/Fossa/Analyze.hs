@@ -74,7 +74,6 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
-import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -147,9 +146,6 @@ import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFu
 import System.Directory qualified as Dir
 import Types (DiscoveredProject (..), FoundTargets)
 
-debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json"
-
 debugBundleZipPath :: FilePath
 debugBundleZipPath = "fossa.debug.zip"
 
@@ -213,12 +209,10 @@ analyzeMain cfg = case Config.severity cfg of
 
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg (Just debugDir)
 
-    -- Write debug JSON to debug directory
+    -- Write debug JSON to debug directory (uncompressed)
     sendIO $ do
       let debugJsonPath = debugDir <> "/fossa.debug.json"
       BL.writeFile debugJsonPath $ Aeson.encode bundle
-      -- Also write the old format for backwards compatibility
-      BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode bundle
 
     result <- Diag.rethrow res
 
