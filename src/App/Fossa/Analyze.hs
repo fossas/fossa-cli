@@ -110,9 +110,9 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
-import Data.Time (getCurrentTime)
-import Data.Time.Format (defaultTimeLocale, formatTime)
 import Data.Traversable (for)
+import Data.UUID qualified as UUID (toString)
+import Data.UUID.V4 qualified as UUID (nextRandom)
 import Diag.Diagnostic as DI
 import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -162,6 +162,9 @@ finalizeBundleWithTelemetry debugDir = do
 
   putStrLn $ "Debug bundle created: " <> debugBundleZipPath
 
+  -- Clean up the temporary debug directory
+  Dir.removeDirectoryRecursive debugDir
+
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
 
@@ -200,11 +203,12 @@ analyzeMain ::
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
     -- Create debug directory upfront - all debug files will go here
-    -- Use a unique directory name for each run to avoid conflicts
+    -- Use a unique directory name for each run to avoid conflicts between
+    -- multiple simultaneous runs on the same machine and to avoid re-use of log files between runs
     debugDir <- sendIO $ do
       tmpDir <- Dir.getTemporaryDirectory
-      timestamp <- getCurrentTime
-      let uniqueName = "fossa-debug-bundle-" <> formatTime defaultTimeLocale "%Y%m%d-%H%M%S-%q" timestamp
+      suffix <- UUID.toString <$> UUID.nextRandom
+      let uniqueName = "fossa-debug-bundle-" <> suffix
       let dirName = tmpDir <> "/" <> uniqueName
       Dir.createDirectoryIfMissing True dirName
       pure dirName
