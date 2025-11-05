@@ -38,6 +38,7 @@ import Strategy.Python.PDM.Pdm qualified as Pdm
 import Strategy.Python.Pipenv qualified as Pipenv
 import Strategy.Python.Poetry qualified as Poetry
 import Strategy.Python.Setuptools qualified as Setuptools
+import Strategy.Python.Uv qualified as Uv
 import Strategy.R qualified as R
 import Strategy.RPM qualified as RPM
 import Strategy.Rebar3 qualified as Rebar3
@@ -82,6 +83,7 @@ discoverFuncs =
   , DiscoverFunc Setuptools.discover
   , DiscoverFunc Stack.discover
   , DiscoverFunc SwiftPM.discover
+  , DiscoverFunc Uv.discover
   ]
 
 -- DiscoverFunc is a workaround for the lack of impredicative types.

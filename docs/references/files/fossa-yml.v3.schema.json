@@ -270,6 +270,10 @@
                         {
                             "const": "pdm",
                             "description": "For pdm targets (python)"
+                        },
+                        {
+                            "const": "uv",
+                            "description": "For uv targets (python)"
                         }
                     ],
                     "description": "Target (package manager)"

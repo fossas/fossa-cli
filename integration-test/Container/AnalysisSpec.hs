@@ -25,7 +25,7 @@ registrySourceCfg =
   ContainerAnalyzeConfig
     { scanDestination = OutputStdout
     , revisionOverride = OverrideProject Nothing Nothing Nothing
-    , imageLocator = ImageText "public.ecr.aws/docker/library/alpine:3.19.1"
+    , imageLocator = ImageText "ghcr.io/fossas/haskell-dev-tools:9.8.4"
     , jsonOutput = toFlag' False
     , usesExperimentalScanner = True
     , dockerHost = ""
@@ -50,8 +50,8 @@ registrySourceAnalysis = do
       it "Has the correct OS" $
         \scan -> scan.imageData.imageOs `shouldBe` Just "alpine"
       it "Has the correct OS release version" $
-        \scan -> scan.imageData.imageOsRelease `shouldBe` Just "3.19.1"
+        \scan -> scan.imageData.imageOsRelease `shouldBe` Just "3.18.12"
       it "Has the expected image tag" $
-        \scan -> scan.imageTag `shouldBe` "public.ecr.aws/docker/library/alpine"
+        \scan -> scan.imageTag `shouldBe` "ghcr.io/fossas/haskell-dev-tools"
       it "Has at least one layer" $
         \scan -> scan.imageData.imageLayers `shouldSatisfy` (not . null)

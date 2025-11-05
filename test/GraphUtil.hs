@@ -48,7 +48,7 @@ expectDep' dep graph = sendIO $ expectDep dep graph
 -- | Expect only the given edges between @[(parent,child)]@ dependencies to be present in the graph
 expectEdges :: (Ord a, Show a) => [(a, a)] -> Graphing a -> Expectation
 expectEdges edges graph =
-  (length edges `shouldBe` AM.edgeCount (Graphing.toAdjacencyMap graph))
+  (AM.edgeCount (Graphing.toAdjacencyMap graph) `shouldBe` length edges)
     *> traverse_ (`shouldSatisfy` \(from, to) -> AM.hasEdge from to (Graphing.toAdjacencyMap graph)) edges
 
 -- This assertion is meant to give more detailed information when two graphs are not equal to each other.

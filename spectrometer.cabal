@@ -514,6 +514,7 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
+    Strategy.Python.Uv
     Strategy.R
     Strategy.R.Description
     Strategy.R.Errors
@@ -703,6 +704,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    Python.UvSpec
     R.DescriptionSpec
     R.RenvSpec
     Reachability.GradleSpec
@@ -767,6 +769,7 @@ test-suite integration-tests
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
+    Analysis.Python.UvSpec
     Analysis.RubySpec
     Analysis.RustSpec
     Analysis.ScalaSpec
