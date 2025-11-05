@@ -73,9 +73,9 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
-import Codec.Compression.GZip qualified as GZip
+import Control.Applicative (asum)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
-import Control.Carrier.Debug (Debug, Scope (scopeMetadata), debugMetadata, ignoreDebug)
+import Control.Carrier.Debug (Debug, Scope (scopeEvents, scopeMetadata), ScopeEvent (EventScope), debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
@@ -148,7 +148,7 @@ import System.Directory qualified as Dir
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
+debugBundlePath = "fossa.debug.json"
 
 debugBundleZipPath :: FilePath
 debugBundleZipPath = "fossa.debug.zip"
@@ -193,13 +193,20 @@ analyzeMain cfg = case Config.severity cfg of
   _ -> ignoreDebug $ analyze cfg
   where
     createDebugBundle bundle = do
-      -- Extract Ficus file paths from scope metadata
+      -- Extract Ficus file paths from scope metadata (searching nested scopes)
       let scope = Debug.bundleScope bundle
-      let metadata = scopeMetadata scope
-      let stdoutPath = case Map.lookup "ficus_stdout_path" metadata of
+          lookupInScope :: Text.Text -> Scope -> Maybe Aeson.Value
+          lookupInScope key sc = case Map.lookup key (scopeMetadata sc) of
+            Just v -> Just v
+            Nothing -> asum $ map (lookupInEvent key) (scopeEvents sc)
+          lookupInEvent :: Text.Text -> ScopeEvent -> Maybe Aeson.Value
+          lookupInEvent key (EventScope _ s) = lookupInScope key s
+          lookupInEvent _ _ = Nothing
+
+      let ficusStdoutPath = case lookupInScope "ficus_stdout_path" scope of
             Just (Aeson.String path) -> Just (Text.unpack path)
             _ -> Nothing
-      let stderrPath = case Map.lookup "ficus_stderr_path" metadata of
+      let ficusStderrPath = case lookupInScope "ficus_stderr_path" scope of
             Just (Aeson.String path) -> Just (Text.unpack path)
             _ -> Nothing
 
@@ -211,14 +218,17 @@ analyzeMain cfg = case Config.severity cfg of
         pure dirName
 
       -- Write debug JSON to temp directory
-      let debugJsonPath = bundleDir <> "/fossa.debug.json"
+      let debugJsonPath = bundleDir <> "/" <> debugBundlePath
       BL.writeFile debugJsonPath $ Aeson.encode bundle
+      sendIO . print $ "ficus stdout path: " <> pretty ficusStdoutPath
+      sendIO . print $ "ficus stderr path: " <> pretty ficusStderrPath
+      sendIO . print $ "debug json path: " <> pretty debugJsonPath
 
       -- Copy Ficus log files if they exist
-      case stdoutPath of
+      case ficusStdoutPath of
         Just path -> Dir.copyFile path (bundleDir <> "/ficus-stdout.log")
         Nothing -> pure ()
-      case stderrPath of
+      case ficusStderrPath of
         Just path -> Dir.copyFile path (bundleDir <> "/ficus-stderr.log")
         Nothing -> pure ()
 
@@ -228,9 +238,6 @@ analyzeMain cfg = case Config.severity cfg of
       Archive.mkZip bundleDirPath zipPath
 
       putStrLn $ "Debug bundle created: " <> debugBundleZipPath
-
-      -- Also write the old format for backwards compatibility
-      BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode bundle
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj

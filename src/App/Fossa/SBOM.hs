@@ -33,7 +33,7 @@ sbomSubCommand :: SubCommand SBOMCommand SBOMScanConfig
 sbomSubCommand = Config.mkSubCommand dispatch
 
 debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
+debugBundlePath = "fossa.debug.zip"
 
 dispatch ::
   ( Has Diagnostics sig m
