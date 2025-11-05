@@ -20,12 +20,12 @@ import App.Fossa.Config.Container.Analyze (
  )
 import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
+import App.Fossa.DebugDir (globalDebugDirRef)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
  )
-import Codec.Compression.GZip qualified as GZip
 import Container.Docker.SourceParser (RegistryImageSource)
 import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
 import Container.Types (ContainerScan (..))
@@ -43,6 +43,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Error (getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
+import Data.IORef (readIORef)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
   ConvertUtf8 (decodeUtf8),
@@ -71,9 +72,8 @@ data ContainerImageSource
   | Podman Text
   | Registry RegistryImageSource
   deriving (Show, Eq)
-
 debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
+debugBundlePath = "fossa.debug.json"
 
 analyzeExperimental ::
   ( Has Diagnostics sig m
@@ -88,8 +88,18 @@ analyzeExperimental ::
 analyzeExperimental cfg = do
   case Config.severity cfg of
     SevDebug -> do
-      (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-      sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+      -- Read debug directory from global ref (created in Subcommand.hs)
+      maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+
+      (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
+
+      -- Write debug JSON to debug directory (uncompressed)
+      case maybeDebugDir of
+        Just debugDir -> sendIO $ do
+          let debugJsonPath = debugDir <> debugBundlePath
+          BL.writeFile debugJsonPath $ Aeson.encode bundle
+        Nothing -> pure ()
+
       Diag.rethrow res
     _ -> ignoreDebug $ analyze cfg
 
