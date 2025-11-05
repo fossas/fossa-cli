@@ -368,16 +368,6 @@ analyze cfg maybeDebugDir = Diag.context "fossa-analyze" $ do
   let ficusAnalysisResults = join $ resultToMaybe maybeFicusResults
   let ficusResults = ficusAnalysisSnippetResults <$> ficusAnalysisResults
 
-  -- Store Ficus file paths in debug metadata for later retrieval
-  case ficusAnalysisResults of
-    Just results -> do
-      case ficusAnalysisStdoutPath results of
-        Just path -> debugMetadata "ficus_stdout_path" path
-        Nothing -> pure ()
-      case ficusAnalysisStderrPath results of
-        Just path -> debugMetadata "ficus_stderr_path" path
-        Nothing -> pure ()
-    Nothing -> pure ()
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters

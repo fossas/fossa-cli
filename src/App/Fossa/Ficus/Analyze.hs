@@ -227,8 +227,6 @@ runFicus ficusConfig = do
     pure $
       FicusAnalysisResults
         { ficusAnalysisSnippetResults = result
-        , ficusAnalysisStdoutPath = fst <$> stdoutFile
-        , ficusAnalysisStderrPath = fst <$> stderrFile
         }
   where
     currentTimeStamp :: IO String

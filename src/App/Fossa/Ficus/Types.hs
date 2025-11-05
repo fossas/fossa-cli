@@ -30,10 +30,8 @@ import Types (GlobFilter)
 
 newtype FicusSnippetScanResults = FicusSnippetScanResults {ficusSnippetScanResultsAnalysisId :: Int} deriving (Eq, Ord, Show, Generic)
 
-data FicusAnalysisResults = FicusAnalysisResults
+newtype FicusAnalysisResults = FicusAnalysisResults
   { ficusAnalysisSnippetResults :: Maybe FicusSnippetScanResults
-  , ficusAnalysisStdoutPath :: Maybe FilePath
-  , ficusAnalysisStderrPath :: Maybe FilePath
   }
   deriving (Eq, Show, Generic)
 
