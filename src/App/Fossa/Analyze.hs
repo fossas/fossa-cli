@@ -6,6 +6,7 @@ module App.Fossa.Analyze (
   runAnalyzers,
   runDependencyAnalysis,
   analyzeSubCommand,
+  finalizeBundleWithTelemetry,
 
   -- * Helpers
   toProjectResult,
@@ -51,6 +52,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
+import App.Fossa.DebugDir (globalDebugDirRef)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
@@ -73,6 +75,7 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
+import Codec.Compression.GZip qualified as GZip
 import Control.Applicative (asum)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, Scope (scopeEvents, scopeMetadata), ScopeEvent (EventScope), debugMetadata, ignoreDebug)
@@ -97,7 +100,7 @@ import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
-import Control.Monad (join, unless, void, when)
+import Control.Monad (join, unless, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -105,6 +108,7 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
+import Data.IORef (IORef, newIORef, writeIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -145,6 +149,7 @@ import Prettyprinter.Render.Terminal (
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
 import System.Directory qualified as Dir
+import System.IO.Unsafe (unsafePerformIO)
 import Types (DiscoveredProject (..), FoundTargets)
 
 debugBundlePath :: FilePath
@@ -152,6 +157,17 @@ debugBundlePath = "fossa.debug.json"
 
 debugBundleZipPath :: FilePath
 debugBundleZipPath = "fossa.debug.zip"
+
+-- Function to finalize debug bundle after telemetry teardown
+finalizeBundleWithTelemetry :: FilePath -> IO ()
+finalizeBundleWithTelemetry debugDir = do
+  -- Telemetry file should already be in debugDir (written there directly)
+  -- Create zip file from the entire debug directory
+  debugDirPath <- P.parseAbsDir debugDir
+  zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
+  Archive.mkZip debugDirPath zipPath
+
+  putStrLn $ "Debug bundle created: " <> debugBundleZipPath
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
@@ -167,7 +183,13 @@ dispatch ::
   ) =>
   AnalyzeConfig ->
   m ()
-dispatch cfg = void $ analyzeMain cfg
+dispatch cfg = do
+  (_, maybeDebugDir) <- analyzeMain cfg
+  -- Store debug directory in global IORef for post-telemetry finalization
+  case maybeDebugDir of
+    Just debugDir -> sendIO $ writeIORef globalDebugDirRef (Just debugDir)
+    Nothing -> pure ()
+  pure ()
 
 -- This is just a handler for the Debug effect.
 -- The real logic is in the inner analyze
@@ -181,70 +203,35 @@ analyzeMain ::
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
-  m Aeson.Value
+  m (Aeson.Value, Maybe FilePath)
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-
-    -- Create bundled debug zip with Ficus logs
-    sendIO $ createDebugBundle bundle
-
-    Diag.rethrow res
-  _ -> ignoreDebug $ analyze cfg
-  where
-    createDebugBundle bundle = do
-      -- Extract Ficus file paths from scope metadata (searching nested scopes)
-      let scope = Debug.bundleScope bundle
-          lookupInScope :: Text.Text -> Scope -> Maybe Aeson.Value
-          lookupInScope key sc = case Map.lookup key (scopeMetadata sc) of
-            Just v -> Just v
-            Nothing -> asum $ map (lookupInEvent key) (scopeEvents sc)
-          lookupInEvent :: Text.Text -> ScopeEvent -> Maybe Aeson.Value
-          lookupInEvent key (EventScope _ s) = lookupInScope key s
-          lookupInEvent _ _ = Nothing
-
-      let ficusStdoutPath = case lookupInScope "ficus_stdout_path" scope of
-            Just (Aeson.String path) -> Just (Text.unpack path)
-            _ -> Nothing
-      let ficusStderrPath = case lookupInScope "ficus_stderr_path" scope of
-            Just (Aeson.String path) -> Just (Text.unpack path)
-            _ -> Nothing
-
-      -- Create temp directory for bundling
+    -- Create debug directory upfront - all debug files will go here
+    debugDir <- sendIO $ do
       tmpDir <- Dir.getTemporaryDirectory
-      bundleDir <- do
-        let dirName = tmpDir <> "/fossa-debug-bundle"
-        Dir.createDirectoryIfMissing True dirName
-        pure dirName
+      let dirName = tmpDir <> "/fossa-debug-bundle"
+      Dir.createDirectoryIfMissing True dirName
+      pure dirName
 
-      -- Write debug JSON to temp directory
-      let debugJsonPath = bundleDir <> "/" <> debugBundlePath
+    -- Store in global ref so telemetry sink can access it
+    sendIO $ writeIORef globalDebugDirRef (Just debugDir)
+
+    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg (Just debugDir)
+
+    -- Write debug JSON to debug directory
+    sendIO $ do
+      let debugJsonPath = debugDir <> "/fossa.debug.json"
       BL.writeFile debugJsonPath $ Aeson.encode bundle
-      sendIO . print $ "ficus stdout path: " <> pretty ficusStdoutPath
-      sendIO . print $ "ficus stderr path: " <> pretty ficusStderrPath
-      sendIO . print $ "debug json path: " <> pretty debugJsonPath
+      -- Also write the old format for backwards compatibility
+      BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode bundle
 
-      -- Copy Ficus log files if they exist
-      case ficusStdoutPath of
-        Just path -> Dir.copyFile path (bundleDir <> "/ficus-stdout.log")
-        Nothing -> pure ()
-      case ficusStderrPath of
-        Just path -> Dir.copyFile path (bundleDir <> "/ficus-stderr.log")
-        Nothing -> pure ()
+    result <- Diag.rethrow res
 
-      -- Move telemetry file to the bundle directory, so it is included in the zip
-      let telemetryPath = "fossa.telemetry.json"
-      telemetryExists <- Dir.doesFileExist telemetryPath
-      when telemetryExists $ do
-        Dir.copyFile telemetryPath (bundleDir <> "/fossa.telemetry.json")
-        Dir.removeFile telemetryPath
-
-      -- Create zip file
-      bundleDirPath <- P.parseAbsDir bundleDir
-      zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
-      Archive.mkZip bundleDirPath zipPath
-
-      putStrLn $ "Debug bundle created: " <> debugBundleZipPath
+    -- Return the debug directory so dispatch can finalize it after telemetry teardown
+    pure (result, Just debugDir)
+  _ -> do
+    result <- ignoreDebug $ analyze cfg Nothing
+    pure (result, Nothing)
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -343,8 +330,9 @@ analyze ::
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
+  Maybe FilePath -> -- debugDir: if Just, all debug files should be written here
   m Aeson.Value
-analyze cfg = Diag.context "fossa-analyze" $ do
+analyze cfg maybeDebugDir = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
   let maybeDestMeta = destinationMetadata destination
@@ -414,7 +402,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             then do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
-            else fmap Just $ Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) (Config.severity cfg == SevDebug)
+            else fmap Just $ Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) (Config.severity cfg == SevDebug) maybeDebugDir
   let ficusAnalysisResults = join $ resultToMaybe maybeFicusResults
   let ficusResults = ficusAnalysisSnippetResults <$> ficusAnalysisResults
 

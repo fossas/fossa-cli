@@ -150,6 +150,7 @@ data FicusConfig = FicusConfig
   , ficusConfigFlags :: [FicusPerStrategyFlag]
   , ficusConfigSnippetScanRetentionDays :: Maybe Int
   , ficusConfigDebugMode :: Bool
+  , ficusConfigDebugDir :: Maybe FilePath -- If Just, write logs here instead of temp files
   }
   deriving (Show, Eq, Generic)
 

@@ -186,6 +186,7 @@ library
     App.Fossa.Analyze
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Discover
+    App.Fossa.DebugDir
     App.Fossa.Analyze.Filter
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder

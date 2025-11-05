@@ -3,6 +3,9 @@
 module App.Fossa.Main (appMain) where
 
 import App.Fossa.Analyze qualified as Analyze
+import App.Fossa.DebugDir (globalDebugDirRef)
+import Control.Exception (bracket_)
+import Data.IORef (readIORef, writeIORef)
 import App.Fossa.Container qualified as Container
 import App.Fossa.DumpBinaries qualified as Dump
 import App.Fossa.Init (initCommand)
@@ -57,7 +60,14 @@ import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 appMain :: IO ()
 appMain = do
   initRTSThreads
-  join $ customExecParser mainPrefs $ info (subcommands <**> helperOpt <**> versionOpt) progData
+  bracket_
+    (writeIORef globalDebugDirRef Nothing)
+    ( do
+        -- After command completes, finalize debug bundle if in debug mode
+        maybeDebugDir <- readIORef globalDebugDirRef
+        maybe (pure ()) Analyze.finalizeBundleWithTelemetry maybeDebugDir
+    )
+    (join $ customExecParser mainPrefs $ info (subcommands <**> helperOpt <**> versionOpt) progData)
 
 versionOpt :: Parser (a -> a)
 versionOpt =
