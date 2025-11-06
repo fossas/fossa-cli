@@ -252,7 +252,7 @@ You can identify your cli version by performing `fossa --version` command.
 
 #### I'm running into an error - how do I debug?
 
-You can add a `--debug` argument to your fossa commands (e.g. `fossa analyze --debug`), this will emit debug logs to stdout, and create a file called `fossa.debug.zip` in the working directory.
+You can add a `--debug` argument to your fossa commands (e.g. `fossa analyze --debug`), this will emit debug logs to stdout, and create a file called `fossa.debug.zip` in the working directory that contains a debug bundle (fossa.debug.json).
 
 #### What's the difference between FOSSA CLI 1.x, 2.x, and 3.x?
 
