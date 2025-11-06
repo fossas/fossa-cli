@@ -3,7 +3,9 @@ module Container.FixtureUtils (
   runContainerEffs,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef, newDebugDirRef)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Data.Function ((&))
@@ -14,7 +16,8 @@ import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Type.Operator (type ($))
 
 type ContainerAnalysisC m =
-  ExecIOC
+  ReaderC DebugDirRef
+    $ ExecIOC
     $ ReadFSIOC
     $ LoggerC
     $ DiagnosticsC
@@ -22,8 +25,10 @@ type ContainerAnalysisC m =
     $ IgnoreTelemetryC m
 
 runContainerEffs :: ContainerAnalysisC IO a -> IO (Result a)
-runContainerEffs f =
+runContainerEffs f = do
+  debugDirRef <- newDebugDirRef
   f
+    & runReader debugDirRef
     & runExecIO
     & runReadFSIO
     & withDefaultLogger SevWarn

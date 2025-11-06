@@ -3,10 +3,12 @@
 
 module Analysis.FicusSpec (spec) where
 
+import App.Fossa.DebugDir (newDebugDirRef)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Control.Timeout (Duration (Seconds))
@@ -51,7 +53,10 @@ spec = do
       testDataExists <- PIO.doesDirExist testDataDir
       testDataExists `shouldBe` True
 
-      result <- runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO $ analyzeWithFicus testDataDir apiOpts revision Nothing (Just 10)
+      -- Create debug dir ref for test
+      debugDirRef <- newDebugDirRef
+
+      result <- runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO . runReader debugDirRef $ analyzeWithFicus testDataDir apiOpts revision Nothing (Just 10)
 
       case result of
         Success _warnings analysisResult -> do
