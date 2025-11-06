@@ -191,7 +191,6 @@ runFicus ficusConfig = do
       exitCode <- waitExitCode p
       pure (result, exitCode, stdErrLines)
 
-    -- Close file handles if they were opened
     sendIO $ do
       traverse_ hClose stdoutFile
       traverse_ hClose stderrFile
@@ -205,7 +204,6 @@ runFicus ficusConfig = do
         logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
 
-    -- Return analysis results
     pure result
   where
     currentTimeStamp :: IO String
@@ -228,7 +226,7 @@ runFicus ficusConfig = do
           .| CCL.mapMaybe decodeStrictText
           .| CC.foldM
             ( \acc message -> do
-                -- Log messages immediately to stderr as they stream
+                -- Log messages as they come, with timestamps
                 timestamp <- currentTimeStamp
                 case message of
                   FicusMessageError err -> do
@@ -257,7 +255,6 @@ runFicus ficusConfig = do
                 line <- hGetLine handle
                 -- Tee raw line to file if debug mode
                 traverse_ (\fileH -> hPutStrLn fileH line) maybeFile
-                -- output stderr
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
                 let msg = "[" ++ timestamp ++ "] STDERR " <> line

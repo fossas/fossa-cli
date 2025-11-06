@@ -362,9 +362,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
             else
-              fmap Just
-                $ Diag.context "snippet-scanning"
-                  . runStickyLogger SevInfo
+              Diag.context "snippet-scanning"
+                . runStickyLogger SevInfo
                 $ analyzeWithFicus
                   basedir
                   maybeApiOpts
@@ -480,7 +479,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits (join ficusResults)
+  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
   where
