@@ -76,7 +76,6 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
     usesExperimentalScanner :: Bool
   , dockerHost :: Text
   , arch :: Text
-  , severity :: Severity
   , onlySystemDeps :: Bool
   , filterSet :: AllFilters
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
@@ -139,7 +138,6 @@ mergeOpts ::
   m ContainerAnalyzeConfig
 mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
-      severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
       jsonOutput = containerJsonOutput
       arch = collectArch
@@ -161,7 +159,6 @@ mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure containerExperimentalScanner
     <*> collectDockerHost envvars
     <*> pure arch
-    <*> pure severity
     <*> pure onlySystemDeps
     <*> pure scanFilters
     <*> pure withoutDefaultFilters

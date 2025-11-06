@@ -259,7 +259,6 @@ instance ToJSON AnalysisTacticTypes where
 
 data AnalyzeConfig = AnalyzeConfig
   { baseDir :: BaseDir
-  , severity :: Severity
   , scanDestination :: ScanDestination
   , projectRevision :: ProjectRevision
   , vsiOptions :: VSIModeOptions
@@ -517,7 +516,6 @@ mergeStandardOpts ::
   m AnalyzeConfig
 mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
-      logSeverity = getSeverity cliOpts
       scanDestination = collectScanDestination maybeConfig envvars cliOpts
       revisionData =
         collectRevisionData' basedir maybeConfig WriteOnly $
@@ -549,7 +547,6 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
 
   AnalyzeConfig
     <$> basedir
-    <*> pure logSeverity
     <*> scanDestination
     <*> revisionData
     <*> vsiModeOpts

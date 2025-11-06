@@ -23,7 +23,7 @@ spec = do
     it' "should upload a file" $ do
       let archive = Archive "somesbom" "1.2.3" Nothing Nothing
       let revision = ProjectRevision "somesbom" "1.2.3" Nothing
-      let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") SevInfo DependencyRebuildReuseCache Nothing revision Nothing
+      let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") DependencyRebuildReuseCache Nothing revision Nothing
 
       GetApiOpts `alwaysReturns` Fixtures.apiOpts
       expectOrganization

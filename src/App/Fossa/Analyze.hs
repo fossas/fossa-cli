@@ -106,7 +106,7 @@ import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.IORef (readIORef)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
@@ -176,23 +176,19 @@ analyzeMain ::
   ) =>
   AnalyzeConfig ->
   m Aeson.Value
-analyzeMain cfg = case Config.severity cfg of
-  SevDebug -> do
-    -- Read debug directory from config
-    let maybeDebugDir = Config.debugDir cfg
+analyzeMain cfg = case Config.debugDir cfg of
+  Just debugDir -> do
+    -- In debug mode, collect debug bundle
 
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
     -- Write debug JSON to debug directory
-    traverse_
-      ( \debugDir -> sendIO $ do
-          let debugJsonPath = debugDir </> debugBundlePath
-          BL.writeFile debugJsonPath $ Aeson.encode bundle
-      )
-      maybeDebugDir
+    sendIO $ do
+      let debugJsonPath = debugDir </> debugBundlePath
+      BL.writeFile debugJsonPath $ Aeson.encode bundle
 
     Diag.rethrow res
-  _ -> ignoreDebug $ analyze cfg
+  Nothing -> ignoreDebug $ analyze cfg
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -462,7 +458,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
+      isDebugMode = isJust (Config.debugDir cfg)
+      effectiveSeverity = if isDebugMode then SevDebug else SevInfo
+  renderScanSummary effectiveSeverity maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =

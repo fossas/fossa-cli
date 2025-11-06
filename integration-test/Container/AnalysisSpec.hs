@@ -30,7 +30,6 @@ registrySourceCfg =
     , usesExperimentalScanner = True
     , dockerHost = ""
     , arch = "amd64"
-    , severity = SevInfo
     , onlySystemDeps = False
     , filterSet = mempty
     , withoutDefaultFilters = toFlag' False

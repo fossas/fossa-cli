@@ -655,7 +655,6 @@ standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
   AnalyzeConfig
     { ANZ.baseDir = App.BaseDir absDir
-    , ANZ.severity = SevDebug
     , ANZ.scanDestination = OutputStdout
     , ANZ.projectRevision = projectRevision
     , ANZ.vsiOptions = vsiOptions
