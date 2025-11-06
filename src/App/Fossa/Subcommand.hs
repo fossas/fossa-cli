@@ -26,8 +26,6 @@ import Data.String.Conversion (ToText (toText), toStrict)
 import Data.UUID qualified as UUID (toString)
 import Data.UUID.V4 qualified as UUID (nextRandom)
 import Discovery.Archive qualified as Archive
-import Path qualified as P
-import System.Directory qualified as Dir
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (
   LoggerC,
@@ -38,6 +36,8 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFSIOC, runReadFSIO)
 import Options.Applicative (InfoMod, Parser)
+import Path qualified as P
+import System.Directory qualified as Dir
 import Text.Pretty.Simple (pShowNoColor)
 
 debugBundleZipPath :: FilePath
@@ -88,18 +88,19 @@ runSubCommand SubCommand{..} = runWithDebugDir . mergeAndRun <$> parser
     runWithDebugDir :: (Severity, EffStack ()) -> IO ()
     runWithDebugDir (sev, action) = do
       -- Create debug directory if in debug mode
-      maybeDebugDir <- if sev == SevDebug
-        then do
-          tmpDir <- Dir.getTemporaryDirectory
-          suffix <- UUID.toString <$> UUID.nextRandom
-          let uniqueName = "fossa-debug-bundle-" <> suffix
-          let dirName = tmpDir <> "/" <> uniqueName
-          Dir.createDirectoryIfMissing True dirName
-          writeIORef globalDebugDirRef (Just dirName)
-          pure (Just dirName)
-        else do
-          writeIORef globalDebugDirRef Nothing
-          pure Nothing
+      maybeDebugDir <-
+        if sev == SevDebug
+          then do
+            tmpDir <- Dir.getTemporaryDirectory
+            suffix <- UUID.toString <$> UUID.nextRandom
+            let uniqueName = "fossa-debug-bundle-" <> suffix
+            let dirName = tmpDir <> "/" <> uniqueName
+            Dir.createDirectoryIfMissing True dirName
+            writeIORef globalDebugDirRef (Just dirName)
+            pure (Just dirName)
+          else do
+            writeIORef globalDebugDirRef Nothing
+            pure Nothing
 
       -- Run the command, ensuring finalization happens even on exceptions
       finally
