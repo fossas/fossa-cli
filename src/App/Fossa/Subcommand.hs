@@ -15,7 +15,6 @@ import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
 import App.Fossa.DebugDir (DebugDirRef, newDebugDirRef, writeDebugDir)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Git (GitC, runGit)
-import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (TelemetryC, withTelemetry)
 import Control.Effect.Telemetry (setSink, trackConfig)
@@ -64,11 +63,11 @@ data SubCommand cli cfg = SubCommand
   , commandInfo :: InfoMod (IO ())
   , parser :: Parser cli
   , configLoader :: cli -> EffStack (Maybe ConfigFile) -- CLI args can control where we look for config file
-  , optMerge :: Maybe ConfigFile -> EnvVars -> cli -> EffStack cfg
+  , optMerge :: DebugDirRef -> Maybe ConfigFile -> EnvVars -> cli -> EffStack cfg
   , perform :: cfg -> EffStack ()
   }
 
-type EffStack = ReaderC DebugDirRef (GitC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC (TelemetryC IO)))))))
+type EffStack = GitC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC (TelemetryC IO))))))
 
 class GetSeverity a where
   getSeverity :: a -> Severity
@@ -111,7 +110,7 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
 
       -- Run the command, ensuring finalization happens even on exceptions
       finally
-        (runEffs sev debugDirRef action)
+        (runEffs sev action)
         (maybe (pure ()) finalizeBundleWithTelemetry maybeDebugDir)
 
     -- We have to extract the severity from the options, which is not straightforward
@@ -124,7 +123,7 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
       maybeTelSink <- collectTelemetrySink debugDirRef configFile envvars $ getCommonOpts cliOptions
       traverse_ setSink maybeTelSink
 
-      cfg <- context "Validating configuration" $ optMerge configFile envvars cliOptions
+      cfg <- context "Validating configuration" $ optMerge debugDirRef configFile envvars cliOptions
       trackConfig (toText commandName) cfg
 
       if envConfigDebug envvars
@@ -133,5 +132,5 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
           logStdout (toStrict $ pShowNoColor cfg)
         else perform cfg
 
-runEffs :: Severity -> DebugDirRef -> EffStack () -> IO ()
-runEffs sev debugDirRef = withTelemetry . runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runGit . runReader debugDirRef
+runEffs :: Severity -> EffStack () -> IO ()
+runEffs sev = withTelemetry . runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runGit

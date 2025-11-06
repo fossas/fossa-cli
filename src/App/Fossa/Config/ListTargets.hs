@@ -7,6 +7,7 @@ module App.Fossa.Config.ListTargets (
   ListTargetOutputFormat (..),
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
   GoDynamicTactic (GoModulesBasedTactic),
@@ -100,11 +101,12 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   ListTargetsCliOpts ->
   m ListTargetsConfig
-mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
+mergeOpts _ cfgfile _envvars ListTargetsCliOpts{..} = do
   let basedir = collectBaseDir cliBaseDir
       experimentalPrefs = collectExperimental cfgfile
       outputFmt = fromMaybe Legacy cliListTargetOutputFormat

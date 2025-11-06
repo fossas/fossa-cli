@@ -11,6 +11,7 @@ module App.Fossa.Config.Report (
   parseReportOutputFormat,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),
@@ -216,11 +217,12 @@ mergeOpts ::
   , Has Diagnostics sig m
   , Has Exec sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   ReportCliOptions ->
   m ReportConfig
-mergeOpts cfgfile envvars ReportCliOptions{..} = do
+mergeOpts _ cfgfile envvars ReportCliOptions{..} = do
   let apiOpts = collectApiOpts cfgfile envvars commons
       outputformat = validateOutputFormat cliReportJsonOutput cliReportOutputFormat
       timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout

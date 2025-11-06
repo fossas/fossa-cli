@@ -157,7 +157,6 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
@@ -173,16 +172,14 @@ analyzeMain ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
   m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    -- Read debug directory from Reader effect
-    debugDirRef <- ask @DebugDirRef
-    maybeDebugDir <- sendIO $ readDebugDir debugDirRef
+    -- Read debug directory from config
+    let maybeDebugDir = Config.debugDir cfg
 
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
@@ -291,7 +288,6 @@ analyze ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
@@ -375,6 +371,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
                   revision
                   (Config.licenseScanPathFilters vendoredDepsOptions)
                   (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
+                  (Config.debugDir cfg)
   let ficusResults = join $ resultToMaybe maybeFicusResults
 
   maybeLernieResults <-

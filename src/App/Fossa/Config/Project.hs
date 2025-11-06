@@ -4,6 +4,7 @@ module App.Fossa.Config.Project (
   mkSubCommand,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.Project.Edit as Edit
@@ -40,6 +41,7 @@ instance GetSeverity ProjectCommand where
 
 projectMergeOpts ::
   (Has Diagnostics sig m) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   ProjectCommand ->

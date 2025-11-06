@@ -89,32 +89,32 @@ analyzeWithFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has (Reader DebugDirRef) sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
+  Maybe FilePath -> -- Debug directory (if enabled)
   m (Maybe FicusSnippetScanResults)
-analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays = do
-  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays
+analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
+  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has (Reader DebugDirRef) sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
+  Maybe FilePath -> -- Debug directory (if enabled)
   m (Maybe FicusSnippetScanResults)
-analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays = do
+analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
-  analysisResults <- runFicus ficusConfig
+  analysisResults <- runFicus maybeDebugDir ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
   case analysisResults of
     Just results ->
@@ -145,11 +145,11 @@ runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
-  , Has (Reader DebugDirRef) sig m
   ) =>
+  Maybe FilePath -> -- Debug directory (if enabled)
   FicusConfig ->
   m (Maybe FicusSnippetScanResults)
-runFicus ficusConfig = do
+runFicus maybeDebugDir ficusConfig = do
   logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
     logDebugWithTime "Ficus binary extracted, building command..."
@@ -168,8 +168,6 @@ runFicus ficusConfig = do
     logDebugWithTime "Starting Ficus process..."
 
     -- Create files for teeing output if debug mode is enabled
-    debugDirRef <- ask @DebugDirRef
-    maybeDebugDir <- sendIO $ readDebugDir debugDirRef
     (stdoutFile, stderrFile) <- case maybeDebugDir of
       Just debugDir -> do
         sendIO $ do

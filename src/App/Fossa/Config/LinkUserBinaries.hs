@@ -6,6 +6,7 @@ module App.Fossa.Config.LinkUserBinaries (
   LinkUserBinsOpts,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CommonOpts (..),
   collectApiOpts,
@@ -65,11 +66,12 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   LinkUserBinsOpts ->
   m LinkUserBinsConfig
-mergeOpts cfgfile envvars LinkUserBinsOpts{..} = do
+mergeOpts _ cfgfile envvars LinkUserBinsOpts{..} = do
   let apiopts = collectApiOpts cfgfile envvars commons
       basedir = collectBaseDir assertionDir
       metadata = assertionMeta

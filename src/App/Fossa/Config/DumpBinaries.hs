@@ -4,6 +4,7 @@ module App.Fossa.Config.DumpBinaries (
   DumpBinsOpts,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (baseDirArg, validateDir)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import Control.Effect.Diagnostics (Diagnostics)
@@ -39,8 +40,9 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  DebugDirRef ->
   a ->
   b ->
   DumpBinsOpts ->
   m DumpBinsConfig
-mergeOpts _ _ (DumpBinsOpts path) = DumpBinsConfig <$> validateDir path
+mergeOpts _ _ _ (DumpBinsOpts path) = DumpBinsConfig <$> validateDir path

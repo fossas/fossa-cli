@@ -46,11 +46,12 @@ mergeOpts ::
   , Has ReadFS sig m
   , Has (Lift IO) sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   SBOMCommand ->
   m SBOMScanConfig
-mergeOpts cfgfile envvars = \case
+mergeOpts _ cfgfile envvars = \case
   SBOMAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts cfgfile envvars opts
   SBOMTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
 

@@ -8,6 +8,7 @@ module App.Fossa.Config.Container (
   ContainerTestConfig (..),
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CommonOpts (..),
  )
@@ -48,11 +49,12 @@ mergeOpts ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerCommand ->
   m ContainerScanConfig
-mergeOpts cfgfile envvars = \case
+mergeOpts _ cfgfile envvars = \case
   ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts cfgfile envvars opts
   ContainerTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
   ContainerListTargets opts -> ListTargetsCfg <$> ListTargets.mergeOpts cfgfile envvars opts

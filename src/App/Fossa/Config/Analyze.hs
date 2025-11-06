@@ -33,6 +33,7 @@ module App.Fossa.Config.Analyze (
 ) where
 
 import App.Docs (fossaAnalyzeDefaultFilterDocUrl)
+import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
   CommonOpts (..),
@@ -89,7 +90,7 @@ import Control.Effect.Diagnostics (
   fatalText,
   recover,
  )
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (void, when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
@@ -280,6 +281,7 @@ data AnalyzeConfig = AnalyzeConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
   , xSnippetScan :: Bool
+  , debugDir :: Maybe FilePath
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -481,11 +483,12 @@ mergeOpts ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts cfg env cliOpts = do
+mergeOpts debugDirRef cfg env cliOpts = do
   let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
   when experimentalNativeLicenseScanFlagUsed $ do
     logWarn $
@@ -499,7 +502,7 @@ mergeOpts cfg env cliOpts = do
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
 
-  mergeStandardOpts cfg env cliOpts
+  mergeStandardOpts debugDirRef cfg env cliOpts
 
 mergeStandardOpts ::
   ( Has Diagnostics sig m
@@ -508,11 +511,12 @@ mergeStandardOpts ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
+mergeStandardOpts debugDirRef maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
       logSeverity = getSeverity cliOpts
       scanDestination = collectScanDestination maybeConfig envvars cliOpts
@@ -544,6 +548,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
       (_, True) -> pure FirstPartyScansOffFromFlag
       (False, False) -> pure FirstPartyScansUseDefault
 
+  maybeDebugDir <- sendIO $ readDebugDir debugDirRef
   AnalyzeConfig
     <$> basedir
     <*> pure logSeverity
@@ -567,6 +572,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
     <*> pure analyzeSnippetScan
+    <*> pure maybeDebugDir
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
