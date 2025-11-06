@@ -11,6 +11,7 @@ module App.Fossa.Config.SBOM.Analyze (
   subcommand,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.Config.Common (
   CacheAction (..),
   CommonOpts (..),
@@ -30,7 +31,7 @@ import App.Types (
  )
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has)
-import Control.Effect.Lift (Lift)
+import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
@@ -61,6 +62,7 @@ data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   , sbomRebuild :: DependencyRebuild
   , sbomTeam :: Maybe Text
   , sbomRevision :: ProjectRevision
+  , debugDir :: Maybe FilePath
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -100,11 +102,12 @@ mergeOpts ::
   , Has ReadFS sig m
   , Has (Lift IO) sig m
   ) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   SBOMAnalyzeOptions ->
   m SBOMAnalyzeConfig
-mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
+mergeOpts debugDirRef cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
   let severity = getSeverity cliOpts
       fileLoc = sbomFile
@@ -119,6 +122,7 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
       forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
   apiOpts <- App.Fossa.Config.Common.collectApiOpts cfgfile envvars analyzeCommons
   revision <- getProjectRevision fileLoc revOverride WriteOnly
+  maybeDebugDir <- sendIO $ readDebugDir debugDirRef
   pure $
     SBOMAnalyzeConfig
       { sbomBaseDir = (BaseDir baseDir)
@@ -128,4 +132,5 @@ mergeOpts cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
       , sbomRebuild = forceRescans
       , sbomTeam = team
       , sbomRevision = revision
+      , debugDir = maybeDebugDir
       }

@@ -84,8 +84,8 @@ analyzeExperimental ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyzeExperimental cfg = do
-  -- Read debug directory from config (not yet implemented for container)
-  let maybeDebugDir = Nothing :: Maybe FilePath
+  -- Read debug directory from config
+  let maybeDebugDir = debugDir cfg
 
   case maybeDebugDir of
     Just debugDir -> do

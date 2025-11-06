@@ -52,8 +52,8 @@ mergeOpts ::
   EnvVars ->
   SBOMCommand ->
   m SBOMScanConfig
-mergeOpts _ cfgfile envvars = \case
-  SBOMAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts cfgfile envvars opts
+mergeOpts debugDirRef cfgfile envvars = \case
+  SBOMAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts debugDirRef cfgfile envvars opts
   SBOMTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
 
 loadConfig ::

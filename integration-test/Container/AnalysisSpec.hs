@@ -34,6 +34,7 @@ registrySourceCfg =
     , onlySystemDeps = False
     , filterSet = mempty
     , withoutDefaultFilters = toFlag' False
+    , debugDir = Nothing
     }
 
 runAnalyze :: ContainerAnalyzeConfig -> (ContainerScan -> IO ()) -> IO ()

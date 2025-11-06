@@ -48,14 +48,15 @@ mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOp
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has Logger sig m
+  , Has (Lift IO) sig m
   ) =>
   DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerCommand ->
   m ContainerScanConfig
-mergeOpts _ cfgfile envvars = \case
-  ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts cfgfile envvars opts
+mergeOpts debugDirRef cfgfile envvars = \case
+  ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts debugDirRef cfgfile envvars opts
   ContainerTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
   ContainerListTargets opts -> ListTargetsCfg <$> ListTargets.mergeOpts cfgfile envvars opts
 
