@@ -8,8 +8,6 @@ import App.Fossa.Config.SBOM (
   SBOMScanConfig (..),
  )
 import App.Fossa.Config.SBOM qualified as Config
-import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
-import Control.Effect.Reader (Reader, ask)
 import App.Fossa.SBOM.Analyze qualified as Analyze
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.Test (testMain)
@@ -41,16 +39,14 @@ dispatch ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Exec sig m
-  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   SBOMScanConfig ->
   m ()
 dispatch = \case
   AnalyzeCfg cfg -> do
-    -- Read debug directory from Reader effect
-    debugDirRef <- ask @DebugDirRef
-    maybeDebugDir <- sendIO $ readDebugDir debugDirRef
+    -- Read debug directory from config (not yet implemented for SBOM)
+    let maybeDebugDir = Nothing :: Maybe FilePath
 
     case maybeDebugDir of
       Just debugDir -> do

@@ -19,8 +19,6 @@ import App.Fossa.Config.Container.Analyze (
   JsonOutput (JsonOutput),
  )
 import App.Fossa.Container.Scan (extractRevision, scanImage)
-import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
-import Control.Effect.Reader (Reader, ask)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Types (
   ProjectMetadata,
@@ -43,7 +41,6 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Error (getSourceLocation)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
-import Data.IORef (readIORef)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (
   ConvertUtf8 (decodeUtf8),
@@ -82,15 +79,13 @@ analyzeExperimental ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has Exec sig m
-  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyzeExperimental cfg = do
-  -- Read debug directory from Reader effect
-  debugDirRef <- ask @DebugDirRef
-  maybeDebugDir <- sendIO $ readDebugDir debugDirRef
+  -- Read debug directory from config (not yet implemented for container)
+  let maybeDebugDir = Nothing :: Maybe FilePath
 
   case maybeDebugDir of
     Just debugDir -> do

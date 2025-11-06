@@ -65,12 +65,12 @@ releaseGroupMergeOpts ::
   EnvVars ->
   ReleaseGroupCommand ->
   m ReleaseGroupConfig
-releaseGroupMergeOpts cfg envvars = \case
-  AddProjects opts -> AddProjectsCfg <$> AddProjects.mergeOpts cfg envvars opts
-  Create opts -> CreateCfg <$> Create.mergeOpts cfg envvars opts
-  CreateRelease opts -> CreateReleaseCfg <$> CreateRelease.mergeOpts cfg envvars opts
-  Delete opts -> DeleteCfg <$> Delete.mergeOpts cfg envvars opts
-  DeleteRelease opts -> DeleteReleaseCfg <$> DeleteRelease.mergeOpts cfg envvars opts
+releaseGroupMergeOpts debugDirRef cfgFile envVars = \case
+  AddProjects opts -> AddProjectsCfg <$> AddProjects.mergeOpts debugDirRef cfgFile envVars opts
+  Create opts -> CreateCfg <$> Create.mergeOpts debugDirRef cfgFile envVars opts
+  CreateRelease opts -> CreateReleaseCfg <$> CreateRelease.mergeOpts debugDirRef cfgFile envVars opts
+  Delete opts -> DeleteCfg <$> Delete.mergeOpts debugDirRef cfgFile envVars opts
+  DeleteRelease opts -> DeleteReleaseCfg <$> DeleteRelease.mergeOpts debugDirRef cfgFile envVars opts
 
 loadConfig ::
   ( Has Diagnostics sig m

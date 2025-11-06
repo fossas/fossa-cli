@@ -61,8 +61,8 @@ mergeOpts ::
   b ->
   LicenseScanCommand ->
   m LicenseScanConfig
-mergeOpts _ _ (DirectScan path) = RawPathScan <$> collectBaseDir path
-mergeOpts _ _ (FossaDeps path) = VendoredDepsOutput <$> collectBaseDir path
+mergeOpts _ _ _ (DirectScan path) = RawPathScan <$> collectBaseDir path
+mergeOpts _ _ _ (FossaDeps path) = VendoredDepsOutput <$> collectBaseDir path
 
 cliParser :: Parser LicenseScanCommand
 cliParser = public <|> private

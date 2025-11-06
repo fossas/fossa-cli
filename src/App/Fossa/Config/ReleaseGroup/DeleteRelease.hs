@@ -7,6 +7,7 @@ module App.Fossa.Config.ReleaseGroup.DeleteRelease (
   mergeOpts,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.ReleaseGroup.Common qualified as Common
@@ -60,10 +61,11 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   DeleteReleaseOpts ->
   m DeleteReleaseConfig
-mergeOpts maybeConfig envVars DeleteReleaseOpts{..} = do
+mergeOpts _ maybeConfig envVars DeleteReleaseOpts{..} = do
   apiOpts <- Common.collectApiOpts maybeConfig envVars releaseGroupCommon
   pure $ DeleteReleaseConfig apiOpts releaseGroupTitleOpts releaseGroupReleaseTitleOpts

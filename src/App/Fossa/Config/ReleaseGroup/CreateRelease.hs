@@ -6,6 +6,7 @@ module App.Fossa.Config.ReleaseGroup.CreateRelease (
   subcommand,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (configFileOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile, ConfigReleaseGroup (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars)
@@ -65,11 +66,12 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   CreateReleaseOpts ->
   m CreateReleaseConfig
-mergeOpts maybeConfig envVars cliOpts@CreateReleaseOpts{releaseGroupCommon, releaseGroupTitleOpts} = do
+mergeOpts _ maybeConfig envVars cliOpts@CreateReleaseOpts{releaseGroupCommon, releaseGroupTitleOpts} = do
   apiOpts <- Common.collectApiOpts maybeConfig envVars releaseGroupCommon
   releaseGroupTitle <- Common.mergeReleaseGroupTitle releaseGroupTitleOpts $ Common.extractReleaseGroupConfigValue maybeConfig configReleaseGroupTitle
   releaseGroupRevision <- collectReleaseGroupRevision maybeConfig cliOpts

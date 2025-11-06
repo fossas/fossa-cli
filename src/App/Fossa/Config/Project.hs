@@ -46,7 +46,7 @@ projectMergeOpts ::
   EnvVars ->
   ProjectCommand ->
   m ProjectConfig
-projectMergeOpts cfg envvars (Edit opts) = EditCfg <$> Edit.mergeOpts cfg envvars opts
+projectMergeOpts debugDirRef cfgFile envVars (Edit opts) = EditCfg <$> Edit.mergeOpts debugDirRef cfgFile envVars opts
 
 loadConfig ::
   ( Has Diagnostics sig m

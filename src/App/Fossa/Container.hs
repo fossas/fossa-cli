@@ -38,7 +38,6 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
-  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   ContainerScanConfig ->

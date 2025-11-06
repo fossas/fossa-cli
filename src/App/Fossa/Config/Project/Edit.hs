@@ -9,6 +9,7 @@ module App.Fossa.Config.Project.Edit (
   mergeOpts,
 ) where
 
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (configHelp, endpointHelp, fossaApiKeyCmdText, fossaApiKeyHelp, parsePolicyOptions, titleHelp, validateApiKeyGeneric)
 import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigProject (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (envApiKey))
@@ -130,11 +131,12 @@ projectIdentiferOptions = optional (projectIdOptions <|> projectLocatorOptions)
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  DebugDirRef ->
   Maybe ConfigFile ->
   EnvVars ->
   EditOpts ->
   m EditConfig
-mergeOpts maybeConfig envVars cliOpts@EditOpts{..} = do
+mergeOpts _ maybeConfig envVars cliOpts@EditOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envVars cliOpts
   maybePolicy <- maybe (pure projectPolicyOpts) (mergePolicy projectPolicyOpts) maybeConfig
   let maybeProjectIdentifer = maybe projectIdentiferOpts (mergeProjectIdentifier projectIdentiferOpts) maybeConfig
