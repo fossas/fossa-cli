@@ -14,7 +14,6 @@ import Container.Types (
  )
 import Data.Flag (toFlag')
 import Diag.Result (Result (..))
-import Effect.Logger (Severity (SevInfo))
 import Test.Hspec (Spec, aroundAll, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec

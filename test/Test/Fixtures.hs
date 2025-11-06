@@ -89,7 +89,6 @@ import Discovery.Filters (
   MavenScopeFilters (MavenScopeIncludeFilters),
   comboExclude,
  )
-import Effect.Logger (Severity (..))
 import Fossa.API.CoreTypes qualified as CoreAPI
 import Fossa.API.Types (
   Archive (..),

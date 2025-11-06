@@ -2,7 +2,7 @@
 
 module App.Fossa.Config.ReleaseGroup.CreateSpec (spec, expectedReleaseGroupRevisionFromConfig, expectedReleaseGroupReleaseRevisionFromConfig) where
 
-import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigReleaseGroup (..))
+import App.Fossa.Config.ConfigFile (ConfigFile (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..))
 import App.Fossa.Config.ReleaseGroup.Create (CreateConfig (..), CreateOpts (..), mergeOpts)
