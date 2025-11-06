@@ -50,7 +50,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
-import App.Fossa.DebugDir (globalDebugDirRef, readDebugDir)
+import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
@@ -93,6 +93,7 @@ import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Reader (Reader, ask)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
 import Control.Monad (join, unless, void, when)
@@ -156,6 +157,7 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
@@ -171,14 +173,16 @@ analyzeMain ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
   m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    -- Read debug directory from global ref (initialized in Subcommand.hs)
-    maybeDebugDir <- sendIO $ readDebugDir globalDebugDirRef
+    -- Read debug directory from Reader effect
+    debugDirRef <- ask @DebugDirRef
+    maybeDebugDir <- sendIO $ readDebugDir debugDirRef
 
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
@@ -287,6 +291,7 @@ analyze ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->

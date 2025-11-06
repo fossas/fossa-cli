@@ -11,7 +11,9 @@ import App.Fossa.Config.Container qualified as Config
 import App.Fossa.Container.AnalyzeNative qualified as AnalyzeNative
 import App.Fossa.Container.ListTargets (listTargets)
 import App.Fossa.Container.Test qualified as Test
+import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Subcommand (SubCommand)
+import Control.Effect.Reader (Reader)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
@@ -36,6 +38,7 @@ dispatch ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   , Has ReadFS sig m
+  , Has (Reader DebugDirRef) sig m
   , Has Telemetry sig m
   ) =>
   ContainerScanConfig ->

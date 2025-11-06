@@ -9,7 +9,7 @@ module App.Fossa.Ficus.Analyze (
 )
 where
 
-import App.Fossa.DebugDir (globalDebugDirRef, readDebugDir)
+import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
@@ -29,6 +29,7 @@ import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Effect.Reader (Reader, ask)
 import Control.Monad (when)
 import Data.Aeson (Object, decode, decodeStrictText, (.:))
 import Data.Aeson.Types (parseMaybe)
@@ -88,6 +89,7 @@ analyzeWithFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has (Reader DebugDirRef) sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
@@ -102,6 +104,7 @@ analyzeWithFicusMain ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has (Reader DebugDirRef) sig m
   ) =>
   Path Abs Dir ->
   Maybe ApiOpts ->
@@ -142,6 +145,7 @@ runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
+  , Has (Reader DebugDirRef) sig m
   ) =>
   FicusConfig ->
   m (Maybe FicusSnippetScanResults)
@@ -164,7 +168,8 @@ runFicus ficusConfig = do
     logDebugWithTime "Starting Ficus process..."
 
     -- Create files for teeing output if debug mode is enabled
-    maybeDebugDir <- sendIO $ readDebugDir globalDebugDirRef
+    debugDirRef <- ask @DebugDirRef
+    maybeDebugDir <- sendIO $ readDebugDir debugDirRef
     (stdoutFile, stderrFile) <- case maybeDebugDir of
       Just debugDir -> do
         sendIO $ do

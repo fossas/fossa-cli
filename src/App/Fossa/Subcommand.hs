@@ -12,16 +12,16 @@ module App.Fossa.Subcommand (
 import App.Fossa.Config.Common (CommonOpts, collectTelemetrySink)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
-import App.Fossa.DebugDir (DebugDirRef, globalDebugDirRef, writeDebugDir)
+import App.Fossa.DebugDir (DebugDirRef, newDebugDirRef, writeDebugDir)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Git (GitC, runGit)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (TelemetryC, withTelemetry)
 import Control.Effect.Telemetry (setSink, trackConfig)
 import Control.Exception (finally)
 import Data.Aeson (ToJSON)
 import Data.Foldable (traverse_)
-import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.String.Conversion (ToText (toText), toStrict)
 import Data.UUID qualified as UUID (toString)
 import Data.UUID.V4 qualified as UUID (nextRandom)
@@ -68,7 +68,7 @@ data SubCommand cli cfg = SubCommand
   , perform :: cfg -> EffStack ()
   }
 
-type EffStack = GitC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC (TelemetryC IO))))))
+type EffStack = ReaderC DebugDirRef (GitC (ExecIOC (ReadFSIOC (DiagnosticsC (LoggerC (StackC (TelemetryC IO)))))))
 
 class GetSeverity a where
   getSeverity :: a -> Severity
@@ -89,8 +89,10 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
     runWithDebugDir cliOptions = do
       let sev = getSeverity cliOptions
 
-      -- Initialize global debug directory reference
-      -- and create debug directory if in debug mode
+      -- Create debug directory reference
+      debugDirRef <- newDebugDirRef
+
+      -- Create debug directory if in debug mode
       maybeDebugDir <-
         if sev == SevDebug
           then do
@@ -99,22 +101,22 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
             let uniqueName = "fossa-debug-bundle-" <> suffix
             let dirName = tmpDir <> "/" <> uniqueName
             Dir.createDirectoryIfMissing True dirName
-            writeDebugDir globalDebugDirRef (Just dirName)
+            writeDebugDir debugDirRef (Just dirName)
             pure (Just dirName)
           else do
-            writeDebugDir globalDebugDirRef Nothing
+            writeDebugDir debugDirRef Nothing
             pure Nothing
 
-      let (_, action) = mergeAndRun globalDebugDirRef cliOptions
+      let (_, action) = mergeAndRun debugDirRef cliOptions
 
       -- Run the command, ensuring finalization happens even on exceptions
       finally
-        (runEffs sev action)
+        (runEffs sev debugDirRef action)
         (maybe (pure ()) finalizeBundleWithTelemetry maybeDebugDir)
 
     -- We have to extract the severity from the options, which is not straightforward
     -- since the CLI parser is Applicative, but not Monad.
-    mergeAndRun :: IORef (Maybe FilePath) -> cli -> (Severity, EffStack ())
+    mergeAndRun :: DebugDirRef -> cli -> (Severity, EffStack ())
     mergeAndRun debugDirRef cliOptions = (getSeverity cliOptions,) $ do
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
@@ -131,5 +133,5 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
           logStdout (toStrict $ pShowNoColor cfg)
         else perform cfg
 
-runEffs :: Severity -> EffStack () -> IO ()
-runEffs sev = withTelemetry . runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runGit
+runEffs :: Severity -> DebugDirRef -> EffStack () -> IO ()
+runEffs sev debugDirRef = withTelemetry . runStack . withDefaultLogger sev . logWithExit_ . runReadFSIO . runExecIO . runGit . runReader debugDirRef
