@@ -29,9 +29,9 @@ springBoot =
     gradleEnv
     Nothing
     $ FixtureArtifact
-      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.5.7.tar.gz"
+      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v4.0.0-RC2.tar.gz"
       [reldir|gradle/sample/|]
-      [reldir|spring-boot-3.5.7|]
+      [reldir|spring-boot-4.0.0-RC2|]
 
 gradleSettingsOnly :: AnalysisTestFixture (Gradle.GradleProject)
 gradleSettingsOnly =
