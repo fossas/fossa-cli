@@ -47,7 +47,6 @@ mkSubCommand = SubCommand "container" containerCmdInfo parser loadConfig mergeOp
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Lift IO) sig m
   ) =>
   Maybe FilePath ->
   Maybe ConfigFile ->

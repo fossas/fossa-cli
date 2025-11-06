@@ -13,7 +13,6 @@ module App.Fossa.Config.Snippets (
   labelForTransform,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (apiKeyOpt, baseDirArg, collectBaseDir, endpointOpt)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity (..), SubCommand (..))
 import App.Types (BaseDir)

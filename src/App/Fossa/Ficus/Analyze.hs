@@ -9,7 +9,6 @@ module App.Fossa.Ficus.Analyze (
 )
 where
 
-import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
@@ -29,7 +28,6 @@ import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Effect.Reader (Reader, ask)
 import Control.Monad (when)
 import Data.Aeson (Object, decode, decodeStrictText, (.:))
 import Data.Aeson.Types (parseMaybe)
