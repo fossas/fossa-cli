@@ -169,16 +169,12 @@ runFicus ficusConfig = do
     -- Create files for teeing output if debug mode is enabled
     (stdoutFile, stderrFile) <- case ficusConfigDebugDir ficusConfig of
       Just debugDir -> do
-        -- Write directly to debug directory
-        (stdoutTuple, stderrTuple) <- sendIO $ do
+        sendIO $ do
           let stdoutPath = debugDir </> "ficus-stdout.log"
           let stderrPath = debugDir </> "ficus-stderr.log"
           stdoutH <- openFile stdoutPath WriteMode
           stderrH <- openFile stderrPath WriteMode
-          putStrLn $ "Teeing Ficus stdout to: " <> stdoutPath
-          putStrLn $ "Teeing Ficus stderr to: " <> stderrPath
-          pure ((stdoutPath, stdoutH), (stderrPath, stderrH))
-        pure (Just stdoutTuple, Just stderrTuple)
+          pure (Just stdoutH, Just stderrH)
       Nothing ->
         -- No debug mode, don't tee to files
         pure (Nothing, Nothing)
@@ -196,10 +192,10 @@ runFicus ficusConfig = do
       exitCode <- waitExitCode p
       pure (result, exitCode, stdErrLines)
 
-    -- Close temp file handles if they were opened
+    -- Close file handles if they were opened
     sendIO $ do
-      traverse_ (\(path, h) -> hClose h >> putStrLn ("Ficus stdout saved to: " <> path)) stdoutFile
-      traverse_ (\(path, h) -> hClose h >> putStrLn ("Ficus stderr saved to: " <> path)) stderrFile
+      traverse_ hClose stdoutFile
+      traverse_ hClose stderrFile
 
     if exitCode /= ExitSuccess
       then do
@@ -221,7 +217,7 @@ runFicus ficusConfig = do
       now <- getCurrentTime
       pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
 
-    streamFicusOutput :: Handle -> Maybe (FilePath, Handle) -> IO (Maybe FicusSnippetScanResults)
+    streamFicusOutput :: Handle -> Maybe Handle -> IO (Maybe FicusSnippetScanResults)
     streamFicusOutput handle maybeFile =
       Conduit.runConduit $
         CC.sourceHandle handle
@@ -230,15 +226,13 @@ runFicus ficusConfig = do
           .| CC.mapM
             ( \line -> do
                 -- Tee raw line to file if debug mode
-                traverse_ (\(_, fileH) -> hPutStrLn fileH (toString line)) maybeFile
+                traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
                 pure line
             )
           .| CCL.mapMaybe decodeStrictText
           .| CC.foldM
             ( \acc message -> do
                 -- Log messages immediately to stderr as they stream
-                -- These messages are deliberately not included in the debug bundle, as this can cause huge increases in memory usage
-                -- and bundle size.
                 timestamp <- currentTimeStamp
                 case message of
                   FicusMessageError err -> do
@@ -257,7 +251,7 @@ runFicus ficusConfig = do
             )
             Nothing
 
-    consumeStderr :: Handle -> Maybe (FilePath, Handle) -> IO [Text]
+    consumeStderr :: Handle -> Maybe Handle -> IO [Text]
     consumeStderr handle maybeFile = do
       let loop acc (count :: Int) = do
             eof <- hIsEOF handle
@@ -266,7 +260,7 @@ runFicus ficusConfig = do
               else do
                 line <- hGetLine handle
                 -- Tee raw line to file if debug mode
-                traverse_ (\(_, fileH) -> hPutStrLn fileH line) maybeFile
+                traverse_ (\fileH -> hPutStrLn fileH line) maybeFile
                 -- output stderr
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
