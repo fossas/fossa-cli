@@ -135,7 +135,7 @@ mergeOpts ::
   EnvVars ->
   ContainerAnalyzeOptions ->
   m ContainerAnalyzeConfig
-mergeOpts _maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
+mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       imageLoc = containerAnalyzeImage
       jsonOutput = containerJsonOutput
@@ -161,7 +161,7 @@ mergeOpts _maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = d
     <*> pure onlySystemDeps
     <*> pure scanFilters
     <*> pure withoutDefaultFilters
-    <*> pure _maybeDebugDir
+    <*> pure maybeDebugDir
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>
