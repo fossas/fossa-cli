@@ -17,10 +17,9 @@ import Control.Effect.Lift
 import Control.Effect.Telemetry (Telemetry, trackUsage)
 import Control.Monad (void)
 import Data.Foldable (traverse_)
-import Data.Maybe (isJust)
 import Data.String.Conversion (ConvertUtf8 (..), toString, toText)
 import Data.Text (Text)
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logDebug, logInfo)
+import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
@@ -37,10 +36,9 @@ analyze ::
 analyze config = do
   let metadata = ProjectMetadata Nothing Nothing Nothing Nothing (sbomTeam config) Nothing [] Nothing
   let apiOpts = sbomApiOpts config
-      effectiveSeverity = if isJust (debugDir config) then SevDebug else SevInfo
   trackUsage SBOMAnalyzeUsage
   void . runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks (sbomRevision config) metadata
-  runFossaApiClient apiOpts . runStickyLogger effectiveSeverity $ analyzeInternal config
+  runFossaApiClient apiOpts . runStickyLogger (severity config) $ analyzeInternal config
 
 analyzeInternal ::
   ( Has Diag.Diagnostics sig m

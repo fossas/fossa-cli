@@ -61,6 +61,7 @@ data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   , sbomTeam :: Maybe Text
   , sbomRevision :: ProjectRevision
   , debugDir :: Maybe FilePath
+  , severity :: Severity
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -105,7 +106,7 @@ mergeOpts ::
   EnvVars ->
   SBOMAnalyzeOptions ->
   m SBOMAnalyzeConfig
-mergeOpts maybeDebugDir cfgfile envvars SBOMAnalyzeOptions{..} = do
+mergeOpts maybeDebugDir cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
   let fileLoc = sbomFile
 
@@ -128,4 +129,5 @@ mergeOpts maybeDebugDir cfgfile envvars SBOMAnalyzeOptions{..} = do
       , sbomTeam = team
       , sbomRevision = revision
       , debugDir = maybeDebugDir
+      , severity = getSeverity cliOpts
       }
