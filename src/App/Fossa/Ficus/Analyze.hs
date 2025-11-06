@@ -253,7 +253,7 @@ runFicus maybeDebugDir ficusConfig = do
               else do
                 line <- hGetLine handle
                 -- Tee raw line to file if debug mode
-                traverse_ (\fileH -> hPutStrLn fileH line) maybeFile
+                traverse_ (`hPutStrLn` line) maybeFile
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
                 let msg = "[" ++ timestamp ++ "] STDERR " <> line

@@ -75,7 +75,7 @@ updateCommandName :: SubCommand cli cfg -> String -> SubCommand cli cfg
 updateCommandName subCmd newName = subCmd{commandName = newName}
 
 runSubCommand :: forall cli cfg. (GetCommonOpts cli, GetSeverity cli, Show cfg, ToJSON cfg) => SubCommand cli cfg -> Parser (IO ())
-runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> parser
+runSubCommand SubCommand{..} = runWithDebugDir <$> parser
   where
     -- Create debug directory and run effects with cleanup
     runWithDebugDir :: cli -> IO ()
