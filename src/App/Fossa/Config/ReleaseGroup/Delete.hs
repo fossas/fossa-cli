@@ -59,7 +59,7 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   DeleteOpts ->

@@ -33,7 +33,6 @@ module App.Fossa.Config.Analyze (
 ) where
 
 import App.Docs (fossaAnalyzeDefaultFilterDocUrl)
-import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.Config.Common (
   CacheAction (WriteOnly),
   CommonOpts (..),
@@ -483,12 +482,12 @@ mergeOpts ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts debugDirRef cfg env cliOpts = do
+mergeOpts maybeDebugDir cfg env cliOpts = do
   let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
   when experimentalNativeLicenseScanFlagUsed $ do
     logWarn $
@@ -502,7 +501,7 @@ mergeOpts debugDirRef cfg env cliOpts = do
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
 
-  mergeStandardOpts debugDirRef cfg env cliOpts
+  mergeStandardOpts maybeDebugDir cfg env cliOpts
 
 mergeStandardOpts ::
   ( Has Diagnostics sig m
@@ -511,12 +510,12 @@ mergeStandardOpts ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeStandardOpts debugDirRef maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
+mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
       logSeverity = getSeverity cliOpts
       scanDestination = collectScanDestination maybeConfig envvars cliOpts
@@ -548,7 +547,6 @@ mergeStandardOpts debugDirRef maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = d
       (_, True) -> pure FirstPartyScansOffFromFlag
       (False, False) -> pure FirstPartyScansUseDefault
 
-  maybeDebugDir <- sendIO $ readDebugDir debugDirRef
   AnalyzeConfig
     <$> basedir
     <*> pure logSeverity

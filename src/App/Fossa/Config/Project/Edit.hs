@@ -131,7 +131,7 @@ projectIdentiferOptions = optional (projectIdOptions <|> projectLocatorOptions)
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   EditOpts ->

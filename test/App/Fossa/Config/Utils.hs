@@ -2,7 +2,6 @@
 
 module App.Fossa.Config.Utils (parseArgString, itShouldLoadFromTheConfiguredBaseDir, itShouldFailWhenLabelsExceedFive, fixtureDir) where
 
-import App.Fossa.DebugDir (newDebugDirRef)
 import App.Fossa.Config.Analyze (AnalyzeCliOpts, mergeOpts)
 import App.Fossa.Config.ConfigFile (ConfigFile (..), OrgWideCustomLicenseConfigPolicy (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (EnvVars))
@@ -70,5 +69,4 @@ itShouldFailWhenLabelsExceedFive parser =
     case getParseResult p of
       Nothing -> fatal ("test failed" :: Text)
       Just cliOpts -> do
-        debugDirRef <- sendIO newDebugDirRef
-        expectFatal' $ mergeOpts debugDirRef Nothing (EnvVars Nothing False False Nothing Nothing mempty) cliOpts
+        expectFatal' $ mergeOpts Nothing Nothing (EnvVars Nothing False False Nothing Nothing mempty) cliOpts

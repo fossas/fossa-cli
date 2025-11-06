@@ -63,7 +63,7 @@ data SubCommand cli cfg = SubCommand
   , commandInfo :: InfoMod (IO ())
   , parser :: Parser cli
   , configLoader :: cli -> EffStack (Maybe ConfigFile) -- CLI args can control where we look for config file
-  , optMerge :: DebugDirRef -> Maybe ConfigFile -> EnvVars -> cli -> EffStack cfg
+  , optMerge :: Maybe FilePath -> Maybe ConfigFile -> EnvVars -> cli -> EffStack cfg
   , perform :: cfg -> EffStack ()
   }
 
@@ -106,7 +106,7 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
             writeDebugDir debugDirRef Nothing
             pure Nothing
 
-      let (_, action) = mergeAndRun debugDirRef cliOptions
+      let (_, action) = mergeAndRun debugDirRef maybeDebugDir cliOptions
 
       -- Run the command, ensuring finalization happens even on exceptions
       finally
@@ -115,15 +115,15 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
 
     -- We have to extract the severity from the options, which is not straightforward
     -- since the CLI parser is Applicative, but not Monad.
-    mergeAndRun :: DebugDirRef -> cli -> (Severity, EffStack ())
-    mergeAndRun debugDirRef cliOptions = (getSeverity cliOptions,) $ do
+    mergeAndRun :: DebugDirRef -> Maybe FilePath -> cli -> (Severity, EffStack ())
+    mergeAndRun debugDirRef maybeDebugDir cliOptions = (getSeverity cliOptions,) $ do
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
 
       maybeTelSink <- collectTelemetrySink debugDirRef configFile envvars $ getCommonOpts cliOptions
       traverse_ setSink maybeTelSink
 
-      cfg <- context "Validating configuration" $ optMerge debugDirRef configFile envvars cliOptions
+      cfg <- context "Validating configuration" $ optMerge maybeDebugDir configFile envvars cliOptions
       trackConfig (toText commandName) cfg
 
       if envConfigDebug envvars

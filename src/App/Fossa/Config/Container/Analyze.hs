@@ -11,7 +11,6 @@ module App.Fossa.Config.Container.Analyze (
 ) where
 
 import App.Docs (fossaContainerAnalyzeDefaultFilterDocUrl)
-import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.Config.Analyze (WithoutDefaultFilters, branchHelp, withoutDefaultFilterParser)
 import App.Fossa.Config.Common (
   CommonOpts (CommonOpts, optDebug, optProjectName, optProjectRevision),
@@ -40,7 +39,7 @@ import App.Types (
   ProjectMetadata,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt)
@@ -133,12 +132,12 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m, Has (Lift IO) sig m) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerAnalyzeOptions ->
   m ContainerAnalyzeConfig
-mergeOpts debugDirRef cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
+mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
@@ -154,7 +153,6 @@ mergeOpts debugDirRef cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
             (optProjectName analyzeCommons)
             (optProjectRevision analyzeCommons)
             (containerBranch)
-  maybeDebugDir <- sendIO $ readDebugDir debugDirRef
   ContainerAnalyzeConfig
     <$> scanDest
     <*> pure revOverride

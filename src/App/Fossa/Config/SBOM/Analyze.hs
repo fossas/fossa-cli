@@ -11,7 +11,6 @@ module App.Fossa.Config.SBOM.Analyze (
   subcommand,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef, readDebugDir)
 import App.Fossa.Config.Common (
   CacheAction (..),
   CommonOpts (..),
@@ -31,7 +30,7 @@ import App.Types (
  )
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt, fromFlag)
@@ -102,12 +101,12 @@ mergeOpts ::
   , Has ReadFS sig m
   , Has (Lift IO) sig m
   ) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   SBOMAnalyzeOptions ->
   m SBOMAnalyzeConfig
-mergeOpts debugDirRef cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
+mergeOpts maybeDebugDir cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
   let severity = getSeverity cliOpts
       fileLoc = sbomFile
@@ -122,7 +121,6 @@ mergeOpts debugDirRef cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
       forceRescans = if fromFlag ForceRescan forceRescan then DependencyRebuildInvalidateCache else DependencyRebuildReuseCache
   apiOpts <- App.Fossa.Config.Common.collectApiOpts cfgfile envvars analyzeCommons
   revision <- getProjectRevision fileLoc revOverride WriteOnly
-  maybeDebugDir <- sendIO $ readDebugDir debugDirRef
   pure $
     SBOMAnalyzeConfig
       { sbomBaseDir = (BaseDir baseDir)

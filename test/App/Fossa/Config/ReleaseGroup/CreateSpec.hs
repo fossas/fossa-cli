@@ -2,7 +2,6 @@
 
 module App.Fossa.Config.ReleaseGroup.CreateSpec (spec, expectedReleaseGroupRevisionFromConfig, expectedReleaseGroupReleaseRevisionFromConfig) where
 
-import App.Fossa.DebugDir (newDebugDirRef)
 import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigReleaseGroup (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.ReleaseGroup.Common (ReleaseGroupCommonOpts (..), ReleaseGroupProjectOpts (..))
@@ -11,7 +10,6 @@ import App.Fossa.Config.Utils (fixtureDir)
 import App.Fossa.Configuration.ConfigurationSpec (expectedReleaseGroup)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (ReleaseGroupProjectRevision (..), ReleaseGroupReleaseRevision (..), ReleaseGroupRevision (..))
-import Control.Effect.Lift (sendIO)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Test.Effect (expectFatal', it', shouldBe')
@@ -172,19 +170,14 @@ spec = do
       envVars = EnvVars Nothing False False Nothing Nothing mempty
   describe "mergeOpts" $ do
     it' "should use values from create opts when both create opts and config values are present" $ do
-      debugDirRef <- sendIO newDebugDirRef
-      createConfig <- mergeOpts debugDirRef (Just $ configFile absFilePath) envVars createOpts
+      createConfig <- mergeOpts Nothing (Just $ configFile absFilePath) envVars createOpts
       shouldBe' expectedReleaseGroupRevisionFromOpts $ releaseGroupRevision createConfig
     it' "should use values from config when create opts values are empty" $ do
-      debugDirRef <- sendIO newDebugDirRef
-      createConfig <- mergeOpts debugDirRef (Just $ configFile absFilePath) envVars emptyCreateOpts
+      createConfig <- mergeOpts Nothing (Just $ configFile absFilePath) envVars emptyCreateOpts
       shouldBe' expectedReleaseGroupRevisionFromConfig $ releaseGroupRevision createConfig
     it' "should fail when no title is provided" $ do
-      debugDirRef <- sendIO newDebugDirRef
-      expectFatal' $ mergeOpts debugDirRef Nothing envVars emptyCreateOpts
+      expectFatal' $ mergeOpts Nothing Nothing envVars emptyCreateOpts
     it' "should fail when no release is provided" $ do
-      debugDirRef <- sendIO newDebugDirRef
-      expectFatal' $ mergeOpts debugDirRef Nothing envVars emptyReleaseCreateOpts
+      expectFatal' $ mergeOpts Nothing Nothing envVars emptyReleaseCreateOpts
     it' "should fail when no projects are provided" $ do
-      debugDirRef <- sendIO newDebugDirRef
-      expectFatal' $ mergeOpts debugDirRef Nothing envVars emptyProjectsCreateOpts
+      expectFatal' $ mergeOpts Nothing Nothing envVars emptyProjectsCreateOpts

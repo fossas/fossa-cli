@@ -217,7 +217,7 @@ mergeOpts ::
   , Has Diagnostics sig m
   , Has Exec sig m
   ) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ReportCliOptions ->

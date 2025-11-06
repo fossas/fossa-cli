@@ -50,13 +50,13 @@ mergeOpts ::
   , Has Logger sig m
   , Has (Lift IO) sig m
   ) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerCommand ->
   m ContainerScanConfig
-mergeOpts debugDirRef cfgfile envvars = \case
-  ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts debugDirRef cfgfile envvars opts
+mergeOpts maybeDebugDir cfgfile envvars = \case
+  ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts maybeDebugDir cfgfile envvars opts
   ContainerTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
   ContainerListTargets opts -> ListTargetsCfg <$> ListTargets.mergeOpts cfgfile envvars opts
 

@@ -199,7 +199,7 @@ mergeOpts ::
   , Has Exec sig m
   , Has Logger sig m
   ) =>
-  DebugDirRef ->
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   TestCliOpts ->
