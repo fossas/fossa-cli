@@ -12,7 +12,7 @@ module App.Fossa.Subcommand (
 import App.Fossa.Config.Common (CommonOpts, collectTelemetrySink)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (envConfigDebug), getEnvVars)
-import App.Fossa.DebugDir (globalDebugDirRef)
+import App.Fossa.DebugDir (DebugDirRef, globalDebugDirRef, writeDebugDir)
 import Control.Carrier.Diagnostics (DiagnosticsC, context, logWithExit_)
 import Control.Carrier.Git (GitC, runGit)
 import Control.Carrier.Stack (StackC, runStack)
@@ -21,7 +21,7 @@ import Control.Effect.Telemetry (setSink, trackConfig)
 import Control.Exception (finally)
 import Data.Aeson (ToJSON)
 import Data.Foldable (traverse_)
-import Data.IORef (writeIORef)
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
 import Data.String.Conversion (ToText (toText), toStrict)
 import Data.UUID qualified as UUID (toString)
 import Data.UUID.V4 qualified as UUID (nextRandom)
@@ -82,12 +82,15 @@ updateCommandName :: SubCommand cli cfg -> String -> SubCommand cli cfg
 updateCommandName subCmd newName = subCmd{commandName = newName}
 
 runSubCommand :: forall cli cfg. (GetCommonOpts cli, GetSeverity cli, Show cfg, ToJSON cfg) => SubCommand cli cfg -> Parser (IO ())
-runSubCommand SubCommand{..} = runWithDebugDir . mergeAndRun <$> parser
+runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> parser
   where
     -- Create debug directory and run effects with cleanup
-    runWithDebugDir :: (Severity, EffStack ()) -> IO ()
-    runWithDebugDir (sev, action) = do
-      -- Create debug directory if in debug mode
+    runWithDebugDir :: cli -> IO ()
+    runWithDebugDir cliOptions = do
+      let sev = getSeverity cliOptions
+
+      -- Initialize global debug directory reference
+      -- and create debug directory if in debug mode
       maybeDebugDir <-
         if sev == SevDebug
           then do
@@ -96,11 +99,13 @@ runSubCommand SubCommand{..} = runWithDebugDir . mergeAndRun <$> parser
             let uniqueName = "fossa-debug-bundle-" <> suffix
             let dirName = tmpDir <> "/" <> uniqueName
             Dir.createDirectoryIfMissing True dirName
-            writeIORef globalDebugDirRef (Just dirName)
+            writeDebugDir globalDebugDirRef (Just dirName)
             pure (Just dirName)
           else do
-            writeIORef globalDebugDirRef Nothing
+            writeDebugDir globalDebugDirRef Nothing
             pure Nothing
+
+      let (_, action) = mergeAndRun globalDebugDirRef cliOptions
 
       -- Run the command, ensuring finalization happens even on exceptions
       finally
@@ -109,12 +114,12 @@ runSubCommand SubCommand{..} = runWithDebugDir . mergeAndRun <$> parser
 
     -- We have to extract the severity from the options, which is not straightforward
     -- since the CLI parser is Applicative, but not Monad.
-    mergeAndRun :: cli -> (Severity, EffStack ())
-    mergeAndRun cliOptions = (getSeverity cliOptions,) $ do
+    mergeAndRun :: IORef (Maybe FilePath) -> cli -> (Severity, EffStack ())
+    mergeAndRun debugDirRef cliOptions = (getSeverity cliOptions,) $ do
       configFile <- context "Loading config file" $ configLoader cliOptions
       envvars <- context "Fetching environment variables" getEnvVars
 
-      maybeTelSink <- collectTelemetrySink configFile envvars $ getCommonOpts cliOptions
+      maybeTelSink <- collectTelemetrySink debugDirRef configFile envvars $ getCommonOpts cliOptions
       traverse_ setSink maybeTelSink
 
       cfg <- context "Validating configuration" $ optMerge configFile envvars cliOptions

@@ -2,7 +2,6 @@
 
 module Control.Carrier.Telemetry.Sink.File (sinkTelemetryToFile, fossaTelemetryDebugFile) where
 
-import App.Fossa.DebugDir (globalDebugDirRef)
 import Control.Carrier.Lift (Has, Lift, sendIO)
 import Control.Carrier.Telemetry.Types (TelemetryRecord)
 import Data.Aeson (ToJSON)
@@ -19,7 +18,7 @@ import Data.Aeson.Encode.Pretty (
   encodePretty',
  )
 import Data.ByteString.Lazy qualified as LazyByteString
-import Data.IORef (readIORef)
+import Data.IORef (IORef, readIORef)
 import Data.String.Conversion (toString)
 import Path (File, Path, Rel, mkRelFile)
 import Path qualified as P
@@ -33,10 +32,10 @@ fossaTelemetryDebugFile = $(mkRelFile "fossa.telemetry.json")
 --
 -- File is written to debug directory if available, otherwise current working directory.
 -- File is named @fossaTelemetryDebugFile@.
-sinkTelemetryToFile :: Has (Lift IO) sig m => TelemetryRecord -> m ()
-sinkTelemetryToFile record = do
+sinkTelemetryToFile :: Has (Lift IO) sig m => IORef (Maybe FilePath) -> TelemetryRecord -> m ()
+sinkTelemetryToFile debugDirRef record = do
   -- Check if we have a debug directory set
-  maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+  maybeDebugDir <- sendIO $ readIORef debugDirRef
   filePath <- case maybeDebugDir of
     Just debugDir -> do
       -- Write to debug directory

@@ -8,7 +8,7 @@ import App.Fossa.Config.SBOM (
   SBOMScanConfig (..),
  )
 import App.Fossa.Config.SBOM qualified as Config
-import App.Fossa.DebugDir (globalDebugDirRef)
+import App.Fossa.DebugDir (globalDebugDirRef, readDebugDir)
 import App.Fossa.SBOM.Analyze qualified as Analyze
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.Test (testMain)
@@ -46,8 +46,8 @@ dispatch ::
   m ()
 dispatch = \case
   AnalyzeCfg cfg -> do
-    -- Read debug directory from global ref (created in Subcommand.hs if --debug is enabled)
-    maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+    -- Read debug directory from global ref (initialized in Subcommand.hs if --debug is enabled)
+    maybeDebugDir <- sendIO $ readDebugDir globalDebugDirRef
 
     case maybeDebugDir of
       Just debugDir -> do

@@ -9,7 +9,7 @@ module App.Fossa.Ficus.Analyze (
 )
 where
 
-import App.Fossa.DebugDir (globalDebugDirRef)
+import App.Fossa.DebugDir (globalDebugDirRef, readDebugDir)
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
@@ -39,7 +39,6 @@ import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
-import Data.IORef (readIORef)
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -165,7 +164,7 @@ runFicus ficusConfig = do
     logDebugWithTime "Starting Ficus process..."
 
     -- Create files for teeing output if debug mode is enabled
-    maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+    maybeDebugDir <- sendIO $ readDebugDir globalDebugDirRef
     (stdoutFile, stderrFile) <- case maybeDebugDir of
       Just debugDir -> do
         sendIO $ do

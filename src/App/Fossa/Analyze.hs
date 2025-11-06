@@ -50,7 +50,7 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
-import App.Fossa.DebugDir (globalDebugDirRef)
+import App.Fossa.DebugDir (globalDebugDirRef, readDebugDir)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
@@ -177,8 +177,8 @@ analyzeMain ::
   m Aeson.Value
 analyzeMain cfg = case Config.severity cfg of
   SevDebug -> do
-    -- Read debug directory from global ref (created in Subcommand.hs)
-    maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+    -- Read debug directory from global ref (initialized in Subcommand.hs)
+    maybeDebugDir <- sendIO $ readDebugDir globalDebugDirRef
 
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 

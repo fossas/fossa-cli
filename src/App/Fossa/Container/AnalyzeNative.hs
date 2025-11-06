@@ -19,7 +19,7 @@ import App.Fossa.Config.Container.Analyze (
   JsonOutput (JsonOutput),
  )
 import App.Fossa.Container.Scan (extractRevision, scanImage)
-import App.Fossa.DebugDir (globalDebugDirRef)
+import App.Fossa.DebugDir (globalDebugDirRef, readDebugDir)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Types (
   ProjectMetadata,
@@ -86,8 +86,8 @@ analyzeExperimental ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyzeExperimental cfg = do
-  -- Read debug directory from global ref (created in Subcommand.hs if --debug is enabled)
-  maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+  -- Read debug directory from global ref (initialized in Subcommand.hs if --debug is enabled)
+  maybeDebugDir <- sendIO $ readDebugDir globalDebugDirRef
 
   case maybeDebugDir of
     Just debugDir -> do
