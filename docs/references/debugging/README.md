@@ -93,7 +93,7 @@ fossa analyze --debug
 
 After this has run, a new file is created in the current
 working directory (the directory from which you launched `fossa`).
-This file is titled `fossa.debug.zip`. It's contents can vary depending on the exact command you are running.
+This file is titled `fossa.debug.zip`. Its contents can vary depending on the exact command you are running.
 But it will almost always contain the debug bundle in fossa.debug.json.
 
 ### Extracting a debug bundle
