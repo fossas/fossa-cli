@@ -451,8 +451,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
-      effectiveSeverity = if isJust (Config.debugDir cfg) then SevDebug else SevInfo
-  renderScanSummary effectiveSeverity maybeEndpointAppVersion analysisResult cfg
+      isDebugMode = isJust (Config.debugDir cfg)
+  renderScanSummary isDebugMode maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =

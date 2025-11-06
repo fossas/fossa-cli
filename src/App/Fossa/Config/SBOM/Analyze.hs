@@ -105,7 +105,7 @@ mergeOpts ::
   EnvVars ->
   SBOMAnalyzeOptions ->
   m SBOMAnalyzeConfig
-mergeOpts maybeDebugDir cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
+mergeOpts maybeDebugDir cfgfile envvars SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
   let fileLoc = sbomFile
 
