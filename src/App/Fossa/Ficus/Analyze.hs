@@ -169,8 +169,8 @@ runFicus maybeDebugDir ficusConfig = do
     (stdoutFile, stderrFile) <- case maybeDebugDir of
       Just debugDir -> do
         sendIO $ do
-          let stdoutPath = debugDir </> "ficus-stdout.log"
-          let stderrPath = debugDir </> "ficus-stderr.log"
+          let stdoutPath = debugDir </> "fossa.ficus-stdout.log"
+          let stderrPath = debugDir </> "fossa.ficus-stderr.log"
           stdoutH <- openFile stdoutPath WriteMode
           stderrH <- openFile stderrPath WriteMode
           pure (Just stdoutH, Just stderrH)
