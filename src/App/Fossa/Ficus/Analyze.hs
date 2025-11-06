@@ -37,6 +37,7 @@ import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
+import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
@@ -197,12 +198,8 @@ runFicus ficusConfig = do
 
     -- Close temp file handles if they were opened
     sendIO $ do
-      case stdoutFile of
-        Just (path, h) -> hClose h >> putStrLn ("Ficus stdout saved to: " <> path)
-        Nothing -> pure ()
-      case stderrFile of
-        Just (path, h) -> hClose h >> putStrLn ("Ficus stderr saved to: " <> path)
-        Nothing -> pure ()
+      traverse_ (\(path, h) -> hClose h >> putStrLn ("Ficus stdout saved to: " <> path)) stdoutFile
+      traverse_ (\(path, h) -> hClose h >> putStrLn ("Ficus stderr saved to: " <> path)) stderrFile
 
     if exitCode /= ExitSuccess
       then do
@@ -233,9 +230,7 @@ runFicus ficusConfig = do
           .| CC.mapM
             ( \line -> do
                 -- Tee raw line to file if debug mode
-                case maybeFile of
-                  Just (_, fileH) -> hPutStrLn fileH (toString line)
-                  Nothing -> pure ()
+                traverse_ (\(_, fileH) -> hPutStrLn fileH (toString line)) maybeFile
                 pure line
             )
           .| CCL.mapMaybe decodeStrictText
@@ -271,9 +266,7 @@ runFicus ficusConfig = do
               else do
                 line <- hGetLine handle
                 -- Tee raw line to file if debug mode
-                case maybeFile of
-                  Just (_, fileH) -> hPutStrLn fileH line
-                  Nothing -> pure ()
+                traverse_ (\(_, fileH) -> hPutStrLn fileH line) maybeFile
                 -- output stderr
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now

@@ -128,7 +128,6 @@ import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
-import Path qualified as P
 import Path.IO (makeRelative)
 import Prettyprinter (
   Pretty (pretty),
@@ -142,7 +141,6 @@ import Prettyprinter.Render.Terminal (
  )
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
-import System.Directory qualified as Dir
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
@@ -185,7 +183,7 @@ analyzeMain cfg = case Config.severity cfg of
 
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg maybeDebugDir
 
-    -- Write debug JSON to debug directory (uncompressed)
+    -- Write debug JSON to debug directory
     case maybeDebugDir of
       Just debugDir -> sendIO $ do
         let debugJsonPath = debugDir </> debugBundlePath
@@ -364,7 +362,17 @@ analyze cfg maybeDebugDir = Diag.context "fossa-analyze" $ do
             then do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
-            else fmap Just $ Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo) maybeDebugDir
+            else
+              fmap Just
+                $ Diag.context "snippet-scanning"
+                  . runStickyLogger SevInfo
+                $ analyzeWithFicus
+                  basedir
+                  maybeApiOpts
+                  revision
+                  (Config.licenseScanPathFilters vendoredDepsOptions)
+                  (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
+                  maybeDebugDir
   let ficusAnalysisResults = join $ resultToMaybe maybeFicusResults
   let ficusResults = ficusAnalysisSnippetResults <$> ficusAnalysisResults
 
