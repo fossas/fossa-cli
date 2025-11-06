@@ -29,7 +29,7 @@ springBoot =
     gradleEnv
     Nothing
     $ FixtureArtifact
-      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.1.0-M1.tar.gz"
+      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.5.7.tar.gz"
       [reldir|gradle/sample/|]
       [reldir|spring-boot-3.1.0-M1|]
 
