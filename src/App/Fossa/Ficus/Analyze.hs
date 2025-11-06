@@ -9,11 +9,11 @@ module App.Fossa.Ficus.Analyze (
 )
 where
 
+import App.Fossa.DebugDir (globalDebugDirRef)
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
   FicusAnalysisFlag (..),
-  FicusAnalysisResults (..),
   FicusConfig (..),
   FicusDebug (..),
   FicusError (..),
@@ -39,6 +39,7 @@ import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
+import Data.IORef (readIORef)
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -94,10 +95,9 @@ analyzeWithFicus ::
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
-  Maybe FilePath -> -- debugDir: if Just, write logs here and enable debug mode
-  m FicusAnalysisResults
-analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
-  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir
+  m (Maybe FicusSnippetScanResults)
+analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays = do
+  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -109,13 +109,12 @@ analyzeWithFicusMain ::
   ProjectRevision ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
-  Maybe FilePath -> -- debugDir: if Just, write logs here and enable debug mode
-  m FicusAnalysisResults
-analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
+  m (Maybe FicusSnippetScanResults)
+analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
   analysisResults <- runFicus ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
-  case ficusAnalysisSnippetResults analysisResults of
+  case analysisResults of
     Just results ->
       logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
     Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
@@ -130,7 +129,6 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays m
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
-        , ficusConfigDebugDir = maybeDebugDir
         }
 
 findingToAnalysisId :: FicusFinding -> Maybe Int
@@ -147,7 +145,7 @@ runFicus ::
   , Has Logger sig m
   ) =>
   FicusConfig ->
-  m FicusAnalysisResults
+  m (Maybe FicusSnippetScanResults)
 runFicus ficusConfig = do
   logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
@@ -167,7 +165,8 @@ runFicus ficusConfig = do
     logDebugWithTime "Starting Ficus process..."
 
     -- Create files for teeing output if debug mode is enabled
-    (stdoutFile, stderrFile) <- case ficusConfigDebugDir ficusConfig of
+    maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
+    (stdoutFile, stderrFile) <- case maybeDebugDir of
       Just debugDir -> do
         sendIO $ do
           let stdoutPath = debugDir </> "ficus-stdout.log"
@@ -206,11 +205,8 @@ runFicus ficusConfig = do
         logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
 
-    -- Return analysis results with file paths
-    pure $
-      FicusAnalysisResults
-        { ficusAnalysisSnippetResults = result
-        }
+    -- Return analysis results
+    pure result
   where
     currentTimeStamp :: IO String
     currentTimeStamp = do

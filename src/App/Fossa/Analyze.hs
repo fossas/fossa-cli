@@ -52,7 +52,6 @@ import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.DebugDir (globalDebugDirRef)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -181,7 +180,7 @@ analyzeMain cfg = case Config.severity cfg of
     -- Read debug directory from global ref (created in Subcommand.hs)
     maybeDebugDir <- sendIO $ readIORef globalDebugDirRef
 
-    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg maybeDebugDir
+    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
     -- Write debug JSON to debug directory
     traverse_
@@ -192,7 +191,7 @@ analyzeMain cfg = case Config.severity cfg of
       maybeDebugDir
 
     Diag.rethrow res
-  _ -> ignoreDebug $ analyze cfg Nothing
+  _ -> ignoreDebug $ analyze cfg
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -291,9 +290,8 @@ analyze ::
   , Has Telemetry sig m
   ) =>
   AnalyzeConfig ->
-  Maybe FilePath -> -- debugDir: if Just, all debug files should be written here
   m Aeson.Value
-analyze cfg maybeDebugDir = Diag.context "fossa-analyze" $ do
+analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
   let maybeDestMeta = destinationMetadata destination
@@ -373,9 +371,7 @@ analyze cfg maybeDebugDir = Diag.context "fossa-analyze" $ do
                   revision
                   (Config.licenseScanPathFilters vendoredDepsOptions)
                   (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
-                  maybeDebugDir
-  let ficusAnalysisResults = join $ resultToMaybe maybeFicusResults
-  let ficusResults = ficusAnalysisSnippetResults <$> ficusAnalysisResults
+  let ficusResults = join $ resultToMaybe maybeFicusResults
 
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
