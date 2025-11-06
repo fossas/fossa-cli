@@ -51,9 +51,8 @@ import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), renderLocator)
-import System.Directory (getTemporaryDirectory)
 import System.FilePath ((</>))
-import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, openTempFile, stderr)
+import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, stderr)
 import System.Process.Typed (
   createPipe,
   getStderr,
@@ -167,30 +166,21 @@ runFicus ficusConfig = do
     logDebugWithTime "Starting Ficus process..."
 
     -- Create files for teeing output if debug mode is enabled
-    -- Use debugDir if provided, otherwise use temp files
-    (stdoutFile, stderrFile) <-
-      if isJust (ficusConfigDebugDir ficusConfig)
-        then do
-          (stdoutTuple, stderrTuple) <- sendIO $ case ficusConfigDebugDir ficusConfig of
-            Just debugDir -> do
-              -- Write directly to debug directory
-              let stdoutPath = debugDir </> "ficus-stdout.log"
-              let stderrPath = debugDir </> "ficus-stderr.log"
-              stdoutH <- openFile stdoutPath WriteMode
-              stderrH <- openFile stderrPath WriteMode
-              putStrLn $ "Teeing Ficus stdout to: " <> stdoutPath
-              putStrLn $ "Teeing Ficus stderr to: " <> stderrPath
-              pure ((stdoutPath, stdoutH), (stderrPath, stderrH))
-            Nothing -> do
-              -- Fall back to temp files
-              tmpDir <- getTemporaryDirectory
-              stdoutTuple@(stdoutPath, _) <- openTempFile tmpDir "ficus-stdout-.log"
-              stderrTuple@(stderrPath, _) <- openTempFile tmpDir "ficus-stderr-.log"
-              putStrLn $ "Teeing Ficus stdout to: " <> stdoutPath
-              putStrLn $ "Teeing Ficus stderr to: " <> stderrPath
-              pure (stdoutTuple, stderrTuple)
-          pure (Just stdoutTuple, Just stderrTuple)
-        else pure (Nothing, Nothing)
+    (stdoutFile, stderrFile) <- case ficusConfigDebugDir ficusConfig of
+      Just debugDir -> do
+        -- Write directly to debug directory
+        (stdoutTuple, stderrTuple) <- sendIO $ do
+          let stdoutPath = debugDir </> "ficus-stdout.log"
+          let stderrPath = debugDir </> "ficus-stderr.log"
+          stdoutH <- openFile stdoutPath WriteMode
+          stderrH <- openFile stderrPath WriteMode
+          putStrLn $ "Teeing Ficus stdout to: " <> stdoutPath
+          putStrLn $ "Teeing Ficus stderr to: " <> stderrPath
+          pure ((stdoutPath, stdoutH), (stderrPath, stderrH))
+        pure (Just stdoutTuple, Just stderrTuple)
+      Nothing ->
+        -- No debug mode, don't tee to files
+        pure (Nothing, Nothing)
 
     (result, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
       getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
