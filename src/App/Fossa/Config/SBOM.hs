@@ -6,7 +6,6 @@ module App.Fossa.Config.SBOM (
   SBOMAnalyzeConfig (..),
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CommonOpts (..),
  )

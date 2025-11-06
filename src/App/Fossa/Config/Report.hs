@@ -11,7 +11,6 @@ module App.Fossa.Config.Report (
   parseReportOutputFormat,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),

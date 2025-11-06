@@ -7,7 +7,6 @@ module App.Fossa.Config.ListTargets (
   ListTargetOutputFormat (..),
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
   GoDynamicTactic (GoModulesBasedTactic),

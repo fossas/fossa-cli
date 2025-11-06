@@ -9,7 +9,6 @@ module App.Fossa.Config.Project.Edit (
   mergeOpts,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (configHelp, endpointHelp, fossaApiKeyCmdText, fossaApiKeyHelp, parsePolicyOptions, titleHelp, validateApiKeyGeneric)
 import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigProject (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (envApiKey))

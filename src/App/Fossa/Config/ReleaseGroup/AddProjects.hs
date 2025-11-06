@@ -8,7 +8,6 @@ module App.Fossa.Config.ReleaseGroup.AddProjects (
   mergeOpts,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (configFileOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile, configReleaseGroup, configReleaseGroupProjects, configReleaseGroupRelease, configReleaseGroupTitle)
 import App.Fossa.Config.EnvironmentVars (EnvVars)

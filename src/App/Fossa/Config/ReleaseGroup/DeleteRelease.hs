@@ -7,7 +7,6 @@ module App.Fossa.Config.ReleaseGroup.DeleteRelease (
   mergeOpts,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.ConfigFile (ConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars)
 import App.Fossa.Config.ReleaseGroup.Common qualified as Common

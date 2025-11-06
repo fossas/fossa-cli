@@ -39,7 +39,6 @@ import App.Types (
   ProjectMetadata,
  )
 import Control.Effect.Diagnostics (Diagnostics, Has)
-import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON, defaultOptions, genericToEncoding)
 import Data.Aeson.Types (ToJSON (toEncoding))
 import Data.Flag (Flag, flagOpt)
@@ -130,13 +129,13 @@ cliParser =
     <*> withoutDefaultFilterParser fossaContainerAnalyzeDefaultFilterDocUrl
 
 mergeOpts ::
-  (Has Diagnostics sig m, Has (Lift IO) sig m) =>
+  (Has Diagnostics sig m) =>
   Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerAnalyzeOptions ->
   m ContainerAnalyzeConfig
-mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
+mergeOpts _maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
       imageLoc = containerAnalyzeImage
       jsonOutput = containerJsonOutput
@@ -162,7 +161,7 @@ mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure onlySystemDeps
     <*> pure scanFilters
     <*> pure withoutDefaultFilters
-    <*> pure maybeDebugDir
+    <*> pure _maybeDebugDir
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>

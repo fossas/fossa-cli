@@ -6,7 +6,6 @@ module App.Fossa.Config.ReleaseGroup.CreateRelease (
   subcommand,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (configFileOpt)
 import App.Fossa.Config.ConfigFile (ConfigFile, ConfigReleaseGroup (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars)

@@ -4,7 +4,6 @@ module App.Fossa.Config.DumpBinaries (
   DumpBinsOpts,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (baseDirArg, validateDir)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import Control.Effect.Diagnostics (Diagnostics)

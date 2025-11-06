@@ -4,7 +4,6 @@ module App.Fossa.Config.ReleaseGroup (
   mkSubCommand,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.ConfigFile (ConfigFile, resolveLocalConfigFile)
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.ReleaseGroup.AddProjects as AddProjects

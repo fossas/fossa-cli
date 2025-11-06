@@ -16,7 +16,6 @@ module App.Fossa.Config.Test (
   testFormatHelp,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CacheAction (ReadOnly),
   CommonOpts (..),

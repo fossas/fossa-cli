@@ -104,7 +104,6 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
-import Data.IORef (readIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)

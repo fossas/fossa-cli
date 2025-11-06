@@ -4,7 +4,6 @@ module App.Fossa.Config.LicenseScan (
   LicenseScanCommand,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (baseDirArg, collectBaseDir)
 import App.Fossa.Subcommand (EffStack, GetCommonOpts, GetSeverity, SubCommand (SubCommand))
 import App.Types (BaseDir)

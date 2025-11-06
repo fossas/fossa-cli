@@ -6,7 +6,6 @@ module App.Fossa.Config.LinkUserBinaries (
   LinkUserBinsOpts,
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CommonOpts (..),
   collectApiOpts,

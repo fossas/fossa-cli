@@ -8,7 +8,6 @@ module App.Fossa.Config.Container (
   ContainerTestConfig (..),
 ) where
 
-import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Config.Common (
   CommonOpts (..),
  )

@@ -21,7 +21,6 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
-import Data.IORef (readIORef)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
