@@ -18,13 +18,13 @@ import App.Fossa.Config.ConfigFile (
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.DebugDir (newDebugDirRef)
-import Control.Effect.Lift (sendIO)
 import Control.Carrier.Telemetry.Sink.Common (
   TelemetrySink (
     TelemetrySinkToEndpoint,
     TelemetrySinkToFile
   ),
  )
+import Control.Effect.Lift (sendIO)
 import Data.Text (Text)
 import Fossa.API.Types (
   ApiKey (ApiKey),

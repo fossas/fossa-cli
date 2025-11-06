@@ -28,44 +28,44 @@ spec = do
     T.it "should use context and test attribute to determine environemnt" $ do
       toDependency cmakeNode
         `T.shouldBe` ( Dependency
-                         ConanType
-                         "cmake"
-                         (Just $ CEq "3.22.6?arch=armv8&os=Macos&package_id=9e5323c65b94ae38c3c733fe12637776db0119a5")
-                         mempty
-                         (Set.singleton EnvDevelopment)
-                         mempty
+                        ConanType
+                        "cmake"
+                        (Just $ CEq "3.22.6?arch=armv8&os=Macos&package_id=9e5323c65b94ae38c3c733fe12637776db0119a5")
+                        mempty
+                        (Set.singleton EnvDevelopment)
+                        mempty
                      )
 
       toDependency zlibNode
         `T.shouldBe` ( Dependency
-                         ConanType
-                         "zlib"
-                         (Just $ CEq "1.2.13?arch=armv8&build_type=Release&compiler=clang&compiler.version=13&os=Macos&package_id=6ee94108e5a809f66e5396a0549a9ff4ed7621e8")
-                         mempty
-                         (Set.singleton EnvProduction)
-                         mempty
+                        ConanType
+                        "zlib"
+                        (Just $ CEq "1.2.13?arch=armv8&build_type=Release&compiler=clang&compiler.version=13&os=Macos&package_id=6ee94108e5a809f66e5396a0549a9ff4ed7621e8")
+                        mempty
+                        (Set.singleton EnvProduction)
+                        mempty
                      )
 
     T.it "should include location, if source directory is provided, for non-shared lib package type" $ do
       toDependency nodeWithSrc
         `T.shouldBe` ( Dependency
-                         ConanType
-                         "nodeWithSrc"
-                         (Just $ CEq "1.0.0?package_id=pkgId")
-                         ["src_dir"]
-                         (Set.singleton EnvProduction)
-                         mempty
+                        ConanType
+                        "nodeWithSrc"
+                        (Just $ CEq "1.0.0?package_id=pkgId")
+                        ["src_dir"]
+                        (Set.singleton EnvProduction)
+                        mempty
                      )
 
     T.it "should include location, if build directory is provided for shared lib" $ do
       toDependency sharedLib
         `T.shouldBe` ( Dependency
-                         ConanType
-                         "nodeWithSharedLib"
-                         (Just $ CEq "1.0.0?package_id=pkgId")
-                         ["build_dir"]
-                         (Set.singleton EnvProduction)
-                         mempty
+                        ConanType
+                        "nodeWithSharedLib"
+                        (Just $ CEq "1.0.0?package_id=pkgId")
+                        ["build_dir"]
+                        (Set.singleton EnvProduction)
+                        mempty
                      )
 
 expectedSimpleGraph :: ConanGraph

@@ -13,12 +13,12 @@ import App.Fossa.Container.ListTargets (listTargets)
 import App.Fossa.Container.Test qualified as Test
 import App.Fossa.DebugDir (DebugDirRef)
 import App.Fossa.Subcommand (SubCommand)
-import Control.Effect.Reader (Reader)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
  )
 import Control.Effect.Lift (Lift)
+import Control.Effect.Reader (Reader)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
 import Effect.Exec (Exec)

@@ -17,7 +17,6 @@ module Control.Carrier.Telemetry.Types (
 
 import Control.Concurrent.STM (TMVar)
 import Control.Concurrent.STM.TBMQueue (TBMQueue)
-import Data.IORef (IORef)
 import Data.Aeson (
   ToJSON (toEncoding, toJSON),
   ToJSONKey (toJSONKey),
@@ -26,6 +25,7 @@ import Data.Aeson (
   genericToEncoding,
  )
 import Data.Aeson.Types (toJSONKeyText)
+import Data.IORef (IORef)
 import Data.Map (Map)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
