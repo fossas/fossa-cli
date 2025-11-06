@@ -93,7 +93,7 @@ analyzeExperimental cfg = do
     Just debugDir -> do
       (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
-      -- Write debug JSON to debug directory (uncompressed)
+      -- Write debug JSON to debug directory
       sendIO $ do
         let debugJsonPath = debugDir </> debugBundlePath
         BL.writeFile debugJsonPath $ Aeson.encode bundle

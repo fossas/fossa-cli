@@ -184,11 +184,12 @@ analyzeMain cfg = case Config.severity cfg of
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg maybeDebugDir
 
     -- Write debug JSON to debug directory
-    case maybeDebugDir of
-      Just debugDir -> sendIO $ do
-        let debugJsonPath = debugDir </> debugBundlePath
-        BL.writeFile debugJsonPath $ Aeson.encode bundle
-      Nothing -> pure ()
+    traverse_
+      ( \debugDir -> sendIO $ do
+          let debugJsonPath = debugDir </> debugBundlePath
+          BL.writeFile debugJsonPath $ Aeson.encode bundle
+      )
+      maybeDebugDir
 
     Diag.rethrow res
   _ -> ignoreDebug $ analyze cfg Nothing
