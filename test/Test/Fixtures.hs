@@ -676,6 +676,7 @@ standardAnalyzeConfig =
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
     , ANZ.xSnippetScan = False
+    , ANZ.debugDir = Nothing
     }
 
 sampleJarParsedContent :: Text
