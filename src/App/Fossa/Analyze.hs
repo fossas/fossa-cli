@@ -175,11 +175,7 @@ analyzeMain ::
   m Aeson.Value
 analyzeMain cfg = case Config.debugDir cfg of
   Just debugDir -> do
-    -- In debug mode, collect debug bundle
-
     (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-
-    -- Write debug JSON to debug directory
     sendIO $ do
       let debugJsonPath = debugDir </> debugBundlePath
       BL.writeFile debugJsonPath $ Aeson.encode bundle
@@ -455,8 +451,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
-      isDebugMode = isJust (Config.debugDir cfg)
-      effectiveSeverity = if isDebugMode then SevDebug else SevInfo
+      effectiveSeverity = if isJust (Config.debugDir cfg) then SevDebug else SevInfo
   renderScanSummary effectiveSeverity maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist

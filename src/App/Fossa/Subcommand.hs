@@ -43,19 +43,13 @@ debugBundleZipPath :: FilePath
 debugBundleZipPath = "fossa.debug.zip"
 
 -- Function to finalize debug bundle after telemetry teardown
+-- The telemetry file is already in debugDir, so just zip it up
 finalizeBundleWithTelemetry :: FilePath -> IO ()
 finalizeBundleWithTelemetry debugDir = do
-  putStrLn $ "[DEBUG] Finalizing debug bundle from: " <> debugDir
-
-  -- Telemetry file should already be in debugDir (written there directly)
-  -- Create zip file from the entire debug directory
   debugDirPath <- P.parseAbsDir debugDir
   zipPath <- P.parseAbsFile =<< Dir.makeAbsolute debugBundleZipPath
   Archive.mkZip debugDirPath zipPath
 
-  putStrLn $ "Debug bundle created: " <> debugBundleZipPath
-
-  -- Clean up the temporary debug directory
   Dir.removeDirectoryRecursive debugDir
 
 data SubCommand cli cfg = SubCommand
@@ -88,10 +82,8 @@ runSubCommand SubCommand{..} = (\cliOptions -> runWithDebugDir cliOptions) <$> p
     runWithDebugDir cliOptions = do
       let sev = getSeverity cliOptions
 
-      -- Create debug directory reference
       debugDirRef <- newDebugDirRef
 
-      -- Create debug directory if in debug mode
       maybeDebugDir <-
         if sev == SevDebug
           then do

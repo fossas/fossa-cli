@@ -32,16 +32,16 @@ fossaTelemetryDebugFile = $(mkRelFile "fossa.telemetry.json")
 --
 -- File is written to debug directory if available, otherwise current working directory.
 -- File is named @fossaTelemetryDebugFile@.
+-- We will have a debug directory if the `--debug` flag is used
+-- We will still write the telemetry file to the current working directory if the `--debug` flag is not used
+-- but `FOSSA_TELEMETRY_DEBUG` environment variable is set
 sinkTelemetryToFile :: Has (Lift IO) sig m => IORef (Maybe FilePath) -> TelemetryRecord -> m ()
 sinkTelemetryToFile debugDirRef record = do
-  -- Check if we have a debug directory set
   maybeDebugDir <- sendIO $ readIORef debugDirRef
   filePath <- case maybeDebugDir of
     Just debugDir -> do
-      -- Write to debug directory
       pure $ debugDir </> "fossa.telemetry.json"
     Nothing -> do
-      -- Fall back to current directory
       currentDir <- sendIO getCurrentDir
       pure $ toString $ currentDir P.</> fossaTelemetryDebugFile
   sendIO $ encodeFile' filePath record

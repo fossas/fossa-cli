@@ -44,10 +44,7 @@ dispatch ::
   m ()
 dispatch = \case
   AnalyzeCfg cfg -> do
-    -- Read debug directory from config
-    let maybeDebugDir = Config.debugDir cfg
-
-    case maybeDebugDir of
+    case Config.debugDir cfg of
       Just debugDir -> do
         (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ Analyze.analyze cfg
 

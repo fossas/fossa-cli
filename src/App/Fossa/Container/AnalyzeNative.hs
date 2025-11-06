@@ -84,14 +84,12 @@ analyzeExperimental ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyzeExperimental cfg = do
-  -- Read debug directory from config
   let maybeDebugDir = debugDir cfg
 
   case maybeDebugDir of
     Just debugDir -> do
       (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
 
-      -- Write debug JSON to debug directory
       sendIO $ do
         let debugJsonPath = debugDir </> debugBundlePath
         BL.writeFile debugJsonPath $ Aeson.encode bundle

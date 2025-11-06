@@ -112,13 +112,13 @@ analyzeWithFicusMain ::
   m (Maybe FicusSnippetScanResults)
 analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays maybeDebugDir = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
-  analysisResults <- runFicus maybeDebugDir ficusConfig
+  ficusResults <- runFicus maybeDebugDir ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
-  case analysisResults of
+  case ficusResults of
     Just results ->
       logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
     Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
-  pure analysisResults
+  pure ficusResults
   where
     ficusConfig =
       FicusConfig
@@ -144,7 +144,7 @@ runFicus ::
   , Has (Lift IO) sig m
   , Has Logger sig m
   ) =>
-  Maybe FilePath -> -- Debug directory (if enabled)
+  Maybe FilePath ->
   FicusConfig ->
   m (Maybe FicusSnippetScanResults)
 runFicus maybeDebugDir ficusConfig = do
@@ -203,7 +203,6 @@ runFicus maybeDebugDir ficusConfig = do
         logInfo $ pretty (Text.unlines stdErrLines)
         logInfo "\n==== END Ficus STDERR ====\n"
       else logInfo "[Ficus] Ficus exited successfully"
-
     pure result
   where
     currentTimeStamp :: IO String
