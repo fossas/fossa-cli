@@ -108,7 +108,8 @@ mergeOpts ::
   m SBOMAnalyzeConfig
 mergeOpts maybeDebugDir cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
   baseDir <- getCurrentDir
-  let fileLoc = sbomFile
+  let severity = getSeverity cliOpts
+      fileLoc = sbomFile
 
       revOverride =
         collectRevisionOverride cfgfile $
@@ -125,9 +126,9 @@ mergeOpts maybeDebugDir cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
       { sbomBaseDir = (BaseDir baseDir)
       , sbomApiOpts = apiOpts
       , sbomPath = fileLoc
+      , severity = severity
       , sbomRebuild = forceRescans
       , sbomTeam = team
       , sbomRevision = revision
       , debugDir = maybeDebugDir
-      , severity = getSeverity cliOpts
       }
