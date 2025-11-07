@@ -29,8 +29,7 @@ import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
-import Data.Aeson (Object, decode, decodeStrictText, (.:))
-import Data.Aeson.Types (parseMaybe)
+import Data.Aeson (FromJSON (parseJSON), decode, decodeStrictText, withObject, (.:))
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
@@ -127,13 +126,47 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         }
 
-findingToAnalysisId :: FicusFinding -> Maybe Int
-findingToAnalysisId (FicusFinding (FicusMessageData strategy payload))
+data FicusScanStats = FicusScanStats
+  { skippedFiles :: Int
+  , processedFiles :: Int
+  , newFiles :: Int
+  , existingFiles :: Int
+  , matchedFiles :: Int
+  , unmatchedFiles :: Int
+  , processingTimeSeconds :: Double
+  }
+  deriving (Show, Eq)
+
+instance FromJSON FicusScanStats where
+  parseJSON = withObject "FicusScanStats" $ \obj ->
+    FicusScanStats
+      <$> obj .: "skipped_files"
+      <*> obj .: "processed_files"
+      <*> obj .: "new_files"
+      <*> obj .: "existing_files"
+      <*> obj .: "matched_files"
+      <*> obj .: "unmatched_files"
+      <*> obj .: "processing_time_seconds"
+
+data FicusAnalysis = FicusAnalysisResponse
+  { analysisId :: Int
+  , bucketId :: Int
+  , stats :: FicusScanStats
+  }
+  deriving (Show, Eq)
+
+instance FromJSON FicusAnalysis where
+  parseJSON = withObject "FicusAnalysisResponse" $ \obj ->
+    FicusAnalysisResponse
+      <$> obj .: "analysis_id"
+      <*> obj .: "bucket_id"
+      <*> obj .: "stats"
+
+findingToFicusAnalysis :: FicusFinding -> Maybe FicusAnalysis
+findingToFicusAnalysis (FicusFinding (FicusMessageData strategy payload))
   | Text.toLower strategy == "fingerprint" =
-      case decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload) :: Maybe Object of
-        Just obj -> parseMaybe (.: "analysis_id") obj
-        Nothing -> Nothing
-findingToAnalysisId _ = Nothing
+      decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
+findingToFicusAnalysis _ = Nothing
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -207,10 +240,10 @@ runFicus ficusConfig = do
                     pure acc
                   FicusMessageFinding finding -> do
                     putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let analysisFinding = FicusSnippetScanResults <$> findingToAnalysisId finding
+                    let analysisFinding = (FicusSnippetScanResults . analysisId) <$> findingToFicusAnalysis finding
                     when (isJust acc && isJust analysisFinding) $
                       putStrLn $
-                        "[" ++ timestamp ++ "] ERROR " <> "Found multiple analysis ids."
+                        "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
                     pure $ acc <|> analysisFinding
             )
             Nothing
