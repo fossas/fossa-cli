@@ -19,7 +19,7 @@ import Test.Hspec (Spec, aroundAll, describe, it, shouldBe)
 import Types (DiscoveredProjectType (..))
 
 gradleEnv :: FixtureEnvironment
-gradleEnv = NixEnv ["gradle_7"]
+gradleEnv = NixEnv ["gradle"]
 
 springBoot :: AnalysisTestFixture (Gradle.GradleProject)
 springBoot =
