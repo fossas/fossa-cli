@@ -56,8 +56,8 @@ spec = do
       case result of
         Success _warnings analysisResult -> do
           case analysisResult of
-            Just (FicusSnippetScanResults analysisId) -> do
-              analysisId `shouldSatisfy` (> 0)
+            Just results -> do
+              ficusSnippetScanResultsAnalysisId results `shouldSatisfy` (> 0)
             Nothing -> do
               -- No snippet scan results returned - this is acceptable for integration testing
               True `shouldBe` True
