@@ -21,6 +21,7 @@ import App.Fossa.Ficus.Types (
   FicusMessageData (..),
   FicusMessages (..),
   FicusPerStrategyFlag (..),
+  FicusScanStats (..),
   FicusSnippetScanResults (..),
  )
 import App.Types (ProjectRevision (..))
@@ -29,7 +30,7 @@ import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
-import Data.Aeson (FromJSON (parseJSON), decode, decodeStrictText, withObject, (.:))
+import Data.Aeson (decode, decodeStrictText)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
@@ -111,7 +112,7 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
   logDebugWithTime "runFicus completed, processing results..."
   case ficusResults of
     Just results ->
-      logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
+      logInfo $ pretty (formatFicusScanSummary results)
     Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
   pure ficusResults
   where
@@ -126,47 +127,24 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         }
 
-data FicusScanStats = FicusScanStats
-  { skippedFiles :: Int
-  , processedFiles :: Int
-  , newFiles :: Int
-  , existingFiles :: Int
-  , matchedFiles :: Int
-  , unmatchedFiles :: Int
-  , processingTimeSeconds :: Double
-  }
-  deriving (Show, Eq)
-
-instance FromJSON FicusScanStats where
-  parseJSON = withObject "FicusScanStats" $ \obj ->
-    FicusScanStats
-      <$> obj .: "skipped_files"
-      <*> obj .: "processed_files"
-      <*> obj .: "new_files"
-      <*> obj .: "existing_files"
-      <*> obj .: "matched_files"
-      <*> obj .: "unmatched_files"
-      <*> obj .: "processing_time_seconds"
-
-data FicusAnalysis = FicusAnalysisResponse
-  { analysisId :: Int
-  , bucketId :: Int
-  , stats :: FicusScanStats
-  }
-  deriving (Show, Eq)
-
-instance FromJSON FicusAnalysis where
-  parseJSON = withObject "FicusAnalysisResponse" $ \obj ->
-    FicusAnalysisResponse
-      <$> obj .: "analysis_id"
-      <*> obj .: "bucket_id"
-      <*> obj .: "stats"
-
-findingToFicusAnalysis :: FicusFinding -> Maybe FicusAnalysis
-findingToFicusAnalysis (FicusFinding (FicusMessageData strategy payload))
+findingToSnippetScanResult :: FicusFinding -> Maybe FicusSnippetScanResults
+findingToSnippetScanResult (FicusFinding (FicusMessageData strategy payload))
   | Text.toLower strategy == "fingerprint" =
       decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
-findingToFicusAnalysis _ = Nothing
+findingToSnippetScanResult _ = Nothing
+
+formatFicusScanSummary :: FicusSnippetScanResults -> Text
+formatFicusScanSummary results =
+  let stats = ficusSnippetScanResultsStats results
+      aid = ficusSnippetScanResultsAnalysisId results
+   in Text.unlines
+        [ "Ficus snippet scan completed successfully!"
+        , "  Analysis ID: " <> Text.pack (show aid)
+        , "  Files processed: " <> Text.pack (show $ ficusStatsProcessedFiles stats)
+        , "  Files matched: " <> Text.pack (show $ ficusStatsMatchedFiles stats)
+        , "  Files skipped: " <> Text.pack (show $ ficusStatsSkippedFiles stats)
+        , "  Processing time: " <> Text.pack (show $ ficusStatsProcessingTimeSeconds stats) <> "s"
+        ]
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -240,7 +218,7 @@ runFicus ficusConfig = do
                     pure acc
                   FicusMessageFinding finding -> do
                     putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let analysisFinding = (FicusSnippetScanResults . analysisId) <$> findingToFicusAnalysis finding
+                    let analysisFinding = findingToSnippetScanResult finding
                     when (isJust acc && isJust analysisFinding) $
                       putStrLn $
                         "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."

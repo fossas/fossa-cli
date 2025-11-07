@@ -13,12 +13,12 @@ module App.Fossa.Ficus.Types (
   FicusHashFlag (..),
   FicusSnippetScanFlag,
   FicusSnippetScanResults (..),
+  FicusScanStats (..),
   FicusPerStrategyFlag (..),
 ) where
 
 import App.Types (ProjectRevision)
-import Data.Aeson (FromJSON, Value (Object), withText)
-import Data.Aeson qualified as A
+import Data.Aeson (FromJSON (parseJSON), Value (Object), withObject, withText)
 import Data.Aeson.Types (Parser, (.:))
 import Data.Text (Text)
 import Fossa.API.Types
@@ -27,7 +27,41 @@ import Path (Abs, Dir, Path)
 import Text.URI
 import Types (GlobFilter)
 
-newtype FicusSnippetScanResults = FicusSnippetScanResults {ficusSnippetScanResultsAnalysisId :: Int} deriving (Eq, Ord, Show, Generic)
+data FicusSnippetScanResults = FicusSnippetScanResults
+  { ficusSnippetScanResultsAnalysisId :: Int
+  , ficusSnippetScanResultsBucketId :: Int
+  , ficusSnippetScanResultsStats :: FicusScanStats
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON FicusSnippetScanResults where
+  parseJSON = withObject "FicusSnippetScanResults" $ \obj ->
+    FicusSnippetScanResults
+      <$> obj .: "analysis_id"
+      <*> obj .: "bucket_id"
+      <*> obj .: "stats"
+
+data FicusScanStats = FicusScanStats
+  { ficusStatsSkippedFiles :: Int
+  , ficusStatsProcessedFiles :: Int
+  , ficusStatsNewFiles :: Int
+  , ficusStatsExistingFiles :: Int
+  , ficusStatsMatchedFiles :: Int
+  , ficusStatsUnmatchedFiles :: Int
+  , ficusStatsProcessingTimeSeconds :: Double
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON FicusScanStats where
+  parseJSON = withObject "FicusScanStats" $ \obj ->
+    FicusScanStats
+      <$> obj .: "skipped_files"
+      <*> obj .: "processed_files"
+      <*> obj .: "new_files"
+      <*> obj .: "existing_files"
+      <*> obj .: "matched_files"
+      <*> obj .: "unmatched_files"
+      <*> obj .: "processing_time_seconds"
 
 data FicusMessages = FicusMessages
   { ficusMessageDebugs :: [FicusDebug]
