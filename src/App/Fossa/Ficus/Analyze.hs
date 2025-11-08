@@ -139,6 +139,7 @@ formatFicusScanSummary results =
       aid = ficusSnippetScanResultsAnalysisId results
    in Text.unlines
         [ "Ficus snippet scan completed successfully!"
+        , ""
         , "============================================================"
         , "Snippet scan summary:"
         , "  Analysis ID: " <> Text.pack (show aid)
