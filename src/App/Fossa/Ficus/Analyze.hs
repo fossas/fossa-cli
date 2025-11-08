@@ -139,18 +139,19 @@ formatFicusScanSummary results =
       aid = ficusSnippetScanResultsAnalysisId results
    in Text.unlines
         [ "Ficus snippet scan completed successfully!"
-        , "=================================================== "
+        , "============================================================"
         , "Snippet scan summary:"
         , "  Analysis ID: " <> Text.pack (show aid)
         , "  Bucket ID: " <> Text.pack (show $ ficusSnippetScanResultsBucketId results)
-        , "  Files processed: " <> Text.pack (show $ ficusStatsProcessedFiles stats)
         , "  Files skipped: " <> Text.pack (show $ ficusStatsSkippedFiles stats)
-        , "  Files with matches found: " <> Text.pack (show $ ficusStatsMatchedFiles stats)
-        , "  Files with no matches found: " <> Text.pack (show $ ficusStatsUnmatchedFiles stats)
-        , "  Files already in our knowledgebase: " <> Text.pack (show $ ficusStatsExistingFiles stats)
-        , "  Files new to our knowledgebase: " <> Text.pack (show $ ficusStatsNewFiles stats)
+        , "  Total Files processed: " <> Text.pack (show $ ficusStatsProcessedFiles stats)
+        , "  Unique Files processed: " <> Text.pack (show $ ficusStatsUniqueProcessedFiles stats)
+        , "  Unique Files with matches found: " <> Text.pack (show $ ficusStatsUniqueMatchedFiles stats)
+        , "  Unique Files with no matches found: " <> Text.pack (show $ ficusStatsUniqueUnmatchedFiles stats)
+        , "  Unique Files already in our knowledgebase: " <> Text.pack (show $ ficusStatsUniqueExistingFiles stats)
+        , "  Unique Files new to our knowledgebase: " <> Text.pack (show $ ficusStatsUniqueNewFiles stats)
         , "  Processing time: " <> Text.pack (show $ ficusStatsProcessingTimeSeconds stats) <> "s"
-        , "=================================================== "
+        , "============================================================"
         ]
 
 runFicus ::

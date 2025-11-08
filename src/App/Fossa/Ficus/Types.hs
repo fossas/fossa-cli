@@ -44,10 +44,11 @@ instance FromJSON FicusSnippetScanResults where
 data FicusScanStats = FicusScanStats
   { ficusStatsSkippedFiles :: Int
   , ficusStatsProcessedFiles :: Int
-  , ficusStatsNewFiles :: Int
-  , ficusStatsExistingFiles :: Int
-  , ficusStatsMatchedFiles :: Int
-  , ficusStatsUnmatchedFiles :: Int
+  , ficusStatsUniqueProcessedFiles :: Int
+  , ficusStatsUniqueNewFiles :: Int
+  , ficusStatsUniqueExistingFiles :: Int
+  , ficusStatsUniqueMatchedFiles :: Int
+  , ficusStatsUniqueUnmatchedFiles :: Int
   , ficusStatsProcessingTimeSeconds :: Double
   }
   deriving (Eq, Ord, Show, Generic)
@@ -57,10 +58,11 @@ instance FromJSON FicusScanStats where
     FicusScanStats
       <$> obj .: "skipped_files"
       <*> obj .: "processed_files"
-      <*> obj .: "new_files"
-      <*> obj .: "existing_files"
-      <*> obj .: "matched_files"
-      <*> obj .: "unmatched_files"
+      <*> obj .: "unique_processed_files"
+      <*> obj .: "unique_new_files"
+      <*> obj .: "unique_existing_files"
+      <*> obj .: "unique_matched_files"
+      <*> obj .: "unique_unmatched_files"
       <*> obj .: "processing_time_seconds"
 
 data FicusMessages = FicusMessages
