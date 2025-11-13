@@ -157,6 +157,7 @@ formatFicusScanSummary results =
         , "============================================================"
         ]
   where
+    -- Format the processing time as a string with 3 decimal places
     formatProcessingTime :: Double -> Text
     formatProcessingTime seconds =
       let formatted = showFFloat (Just 3) seconds ""
