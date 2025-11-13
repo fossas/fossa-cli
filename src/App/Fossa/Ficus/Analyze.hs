@@ -37,6 +37,7 @@ import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Hashable (Hashable)
+import Data.List (dropWhileEnd)
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -47,6 +48,7 @@ import Data.Time.Format (defaultTimeLocale, formatTime)
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
 import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
+import Numeric (showFFloat)
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), renderLocator)
@@ -149,11 +151,24 @@ formatFicusScanSummary results =
         , "  Unique Files processed: " <> Text.pack (show $ ficusStatsUniqueProcessedFiles stats)
         , "  Unique Files with matches found: " <> Text.pack (show $ ficusStatsUniqueMatchedFiles stats)
         , "  Unique Files with no matches found: " <> Text.pack (show $ ficusStatsUniqueUnmatchedFiles stats)
-        , "  Unique Files already in our knowledgebase: " <> Text.pack (show $ ficusStatsUniqueExistingFiles stats)
-        , "  Unique Files new to our knowledgebase: " <> Text.pack (show $ ficusStatsUniqueNewFiles stats)
-        , "  Processing time: " <> Text.pack (show $ ficusStatsProcessingTimeSeconds stats) <> "s"
+        , "  Unique Files already in our knowledge base: " <> Text.pack (show $ ficusStatsUniqueExistingFiles stats)
+        , "  Unique Files new to our knowledge base: " <> Text.pack (show $ ficusStatsUniqueNewFiles stats)
+        , "  Processing time: " <> formatProcessingTime (ficusStatsProcessingTimeSeconds stats) <> "s"
         , "============================================================"
         ]
+  where
+    formatProcessingTime :: Double -> Text
+    formatProcessingTime seconds =
+      let formatted = showFFloat (Just 3) seconds ""
+          (whole, fractionalPart) = span (/= '.') formatted
+       in case fractionalPart of
+            [] -> Text.pack formatted
+            '.' : fraction ->
+              let trimmedFraction = dropWhileEnd (== '0') fraction
+               in if null trimmedFraction
+                    then Text.pack whole
+                    else Text.pack (whole <> "." <> trimmedFraction)
+            _ -> Text.pack formatted
 
 runFicus ::
   ( Has Diagnostics sig m
