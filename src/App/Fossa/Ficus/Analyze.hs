@@ -37,7 +37,6 @@ import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Hashable (Hashable)
-import Data.List (dropWhileEnd)
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -48,7 +47,6 @@ import Data.Time.Format (defaultTimeLocale, formatTime)
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess), renderCommand)
 import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
-import Numeric (showFFloat)
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), renderLocator)
@@ -64,6 +62,7 @@ import System.Process.Typed (
   waitExitCode,
   withProcessWait,
  )
+import Text.Printf (printf)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
@@ -159,17 +158,7 @@ formatFicusScanSummary results =
   where
     -- Format the processing time as a string with 3 decimal places
     formatProcessingTime :: Double -> Text
-    formatProcessingTime seconds =
-      let formatted = showFFloat (Just 3) seconds ""
-          (whole, fractionalPart) = span (/= '.') formatted
-       in case fractionalPart of
-            [] -> toText formatted
-            '.' : fraction ->
-              let trimmedFraction = dropWhileEnd (== '0') fraction
-               in if null trimmedFraction
-                    then toText whole
-                    else toText (whole <> "." <> trimmedFraction)
-            _ -> toText formatted
+    formatProcessingTime seconds = toText (printf "%.3f" seconds :: String)
 
 runFicus ::
   ( Has Diagnostics sig m
