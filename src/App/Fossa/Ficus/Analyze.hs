@@ -144,15 +144,15 @@ formatFicusScanSummary results =
         , ""
         , "============================================================"
         , "Snippet scan summary:"
-        , "  Analysis ID: " <> Text.pack (show aid)
-        , "  Bucket ID: " <> Text.pack (show $ ficusSnippetScanResultsBucketId results)
-        , "  Files skipped: " <> Text.pack (show $ ficusStatsSkippedFiles stats)
-        , "  Total Files processed: " <> Text.pack (show $ ficusStatsProcessedFiles stats)
-        , "  Unique Files processed: " <> Text.pack (show $ ficusStatsUniqueProcessedFiles stats)
-        , "  Unique Files with matches found: " <> Text.pack (show $ ficusStatsUniqueMatchedFiles stats)
-        , "  Unique Files with no matches found: " <> Text.pack (show $ ficusStatsUniqueUnmatchedFiles stats)
-        , "  Unique Files already in our knowledge base: " <> Text.pack (show $ ficusStatsUniqueExistingFiles stats)
-        , "  Unique Files new to our knowledge base: " <> Text.pack (show $ ficusStatsUniqueNewFiles stats)
+        , "  Analysis ID: " <> toText (show aid)
+        , "  Bucket ID: " <> toText (show $ ficusSnippetScanResultsBucketId results)
+        , "  Files skipped: " <> toText (show $ ficusStatsSkippedFiles stats)
+        , "  Total Files processed: " <> toText (show $ ficusStatsProcessedFiles stats)
+        , "  Unique Files processed: " <> toText (show $ ficusStatsUniqueProcessedFiles stats)
+        , "  Unique Files with matches found: " <> toText (show $ ficusStatsUniqueMatchedFiles stats)
+        , "  Unique Files with no matches found: " <> toText (show $ ficusStatsUniqueUnmatchedFiles stats)
+        , "  Unique Files already in our knowledge base: " <> toText (show $ ficusStatsUniqueExistingFiles stats)
+        , "  Unique Files new to our knowledge base: " <> toText (show $ ficusStatsUniqueNewFiles stats)
         , "  Processing time: " <> formatProcessingTime (ficusStatsProcessingTimeSeconds stats) <> "s"
         , "============================================================"
         ]
@@ -162,13 +162,13 @@ formatFicusScanSummary results =
       let formatted = showFFloat (Just 3) seconds ""
           (whole, fractionalPart) = span (/= '.') formatted
        in case fractionalPart of
-            [] -> Text.pack formatted
+            [] -> toText formatted
             '.' : fraction ->
               let trimmedFraction = dropWhileEnd (== '0') fraction
                in if null trimmedFraction
-                    then Text.pack whole
-                    else Text.pack (whole <> "." <> trimmedFraction)
-            _ -> Text.pack formatted
+                    then toText whole
+                    else toText (whole <> "." <> trimmedFraction)
+            _ -> toText formatted
 
 runFicus ::
   ( Has Diagnostics sig m
