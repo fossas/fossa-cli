@@ -1,4 +1,9 @@
 # FOSSA CLI Changelog
+
+## 3.12.3
+
+- Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
+
 ## 3.12.2
 
 - Update the latest version of a dependency for `--x-snippet-scan`. This update will start backfilling fingerprints for ~10% of files that were previously uploaded but do not have fingerprints ([#1611](https://github.com/fossas/fossa-cli/pull/1611))
