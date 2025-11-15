@@ -30,7 +30,7 @@ When we snippet scan your code, we detect snippets in two steps. First, we gener
 
 If we have the snippet scan data for this file already stored on our servers, then there is no need to fingerprint the file, and no more data for that file will be sent to our servers.
 
-If we do not have snippet scan data for that file stored, then we fingerprint the file. A fingerprint will contain a series of [CRC64 hashes](https://en.wikipedia.org/wiki/Cyclic_redundancy_check) generated from the contents of your file, and does not contain any of your file's contents.
+If we do not have snippet scan data for that file stored, then we fingerprint the file. A fingerprint consists of some metadata about your file (its name, contents-length and its [MD5 hash](https://en.wikipedia.org/wiki/MD5)) and a series of [CRC64 hashes](https://en.wikipedia.org/wiki/Cyclic_redundancy_check) generated from the contents of your file, and does not contain any of your file's contents.
 
 We compare the fingerprint that is sent to our servers to fingerprints in our knowledge base. If, and only if, we find a match to your file in our knowledge base, we will send up the contents of the file to our servers. The contents will be stored on our servers for a maximum of 30 days. We store the code on our servers so that you can compare the code in your codebase to the snippet matches that we find.
 
