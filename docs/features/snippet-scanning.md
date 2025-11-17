@@ -113,31 +113,31 @@ When a Snippet Scan completes, the CLI will output a summary of the scan. It wil
 
 Here is a description of what each line means:
 
-Analysis ID
-: The ID of the Snippet Scan analysis stored in FOSSA's servers. This is used by FOSSA's support team
+<dl>
+<dt>Analysis ID</dt>
+<dd>The ID of the Snippet Scan analysis stored in FOSSA's servers. This is used by FOSSA's support team.</dd>
 
-Bucket ID
-: The ID of the temporary storage bucket where we store Snippet Scan results before processing them. This is used by FOSSA's support team
+<dt>Bucket ID</dt>
+<dd>The ID of the temporary storage bucket where we store Snippet Scan results before processing them. This is used by FOSSA's support team.</dd>
 
-Files Skipped
-: The number of files skipped during the Snippet Scan.
+<dt>Files Skipped</dt>
+<dd>The number of files skipped during the Snippet Scan.</dd>
 
-Total Files Processed
-: The number of files processed during the Snippet Scan. This count includes every processed file, even if the same file contents are included multiple times.
+<dt>Total Files Processed</dt>
+<dd>The number of files processed during the Snippet Scan. This count includes every processed file, even if the same file contents are included multiple times.</dd>
 
-Unique Files processed
-: The number of unique files processed during the Snippet Scan. If we scan multiple files with the same contents, they will only be counted once.
+<dt>Unique Files processed</dt>
+<dd>The number of unique files processed during the Snippet Scan. If we scan multiple files with the same contents, they will only be counted once.</dd>
 
-Unique Files with matches found
-: The number of unique files where we found a potential match to Open Source code
+<dt>Unique Files with matches found</dt>
+<dd>The number of unique files where we found a potential match to Open Source code</dd>
 
-Unique files with no matches found
-: The number of unique files where no potential matches to Open Source code were found
+<dt>Unique files with no matches found</dt>
+<dd>The number of unique files where no potential matches to Open Source code were found.</dd>
 
-Unique Files already in our knowledge base
-: The number of files that already exist in FOSSA's knowledge base. These files do not need to be fingerprinted.
+<dt>Unique Files already in our knowledge base</dt>
+<dd>The number of files that already exist in FOSSA's knowledge base. These files do not need to be fingerprinted.</dd>
 
-Unique Files new to our knowledge base
-: The number of files that do not exist in FOSSA's knowledge base. These files needed to be fingerprinted in this Snippet Scan.
-
-
+<dt>Unique Files new to our knowledge base</dt>
+<dd>The number of files that do not exist in FOSSA's knowledge base. These files needed to be fingerprinted in this Snippet Scan.</dd>
+</dl>
