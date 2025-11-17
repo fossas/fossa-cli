@@ -152,69 +152,11 @@ Snippet scanning identifies potential open source code snippets within your firs
 |---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--x-snippet-scan`  | Enable snippet scanning during analysis. This experimental feature fingerprints your source files and checks them against FOSSA's snippet database.        |
 
-#### How Snippet Scanning Works
+Snippet Scanning is not enabled by default, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
 
-When `--x-snippet-scan` is enabled, the CLI:
+#### More detail
 
-1. **Hashes Files First**: Creates CRC64 hashes of all source files to identify which files need fingerprinting
-2. **Checks Necessity of Fingerprinting**: Checks with FOSSA servers to determine which file hashes are already known
-3. **Fingerprints New or Changed Files**: Uses the Ficus fingerprinting engine (written in Rust) to create cryptographic fingerprints only for files not previously seen
-4. **Filters Content**: By default, skips directories like `.git/`, and hidden directories. This includes, from `.fossa.yml`, `vendoredDependencies.licenseScanPathFilters.exclude`, documented further below.
-5. **Uploads Fingerprints**: Sends only the fingerprints to FOSSA's servers 
-6. **Receives Matches**: Gets back information about any matching open source components
-7. **Uploads Match Contents**: For files that have matches, uploads source code content temporarily to FOSSA servers.
-
-#### Data Sent to FOSSA
-
-**For Performance Optimization:**
-- CRC64 hashes of all files, to avoid re-fingerprinting unchanged files.
-
-**For Fingerprinting:**
-- Fingerprints of source code to identify matches.
-
-**For Matched Files Only:**
-- The actual source code content of files that contain snippet matches.
-
-#### Data Retention
-
-- **File Fingerprints**: Stored permanently for caching and performance optimization
-- **Source Code Content**: Stored temporarily for 30 days and then automatically deleted
-- **CRC64 Hashes**: The likelihood of a collision with CRC64 (2^64 possible values) is extremely low.
-
-#### Directory Filtering
-
-By default, snippet scanning excludes common non-production directories and follows `.gitignore` patterns:
-
-- Hidden directories.
-- Globs as directed by `.gitignore` files.
-
-#### Custom Exclude Filtering
-
-You can customize which files and directories are excluded from snippet scanning by configuring exclude filters in your `.fossa.yml` file. Note that snippet scanning currently only supports exclude patterns, not `only` patterns.
-
-For example:
-```yaml
-version: 3
-vendoredDependencies:
-  licenseScanPathFilters:
-    exclude:
-      - "**/test/**"
-      - "**/tests/**"
-      - "**/spec/**"
-      - "**/node_modules/**"
-      - "**/dist/**"
-      - "**/build/**"
-      - "**/*.test.js"
-      - "**/*.spec.ts"
-```
-
-**Important Notes:**
-
-- Snippet scanning only uses the `exclude` filters from `licenseScanPathFilters` - `only` filters are ignored for this use-case.
-- Path filters use standard glob patterns (e.g., `**/*` for recursive matching, `*` for single-directory matching).
-- The configuration goes in the `vendoredDependencies.licenseScanPathFilters.exclude` section.
-- These exclude patterns are passed directly to the Ficus fingerprinting engine as `--exclude` arguments.
-- Default exclusions (hidden files, `.gitignore` patterns) are applied in addition to custom excludes.
+For more detail about how Snippet Scanning works, how to use file filtering during Snippet Scanning, what information is sent to FOSSA's servers and a description of the Snippet Scan Summary, see [the Snippet Scanning feature documentation](../features/snippet-scanning.md).
 
 ### Experimental Options
 
