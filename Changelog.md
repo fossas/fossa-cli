@@ -2,6 +2,7 @@
 
 ## 3.12.4
 - Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
+- Update snippet scanning documentation ([#1615](https://github.com/fossas/fossa-cli/pull/1615))
 
 ## 3.12.3
 - Licensing: applies a fix for proprietary license detection ([#1616](https://github.com/fossas/fossa-cli/pull/1616))

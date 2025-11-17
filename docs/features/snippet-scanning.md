@@ -84,6 +84,8 @@ However, the next time you scan that codebase we will only need to re-fingerprin
 The time it takes to scan newer versions of your codebase will depend on how many files in the new version have not been previously scanned. A file has been previously scanned if the exact same file has ever been snippet scanned. FOSSA recommends snippet scanning your codebase on a regular basis to keep scan times low.
 
 ## The Snippet Scan Summary
+<!-- Note: this section is linked to from the snippet scan summary in src/App/Fossa/Ficus/Analyze.hs. So if you change this heading name or the path
+to this file, you will need to update the link there as well -->
 
 When a Snippet Scan completes, the CLI will output a summary of the scan. It will look like this:
 
