@@ -156,7 +156,7 @@ Snippet Scanning is not enabled by default, and is only available for enterprise
 
 #### More detail
 
-For more detail about how Snippet Scanning works, how to use file filtering during Snippet Scanning, what information is sent to FOSSA's servers and a description of the Snippet Scan Summary, see [the Snippet Scanning feature documentation](../features/snippet-scanning.md).
+For more detail about how Snippet Scanning works, how to use file filtering during Snippet Scanning, what information is sent to FOSSA's servers and a description of the Snippet Scan Summary, see [the Snippet Scanning feature documentation](../../features/snippet-scanning.md).
 
 ### Experimental Options
 
