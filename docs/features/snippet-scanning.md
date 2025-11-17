@@ -9,7 +9,7 @@ Snippet Scanning runs as part of `fossa analyze`. To enable it, add the `--x-sni
 fossa analyze --x-snippet-scan
 ```
 
-Snippet Scanning is not enabled by default, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
+Snippet Scanning must also be enabled for your organization, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
 
 ## How Snippet Scanning Works
 
@@ -75,19 +75,11 @@ vendoredDependencies:
 - These exclude patterns are passed directly to the Ficus fingerprinting engine as `--exclude` arguments.
 - Default exclusions (hidden files, `.gitignore` patterns) are applied in addition to custom excludes.
 
-FOSSA's Snippet Scanning feature searches your codebase for snippets of code that may have been copied from open source projects or other sources (e.g. from StackOverflow).
-
-You run a snippet scan on your codebase by adding the `--x-snippet-scan` flag to the `fossa analyze` command:
-
-```
-fossa analyze --x-snippet-scan
-```
-
 ## A note on scan times
 
-The first time you run a snippet scan on a codebase, it can take a long time to scan. For example, scanning [Linux](https://github.com/torvalds/linux) takes around 60 minutes. This is because we spend quite a bit of time comparing the fingerprints to our knowledge base.
+The first time you run a snippet scan on a codebase, it may take a long time to scan. For example, scanning [Linux](https://github.com/torvalds/linux) for the first time takes around 60 minutes. This is because most of the files in your codebase will not exist in FOSSA's knowledge base, and we will need to fingerprint and compare all of them to our snippet scan corpus.
 
-However, the next time you scan that codebase we will already have the snippet data for any unchanged files cached. For example, if you snippet scan that same revision of Linux a second time, the scan will complete in less than a minute.
+However, the next time you scan that codebase we will only need to re-fingerprint and compare files that have changed since the previous scan, and the scan will be much faster. For example, if you snippet scan that same revision of Linux a second time, the scan will complete in less than a minute.
 
 The time it takes to scan newer versions of your codebase will depend on how many files in the new version have not been previously scanned. A file has been previously scanned if the exact same file has ever been snippet scanned. FOSSA recommends snippet scanning your codebase on a regular basis to keep scan times low.
 
