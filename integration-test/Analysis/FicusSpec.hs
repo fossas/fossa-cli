@@ -4,7 +4,7 @@
 module Analysis.FicusSpec (spec) where
 
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan))
 import App.Types (ProjectRevision (..))
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
@@ -51,14 +51,14 @@ spec = do
       testDataExists <- PIO.doesDirExist testDataDir
       testDataExists `shouldBe` True
 
-      result <- runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO $ analyzeWithFicus testDataDir apiOpts revision Nothing (Just 10)
+      result <- runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO $ analyzeWithFicus testDataDir apiOpts revision [FicusStrategySnippetScan] Nothing (Just 10)
 
       case result of
         Success _warnings analysisResult -> do
           case analysisResult of
-            Just (FicusSnippetScanResults analysisId) -> do
+            Just (FicusAnalysisResults{snippetScanResults = Just (FicusSnippetScanResults analysisId)}) -> do
               analysisId `shouldSatisfy` (> 0)
-            Nothing -> do
+            _ -> do
               -- No snippet scan results returned - this is acceptable for integration testing
               True `shouldBe` True
         Failure _warnings errors -> do
