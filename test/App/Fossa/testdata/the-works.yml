@@ -43,3 +43,7 @@ remote-dependencies:
 locator-dependencies:
 - "fetcher-1+one"
 - "fetcher-2+two$1.0.0"
+
+fork-aliases:
+  - target: cargo+my-serde
+    source: cargo+serde
