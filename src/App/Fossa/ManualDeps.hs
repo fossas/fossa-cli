@@ -9,6 +9,7 @@ module App.Fossa.ManualDeps (
   RemoteDependency (..),
   DependencyMetadata (..),
   VendoredDependency (..),
+  ForkAlias (..),
   ManualDependencies (..),
   LocatorDependency (..),
   FoundDepsFile (..),
@@ -401,8 +402,21 @@ data ManualDependencies = ManualDependencies
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
   , locatorDependencies :: [LocatorDependency]
+  , forkAliases :: [ForkAlias]
   }
   deriving (Eq, Ord, Show)
+
+data ForkAlias = ForkAlias
+  { forkAliasTarget :: Locator
+  , forkAliasSource :: Locator
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ForkAlias where
+  parseJSON = withObject "ForkAlias" $ \obj ->
+    ForkAlias
+      <$> obj .: "target"
+      <*> obj .: "source"
 
 data LocatorDependency
   = LocatorDependencyPlain Locator
@@ -475,11 +489,12 @@ instance FromJSON ManualDependencies where
       <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
       <*> (obj .:? "locator-dependencies" .!= [])
+      <*> (obj .:? "fork-aliases" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
       isMissingOr1 _ = pure ()
-  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty
+  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty mempty
   parseJSON other = fail $ "Expected object or Null for ManualDependencies, but got: " <> show other
 
 depTypeParser :: Text -> Parser DepType
