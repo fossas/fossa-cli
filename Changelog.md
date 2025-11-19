@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.13.0
+- Change how debug logs are generated. They are now generated in a file called fossa.debug.zip, which can contain multiple files. For the common case of `fossa analyze --debug`, it will now contain the debug bundle (fossa.debug.json) and the telemetry json (fossa.telemetry.json). It will also contain Ficus logs if Ficus is run via --x-snippet-scan ([#1610](https://github.com/fossas/fossa-cli/pull/1610))
+
 ## 3.12.3
 - Licensing: applies a fix for proprietary license detection ([#1616](https://github.com/fossas/fossa-cli/pull/1616))
 

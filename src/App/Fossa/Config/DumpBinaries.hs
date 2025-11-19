@@ -39,8 +39,9 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   a ->
   b ->
   DumpBinsOpts ->
   m DumpBinsConfig
-mergeOpts _ _ (DumpBinsOpts path) = DumpBinsConfig <$> validateDir path
+mergeOpts _ _ _ (DumpBinsOpts path) = DumpBinsConfig <$> validateDir path
