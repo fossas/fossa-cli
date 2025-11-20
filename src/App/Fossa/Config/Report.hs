@@ -216,11 +216,12 @@ mergeOpts ::
   , Has Diagnostics sig m
   , Has Exec sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ReportCliOptions ->
   m ReportConfig
-mergeOpts cfgfile envvars ReportCliOptions{..} = do
+mergeOpts _ cfgfile envvars ReportCliOptions{..} = do
   let apiOpts = collectApiOpts cfgfile envvars commons
       outputformat = validateOutputFormat cliReportJsonOutput cliReportOutputFormat
       timeoutduration = maybe defaultTimeoutDuration Seconds cliReportTimeout

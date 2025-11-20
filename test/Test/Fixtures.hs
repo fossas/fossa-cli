@@ -89,7 +89,6 @@ import Discovery.Filters (
   MavenScopeFilters (MavenScopeIncludeFilters),
   comboExclude,
  )
-import Effect.Logger (Severity (..))
 import Fossa.API.CoreTypes qualified as CoreAPI
 import Fossa.API.Types (
   Archive (..),
@@ -655,7 +654,6 @@ standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
   AnalyzeConfig
     { ANZ.baseDir = App.BaseDir absDir
-    , ANZ.severity = SevDebug
     , ANZ.scanDestination = OutputStdout
     , ANZ.projectRevision = projectRevision
     , ANZ.vsiOptions = vsiOptions
@@ -676,6 +674,7 @@ standardAnalyzeConfig =
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
     , ANZ.xSnippetScan = False
+    , ANZ.debugDir = Nothing
     }
 
 sampleJarParsedContent :: Text

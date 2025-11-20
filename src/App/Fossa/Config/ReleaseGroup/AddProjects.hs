@@ -67,11 +67,12 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   AddProjectsOpts ->
   m AddProjectsConfig
-mergeOpts maybeConfig envVars cliOpts@AddProjectsOpts{..} = do
+mergeOpts _ maybeConfig envVars cliOpts@AddProjectsOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envVars releaseGroupCommon
   title <- mergeReleaseGroupTitle titleOpts $ extractReleaseGroupConfigValue maybeConfig configReleaseGroupTitle
   releaseGroupReleaseRevision <- collectReleaseGroupReleaseRevision maybeConfig cliOpts

@@ -69,4 +69,4 @@ itShouldFailWhenLabelsExceedFive parser =
     case getParseResult p of
       Nothing -> fatal ("test failed" :: Text)
       Just cliOpts -> do
-        expectFatal' $ mergeOpts Nothing (EnvVars Nothing False False Nothing Nothing mempty) cliOpts
+        expectFatal' $ mergeOpts Nothing Nothing (EnvVars Nothing False False Nothing Nothing mempty) cliOpts
