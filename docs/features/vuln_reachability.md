@@ -72,7 +72,7 @@ With this configuration, when FOSSA CLI analyzes a Maven or Gradle project at th
 ```bash
 fossa analyze --debug
 
-cat fossa.debug.json | jq '.bundleReachabilityRaw'
+unzip -p fossa.debug.zip fossa.debug.json | jq '.bundleReachabilityRaw'
 [
   {
     "callGraphAnalysis": {
@@ -113,7 +113,7 @@ cat fossa.debug.json | jq '.bundleReachabilityRaw'
 ]
 
 
-cat fossa.debug.json | jq '.bundleReachabilityEndpoint'
+unzip -p fossa.debug.zip fossa.debug.json | jq '.bundleReachabilityEndpoint'
 {
  # content uploaded to endpoint
 }
@@ -129,7 +129,8 @@ the your target jar. If you are running into issues with reachability, please co
 
 ```bash
 # get what we sent to endpoint
-cat fossa.debug.json | jq '.bundleReachabilityEndpoint' > rawReachabilityJob.json
+
+unzip -p fossa.debug.zip fossa.debug.json | jq '.bundleReachabilityEndpoint' > rawReachabilityJob.json
 
 # run job in dry mode
 >> yarn repl
@@ -183,7 +184,7 @@ You can inspect the data by running:
 
 ```bash
 ; fossa analyze --output --debug # --output to not communicate with endpoint
-; gunzip fossa.debug.json.gz     # extract produced debug bundle
+; unzip fossa.debug.zip fossa.debug.json # extract produced debug bundle
 
 # content in .bundleReachabilityRaw is uploaded
 # to endpoint for reachability analysis.

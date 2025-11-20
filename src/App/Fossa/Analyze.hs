@@ -71,7 +71,6 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
-import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -104,7 +103,7 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
@@ -139,13 +138,14 @@ import Prettyprinter.Render.Terminal (
  )
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
-
-debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
+
+debugBundlePath :: FilePath
+debugBundlePath = "fossa.debug.json"
 
 dispatch ::
   ( Has Diag.Diagnostics sig m
@@ -173,12 +173,15 @@ analyzeMain ::
   ) =>
   AnalyzeConfig ->
   m Aeson.Value
-analyzeMain cfg = case Config.severity cfg of
-  SevDebug -> do
-    (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-    sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+analyzeMain cfg = case Config.debugDir cfg of
+  Just debugDir -> do
+    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
+    sendIO $ do
+      let debugJsonPath = debugDir </> debugBundlePath
+      BL.writeFile debugJsonPath $ Aeson.encode bundle
+
     Diag.rethrow res
-  _ -> ignoreDebug $ analyze cfg
+  Nothing -> ignoreDebug $ analyze cfg
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -348,8 +351,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
             then do
               logInfo "Running in VSI only mode, skipping snippet-scan"
               pure Nothing
-            else Diag.context "snippet-scanning" . runStickyLogger SevInfo $ analyzeWithFicus basedir maybeApiOpts revision (Config.licenseScanPathFilters vendoredDepsOptions) (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
-  let ficusResults = join . resultToMaybe $ maybeFicusResults
+            else
+              Diag.context "snippet-scanning"
+                . runStickyLogger SevInfo
+                $ analyzeWithFicus
+                  basedir
+                  maybeApiOpts
+                  revision
+                  (Config.licenseScanPathFilters vendoredDepsOptions)
+                  (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
+                  (Config.debugDir cfg)
+  let ficusResults = join $ resultToMaybe maybeFicusResults
+
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -438,7 +451,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
   let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults (Success [] Nothing) manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
+      isDebugMode = isJust (Config.debugDir cfg)
+  renderScanSummary isDebugMode maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =

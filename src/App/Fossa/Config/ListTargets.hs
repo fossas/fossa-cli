@@ -100,11 +100,12 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ListTargetsCliOpts ->
   m ListTargetsConfig
-mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
+mergeOpts _ cfgfile _envvars ListTargetsCliOpts{..} = do
   let basedir = collectBaseDir cliBaseDir
       experimentalPrefs = collectExperimental cfgfile
       outputFmt = fromMaybe Legacy cliListTargetOutputFormat

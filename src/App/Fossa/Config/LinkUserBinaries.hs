@@ -65,11 +65,12 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   LinkUserBinsOpts ->
   m LinkUserBinsConfig
-mergeOpts cfgfile envvars LinkUserBinsOpts{..} = do
+mergeOpts _ cfgfile envvars LinkUserBinsOpts{..} = do
   let apiopts = collectApiOpts cfgfile envvars commons
       basedir = collectBaseDir assertionDir
       metadata = assertionMeta

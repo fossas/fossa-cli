@@ -259,7 +259,6 @@ instance ToJSON AnalysisTacticTypes where
 
 data AnalyzeConfig = AnalyzeConfig
   { baseDir :: BaseDir
-  , severity :: Severity
   , scanDestination :: ScanDestination
   , projectRevision :: ProjectRevision
   , vsiOptions :: VSIModeOptions
@@ -280,6 +279,7 @@ data AnalyzeConfig = AnalyzeConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
   , xSnippetScan :: Bool
+  , debugDir :: Maybe FilePath
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -481,11 +481,12 @@ mergeOpts ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeOpts cfg env cliOpts = do
+mergeOpts maybeDebugDir cfg env cliOpts = do
   let experimentalNativeLicenseScanFlagUsed = fromFlag DeprecatedAllowNativeLicenseScan $ analyzeDeprecatedAllowNativeLicenseScan cliOpts
   when experimentalNativeLicenseScanFlagUsed $ do
     logWarn $
@@ -499,7 +500,7 @@ mergeOpts cfg env cliOpts = do
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
 
-  mergeStandardOpts cfg env cliOpts
+  mergeStandardOpts maybeDebugDir cfg env cliOpts
 
 mergeStandardOpts ::
   ( Has Diagnostics sig m
@@ -508,13 +509,13 @@ mergeStandardOpts ::
   , Has Logger sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   AnalyzeCliOpts ->
   m AnalyzeConfig
-mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
+mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
-      logSeverity = getSeverity cliOpts
       scanDestination = collectScanDestination maybeConfig envvars cliOpts
       revisionData =
         collectRevisionData' basedir maybeConfig WriteOnly $
@@ -546,7 +547,6 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
 
   AnalyzeConfig
     <$> basedir
-    <*> pure logSeverity
     <*> scanDestination
     <*> revisionData
     <*> vsiModeOpts
@@ -567,6 +567,7 @@ mergeStandardOpts maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
     <*> pure analyzeSnippetScan
+    <*> pure maybeDebugDir
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
