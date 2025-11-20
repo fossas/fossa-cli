@@ -109,7 +109,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (Result (Failure, Success), resultToMaybe)
+import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -318,9 +318,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure $ ManualDepsResult Nothing []
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
-  let (manualSrcUnits, forkAliases) = case manualDepsResult of
-        Success _ (ManualDepsResult srcUnits aliases) -> (Success [] srcUnits, aliases)
-        Failure ws eg -> (Failure ws eg, [])
+  let forkAliases = maybe [] manualDepsResultForkAliases (resultToMaybe manualDepsResult)
+      manualSrcUnits = fmap manualDepsResultSourceUnit manualDepsResult
 
   orgInfo <-
     for
