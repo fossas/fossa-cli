@@ -662,9 +662,9 @@ toProjectLocator :: Locator -> Locator
 toProjectLocator loc = loc{locatorRevision = Nothing}
 
 -- | Translate all locators in a SourceUnit using the provided translation map.
--- The map keys are target locators (normalized, without revision), and values are the replacement locators.
+-- The map keys are target locators (normalized, without version), and values are the replacement locators.
 -- When a locator matches a key (by fetcher and project, ignoring version),
--- it is replaced with the value from the map, preserving the original revision.
+-- it is replaced with the value from the map, preserving the original version.
 -- The translation is applied to all locators in:
 -- - buildImports
 -- - sourceDepLocator in each dependency
