@@ -415,16 +415,16 @@ data ManualDependencies = ManualDependencies
   deriving (Eq, Ord, Show)
 
 data ForkAlias = ForkAlias
-  { forkAliasTarget :: Locator
-  , forkAliasSource :: Locator
+  { forkAliasMyFork :: Locator
+  , forkAliasBase :: Locator
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON ForkAlias where
   parseJSON = withObject "ForkAlias" $ \obj ->
     ForkAlias
-      <$> obj .: "target"
-      <*> obj .: "source"
+      <$> obj .: "my-fork"
+      <*> obj .: "base"
 
 data LocatorDependency
   = LocatorDependencyPlain Locator

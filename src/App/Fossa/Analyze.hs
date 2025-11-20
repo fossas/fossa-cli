@@ -625,7 +625,7 @@ buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
-    forkAliasMap = Map.fromList $ map (\ForkAlias{..} -> (toProjectLocator forkAliasTarget, forkAliasSource)) forkAliases
+    forkAliasMap = Map.fromList $ map (\ForkAlias{..} -> (toProjectLocator forkAliasMyFork, forkAliasBase)) forkAliases
     finalSourceUnits = map (translateSourceUnitLocators forkAliasMap) (srcUnits ++ scannedUnits)
 
 buildProject :: ProjectResult -> Aeson.Value
