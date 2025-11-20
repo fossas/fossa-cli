@@ -35,6 +35,7 @@ module Srclib.Types (
   sourceUnitToFullSourceUnit,
   licenseUnitToFullSourceUnit,
   textToOriginPath,
+  toProjectLocator,
   translateSourceUnitLocators,
 ) where
 
@@ -655,13 +656,21 @@ instance ToJSON Locator where
 instance FromJSON Locator where
   parseJSON = withText "Locator" (pure . parseLocator)
 
--- | Translate all locators in a SourceUnit using the provided translation function.
--- The translation function is applied to all locators in:
+-- | Convert a locator to its project locator by removing its revision.
+-- This is used for matching locators ignoring version.
+toProjectLocator :: Locator -> Locator
+toProjectLocator loc = loc{locatorRevision = Nothing}
+
+-- | Translate all locators in a SourceUnit using the provided translation map.
+-- The map keys are target locators (normalized, without revision), and values are the replacement locators.
+-- When a locator matches a key (by fetcher and project, ignoring version),
+-- it is replaced with the value from the map, preserving the original revision.
+-- The translation is applied to all locators in:
 -- - buildImports
 -- - sourceDepLocator in each dependency
 -- - sourceDepImports in each dependency
-translateSourceUnitLocators :: (Locator -> Locator) -> SourceUnit -> SourceUnit
-translateSourceUnitLocators translateLocator unit =
+translateSourceUnitLocators :: Map Locator Locator -> SourceUnit -> SourceUnit
+translateSourceUnitLocators translationMap unit =
   unit{sourceUnitBuild = translateBuild <$> sourceUnitBuild unit}
   where
     translateBuild :: SourceUnitBuild -> SourceUnitBuild
@@ -676,3 +685,9 @@ translateSourceUnitLocators translateLocator unit =
         { sourceDepLocator = translateLocator (sourceDepLocator dep)
         , sourceDepImports = map translateLocator (sourceDepImports dep)
         }
+    translateLocator :: Locator -> Locator
+    translateLocator loc =
+      case Map.lookup (toProjectLocator loc) translationMap of
+        Nothing -> loc
+        Just replacement ->
+          replacement{locatorRevision = locatorRevision loc}

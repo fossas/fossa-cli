@@ -102,10 +102,12 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
-import Data.List (find)
 import Data.List.NonEmpty qualified as NE
+import Data.Map (Map)
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -143,6 +145,7 @@ import Srclib.Types (
   Locator (..),
   SourceUnit (..),
   sourceUnitToFullSourceUnit,
+  toProjectLocator,
   translateSourceUnitLocators,
  )
 import System.FilePath ((</>))
@@ -628,23 +631,8 @@ buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
-    finalSourceUnits = map (translateSourceUnitLocators translateLocatorWithForkAliases) (srcUnits ++ scannedUnits)
-    translateLocatorWithForkAliases :: Locator -> Locator
-    translateLocatorWithForkAliases loc =
-      case findMatchingAlias loc forkAliases of
-        Nothing -> loc
-        Just alias ->
-          (forkAliasSource alias)
-            { locatorRevision = locatorRevision loc
-            }
-    findMatchingAlias :: Locator -> [ForkAlias] -> Maybe ForkAlias
-    findMatchingAlias loc aliases =
-      find
-        ( \alias ->
-            locatorFetcher (forkAliasTarget alias) == locatorFetcher loc
-              && locatorProject (forkAliasTarget alias) == locatorProject loc
-        )
-        aliases
+    forkAliasMap = Map.fromList $ map (\ForkAlias{..} -> (toProjectLocator forkAliasTarget, forkAliasSource)) forkAliases
+    finalSourceUnits = map (translateSourceUnitLocators forkAliasMap) (srcUnits ++ scannedUnits)
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
