@@ -475,10 +475,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
-  -- maybe we translate fork aliases in buildResult?
-  -- additionalSourceUnits: findings from VSI, manual source units, binary discovery and dynamic linked dependencies
-  -- filteredProjects': findings from normal analysis. These are converted to SourceUnits in buildResult
-  -- licenseSourceUnits: source units found by first party license scans and lernie
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits forkAliases
 
   scanUnits <-
