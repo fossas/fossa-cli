@@ -13,6 +13,7 @@ module App.Fossa.ManualDeps (
   ManualDependencies (..),
   LocatorDependency (..),
   FoundDepsFile (..),
+  ManualDepsResult (..),
   analyzeFossaDepsFile,
   findAndReadFossaDepsFile,
   findFossaDepsFile,
@@ -83,6 +84,12 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
+data ManualDepsResult = ManualDepsResult
+  { manualDepsResultSourceUnit :: Maybe SourceUnit
+  , manualDepsResultForkAliases :: [ForkAlias]
+  }
+  deriving (Eq, Show)
+
 analyzeFossaDepsFile ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
@@ -96,21 +103,22 @@ analyzeFossaDepsFile ::
   Maybe FilePath ->
   Maybe ApiOpts ->
   VendoredDependencyOptions ->
-  m (Maybe SourceUnit)
+  m ManualDepsResult
 analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOptions = do
   maybeDepsFile <-
     case maybeCustomFossaDepsPath of
       Nothing -> findFossaDepsFile root
       Just filePath -> retrieveCustomFossaDepsFile filePath
   case maybeDepsFile of
-    Nothing -> pure Nothing
+    Nothing -> pure $ ManualDepsResult Nothing []
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
+      let aliases = forkAliases manualDeps
       if hasNoDeps manualDeps
-        then pure Nothing
-        else
-          context "Converting fossa-deps to partial API payload" $
-            Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+        then pure $ ManualDepsResult Nothing aliases
+        else context "Converting fossa-deps to partial API payload" $ do
+          sourceUnit <- toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+          pure $ ManualDepsResult (Just sourceUnit) aliases
 
 retrieveCustomFossaDepsFile ::
   ( Has Diagnostics sig m

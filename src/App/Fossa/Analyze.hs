@@ -54,7 +54,7 @@ import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.ManualDeps (ManualDepsResult (..), analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -108,7 +108,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (Result (Success), resultToMaybe)
+import Diag.Result (Result (Failure, Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -303,13 +303,16 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.xSnippetScan cfg
 
-  manualSrcUnits <-
+  manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
-          pure Nothing
+          pure $ ManualDepsResult Nothing []
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
+  let (manualSrcUnits, forkAliases) = case manualDepsResult of
+        Success _ (ManualDepsResult srcUnits aliases) -> (Success [] srcUnits, aliases)
+        Failure ws eg -> (Failure ws eg, [])
 
   orgInfo <-
     for
@@ -417,6 +420,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   let filteredProjects = mapMaybe toProjectResult projectScans
   logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
+  -- maybe we translate fork aliases here?
 
   maybeEndpointAppVersion <- fmap join . for maybeApiOpts $
     \apiOpts -> runFossaApiClient apiOpts $ do
@@ -462,6 +466,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
+  -- maybe we translate fork aliases in buildResult?
+  -- additionalSourceUnits: findings from VSI, manual source units, binary discovery and dynamic linked dependencies
+  -- filteredProjects': findings from normal analysis. These are converted to SourceUnits in buildResult
+  -- licenseSourceUnits: source units found by first party license scans and lernie
   let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
 
   scanUnits <-
@@ -471,6 +479,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
+  -- do translation of fork aliases here
   sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
