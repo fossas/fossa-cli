@@ -54,7 +54,7 @@ import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (ManualDepsResult (..), analyzeFossaDepsFile)
+import App.Fossa.ManualDeps (ForkAlias, ManualDepsResult (..), analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -420,7 +420,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   let filteredProjects = mapMaybe toProjectResult projectScans
   logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
-  -- maybe we translate fork aliases here?
 
   maybeEndpointAppVersion <- fmap join . for maybeApiOpts $
     \apiOpts -> runFossaApiClient apiOpts $ do
@@ -470,7 +469,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- additionalSourceUnits: findings from VSI, manual source units, binary discovery and dynamic linked dependencies
   -- filteredProjects': findings from normal analysis. These are converted to SourceUnits in buildResult
   -- licenseSourceUnits: source units found by first party license scans and lernie
-  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
+  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits forkAliases
 
   scanUnits <-
     case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
@@ -479,7 +478,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  -- do translation of fork aliases here
   sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
@@ -611,8 +609,8 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult includeAll srcUnits projects licenseSourceUnits =
+buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> [ForkAlias] -> Aeson.Value
+buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
   Aeson.object
     [ "projects" .= map buildProject projects
     , "sourceUnits" .= mergedUnits
