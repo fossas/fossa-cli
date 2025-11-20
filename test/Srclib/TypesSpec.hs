@@ -9,7 +9,7 @@ import Srclib.Types (
   toProjectLocator,
   translateSourceUnitLocators,
  )
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Types (GraphBreadth (Complete))
 
 spec :: Spec
@@ -73,7 +73,7 @@ spec = do
       case translatedDeps of
         Just [translatedDep] ->
           sourceDepLocator translatedDep `shouldBe` Locator "go" "github.com/stretchr/testify" (Just "v1.8.4")
-        _ -> error "Expected exactly one dependency"
+        _ -> expectationFailure "Expected exactly one dependency"
 
     it "should translate locators in sourceDepImports" $ do
       let myForkLocator = Locator "go" "github.com/myorg/gin" (Just "v1.9.1")
@@ -105,7 +105,7 @@ spec = do
       case translatedDeps of
         Just [translatedDep] ->
           sourceDepImports translatedDep `shouldBe` [Locator "go" "github.com/gin-gonic/gin" (Just "v1.9.1")]
-        _ -> error "Expected exactly one dependency"
+        _ -> expectationFailure "Expected exactly one dependency"
 
     it "should preserve revision when translating" $ do
       let myForkLocator = Locator "go" "github.com/myorg/gin" (Just "v1.9.1")
