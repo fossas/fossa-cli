@@ -568,6 +568,6 @@ forkAliasDep :: Text
 forkAliasDep =
   [r|
 fork-aliases:
-- target: cargo+my-serde
-  source: cargo+serde
+- my-fork: cargo+my-serde
+  base: cargo+serde
 |]
