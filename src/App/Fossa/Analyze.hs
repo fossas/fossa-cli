@@ -54,7 +54,7 @@ import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (ForkAlias, ManualDepsResult (..), analyzeFossaDepsFile)
+import App.Fossa.ManualDeps (ForkAlias (..), ManualDepsResult (..), analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -102,6 +102,7 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
+import Data.List (find)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
@@ -137,7 +138,13 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (
+  LicenseSourceUnit (..),
+  Locator (..),
+  SourceUnit (..),
+  sourceUnitToFullSourceUnit,
+  translateSourceUnitLocators,
+ )
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
@@ -620,8 +627,24 @@ buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
       Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
-    finalSourceUnits = srcUnits ++ scannedUnits
     scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
+    finalSourceUnits = map (translateSourceUnitLocators translateLocatorWithForkAliases) (srcUnits ++ scannedUnits)
+    translateLocatorWithForkAliases :: Locator -> Locator
+    translateLocatorWithForkAliases loc =
+      case findMatchingAlias loc forkAliases of
+        Nothing -> loc
+        Just alias ->
+          (forkAliasSource alias)
+            { locatorRevision = locatorRevision loc
+            }
+    findMatchingAlias :: Locator -> [ForkAlias] -> Maybe ForkAlias
+    findMatchingAlias loc aliases =
+      find
+        ( \alias ->
+            locatorFetcher (forkAliasTarget alias) == locatorFetcher loc
+              && locatorProject (forkAliasTarget alias) == locatorProject loc
+        )
+        aliases
 
 buildProject :: ProjectResult -> Aeson.Value
 buildProject project =
