@@ -21,6 +21,7 @@ import App.Fossa.Ficus.Types (
   FicusMessageData (..),
   FicusMessages (..),
   FicusPerStrategyFlag (..),
+  FicusScanStats (..),
   FicusSnippetScanResults (..),
  )
 import App.Types (ProjectRevision (..))
@@ -29,8 +30,7 @@ import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
-import Data.Aeson (Object, decode, decodeStrictText, (.:))
-import Data.Aeson.Types (parseMaybe)
+import Data.Aeson (decode, decodeStrictText)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
@@ -64,6 +64,7 @@ import System.Process.Typed (
   waitExitCode,
   withProcessWait,
  )
+import Text.Printf (printf)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
 import Types (GlobFilter (..), LicenseScanPathFilters (..))
@@ -116,7 +117,7 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays m
   logDebugWithTime "runFicus completed, processing results..."
   case ficusResults of
     Just results ->
-      logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
+      logInfo $ pretty (formatFicusScanSummary results)
     Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
   pure ficusResults
   where
@@ -131,13 +132,37 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays m
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         }
 
-findingToAnalysisId :: FicusFinding -> Maybe Int
-findingToAnalysisId (FicusFinding (FicusMessageData strategy payload))
+findingToSnippetScanResult :: FicusFinding -> Maybe FicusSnippetScanResults
+findingToSnippetScanResult (FicusFinding (FicusMessageData strategy payload))
   | Text.toLower strategy == "fingerprint" =
-      case decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload) :: Maybe Object of
-        Just obj -> parseMaybe (.: "analysis_id") obj
-        Nothing -> Nothing
-findingToAnalysisId _ = Nothing
+      decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
+findingToSnippetScanResult _ = Nothing
+
+formatFicusScanSummary :: FicusSnippetScanResults -> Text
+formatFicusScanSummary results =
+  let stats = ficusSnippetScanResultsStats results
+      aid = ficusSnippetScanResultsAnalysisId results
+   in Text.unlines
+        [ "Ficus snippet scan completed successfully!"
+        , ""
+        , "============================================================"
+        , "Snippet scan summary:"
+        , "  Analysis ID: " <> toText (show aid)
+        , "  Bucket ID: " <> toText (show $ ficusSnippetScanResultsBucketId results)
+        , "  Files skipped: " <> toText (show $ ficusStatsSkippedFiles stats)
+        , "  Total Files processed: " <> toText (show $ ficusStatsProcessedFiles stats)
+        , "  Unique Files processed: " <> toText (show $ ficusStatsUniqueProcessedFiles stats)
+        , "  Unique Files with matches found: " <> toText (show $ ficusStatsUniqueMatchedFiles stats)
+        , "  Unique Files with no matches found: " <> toText (show $ ficusStatsUniqueUnmatchedFiles stats)
+        , "  Unique Files already in our knowledge base: " <> toText (show $ ficusStatsUniqueExistingFiles stats)
+        , "  Unique Files new to our knowledge base: " <> toText (show $ ficusStatsUniqueNewFiles stats)
+        , "  Processing time: " <> formatProcessingTime (ficusStatsProcessingTimeSeconds stats) <> "s"
+        , "============================================================"
+        ]
+  where
+    -- Format the processing time as a string with 3 decimal places
+    formatProcessingTime :: Double -> Text
+    formatProcessingTime seconds = toText (printf "%.3f" seconds :: String)
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -236,10 +261,10 @@ runFicus maybeDebugDir ficusConfig = do
                     pure acc
                   FicusMessageFinding finding -> do
                     hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let analysisFinding = FicusSnippetScanResults <$> findingToAnalysisId finding
+                    let analysisFinding = findingToSnippetScanResult finding
                     when (isJust acc && isJust analysisFinding) $
                       hPutStrLn stderr $
-                        "[" ++ timestamp ++ "] ERROR " <> "Found multiple analysis ids."
+                        "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
                     pure $ acc <|> analysisFinding
             )
             Nothing
