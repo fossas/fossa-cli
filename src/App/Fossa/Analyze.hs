@@ -137,6 +137,10 @@ import Prettyprinter.Render.Terminal (
   Color (Cyan, Green, Yellow),
   color,
  )
+import DepTypes (Dependency (..))
+import Graphing (Graphing)
+import Graphing qualified
+import Srclib.Converter (fetcherToDepType, toLocator)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (
   LicenseSourceUnit (..),
@@ -615,7 +619,7 @@ instance Diag.ToDiagnostic AnalyzeError where
 buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> [ForkAlias] -> Aeson.Value
 buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
   Aeson.object
-    [ "projects" .= map buildProject projects
+    [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
   where
@@ -627,13 +631,32 @@ buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
     forkAliasMap = Map.fromList $ map (\ForkAlias{..} -> (toProjectLocator forkAliasMyFork, forkAliasBase)) forkAliases
     finalSourceUnits = map (translateSourceUnitLocators forkAliasMap) (srcUnits ++ scannedUnits)
 
-buildProject :: ProjectResult -> Aeson.Value
-buildProject project =
+buildProject :: Map.Map Locator Locator -> ProjectResult -> Aeson.Value
+buildProject forkAliasMap project =
   Aeson.object
     [ "path" .= projectResultPath project
     , "type" .= projectResultType project
-    , "graph" .= graphingToGraph (projectResultGraph project)
+    , "graph" .= graphingToGraph (translateDependencyGraph forkAliasMap (projectResultGraph project))
     ]
+
+-- | Translate dependencies in a graph using fork aliases.
+-- When a dependency matches a fork alias (by fetcher and project, ignoring version),
+-- it is replaced with the base locator, preserving the original version.
+translateDependencyGraph :: Map.Map Locator Locator -> Graphing Dependency -> Graphing Dependency
+translateDependencyGraph forkAliasMap = Graphing.gmap (translateDependency forkAliasMap)
+
+-- | Translate a single dependency using fork aliases.
+translateDependency :: Map.Map Locator Locator -> Dependency -> Dependency
+translateDependency forkAliasMap dep =
+  case Map.lookup (toProjectLocator (toLocator dep)) forkAliasMap of
+    Nothing -> dep
+    Just baseLocator ->
+      let baseDepType = maybe (dependencyType dep) id (fetcherToDepType (locatorFetcher baseLocator))
+          baseName = locatorProject baseLocator
+       in dep
+            { dependencyType = baseDepType
+            , dependencyName = baseName
+            }
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =
