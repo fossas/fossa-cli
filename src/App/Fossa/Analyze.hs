@@ -477,7 +477,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
-  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits forkAliases
+  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
 
   scanUnits <-
     case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
@@ -617,8 +617,8 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> [ForkAlias] -> Aeson.Value
-buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
+buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator Locator -> Aeson.Value
+buildResult includeAll srcUnits projects licenseSourceUnits forkAliasMap =
   Aeson.object
     [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
@@ -629,7 +629,6 @@ buildResult includeAll srcUnits projects licenseSourceUnits forkAliases =
       Just licenseUnits -> do
         NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
     scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
-    forkAliasMap = mkForkAliasMap forkAliases
     finalSourceUnits = map (translateSourceUnitLocators forkAliasMap) (srcUnits ++ scannedUnits)
 
 -- | Create a fork alias map from a list of fork aliases.
