@@ -243,6 +243,7 @@ collectInteriorLabels org ManualDependencies{..} =
       <> mapMaybe customDepToLabel customDependencies
       <> mapMaybe (remoteDepToLabel org) remoteDependencies
       <> mapMaybe locatorDepToLabel locatorDependencies
+      <> mapMaybe forkAliasToLabel forkAliases
   where
     liftEmpty :: (a, [b]) -> Maybe (a, [b])
     liftEmpty (_, []) = Nothing
@@ -275,6 +276,9 @@ collectInteriorLabels org ManualDependencies{..} =
     locatorDepToLabel :: LocatorDependency -> Maybe (Text, [ProvidedPackageLabel])
     locatorDepToLabel (LocatorDependencyPlain _) = Nothing
     locatorDepToLabel (LocatorDependencyStructured locator labels) = liftEmpty (renderLocator locator, labels)
+
+    forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
+    forkAliasToLabel ForkAlias{..} = liftEmpty (renderLocator forkAliasBase, forkAliasLabels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::
@@ -417,6 +421,7 @@ data ManualDependencies = ManualDependencies
 data ForkAlias = ForkAlias
   { forkAliasMyFork :: Locator
   , forkAliasBase :: Locator
+  , forkAliasLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
 
@@ -425,6 +430,7 @@ instance FromJSON ForkAlias where
     ForkAlias
       <$> obj .: "my-fork"
       <*> obj .: "base"
+      <*> obj .:? "labels" .!= []
 
 data LocatorDependency
   = LocatorDependencyPlain Locator
