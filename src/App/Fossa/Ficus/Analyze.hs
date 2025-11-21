@@ -158,6 +158,7 @@ formatFicusScanSummary results =
         , "  Unique Files new to our knowledge base: " <> toText (show $ ficusStatsUniqueNewFiles stats)
         , "  Processing time: " <> formatProcessingTime (ficusStatsProcessingTimeSeconds stats) <> "s"
         , "============================================================"
+        , "See the docs for an explanation of this summary: https://github.com/fossas/fossa-cli/blob/master/docs/features/snippet-scanning.md#the-snippet-scan-summary"
         ]
   where
     -- Format the processing time as a string with 3 decimal places
