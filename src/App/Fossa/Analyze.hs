@@ -477,15 +477,21 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
-  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
+  -- Convert projects to source units and translate fork aliases in them
+  let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
+  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators forkAliasMap) additionalSourceUnits
+  let translatedScannedSourceUnits = map (translateSourceUnitLocators forkAliasMap) scannedSourceUnits
+  let allTranslatedSourceUnits = translatedAdditionalSourceUnits ++ translatedScannedSourceUnits
+
+  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
 
   scanUnits <-
-    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+    case (keywordSearchResultsFound, checkForEmptyUpload projectScans filteredProjects' allTranslatedSourceUnits licenseSourceUnits) of
       (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
       (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
-      (_, CountedScanUnits scanUnits) -> pure $ translateScanUnits forkAliasMap scanUnits
+      (_, CountedScanUnits scanUnits) -> pure scanUnits
   sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
@@ -617,33 +623,21 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator Locator -> Aeson.Value
-buildResult includeAll srcUnits projects licenseSourceUnits forkAliasMap =
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator Locator -> Aeson.Value
+buildResult srcUnits projects licenseSourceUnits forkAliasMap =
   Aeson.object
     [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
   where
     mergedUnits = case licenseSourceUnits of
-      Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
+      Nothing -> map sourceUnitToFullSourceUnit srcUnits
       Just licenseUnits -> do
-        NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
-    scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
-    finalSourceUnits = map (translateSourceUnitLocators forkAliasMap) (srcUnits ++ scannedUnits)
+        NE.toList $ mergeSourceAndLicenseUnits srcUnits licenseUnits
 
 -- | Create a fork alias map from a list of fork aliases.
 mkForkAliasMap :: [ForkAlias] -> Map.Map Locator Locator
 mkForkAliasMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator forkAliasMyFork, forkAliasBase))
-
--- | Translate source units in ScanUnits using fork aliases.
-translateScanUnits :: Map.Map Locator Locator -> ScanUnits -> ScanUnits
-translateScanUnits forkAliasMap = \case
-  SourceUnitOnly units -> SourceUnitOnly $ map (translateSourceUnitLocators forkAliasMap) units
-  LicenseSourceUnitOnly licenseSourceUnit -> LicenseSourceUnitOnly licenseSourceUnit
-  SourceAndLicenseUnits sourceUnits licenseSourceUnit ->
-    SourceAndLicenseUnits
-      (map (translateSourceUnitLocators forkAliasMap) sourceUnits)
-      licenseSourceUnit
 
 buildProject :: Map.Map Locator Locator -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
