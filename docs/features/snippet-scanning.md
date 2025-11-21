@@ -17,11 +17,11 @@ When `--x-snippet-scan` is enabled, the CLI:
 
 1. **Hashes Files First**: Creates CRC64 hashes of all source files to identify which files need fingerprinting
 2. **Checks Necessity of Fingerprinting**: Checks with FOSSA servers to determine which file hashes are already known
-3. **Fingerprints New or Changed Files**: Uses the Ficus fingerprinting engine (written in Rust) to create cryptographic fingerprints only for files not previously seen
+3. **Fingerprints New or Changed Files**: Uses the Ficus fingerprinting engine to create cryptographic fingerprints only for files not previously seen
 4. **Filters Content**: By default, skips directories like `.git/`, and hidden directories. This includes, from `.fossa.yml`, `vendoredDependencies.licenseScanPathFilters.exclude`, documented further below.
 5. **Uploads Fingerprints**: Sends only the fingerprints to FOSSA's servers
 6. **Receives Matches**: Gets back information about any matching open source components
-7. **Uploads Match Contents**: For files that have matches, uploads source code content temporarily to FOSSA servers.
+7. **Uploads Match Contents**: For files that have matches, uploads source code content temporarily to FOSSA servers (see below for more details on what we send and how long it is retained for).
 
 ## Data Sent to FOSSA
 
@@ -32,7 +32,7 @@ When `--x-snippet-scan` is enabled, the CLI:
 - Fingerprints of source code to identify matches.
 
 **For Matched Files Only:**
-- The actual source code content of files that contain snippet matches.
+- The full content of all files that contain snippet matches.
 
 ## Data Retention
 
@@ -80,6 +80,8 @@ vendoredDependencies:
 The first time you run a snippet scan on a codebase, it may take a long time to scan. For example, scanning [Linux](https://github.com/torvalds/linux) for the first time takes around 60 minutes. This is because most of the files in your codebase will not exist in FOSSA's knowledge base, and we will need to fingerprint and compare all of them to our snippet scan corpus.
 
 However, the next time you scan that codebase we will only need to re-fingerprint and compare files that have changed since the previous scan, and the scan will be much faster. For example, if you snippet scan that same revision of Linux a second time, the scan will complete in less than a minute.
+
+Because of this speed difference, we recommend doing a manual scan of your project before enabling Snippet Scanning in CI. This will avoid running multiple slow scans, as any scans started before the first scan completes will also be slower.
 
 The time it takes to scan newer versions of your codebase will depend on how many files in the new version have not been previously scanned. A file has been previously scanned if the exact same file has ever been snippet scanned. FOSSA recommends snippet scanning your codebase on a regular basis to keep scan times low.
 
