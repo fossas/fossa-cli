@@ -342,11 +342,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
-  let ficusStrategies = case [enableSnippetScan, enableVendetta] of
-        [True, True] -> [FicusStrategySnippetScan, FicusStrategyVendetta]
-        [True, False] -> [FicusStrategySnippetScan]
-        [False, True] -> [FicusStrategyVendetta]
-        [False, False] -> []
+  let ficusStrategies =
+        [ strategy
+        | (strategy, enabled) <-
+            [ (FicusStrategySnippetScan, enableSnippetScan)
+            , (FicusStrategyVendetta, enableVendetta)
+            ]
+        , enabled
+        ]
   maybeFicusResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if null ficusStrategies
