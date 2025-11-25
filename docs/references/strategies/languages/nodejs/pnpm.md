@@ -27,7 +27,7 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
 
 > 📘 Important Note
 >
-> Anything defined in the `importers` section will be flagged out. In order to scan individual targts, the workspace needs to have individual/separate lock files. 
+> Anything defined in the `importers` section will be ignored out. In order to scan individual targts, the workspace needs to have individual/separate lock files. 
 
 An example is provided below:
 
