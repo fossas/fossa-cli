@@ -25,6 +25,10 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
     - `peerDependencies`: list of peer dependencies (will be treated like any other dependency)
     - `dev`: to infer if this is used dependency or not. If the value is `true` by default CLI will not include this in the final analysis.
 
+> 📘 Important Note
+>
+> Anything defined in the `importers` section will be ignored. In order to scan individual targts, the workspace needs to have individual/separate lock files. 
+
 An example is provided below:
 
 ```yml
