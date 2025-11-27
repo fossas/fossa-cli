@@ -67,7 +67,7 @@ theWorks = ManualDependencies references customs vendors remotes locators forkAl
       , LocatorDependencyPlain (Locator "fetcher-2" "two" (Just "1.0.0"))
       ]
     forkAliases =
-      [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing)]
+      [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing) []]
 
 theWorksLabeled :: ManualDependencies
 theWorksLabeled = ManualDependencies references customs vendors remotes locators forkAliases
@@ -96,7 +96,7 @@ theWorksLabeled = ManualDependencies references customs vendors remotes locators
       , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
       ]
     forkAliases =
-      [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing)]
+      [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing) []]
 
 theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
 theWorksLabels org =
@@ -457,7 +457,7 @@ forkAliasManualDep =
     mempty
     mempty
     mempty
-    [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing)]
+    [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing) []]
 
 customDepWithEmptyVersion :: Text
 customDepWithEmptyVersion =
