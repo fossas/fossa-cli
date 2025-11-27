@@ -158,6 +158,25 @@ Snippet Scanning must also be enabled for your organization, and is only availab
 
 For more detail about how Snippet Scanning works, how to use file filtering during Snippet Scanning, what information is sent to FOSSA's servers and a description of the Snippet Scan Summary, see [the Snippet Scanning feature documentation](../../features/snippet-scanning.md).
 
+### Vendored Dependency Scanning with Vendetta
+
+Vendetta is a feature that identifies the paths of potential open source code
+depedencies vendored in your project by comparing file hashes against FOSSA's
+knowledge base. This feature helps find dependencies that are included in your
+project directly as source.
+
+#### Enabling Vendetta
+
+| Name                | Description                                                                                                                                                                           |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--x-vendetta`      | Enable vendored dependency scanning during analysis. This experimental feature hashes your source files and checks them against FOSSA's open source component database.               |
+
+#### More detail
+
+For more detail about how Vendetta works, how to use file filtering during
+scanning, or what information is sent to FOSSA's servers, see
+[the Vendetta feature documentation](../../features/vendetta.md).
+
 ### Experimental Options
 
 _Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
