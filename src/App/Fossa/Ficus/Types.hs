@@ -206,7 +206,7 @@ data FicusConfig = FicusConfig
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`
   , ficusConfigFlags :: [FicusPerStrategyFlag]
   , ficusConfigSnippetScanRetentionDays :: Maybe Int
-  , ficusConfigOnlyStrategies :: [FicusStrategy]
+  , ficusConfigStrategies :: [FicusStrategy]
   }
   deriving (Show, Eq, Generic)
 

@@ -137,7 +137,7 @@ analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRete
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
-        , ficusConfigOnlyStrategies = strategies
+        , ficusConfigStrategies = strategies
         }
 
 findingToSnippetScanResult :: FicusFinding -> Maybe FicusSnippetScanResults
@@ -409,7 +409,7 @@ ficusCommand ficusConfig bin = do
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = concatMap (\path -> ["--exclude", unGlobFilter path]) $ ficusConfigExclude ficusConfig
-    configStrategies = concatMap (\strategy -> ["--only", strategyToArg strategy]) $ ficusConfigOnlyStrategies ficusConfig
+    configStrategies = concatMap (\strategy -> ["--strategy", strategyToArg strategy]) $ ficusConfigStrategies ficusConfig
     strategyToArg = \case
       FicusStrategySnippetScan -> "snippet-scan"
       FicusStrategyNoop -> "noop"
