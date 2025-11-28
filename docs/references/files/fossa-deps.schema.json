@@ -42,6 +42,31 @@
       ],
       "description": "Name of the distribution OS."
     },
+    "dependency-type": {
+      "enum": [
+        "bower",
+        "cargo",
+        "carthage",
+        "composer",
+        "cpan",
+        "renv",
+        "gem",
+        "git",
+        "go",
+        "hackage",
+        "hex",
+        "maven",
+        "npm",
+        "nuget",
+        "paket",
+        "pub",
+        "pypi",
+        "cocoapods",
+        "swift",
+        "url"
+      ],
+      "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+    },
     "referenced-app-dependency": {
       "properties": {
         "name": {
@@ -50,29 +75,7 @@
           "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
         },
         "type": {
-          "enum": [
-            "bower",
-            "cargo",
-            "carthage",
-            "composer",
-            "cpan",
-            "renv",
-            "gem",
-            "git",
-            "go",
-            "hackage",
-            "hex",
-            "maven",
-            "npm",
-            "nuget",
-            "paket",
-            "pub",
-            "pypi",
-            "cocoapods",
-            "swift",
-            "url"
-          ],
-          "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+          "$ref": "#/$defs/dependency-type"
         },
         "version": {
           "type": "string",
@@ -334,29 +337,7 @@
     "fork-alias-entry": {
       "properties": {
         "type": {
-          "enum": [
-            "bower",
-            "cargo",
-            "carthage",
-            "composer",
-            "cpan",
-            "renv",
-            "gem",
-            "git",
-            "go",
-            "hackage",
-            "hex",
-            "maven",
-            "npm",
-            "nuget",
-            "paket",
-            "pub",
-            "pypi",
-            "cocoapods",
-            "swift",
-            "url"
-          ],
-          "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+          "$ref": "#/$defs/dependency-type"
         },
         "name": {
           "type": "string",
