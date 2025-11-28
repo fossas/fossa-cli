@@ -411,7 +411,7 @@ ficusCommand ficusConfig bin = do
     configExcludes = concatMap (\path -> ["--exclude", unGlobFilter path]) $ ficusConfigExclude ficusConfig
     configStrategies = concatMap (\strategy -> ["--strategy", strategyToArg strategy]) $ ficusConfigStrategies ficusConfig
     strategyToArg = \case
-      FicusStrategySnippetScan -> "snippet-scan"
+      FicusStrategySnippetScan -> "snippet-scanning"
       FicusStrategyVendetta -> "vendetta"
 
     maskApiKeyInCommand :: Text -> Text
