@@ -20,10 +20,17 @@ import Types (GraphBreadth (Complete))
 spec :: Spec
 spec = do
   describe "translateSourceUnitLocators" $ do
+    -- Helper to create a simple translation function from a map (for backward compatibility in tests)
+    let simpleTranslate translationMap loc =
+          case Map.lookup (toProjectLocator loc) translationMap of
+            Nothing -> loc
+            Just replacement -> replacement{locatorRevision = locatorRevision loc}
+
     it "should translate locators in buildImports" $ do
       let myForkLocator = Locator "go" "github.com/myorg/gin" (Just "v1.9.1")
           baseLocator = Locator "go" "github.com/gin-gonic/gin" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
+          translateLocator = simpleTranslate translationMap
           sourceUnit =
             SourceUnit
               "test"
@@ -43,7 +50,7 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
       let translatedImports = buildImports <$> sourceUnitBuild translated
 
       translatedImports `shouldBe` Just [Locator "go" "github.com/gin-gonic/gin" (Just "v1.9.1")]
@@ -52,6 +59,7 @@ spec = do
       let myForkLocator = Locator "go" "github.com/myorg/testify" (Just "v1.8.4")
           baseLocator = Locator "go" "github.com/stretchr/testify" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
+          translateLocator = simpleTranslate translationMap
           dep = SourceUnitDependency myForkLocator []
           sourceUnit =
             SourceUnit
@@ -72,7 +80,7 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
       let translatedDeps = buildDependencies <$> sourceUnitBuild translated
 
       case translatedDeps of
@@ -84,6 +92,7 @@ spec = do
       let myForkLocator = Locator "go" "github.com/myorg/gin" (Just "v1.9.1")
           baseLocator = Locator "go" "github.com/gin-gonic/gin" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
+          translateLocator = simpleTranslate translationMap
           dep = SourceUnitDependency (Locator "go" "other" Nothing) [myForkLocator]
           sourceUnit =
             SourceUnit
@@ -104,7 +113,7 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
       let translatedDeps = buildDependencies <$> sourceUnitBuild translated
 
       case translatedDeps of
@@ -116,6 +125,7 @@ spec = do
       let myForkLocator = Locator "go" "github.com/myorg/gin" (Just "v1.9.1")
           baseLocator = Locator "go" "github.com/gin-gonic/gin" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
+          translateLocator = simpleTranslate translationMap
           sourceUnit =
             SourceUnit
               "test"
@@ -135,7 +145,7 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
       let translatedImports = buildImports <$> sourceUnitBuild translated
 
       -- The revision from the original locator should be preserved
@@ -146,6 +156,7 @@ spec = do
           baseLocator = Locator "go" "github.com/gin-gonic/gin" Nothing
           otherLocator = Locator "go" "github.com/other/pkg" (Just "v1.0.0")
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
+          translateLocator = simpleTranslate translationMap
           sourceUnit =
             SourceUnit
               "test"
@@ -165,7 +176,7 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
       let translatedImports = buildImports <$> sourceUnitBuild translated
 
       -- myForkLocator should be translated to baseLocator, otherLocator should remain unchanged
@@ -176,6 +187,7 @@ spec = do
           myForkLocatorV2 = Locator "go" "github.com/myorg/gin" (Just "v2.0.0")
           baseLocator = Locator "go" "github.com/gin-gonic/gin" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocatorV1) baseLocator
+          translateLocator = simpleTranslate translationMap
           sourceUnit =
             SourceUnit
               "test"
@@ -195,14 +207,14 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
       let translatedImports = buildImports <$> sourceUnitBuild translated
 
       -- Should match myForkLocatorV2 even though it has a different version, because we match by fetcher+project only
       translatedImports `shouldBe` Just [Locator "go" "github.com/gin-gonic/gin" (Just "v2.0.0")]
 
     it "should handle SourceUnit without build" $ do
-      let translationMap = Map.empty
+      let translateLocator = id  -- No translation
           sourceUnit =
             SourceUnit
               "test"
@@ -215,7 +227,7 @@ spec = do
               Nothing
               Nothing
 
-      let translated = translateSourceUnitLocators translationMap sourceUnit
+      let translated = translateSourceUnitLocators translateLocator sourceUnit
 
       -- Should remain unchanged
       translated `shouldBe` sourceUnit

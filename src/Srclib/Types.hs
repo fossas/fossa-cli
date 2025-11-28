@@ -661,16 +661,13 @@ instance FromJSON Locator where
 toProjectLocator :: Locator -> Locator
 toProjectLocator loc = loc{locatorRevision = Nothing}
 
--- | Translate all locators in a SourceUnit using the provided translation map.
--- The map keys are target locators (normalized, without version), and values are the replacement locators.
--- When a locator matches a key (by fetcher and project, ignoring version),
--- it is replaced with the value from the map, preserving the original version.
--- The translation is applied to all locators in:
+-- | Translate all locators in a SourceUnit using a translation function.
+-- The translation function is applied to all locators in:
 -- - buildImports
 -- - sourceDepLocator in each dependency
 -- - sourceDepImports in each dependency
-translateSourceUnitLocators :: Map Locator Locator -> SourceUnit -> SourceUnit
-translateSourceUnitLocators translationMap unit =
+translateSourceUnitLocators :: (Locator -> Locator) -> SourceUnit -> SourceUnit
+translateSourceUnitLocators translateLocator unit =
   unit{sourceUnitBuild = translateBuild <$> sourceUnitBuild unit}
   where
     translateBuild :: SourceUnitBuild -> SourceUnitBuild
@@ -685,9 +682,3 @@ translateSourceUnitLocators translationMap unit =
         { sourceDepLocator = translateLocator (sourceDepLocator dep)
         , sourceDepImports = map translateLocator (sourceDepImports dep)
         }
-    translateLocator :: Locator -> Locator
-    translateLocator loc =
-      case Map.lookup (toProjectLocator loc) translationMap of
-        Nothing -> loc
-        Just replacement ->
-          replacement{locatorRevision = locatorRevision loc}

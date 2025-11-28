@@ -14,6 +14,7 @@ module App.Fossa.Analyze (
   -- * Fork alias translation (for testing)
   translateDependency,
   translateDependencyGraph,
+  translateLocatorWithForkAliases,
   mkForkAliasMap,
 ) where
 
@@ -158,10 +159,9 @@ import Srclib.Types (
   LicenseSourceUnit (..),
   Locator (..),
   SourceUnit (..),
-  SourceUnitBuild (..),
-  SourceUnitDependency (..),
   sourceUnitToFullSourceUnit,
   toProjectLocator,
+  translateSourceUnitLocators,
  )
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
@@ -493,8 +493,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 
   -- Convert projects to source units and translate fork aliases in them
   let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
-  let translatedAdditionalSourceUnits = map (translateSourceUnitWithForkAliases forkAliasMap) additionalSourceUnits
-  let translatedScannedSourceUnits = map (translateSourceUnitWithForkAliases forkAliasMap) scannedSourceUnits
+  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) additionalSourceUnits
+  let translatedScannedSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) scannedSourceUnits
   let allTranslatedSourceUnits = translatedAdditionalSourceUnits ++ translatedScannedSourceUnits
 
   let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
@@ -722,25 +722,6 @@ translateDependency forkAliasMap dep =
                         , dependencyVersion = finalVersion >>= Just . CEq
                         }
                 Nothing -> dep -- Should not happen since translation occurred, but handle safely
-
--- | Translate locators in a SourceUnit using fork aliases with version matching.
--- This uses translateLocatorWithForkAliases internally to apply version-aware translation.
-translateSourceUnitWithForkAliases :: Map.Map Locator ForkAlias -> SourceUnit -> SourceUnit
-translateSourceUnitWithForkAliases forkAliasMap unit =
-  unit{sourceUnitBuild = translateBuild <$> sourceUnitBuild unit}
-  where
-    translateBuild :: SourceUnitBuild -> SourceUnitBuild
-    translateBuild build =
-      build
-        { buildImports = map (translateLocatorWithForkAliases forkAliasMap) (buildImports build)
-        , buildDependencies = map translateSourceDep (buildDependencies build)
-        }
-    translateSourceDep :: SourceUnitDependency -> SourceUnitDependency
-    translateSourceDep dep =
-      dep
-        { sourceDepLocator = translateLocatorWithForkAliases forkAliasMap (sourceDepLocator dep)
-        , sourceDepImports = map (translateLocatorWithForkAliases forkAliasMap) (sourceDepImports dep)
-        }
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =
