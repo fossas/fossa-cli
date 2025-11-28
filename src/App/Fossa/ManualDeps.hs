@@ -436,7 +436,7 @@ forkAliasEntryToLocator ForkAliasEntry{..} =
     }
 
 data ForkAlias = ForkAlias
-  { forkAliasMyFork :: ForkAliasEntry
+  { forkAliasFork :: ForkAliasEntry
   , forkAliasBase :: ForkAliasEntry
   , forkAliasLabels :: [ProvidedPackageLabel]
   }
@@ -452,7 +452,7 @@ instance FromJSON ForkAliasEntry where
 instance FromJSON ForkAlias where
   parseJSON = withObject "ForkAlias" $ \obj ->
     ForkAlias
-      <$> obj .: "my-fork"
+      <$> obj .: "fork"
       <*> obj .: "base"
       <*> obj .:? "labels" .!= []
 

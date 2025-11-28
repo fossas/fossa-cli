@@ -357,7 +357,7 @@
     },
     "fork-alias": {
       "properties": {
-        "my-fork": {
+        "fork": {
           "$ref": "#/$defs/fork-alias-entry",
           "description": "The fork dependency entry that should be aliased to the base dependency."
         },
@@ -374,7 +374,7 @@
         }
       },
       "required": [
-        "my-fork",
+        "fork",
         "base"
       ],
       "additionalProperties": false
@@ -415,7 +415,7 @@
     },
     "fork-aliases": {
       "type": "array",
-      "description": "Fork aliases to map your fork dependencies to their base dependencies. Matching: if my-fork version is specified, only that exact version matches; if not specified, any version matches. Translation: if base version is specified, always use that version; if not specified, preserve the original version.",
+      "description": "Fork aliases to map your fork dependencies to their base dependencies. Matching: if fork version is specified, only that exact version matches; if not specified, any version matches. Translation: if base version is specified, always use that version; if not specified, preserve the original version.",
       "items": {
         "$ref": "#/$defs/fork-alias"
       }

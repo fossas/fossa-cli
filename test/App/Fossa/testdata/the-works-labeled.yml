@@ -99,7 +99,7 @@ locator-dependencies:
     scope: org
 
 fork-aliases:
-  - my-fork:
+  - fork:
       type: cargo
       name: my-serde
     base:

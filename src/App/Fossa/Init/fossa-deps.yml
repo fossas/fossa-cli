@@ -129,7 +129,7 @@
 # # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md#fork-aliases
 # #
 # fork-aliases:
-# - my-fork:                                   # The fork dependency entry (Required)
+# - fork:                                      # The fork dependency entry (Required)
 #     type: cargo                              # Type of the fork dependency (Required)
 #     name: my-serde                           # Name of the fork dependency (Required)
 #     version: 1.0.0                           # Version of the fork dependency (Optional)

@@ -653,13 +653,13 @@ buildResult srcUnits projects licenseSourceUnits forkAliasMap =
 -- The map is keyed by project locator (type+name, no version) to allow lookup by type+name.
 -- The value is the full ForkAlias to check version matching and get base translation info.
 mkForkAliasMap :: [ForkAlias] -> Map.Map Locator ForkAlias
-mkForkAliasMap = Map.fromList . map (\alias@ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasMyFork), alias))
+mkForkAliasMap = Map.fromList . map (\alias@ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasFork), alias))
 
 -- | Create a simple locator-to-locator map for source unit translation.
 -- This is used for translating locators in source units (buildImports, etc.)
--- where version matching is not needed - we just translate my-fork to base.
+-- where version matching is not needed - we just translate fork to base.
 mkForkAliasLocatorMap :: [ForkAlias] -> Map.Map Locator Locator
-mkForkAliasLocatorMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasMyFork), forkAliasEntryToLocator forkAliasBase))
+mkForkAliasLocatorMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasFork), forkAliasEntryToLocator forkAliasBase))
 
 buildProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
@@ -671,8 +671,8 @@ buildProject forkAliasMap project =
 
 -- | Translate dependencies in a graph using fork aliases.
 -- Matching rules:
---   - If my-fork version is specified, only that exact version matches
---   - If my-fork version is not specified, any version matches
+--   - If fork version is specified, only that exact version matches
+--   - If fork version is not specified, any version matches
 -- Translation rules:
 --   - If base version is specified, always use that version
 --   - If base version is not specified, preserve the original version
@@ -686,11 +686,11 @@ translateDependency forkAliasMap dep =
       projectLocator = toProjectLocator depLocator
    in case Map.lookup projectLocator forkAliasMap of
         Nothing -> dep
-        Just ForkAlias{forkAliasMyFork = myFork, forkAliasBase = base} ->
-          -- Check if version matches (if my-fork version is specified)
+        Just ForkAlias{forkAliasFork = fork, forkAliasBase = base} ->
+          -- Check if version matches (if fork version is specified)
           let versionMatches =
-                case (forkAliasEntryVersion myFork, locatorRevision depLocator) of
-                  (Nothing, _) -> True -- No version specified in my-fork, match any version
+                case (forkAliasEntryVersion fork, locatorRevision depLocator) of
+                  (Nothing, _) -> True -- No version specified in fork, match any version
                   (Just forkVersion, Just depVersion) -> forkVersion == depVersion
                   (Just _, Nothing) -> False -- Fork specifies version but dep has none
            in if versionMatches

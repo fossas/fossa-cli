@@ -223,10 +223,10 @@ spec = do
       translated `shouldBe` sourceUnit
 
   describe "translateDependency with fork aliases" $ do
-    it "should translate when my-fork version matches" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+    it "should translate when fork version matches" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
           base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
@@ -234,10 +234,10 @@ spec = do
 
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
-    it "should not translate when my-fork version does not match" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+    it "should not translate when fork version does not match" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
           base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "2.0.0")) [] mempty Map.empty
 
@@ -246,10 +246,10 @@ spec = do
       -- Should remain unchanged because version doesn't match
       translated `shouldBe` dep
 
-    it "should translate any version when my-fork version is not specified" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" Nothing
+    it "should translate any version when fork version is not specified" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
           base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
@@ -258,9 +258,9 @@ spec = do
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
     it "should use base version when specified" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" Nothing
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
           base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
@@ -270,9 +270,9 @@ spec = do
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "2.0.0")) [] Set.empty Map.empty
 
     it "should preserve original version when base version is not specified" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" Nothing
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
           base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.5.0")) [] mempty Map.empty
 
@@ -281,10 +281,10 @@ spec = do
       -- Should preserve original version 1.5.0
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "1.5.0")) [] Set.empty Map.empty
 
-    it "should not translate when my-fork specifies version but dep has none" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+    it "should not translate when fork specifies version but dep has none" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
           base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" Nothing [] Set.empty Map.empty
 
@@ -293,22 +293,22 @@ spec = do
       -- Should remain unchanged because dep has no version but fork requires one
       translated `shouldBe` dep
 
-    it "should handle combination: my-fork version matches and base version specified" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+    it "should handle combination: fork version matches and base version specified" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
           base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
       let translated = translateDependency forkAliasMap dep
 
-      -- Version matches my-fork, so translate to base with base version
+      -- Version matches fork, so translate to base with base version
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "2.0.0")) [] Set.empty Map.empty
 
     it "should not translate when type or name doesn't match" $ do
-      let myFork = ForkAliasEntry CargoType "my-serde" Nothing
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
           base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias myFork base []
+          forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency NodeJSType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
@@ -319,11 +319,11 @@ spec = do
 
   describe "translateDependencyGraph with fork aliases" $ do
     it "should translate multiple dependencies in a graph" $ do
-      let myFork1 = ForkAliasEntry CargoType "my-serde" Nothing
+      let fork1 = ForkAliasEntry CargoType "my-serde" Nothing
           base1 = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          myFork2 = ForkAliasEntry GoType "github.com/myorg/gin" (Just "v1.9.1")
+          fork2 = ForkAliasEntry GoType "github.com/myorg/gin" (Just "v1.9.1")
           base2 = ForkAliasEntry GoType "github.com/gin-gonic/gin" Nothing
-          forkAliases = [ForkAlias myFork1 base1 [], ForkAlias myFork2 base2 []]
+          forkAliases = [ForkAlias fork1 base1 [], ForkAlias fork2 base2 []]
           forkAliasMap = mkForkAliasMap forkAliases
           dep1 = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
           dep2 = Dependency GoType "github.com/myorg/gin" (Just (CEq "v1.9.1")) [] Set.empty Map.empty

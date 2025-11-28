@@ -95,7 +95,7 @@ For more details, please refer to the [feature](../../features/vendored-dependen
 
 Denotes mapping of fork dependencies to their base dependencies. This is useful when you have forked a dependency and want it to be treated as the original dependency in FOSSA.
 
-- `my-fork`: The fork dependency entry that should be aliased to the base dependency. (Required)
+- `fork`: The fork dependency entry that should be aliased to the base dependency. (Required)
   - `type`: Type of the fork dependency. (Required)
   - `name`: Name of the fork dependency. (Required)
   - `version`: Version of the fork dependency. (Optional)
@@ -106,8 +106,8 @@ Denotes mapping of fork dependencies to their base dependencies. This is useful 
 - `labels`: An optional list of labels to be added to the fork alias.
 
 **Matching rules:**
-- If `my-fork` version is specified, only that exact version will be translated
-- If `my-fork` version is not specified, any version will match
+- If `fork` version is specified, only that exact version will be translated
+- If `fork` version is not specified, any version will match
 
 **Translation rules:**
 - If `base` version is specified, the dependency will always be translated to that version
@@ -115,7 +115,7 @@ Denotes mapping of fork dependencies to their base dependencies. This is useful 
 
 ```yaml
 fork-aliases:
-- my-fork:
+- fork:
     type: cargo
     name: my-serde
   base:
@@ -124,7 +124,7 @@ fork-aliases:
   labels:
   - label: internal
     scope: org
-- my-fork:
+- fork:
     type: cargo
     name: my-serde
     version: 1.0.0  # Only version 1.0.0 will be translated
@@ -185,7 +185,7 @@ vendored-dependencies:
     scope: revision
 
 fork-aliases:
-- my-fork:
+- fork:
     type: cargo
     name: my-serde
   base:
