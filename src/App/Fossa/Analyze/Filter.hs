@@ -17,7 +17,6 @@ data CountedResult
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,
 -- we also include a check for an additional source unit from fossa-deps.yml
 -- and a check for any licenses found during the firstPartyScan
--- The sourceUnits parameter should already be translated (e.g., with fork aliases)
 checkForEmptyUpload :: [DiscoveredProjectScan] -> [ProjectResult] -> [SourceUnit] -> Maybe LicenseSourceUnit -> CountedResult
 checkForEmptyUpload discovered filtered sourceUnits firstPartyScanResults = do
   if null sourceUnits

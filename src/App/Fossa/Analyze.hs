@@ -477,6 +477,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
+
   -- Convert projects to source units and translate fork aliases in them
   let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
   let translatedAdditionalSourceUnits = map (translateSourceUnitLocators forkAliasMap) additionalSourceUnits
