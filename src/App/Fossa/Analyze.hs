@@ -10,6 +10,11 @@ module App.Fossa.Analyze (
   -- * Helpers
   toProjectResult,
   applyFiltersToProject,
+
+  -- * Fork alias translation (for testing)
+  translateDependency,
+  translateDependencyGraph,
+  mkForkAliasMap,
 ) where
 
 import App.Docs (userGuideUrl)
