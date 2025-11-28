@@ -91,6 +91,25 @@ vendored-dependencies:
 
 For more details, please refer to the [feature](../../features/vendored-dependencies.md) walk through.
 
+### `fork-aliases:`
+
+Denotes mapping of fork dependencies to their base dependencies. When a dependency matches a fork alias (by fetcher and project, ignoring version), it is replaced with the base locator, preserving the original version. This is useful when you have forked a dependency and want it to be treated as the original dependency in FOSSA.
+
+- `my-fork`: The locator for your fork of the dependency. Format: `<fetcher>+<project>` or `<fetcher>+<project>$<revision>` (e.g., `cargo+my-serde` or `cargo+my-serde$1.0.0`). (Required)
+- `base`: The locator for the base/original dependency that your fork should be aliased to. Format: `<fetcher>+<project>` or `<fetcher>+<project>$<revision>` (e.g., `cargo+serde` or `cargo+serde$1.0.0`). (Required)
+- `labels`: An optional list of labels to be added to the fork alias.
+
+```yaml
+fork-aliases:
+- my-fork: cargo+my-serde
+  base: cargo+serde
+  labels:
+  - label: internal
+    scope: org
+```
+
+> Note: Fork aliases match dependencies by fetcher and project name, ignoring version. When a match is found, the dependency is replaced with the base locator while preserving the original version from the fork.
+
 ## Labels
 
 Each kind of dependency referenced above can have a `labels` field, which is a list of labels to be added to the dependency.
@@ -139,6 +158,15 @@ vendored-dependencies:
   - label: hr-docs
     scope: project
   - label: internal-dependency
+    scope: revision
+
+fork-aliases:
+- my-fork: cargo+my-serde
+  base: cargo+serde
+  labels:
+  - label: internal
+    scope: org
+  - label: fork-approved
     scope: revision
 ```
 
