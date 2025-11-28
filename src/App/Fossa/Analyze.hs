@@ -659,7 +659,7 @@ translateDependency forkAliasMap dep =
   case Map.lookup (toProjectLocator (toLocator dep)) forkAliasMap of
     Nothing -> dep
     Just baseLocator ->
-      let baseDepType = maybe (dependencyType dep) id (fetcherToDepType (locatorFetcher baseLocator))
+      let baseDepType = fromMaybe (dependencyType dep) (fetcherToDepType (locatorFetcher baseLocator))
           baseName = locatorProject baseLocator
        in dep
             { dependencyType = baseDepType
