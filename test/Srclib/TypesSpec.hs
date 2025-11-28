@@ -4,7 +4,7 @@ import App.Fossa.Analyze (mkForkAliasMap, translateDependency, translateDependen
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
 import Data.Map qualified as Map
 import Data.Set qualified as Set
-import DepTypes (Dependency (..), DepType (..), VerConstraint (CEq))
+import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Graphing qualified
 import Srclib.Types (
   Locator (..),
@@ -214,7 +214,7 @@ spec = do
       translatedImports `shouldBe` Just [Locator "go" "github.com/gin-gonic/gin" (Just "v2.0.0")]
 
     it "should handle SourceUnit without build" $ do
-      let translateLocator = id  -- No translation
+      let translateLocator = id -- No translation
           sourceUnit =
             SourceUnit
               "test"
