@@ -152,15 +152,16 @@ import Prettyprinter.Render.Terminal (
   Color (Cyan, Green, Yellow),
   color,
  )
-import Srclib.Converter (fetcherToDepType, toLocator)
+import Srclib.Converter (toLocator)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (
   LicenseSourceUnit (..),
   Locator (..),
   SourceUnit (..),
+  SourceUnitBuild (..),
+  SourceUnitDependency (..),
   sourceUnitToFullSourceUnit,
   toProjectLocator,
-  translateSourceUnitLocators,
  )
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
@@ -489,13 +490,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
-  -- Create a simple locator map for source unit translation (no version matching needed)
-  let forkAliasLocatorMap = mkForkAliasLocatorMap forkAliases
 
   -- Convert projects to source units and translate fork aliases in them
   let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
-  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators forkAliasLocatorMap) additionalSourceUnits
-  let translatedScannedSourceUnits = map (translateSourceUnitLocators forkAliasLocatorMap) scannedSourceUnits
+  let translatedAdditionalSourceUnits = map (translateSourceUnitWithForkAliases forkAliasMap) additionalSourceUnits
+  let translatedScannedSourceUnits = map (translateSourceUnitWithForkAliases forkAliasMap) scannedSourceUnits
   let allTranslatedSourceUnits = translatedAdditionalSourceUnits ++ translatedScannedSourceUnits
 
   let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
@@ -656,12 +655,6 @@ buildResult srcUnits projects licenseSourceUnits forkAliasMap =
 mkForkAliasMap :: [ForkAlias] -> Map.Map Locator ForkAlias
 mkForkAliasMap = Map.fromList . map (\alias@ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasFork), alias))
 
--- | Create a simple locator-to-locator map for source unit translation.
--- This is used for translating locators in source units (buildImports, etc.)
--- where version matching is not needed - we just translate fork to base.
-mkForkAliasLocatorMap :: [ForkAlias] -> Map.Map Locator Locator
-mkForkAliasLocatorMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasFork), forkAliasEntryToLocator forkAliasBase))
-
 buildProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
   Aeson.object
@@ -669,6 +662,33 @@ buildProject forkAliasMap project =
     , "type" .= projectResultType project
     , "graph" .= graphingToGraph (translateDependencyGraph forkAliasMap (projectResultGraph project))
     ]
+
+-- | Translate a locator using fork aliases with version matching.
+-- Matching rules:
+--   - If fork version is specified, only that exact version matches
+--   - If fork version is not specified, any version matches
+-- Translation rules:
+--   - If base version is specified, always use that version
+--   - If base version is not specified, preserve the original version
+translateLocatorWithForkAliases :: Map.Map Locator ForkAlias -> Locator -> Locator
+translateLocatorWithForkAliases forkAliasMap loc =
+  let projectLocator = toProjectLocator loc
+   in case Map.lookup projectLocator forkAliasMap of
+        Nothing -> loc
+        Just ForkAlias{forkAliasFork = fork, forkAliasBase = base} ->
+          -- Check if version matches (if fork version is specified)
+          let versionMatches =
+                case (forkAliasEntryVersion fork, locatorRevision loc) of
+                  (Nothing, _) -> True -- No version specified in fork, match any version
+                  (Just forkVersion, Just locVersion) -> forkVersion == locVersion
+                  (Just _, Nothing) -> False -- Fork specifies version but loc has none
+           in if versionMatches
+                then
+                  let baseLocator = forkAliasEntryToLocator base
+                      -- Use base version if specified, otherwise preserve original
+                      finalVersion = forkAliasEntryVersion base <|> locatorRevision loc
+                   in baseLocator{locatorRevision = finalVersion}
+                else loc
 
 -- | Translate dependencies in a graph using fork aliases.
 -- Matching rules:
@@ -684,18 +704,14 @@ translateDependencyGraph forkAliasMap = Graphing.gmap (translateDependency forkA
 translateDependency :: Map.Map Locator ForkAlias -> Dependency -> Dependency
 translateDependency forkAliasMap dep =
   let depLocator = toLocator dep
-      projectLocator = toProjectLocator depLocator
-   in case Map.lookup projectLocator forkAliasMap of
-        Nothing -> dep
-        Just ForkAlias{forkAliasFork = fork, forkAliasBase = base} ->
-          -- Check if version matches (if fork version is specified)
-          let versionMatches =
-                case (forkAliasEntryVersion fork, locatorRevision depLocator) of
-                  (Nothing, _) -> True -- No version specified in fork, match any version
-                  (Just forkVersion, Just depVersion) -> forkVersion == depVersion
-                  (Just _, Nothing) -> False -- Fork specifies version but dep has none
-           in if versionMatches
-                then
+      translatedLocator = translateLocatorWithForkAliases forkAliasMap depLocator
+   in if translatedLocator == depLocator
+        then dep -- No translation occurred
+        else
+          -- Translation occurred, extract base info from fork alias
+          let projectLocator = toProjectLocator depLocator
+           in case Map.lookup projectLocator forkAliasMap of
+                Just ForkAlias{forkAliasBase = base} ->
                   let baseDepType = forkAliasEntryType base
                       baseName = forkAliasEntryName base
                       -- Use base version if specified, otherwise preserve original
@@ -705,7 +721,26 @@ translateDependency forkAliasMap dep =
                         , dependencyName = baseName
                         , dependencyVersion = finalVersion >>= Just . CEq
                         }
-                else dep
+                Nothing -> dep -- Should not happen since translation occurred, but handle safely
+
+-- | Translate locators in a SourceUnit using fork aliases with version matching.
+-- This uses translateLocatorWithForkAliases internally to apply version-aware translation.
+translateSourceUnitWithForkAliases :: Map.Map Locator ForkAlias -> SourceUnit -> SourceUnit
+translateSourceUnitWithForkAliases forkAliasMap unit =
+  unit{sourceUnitBuild = translateBuild <$> sourceUnitBuild unit}
+  where
+    translateBuild :: SourceUnitBuild -> SourceUnitBuild
+    translateBuild build =
+      build
+        { buildImports = map (translateLocatorWithForkAliases forkAliasMap) (buildImports build)
+        , buildDependencies = map translateSourceDep (buildDependencies build)
+        }
+    translateSourceDep :: SourceUnitDependency -> SourceUnitDependency
+    translateSourceDep dep =
+      dep
+        { sourceDepLocator = translateLocatorWithForkAliases forkAliasMap (sourceDepLocator dep)
+        , sourceDepImports = map (translateLocatorWithForkAliases forkAliasMap) (sourceDepImports dep)
+        }
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =

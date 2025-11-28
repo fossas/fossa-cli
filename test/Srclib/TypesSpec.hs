@@ -1,13 +1,11 @@
 module Srclib.TypesSpec (spec) where
 
 import App.Fossa.Analyze (mkForkAliasMap, translateDependency, translateDependencyGraph)
-import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..), forkAliasEntryToLocator)
+import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
 import Data.Map qualified as Map
 import Data.Set qualified as Set
-import DepTypes (CargoType, Dependency (..), DepType (..), GitType, GoType, NodeJSType, PipType, VerConstraint (CEq))
-import Graphing (Graphing)
+import DepTypes (Dependency (..), DepType (..), VerConstraint (CEq))
 import Graphing qualified
-import Srclib.Converter (toLocator)
 import Srclib.Types (
   Locator (..),
   SourceUnit (..),
@@ -239,7 +237,7 @@ spec = do
           base = ForkAliasEntry CargoType "serde" Nothing
           forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" (Just (CEq "2.0.0")) [] mempty Map.empty
+          dep = Dependency CargoType "my-serde" (Just (CEq "2.0.0")) [] Set.empty Map.empty
 
       let translated = translateDependency forkAliasMap dep
 
@@ -274,7 +272,7 @@ spec = do
           base = ForkAliasEntry CargoType "serde" Nothing
           forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" (Just (CEq "1.5.0")) [] mempty Map.empty
+          dep = Dependency CargoType "my-serde" (Just (CEq "1.5.0")) [] Set.empty Map.empty
 
       let translated = translateDependency forkAliasMap dep
 
@@ -327,7 +325,7 @@ spec = do
           forkAliasMap = mkForkAliasMap forkAliases
           dep1 = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
           dep2 = Dependency GoType "github.com/myorg/gin" (Just (CEq "v1.9.1")) [] Set.empty Map.empty
-          graph = Graphing.overlay (Graphing.vertex dep1) (Graphing.vertex dep2)
+          graph = Graphing.deeps [dep1, dep2]
 
       let translated = translateDependencyGraph forkAliasMap graph
       let vertices = Graphing.vertexList translated
