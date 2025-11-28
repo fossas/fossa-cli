@@ -663,13 +663,16 @@ buildProject forkAliasMap project =
     , "graph" .= graphingToGraph (translateDependencyGraph forkAliasMap (projectResultGraph project))
     ]
 
--- | Translate a locator using fork aliases with version matching.
--- Matching rules:
+-- | Translate a locator using fork aliases
+-- If the fork locator exists in the list of translations, then translate the fork locator to the base locator
+-- The fetcher type and project name will be translated directly. Versions are a bit more complex.
+-- Versions are not required.
+-- version matching rules:
 --   - If fork version is specified, only that exact version matches
 --   - If fork version is not specified, any version matches
 -- Translation rules:
---   - If base version is specified, always use that version
---   - If base version is not specified, preserve the original version
+--   - If base version is specified, always convert to that version
+--   - If base version is not specified, preserve the original version from the fork
 translateLocatorWithForkAliases :: Map.Map Locator ForkAlias -> Locator -> Locator
 translateLocatorWithForkAliases forkAliasMap loc =
   let projectLocator = toProjectLocator loc
@@ -691,12 +694,6 @@ translateLocatorWithForkAliases forkAliasMap loc =
                 else loc
 
 -- | Translate dependencies in a graph using fork aliases.
--- Matching rules:
---   - If fork version is specified, only that exact version matches
---   - If fork version is not specified, any version matches
--- Translation rules:
---   - If base version is specified, always use that version
---   - If base version is not specified, preserve the original version
 translateDependencyGraph :: Map.Map Locator ForkAlias -> Graphing Dependency -> Graphing Dependency
 translateDependencyGraph forkAliasMap = Graphing.gmap (translateDependency forkAliasMap)
 
