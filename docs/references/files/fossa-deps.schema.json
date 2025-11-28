@@ -330,6 +330,32 @@
         "version"
       ],
       "additionalProperties": false
+    },
+    "fork-alias": {
+      "properties": {
+        "my-fork": {
+          "type": "string",
+          "description": "The locator for your fork of the dependency. Format: <fetcher>+<project> or <fetcher>+<project>$<revision> (e.g., 'cargo+my-serde' or 'cargo+my-serde$1.0.0').",
+          "minLength": 1
+        },
+        "base": {
+          "type": "string",
+          "description": "The locator for the base/original dependency that your fork should be aliased to. Format: <fetcher>+<project> or <fetcher>+<project>$<revision> (e.g., 'cargo+serde' or 'cargo+serde$1.0.0').",
+          "minLength": 1
+        },
+        "labels": {
+          "type": "array",
+          "description": "Optional labels to be applied to the fork alias.",
+          "items": {
+            "$ref": "#/$defs/label"
+          }
+        }
+      },
+      "required": [
+        "my-fork",
+        "base"
+      ],
+      "additionalProperties": false
     }
   },
   "type": "object",
@@ -363,6 +389,13 @@
       "description": "Remote dependencies to license scanning",
       "items": {
         "$ref": "#/$defs/remote-dependency"
+      }
+    },
+    "fork-aliases": {
+      "type": "array",
+      "description": "Fork aliases to map your fork dependencies to their base dependencies. When a dependency matches a fork alias (by fetcher and project, ignoring version), it is replaced with the base locator, preserving the original version.",
+      "items": {
+        "$ref": "#/$defs/fork-alias"
       }
     }
   },
