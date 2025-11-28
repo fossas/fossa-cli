@@ -96,7 +96,6 @@ the same project will be drastically faster. For example, scanning the same
 revision of Linux twice in a row should result in the second scan only taking a
 few seconds.
 
-
 The time it takes to scan newer versions of your codebase will depend on how
 many files in the new version have not been previously scanned. A file has been
 previously scanned if the exact same file has ever been scanned by Vendetta.

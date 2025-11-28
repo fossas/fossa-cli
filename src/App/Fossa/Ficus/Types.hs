@@ -212,8 +212,6 @@ data FicusConfig = FicusConfig
 
 data FicusStrategy
   = FicusStrategySnippetScan
-  | FicusStrategyNoop
-  | FicusStrategyHash
   | FicusStrategyVendetta
   deriving (Show, Eq, Generic)
 

@@ -94,7 +94,7 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     locatorAdjacent = Graphing.toAdjacencyMap locatorGraph
 
     locatorsWithMetadata :: [LocatorWithMetadata]
-    locatorsWithMetadata = map (\dep -> LocatorWithMetadata{locatorWithMetadataLocator = (toLocator dep), locatorWithMetadataData = Aeson.Null}) (Graphing.directList filteredGraph)
+    locatorsWithMetadata = map (\loc -> LocatorWithMetadata{locatorWithMetadataLocator = loc, locatorWithMetadataData = Aeson.Null}) (AM.vertexList locatorAdjacent)
 
     deps :: [SourceUnitDependency]
     deps = map (mkSourceUnitDependency locatorAdjacent) locatorsWithMetadata

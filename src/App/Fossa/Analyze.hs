@@ -104,7 +104,7 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, isJust, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
@@ -343,35 +343,26 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
   let ficusStrategies =
-        [ strategy
-        | (strategy, enabled) <-
-            [ (FicusStrategySnippetScan, enableSnippetScan)
-            , (FicusStrategyVendetta, enableVendetta)
-            ]
-        , enabled
-        ]
+        catMaybes
+          [ if enableSnippetScan then Just FicusStrategySnippetScan else Nothing
+          , if enableVendetta then Just FicusStrategyVendetta else Nothing
+          ]
   maybeFicusResults <-
     Diag.errorBoundaryIO . diagToDebug $
-      if null ficusStrategies
+      if null ficusStrategies || filterIsVSIOnly filters
         then do
-          logInfo "Skipping ficus scanning (--x-snippet-scan and/or x-vendetta not set)"
           pure Nothing
         else
-          if filterIsVSIOnly filters
-            then do
-              logInfo "Running in VSI only mode, skipping ficus scanning"
-              pure Nothing
-            else
-              Diag.context "ficus-scanning"
-                . runStickyLogger SevInfo
-                $ analyzeWithFicus
-                  basedir
-                  maybeApiOpts
-                  revision
-                  ficusStrategies
-                  (Config.licenseScanPathFilters vendoredDepsOptions)
-                  (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
-                  (Config.debugDir cfg)
+          Diag.context "ficus-scanning"
+            . runStickyLogger SevInfo
+            $ analyzeWithFicus
+              basedir
+              maybeApiOpts
+              revision
+              ficusStrategies
+              (Config.licenseScanPathFilters vendoredDepsOptions)
+              (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
+              (Config.debugDir cfg)
   let ficusResults = join $ resultToMaybe maybeFicusResults
 
   maybeLernieResults <-

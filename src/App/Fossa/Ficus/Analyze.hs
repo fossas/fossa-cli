@@ -24,7 +24,7 @@ import App.Fossa.Ficus.Types (
   FicusPerStrategyFlag (..),
   FicusScanStats (..),
   FicusSnippetScanResults (..),
-  FicusStrategy (FicusStrategyHash, FicusStrategyNoop, FicusStrategySnippetScan, FicusStrategyVendetta),
+  FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta),
   FicusVendoredDependency (..),
   FicusVendoredDependencyScanResults (..),
  )
@@ -412,8 +412,6 @@ ficusCommand ficusConfig bin = do
     configStrategies = concatMap (\strategy -> ["--strategy", strategyToArg strategy]) $ ficusConfigStrategies ficusConfig
     strategyToArg = \case
       FicusStrategySnippetScan -> "snippet-scan"
-      FicusStrategyNoop -> "noop"
-      FicusStrategyHash -> "hash"
       FicusStrategyVendetta -> "vendetta"
 
     maskApiKeyInCommand :: Text -> Text
