@@ -9,9 +9,11 @@ module App.Fossa.ManualDeps (
   RemoteDependency (..),
   DependencyMetadata (..),
   VendoredDependency (..),
+  ForkAlias (..),
   ManualDependencies (..),
   LocatorDependency (..),
   FoundDepsFile (..),
+  ManualDepsResult (..),
   analyzeFossaDepsFile,
   findAndReadFossaDepsFile,
   findFossaDepsFile,
@@ -82,6 +84,12 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
+data ManualDepsResult = ManualDepsResult
+  { manualDepsResultSourceUnit :: Maybe SourceUnit
+  , manualDepsResultForkAliases :: [ForkAlias]
+  }
+  deriving (Eq, Show)
+
 analyzeFossaDepsFile ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
@@ -95,21 +103,22 @@ analyzeFossaDepsFile ::
   Maybe FilePath ->
   Maybe ApiOpts ->
   VendoredDependencyOptions ->
-  m (Maybe SourceUnit)
+  m ManualDepsResult
 analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOptions = do
   maybeDepsFile <-
     case maybeCustomFossaDepsPath of
       Nothing -> findFossaDepsFile root
       Just filePath -> retrieveCustomFossaDepsFile filePath
   case maybeDepsFile of
-    Nothing -> pure Nothing
+    Nothing -> pure $ ManualDepsResult Nothing []
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
+      let aliases = forkAliases manualDeps
       if hasNoDeps manualDeps
-        then pure Nothing
-        else
-          context "Converting fossa-deps to partial API payload" $
-            Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+        then pure $ ManualDepsResult Nothing aliases
+        else context "Converting fossa-deps to partial API payload" $ do
+          sourceUnit <- toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+          pure $ ManualDepsResult (Just sourceUnit) aliases
 
 retrieveCustomFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -234,6 +243,7 @@ collectInteriorLabels org ManualDependencies{..} =
       <> mapMaybe customDepToLabel customDependencies
       <> mapMaybe (remoteDepToLabel org) remoteDependencies
       <> mapMaybe locatorDepToLabel locatorDependencies
+      <> mapMaybe forkAliasToLabel forkAliases
   where
     liftEmpty :: (a, [b]) -> Maybe (a, [b])
     liftEmpty (_, []) = Nothing
@@ -266,6 +276,9 @@ collectInteriorLabels org ManualDependencies{..} =
     locatorDepToLabel :: LocatorDependency -> Maybe (Text, [ProvidedPackageLabel])
     locatorDepToLabel (LocatorDependencyPlain _) = Nothing
     locatorDepToLabel (LocatorDependencyStructured locator labels) = liftEmpty (renderLocator locator, labels)
+
+    forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
+    forkAliasToLabel ForkAlias{..} = liftEmpty (renderLocator forkAliasBase, forkAliasLabels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::
@@ -401,8 +414,23 @@ data ManualDependencies = ManualDependencies
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
   , locatorDependencies :: [LocatorDependency]
+  , forkAliases :: [ForkAlias]
   }
   deriving (Eq, Ord, Show)
+
+data ForkAlias = ForkAlias
+  { forkAliasMyFork :: Locator
+  , forkAliasBase :: Locator
+  , forkAliasLabels :: [ProvidedPackageLabel]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ForkAlias where
+  parseJSON = withObject "ForkAlias" $ \obj ->
+    ForkAlias
+      <$> obj .: "my-fork"
+      <*> obj .: "base"
+      <*> obj .:? "labels" .!= []
 
 data LocatorDependency
   = LocatorDependencyPlain Locator
@@ -475,11 +503,12 @@ instance FromJSON ManualDependencies where
       <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
       <*> (obj .:? "locator-dependencies" .!= [])
+      <*> (obj .:? "fork-aliases" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
       isMissingOr1 _ = pure ()
-  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty
+  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty mempty
   parseJSON other = fail $ "Expected object or Null for ManualDependencies, but got: " <> show other
 
 depTypeParser :: Text -> Parser DepType

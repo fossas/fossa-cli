@@ -32,7 +32,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (ScanUnits (SourceUnitOnly), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (ScanUnits (..), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalysisTacticTypes (..),
@@ -54,7 +54,7 @@ import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.ManualDeps (ForkAlias (..), ManualDepsResult (..), analyzeFossaDepsFile)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -103,10 +103,12 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
+import DepTypes (Dependency (..))
 import Diag.Diagnostic as DI
 import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -124,6 +126,8 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
+import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -136,8 +140,16 @@ import Prettyprinter.Render.Terminal (
   Color (Cyan, Green, Yellow),
   color,
  )
+import Srclib.Converter (fetcherToDepType, toLocator)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (
+  LicenseSourceUnit (..),
+  Locator (..),
+  SourceUnit (..),
+  sourceUnitToFullSourceUnit,
+  toProjectLocator,
+  translateSourceUnitLocators,
+ )
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
@@ -303,13 +315,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.xSnippetScan cfg
 
-  manualSrcUnits <-
+  manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
-          pure Nothing
+          pure $ ManualDepsResult Nothing []
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
+  let forkAliases = maybe [] manualDepsResultForkAliases (resultToMaybe manualDepsResult)
+      manualSrcUnits = fmap manualDepsResultSourceUnit manualDepsResult
 
   orgInfo <-
     for
@@ -462,10 +476,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
-  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
+  let forkAliasMap = mkForkAliasMap forkAliases
+
+  -- Convert projects to source units and translate fork aliases in them
+  let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
+  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators forkAliasMap) additionalSourceUnits
+  let translatedScannedSourceUnits = map (translateSourceUnitLocators forkAliasMap) scannedSourceUnits
+  let allTranslatedSourceUnits = translatedAdditionalSourceUnits ++ translatedScannedSourceUnits
+
+  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
 
   scanUnits <-
-    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+    case (keywordSearchResultsFound, checkForEmptyUpload projectScans filteredProjects' allTranslatedSourceUnits licenseSourceUnits) of
       (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
       (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
@@ -602,27 +624,48 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult includeAll srcUnits projects licenseSourceUnits =
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator Locator -> Aeson.Value
+buildResult srcUnits projects licenseSourceUnits forkAliasMap =
   Aeson.object
-    [ "projects" .= map buildProject projects
+    [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
   where
     mergedUnits = case licenseSourceUnits of
-      Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
+      Nothing -> map sourceUnitToFullSourceUnit srcUnits
       Just licenseUnits -> do
-        NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
-    finalSourceUnits = srcUnits ++ scannedUnits
-    scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
+        NE.toList $ mergeSourceAndLicenseUnits srcUnits licenseUnits
 
-buildProject :: ProjectResult -> Aeson.Value
-buildProject project =
+-- | Create a fork alias map from a list of fork aliases.
+mkForkAliasMap :: [ForkAlias] -> Map.Map Locator Locator
+mkForkAliasMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator forkAliasMyFork, forkAliasBase))
+
+buildProject :: Map.Map Locator Locator -> ProjectResult -> Aeson.Value
+buildProject forkAliasMap project =
   Aeson.object
     [ "path" .= projectResultPath project
     , "type" .= projectResultType project
-    , "graph" .= graphingToGraph (projectResultGraph project)
+    , "graph" .= graphingToGraph (translateDependencyGraph forkAliasMap (projectResultGraph project))
     ]
+
+-- | Translate dependencies in a graph using fork aliases.
+-- When a dependency matches a fork alias (by fetcher and project, ignoring version),
+-- it is replaced with the base locator, preserving the original version.
+translateDependencyGraph :: Map.Map Locator Locator -> Graphing Dependency -> Graphing Dependency
+translateDependencyGraph forkAliasMap = Graphing.gmap (translateDependency forkAliasMap)
+
+-- | Translate a single dependency using fork aliases.
+translateDependency :: Map.Map Locator Locator -> Dependency -> Dependency
+translateDependency forkAliasMap dep =
+  case Map.lookup (toProjectLocator (toLocator dep)) forkAliasMap of
+    Nothing -> dep
+    Just baseLocator ->
+      let baseDepType = fromMaybe (dependencyType dep) (fetcherToDepType (locatorFetcher baseLocator))
+          baseName = locatorProject baseLocator
+       in dep
+            { dependencyType = baseDepType
+            , dependencyName = baseName
+            }
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =

@@ -97,3 +97,7 @@ locator-dependencies:
   labels:
   - label: locator-dependency-label
     scope: org
+
+fork-aliases:
+  - my-fork: cargo+my-serde
+    base: cargo+serde
