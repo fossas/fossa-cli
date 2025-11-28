@@ -82,6 +82,7 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
+import Control.Applicative ((<|>))
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
