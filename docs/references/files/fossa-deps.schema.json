@@ -346,7 +346,7 @@
         },
         "version": {
           "type": "string",
-          "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
+          "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. Optional. See [fork aliases documentation](./fossa-deps.md#fork-aliases) for more information."
         }
       },
       "required": [
