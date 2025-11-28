@@ -93,8 +93,8 @@ source components, which can take time.
 Once you scan the first time however, FOSSA will cache the open source component
 matches for each MD5 hash Vendetta provides. This means that subsequent scans of
 the same project will be drastically faster. For example, scanning the same
-revision of Linux twice in a row should result in the second scan only taking a
-few seconds.
+revision of Linux twice in a row should result in the second scan taking only
+1-2 minutes.
 
 The time it takes to scan newer versions of your codebase will depend on how
 many files in the new version have not been previously scanned. A file has been
