@@ -161,7 +161,7 @@ For more detail about how Snippet Scanning works, how to use file filtering duri
 ### Vendored Dependency Scanning with Vendetta
 
 Vendetta is a feature that identifies the paths of potential open source code
-depedencies vendored in your project by comparing file hashes against FOSSA's
+dependencies vendored in your project by comparing file hashes against FOSSA's
 knowledge base. This feature helps find dependencies that are included in your
 project directly as source.
 
