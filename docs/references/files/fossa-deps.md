@@ -93,7 +93,7 @@ For more details, please refer to the [feature](../../features/vendored-dependen
 
 ### `fork-aliases:`
 
-Denotes mapping of fork dependencies to their base dependencies. When a dependency matches a fork alias (by type and name, ignoring version), it is replaced with the base dependency, preserving the original version. This is useful when you have forked a dependency and want it to be treated as the original dependency in FOSSA.
+Denotes mapping of fork dependencies to their base dependencies. This is useful when you have forked a dependency and want it to be treated as the original dependency in FOSSA.
 
 - `my-fork`: The fork dependency entry that should be aliased to the base dependency. (Required)
   - `type`: Type of the fork dependency. (Required)
@@ -104,6 +104,14 @@ Denotes mapping of fork dependencies to their base dependencies. When a dependen
   - `name`: Name of the base dependency. (Required)
   - `version`: Version of the base dependency. (Optional)
 - `labels`: An optional list of labels to be added to the fork alias.
+
+**Matching rules:**
+- If `my-fork` version is specified, only that exact version will be translated
+- If `my-fork` version is not specified, any version will match
+
+**Translation rules:**
+- If `base` version is specified, the dependency will always be translated to that version
+- If `base` version is not specified, the original version from the fork is preserved
 
 ```yaml
 fork-aliases:
@@ -116,9 +124,15 @@ fork-aliases:
   labels:
   - label: internal
     scope: org
+- my-fork:
+    type: cargo
+    name: my-serde
+    version: 1.0.0  # Only version 1.0.0 will be translated
+  base:
+    type: cargo
+    name: serde
+    version: 2.0.0  # Will always translate to version 2.0.0
 ```
-
-> Note: Fork aliases match dependencies by type and name, ignoring version. When a match is found, the dependency is replaced with the base dependency while preserving the original version from the fork.
 
 ## Labels
 

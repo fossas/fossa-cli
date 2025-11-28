@@ -54,7 +54,13 @@ import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (ForkAlias (..), ManualDepsResult (..), analyzeFossaDepsFile, forkAliasEntryToLocator)
+import App.Fossa.ManualDeps (
+  ForkAlias (..),
+  ForkAliasEntry (..),
+  ManualDepsResult (..),
+  analyzeFossaDepsFile,
+  forkAliasEntryToLocator,
+ )
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -108,7 +114,7 @@ import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
-import DepTypes (Dependency (..))
+import DepTypes (Dependency (..), VerConstraint (CEq))
 import Diag.Diagnostic as DI
 import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -477,11 +483,13 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
+  -- Create a simple locator map for source unit translation (no version matching needed)
+  let forkAliasLocatorMap = mkForkAliasLocatorMap forkAliases
 
   -- Convert projects to source units and translate fork aliases in them
   let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
-  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators forkAliasMap) additionalSourceUnits
-  let translatedScannedSourceUnits = map (translateSourceUnitLocators forkAliasMap) scannedSourceUnits
+  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators forkAliasLocatorMap) additionalSourceUnits
+  let translatedScannedSourceUnits = map (translateSourceUnitLocators forkAliasLocatorMap) scannedSourceUnits
   let allTranslatedSourceUnits = translatedAdditionalSourceUnits ++ translatedScannedSourceUnits
 
   let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
@@ -624,7 +632,7 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator Locator -> Aeson.Value
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Aeson.Value
 buildResult srcUnits projects licenseSourceUnits forkAliasMap =
   Aeson.object
     [ "projects" .= map (buildProject forkAliasMap) projects
@@ -637,10 +645,18 @@ buildResult srcUnits projects licenseSourceUnits forkAliasMap =
         NE.toList $ mergeSourceAndLicenseUnits srcUnits licenseUnits
 
 -- | Create a fork alias map from a list of fork aliases.
-mkForkAliasMap :: [ForkAlias] -> Map.Map Locator Locator
-mkForkAliasMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasMyFork), forkAliasEntryToLocator forkAliasBase))
+-- The map is keyed by project locator (type+name, no version) to allow lookup by type+name.
+-- The value is the full ForkAlias to check version matching and get base translation info.
+mkForkAliasMap :: [ForkAlias] -> Map.Map Locator ForkAlias
+mkForkAliasMap = Map.fromList . map (\alias@ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasMyFork), alias))
 
-buildProject :: Map.Map Locator Locator -> ProjectResult -> Aeson.Value
+-- | Create a simple locator-to-locator map for source unit translation.
+-- This is used for translating locators in source units (buildImports, etc.)
+-- where version matching is not needed - we just translate my-fork to base.
+mkForkAliasLocatorMap :: [ForkAlias] -> Map.Map Locator Locator
+mkForkAliasLocatorMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasMyFork), forkAliasEntryToLocator forkAliasBase))
+
+buildProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
   Aeson.object
     [ "path" .= projectResultPath project
@@ -649,23 +665,41 @@ buildProject forkAliasMap project =
     ]
 
 -- | Translate dependencies in a graph using fork aliases.
--- When a dependency matches a fork alias (by fetcher and project, ignoring version),
--- it is replaced with the base locator, preserving the original version.
-translateDependencyGraph :: Map.Map Locator Locator -> Graphing Dependency -> Graphing Dependency
+-- Matching rules:
+--   - If my-fork version is specified, only that exact version matches
+--   - If my-fork version is not specified, any version matches
+-- Translation rules:
+--   - If base version is specified, always use that version
+--   - If base version is not specified, preserve the original version
+translateDependencyGraph :: Map.Map Locator ForkAlias -> Graphing Dependency -> Graphing Dependency
 translateDependencyGraph forkAliasMap = Graphing.gmap (translateDependency forkAliasMap)
 
 -- | Translate a single dependency using fork aliases.
-translateDependency :: Map.Map Locator Locator -> Dependency -> Dependency
+translateDependency :: Map.Map Locator ForkAlias -> Dependency -> Dependency
 translateDependency forkAliasMap dep =
-  case Map.lookup (toProjectLocator (toLocator dep)) forkAliasMap of
-    Nothing -> dep
-    Just baseLocator ->
-      let baseDepType = fromMaybe (dependencyType dep) (fetcherToDepType (locatorFetcher baseLocator))
-          baseName = locatorProject baseLocator
-       in dep
-            { dependencyType = baseDepType
-            , dependencyName = baseName
-            }
+  let depLocator = toLocator dep
+      projectLocator = toProjectLocator depLocator
+   in case Map.lookup projectLocator forkAliasMap of
+        Nothing -> dep
+        Just ForkAlias{forkAliasMyFork = myFork, forkAliasBase = base} ->
+          -- Check if version matches (if my-fork version is specified)
+          let versionMatches =
+                case (forkAliasEntryVersion myFork, locatorRevision depLocator) of
+                  (Nothing, _) -> True -- No version specified in my-fork, match any version
+                  (Just forkVersion, Just depVersion) -> forkVersion == depVersion
+                  (Just _, Nothing) -> False -- Fork specifies version but dep has none
+           in if versionMatches
+                then
+                  let baseDepType = forkAliasEntryType base
+                      baseName = forkAliasEntryName base
+                      -- Use base version if specified, otherwise preserve original
+                      finalVersion = forkAliasEntryVersion base <|> locatorRevision depLocator
+                   in dep
+                        { dependencyType = baseDepType
+                        , dependencyName = baseName
+                        , dependencyVersion = finalVersion >>= Just . CEq
+                        }
+                else dep
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =
