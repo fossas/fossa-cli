@@ -1,6 +1,6 @@
 module Srclib.TypesSpec (spec) where
 
-import App.Fossa.Analyze (mkForkAliasMap, translateDependency, translateDependencyGraph)
+import App.Fossa.Analyze (mkForkAliasMap, translateDependency, translateDependencyGraph, translateLocatorWithForkAliases)
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
 import Data.Map qualified as Map
 import Data.Set qualified as Set
@@ -231,6 +231,125 @@ spec = do
 
       -- Should remain unchanged
       translated `shouldBe` sourceUnit
+
+  describe "translateLocatorWithForkAliases" $ do
+    it "should translate when fork version matches" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" (Just "1.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      translated `shouldBe` Locator "cargo" "serde" (Just "1.0.0")
+
+    it "should not translate when fork version does not match" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" (Just "2.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should remain unchanged because version doesn't match
+      translated `shouldBe` loc
+
+    it "should translate any version when fork version is not specified" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" (Just "1.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      translated `shouldBe` Locator "cargo" "serde" (Just "1.0.0")
+
+    it "should use base version when specified" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
+          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" (Just "1.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should use base version 2.0.0 instead of original 1.0.0
+      translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
+
+    it "should preserve original version when base version is not specified" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" (Just "1.5.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should preserve original version 1.5.0
+      translated `shouldBe` Locator "cargo" "serde" (Just "1.5.0")
+
+    it "should not translate when fork specifies version but loc has none" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" Nothing
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should remain unchanged because loc has no version but fork requires one
+      translated `shouldBe` loc
+
+    it "should handle combination: fork version matches and base version specified" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
+          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" (Just "1.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Version matches fork, so translate to base with base version
+      translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
+
+    it "should not translate when type or name doesn't match" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "npm" "my-serde" (Just "1.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should remain unchanged because type doesn't match
+      translated `shouldBe` loc
+
+    it "should not translate when locator doesn't match any fork alias" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
+          base = ForkAliasEntry CargoType "serde" Nothing
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "other-package" (Just "1.0.0")
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should remain unchanged because name doesn't match
+      translated `shouldBe` loc
+
+    it "should handle locator with no version when fork has no version requirement" $ do
+      let fork = ForkAliasEntry CargoType "my-serde" Nothing
+          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
+          forkAlias = ForkAlias fork base []
+          forkAliasMap = mkForkAliasMap [forkAlias]
+          loc = Locator "cargo" "my-serde" Nothing
+
+      let translated = translateLocatorWithForkAliases forkAliasMap loc
+
+      -- Should translate to base with base version
+      translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
 
   describe "translateDependency with fork aliases" $ do
     it "should translate when fork version matches" $ do
