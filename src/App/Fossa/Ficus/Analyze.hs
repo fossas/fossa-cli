@@ -122,10 +122,11 @@ analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRete
   logDebugWithTime "Preparing Ficus analysis configuration..."
   ficusResults <- runFicus maybeDebugDir ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
-  case snippetScanResults ficusResults of
-    Just results ->
-      logInfo $ pretty (formatFicusScanSummary results)
-    Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
+  when (FicusStrategySnippetScan `elem` strategies) $
+    case snippetScanResults ficusResults of
+      Just results ->
+        logInfo $ pretty (formatFicusScanSummary results)
+      Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
   pure ficusResults
   where
     ficusConfig =
