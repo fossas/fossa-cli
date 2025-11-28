@@ -45,5 +45,9 @@ locator-dependencies:
 - "fetcher-2+two$1.0.0"
 
 fork-aliases:
-  - my-fork: cargo+my-serde
-    base: cargo+serde
+  - my-fork:
+      type: cargo
+      name: my-serde
+    base:
+      type: cargo
+      name: serde

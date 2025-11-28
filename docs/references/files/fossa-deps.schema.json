@@ -331,17 +331,58 @@
       ],
       "additionalProperties": false
     },
+    "fork-alias-entry": {
+      "properties": {
+        "type": {
+          "enum": [
+            "bower",
+            "cargo",
+            "carthage",
+            "composer",
+            "cpan",
+            "renv",
+            "gem",
+            "git",
+            "go",
+            "hackage",
+            "hex",
+            "maven",
+            "npm",
+            "nuget",
+            "paket",
+            "pub",
+            "pypi",
+            "cocoapods",
+            "swift",
+            "url"
+          ],
+          "description": "Type of the dependency. It informs FOSSA which relevant registries to search for dependency's distribution."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the dependency. This name will be used to search for dependency in relevant registries."
+        },
+        "version": {
+          "type": "string",
+          "description": "Version of the dependency. It informs FOSSA which version of the dependency to scan. If not provided, latest version will be used."
+        }
+      },
+      "required": [
+        "type",
+        "name"
+      ],
+      "additionalProperties": false
+    },
     "fork-alias": {
       "properties": {
         "my-fork": {
-          "type": "string",
-          "description": "The locator for your fork of the dependency. Format: <fetcher>+<project> or <fetcher>+<project>$<revision> (e.g., 'cargo+my-serde' or 'cargo+my-serde$1.0.0').",
-          "minLength": 1
+          "$ref": "#/$defs/fork-alias-entry",
+          "description": "The fork dependency entry that should be aliased to the base dependency."
         },
         "base": {
-          "type": "string",
-          "description": "The locator for the base/original dependency that your fork should be aliased to. Format: <fetcher>+<project> or <fetcher>+<project>$<revision> (e.g., 'cargo+serde' or 'cargo+serde$1.0.0').",
-          "minLength": 1
+          "$ref": "#/$defs/fork-alias-entry",
+          "description": "The base/original dependency entry that your fork should be aliased to."
         },
         "labels": {
           "type": "array",

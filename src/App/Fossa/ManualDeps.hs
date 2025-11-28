@@ -10,6 +10,8 @@ module App.Fossa.ManualDeps (
   DependencyMetadata (..),
   VendoredDependency (..),
   ForkAlias (..),
+  ForkAliasEntry (..),
+  forkAliasEntryToLocator,
   ManualDependencies (..),
   LocatorDependency (..),
   FoundDepsFile (..),
@@ -278,7 +280,7 @@ collectInteriorLabels org ManualDependencies{..} =
     locatorDepToLabel (LocatorDependencyStructured locator labels) = liftEmpty (renderLocator locator, labels)
 
     forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
-    forkAliasToLabel ForkAlias{..} = liftEmpty (renderLocator forkAliasBase, forkAliasLabels)
+    forkAliasToLabel ForkAlias{..} = liftEmpty (renderLocator (forkAliasEntryToLocator forkAliasBase), forkAliasLabels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::
@@ -418,12 +420,34 @@ data ManualDependencies = ManualDependencies
   }
   deriving (Eq, Ord, Show)
 
+data ForkAliasEntry = ForkAliasEntry
+  { forkAliasEntryType :: DepType
+  , forkAliasEntryName :: Text
+  , forkAliasEntryVersion :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+forkAliasEntryToLocator :: ForkAliasEntry -> Locator
+forkAliasEntryToLocator ForkAliasEntry{..} =
+  Locator
+    { locatorFetcher = depTypeToFetcher forkAliasEntryType
+    , locatorProject = forkAliasEntryName
+    , locatorRevision = forkAliasEntryVersion
+    }
+
 data ForkAlias = ForkAlias
-  { forkAliasMyFork :: Locator
-  , forkAliasBase :: Locator
+  { forkAliasMyFork :: ForkAliasEntry
+  , forkAliasBase :: ForkAliasEntry
   , forkAliasLabels :: [ProvidedPackageLabel]
   }
   deriving (Eq, Ord, Show)
+
+instance FromJSON ForkAliasEntry where
+  parseJSON = withObject "ForkAliasEntry" $ \obj ->
+    ForkAliasEntry
+      <$> (obj .: "type" >>= depTypeParser)
+      <*> (obj `neText` "name")
+      <*> (unTextLike <$$> obj .:? "version")
 
 instance FromJSON ForkAlias where
   parseJSON = withObject "ForkAlias" $ \obj ->

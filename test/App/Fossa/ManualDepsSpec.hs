@@ -10,6 +10,7 @@ import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
   DependencyMetadata (DependencyMetadata),
   ForkAlias (ForkAlias),
+  ForkAliasEntry (ForkAliasEntry),
   LinuxReferenceDependency (..),
   LocatorDependency (..),
   ManagedReferenceDependency (..),
@@ -67,7 +68,7 @@ theWorks = ManualDependencies references customs vendors remotes locators forkAl
       , LocatorDependencyPlain (Locator "fetcher-2" "two" (Just "1.0.0"))
       ]
     forkAliases =
-      [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing) []]
+      [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) []]
 
 theWorksLabeled :: ManualDependencies
 theWorksLabeled = ManualDependencies references customs vendors remotes locators forkAliases
@@ -96,7 +97,7 @@ theWorksLabeled = ManualDependencies references customs vendors remotes locators
       , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
       ]
     forkAliases =
-      [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing) []]
+      [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) []]
 
 theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
 theWorksLabels org =
@@ -457,7 +458,7 @@ forkAliasManualDep =
     mempty
     mempty
     mempty
-    [ForkAlias (Locator "cargo" "my-serde" Nothing) (Locator "cargo" "serde" Nothing) []]
+    [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) []]
 
 customDepWithEmptyVersion :: Text
 customDepWithEmptyVersion =
@@ -568,6 +569,10 @@ forkAliasDep :: Text
 forkAliasDep =
   [r|
 fork-aliases:
-- my-fork: cargo+my-serde
-  base: cargo+serde
+- my-fork:
+    type: cargo
+    name: my-serde
+  base:
+    type: cargo
+    name: serde
 |]

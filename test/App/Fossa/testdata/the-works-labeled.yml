@@ -99,5 +99,9 @@ locator-dependencies:
     scope: org
 
 fork-aliases:
-  - my-fork: cargo+my-serde
-    base: cargo+serde
+  - my-fork:
+      type: cargo
+      name: my-serde
+    base:
+      type: cargo
+      name: serde

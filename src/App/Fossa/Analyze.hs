@@ -54,7 +54,7 @@ import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (ForkAlias (..), ManualDepsResult (..), analyzeFossaDepsFile)
+import App.Fossa.ManualDeps (ForkAlias (..), ManualDepsResult (..), analyzeFossaDepsFile, forkAliasEntryToLocator)
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -638,7 +638,7 @@ buildResult srcUnits projects licenseSourceUnits forkAliasMap =
 
 -- | Create a fork alias map from a list of fork aliases.
 mkForkAliasMap :: [ForkAlias] -> Map.Map Locator Locator
-mkForkAliasMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator forkAliasMyFork, forkAliasBase))
+mkForkAliasMap = Map.fromList . map (\ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasMyFork), forkAliasEntryToLocator forkAliasBase))
 
 buildProject :: Map.Map Locator Locator -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
