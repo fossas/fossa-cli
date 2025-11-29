@@ -78,7 +78,7 @@ import Fossa.API.Types (ApiOpts, OrgId, Organization (..), orgFileUpload)
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), ProvidedPackageLabel, SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), buildProvidedPackageLabels, parseLocator, renderLocator, someBaseToOriginPath)
+import Srclib.Types (AdditionalDepData (..), Locator (..), ProvidedPackageLabel, SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), buildProvidedPackageLabels, parseLocator, renderLocator, someBaseToOriginPath, toProjectLocator)
 import System.FilePath (takeExtension)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
@@ -280,7 +280,11 @@ collectInteriorLabels org ManualDependencies{..} =
     locatorDepToLabel (LocatorDependencyStructured locator labels) = liftEmpty (renderLocator locator, labels)
 
     forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
-    forkAliasToLabel ForkAlias{..} = liftEmpty (renderLocator (forkAliasEntryToLocator forkAliasBase), forkAliasLabels)
+    forkAliasToLabel ForkAlias{..} =
+      -- Use project locator (without version) so labels match any version of the translated dependency
+      let baseLocator = forkAliasEntryToLocator forkAliasBase
+          projectLocator = toProjectLocator baseLocator
+       in liftEmpty (renderLocator projectLocator, forkAliasLabels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::

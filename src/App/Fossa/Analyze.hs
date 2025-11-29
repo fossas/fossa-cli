@@ -65,8 +65,8 @@ import App.Fossa.ManualDeps (
   ForkAliasEntry (..),
   ManualDepsResult (..),
   analyzeFossaDepsFile,
-  forkAliasEntryToLocator,
- )
+  forkAliasEntryToLocator
+  )
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -119,6 +119,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import DepTypes (Dependency (..), VerConstraint (CEq))
@@ -158,11 +159,15 @@ import Srclib.Converter qualified as Srclib
 import Srclib.Types (
   LicenseSourceUnit (..),
   Locator (..),
+  ProvidedPackageLabel,
+  ProvidedPackageLabels (..),
   SourceUnit (..),
+  buildProvidedPackageLabels,
+  renderLocator,
   sourceUnitToFullSourceUnit,
   toProjectLocator,
-  translateSourceUnitLocators,
- )
+  translateSourceUnitLocators
+  )
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
@@ -490,12 +495,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
+  -- Collect labels from fork aliases to merge into source units
+  let forkAliasLabels = collectForkAliasLabels forkAliases
 
   -- Convert projects to source units and translate fork aliases in them
   let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
   let translatedAdditionalSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) additionalSourceUnits
   let translatedScannedSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) scannedSourceUnits
-  let allTranslatedSourceUnits = translatedAdditionalSourceUnits ++ translatedScannedSourceUnits
+  let allTranslatedSourceUnits = map (mergeForkAliasLabels forkAliasLabels) (translatedAdditionalSourceUnits ++ translatedScannedSourceUnits)
 
   let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
 
@@ -654,6 +661,31 @@ buildResult srcUnits projects licenseSourceUnits forkAliasMap =
 -- The value is the full ForkAlias to check version matching and get base translation info.
 mkForkAliasMap :: [ForkAlias] -> Map.Map Locator ForkAlias
 mkForkAliasMap = Map.fromList . map (\alias@ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasFork), alias))
+
+-- | Collect labels from fork aliases into a map keyed by locator string.
+-- Labels are keyed by project locator (without version) so they match any version.
+collectForkAliasLabels :: [ForkAlias] -> Map.Map Text [ProvidedPackageLabel]
+collectForkAliasLabels = Map.fromListWith (++) . mapMaybe forkAliasToLabel
+  where
+    forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
+    forkAliasToLabel ForkAlias{..} =
+      -- Use project locator (without version) so labels match any version of the translated dependency
+      let baseLocator = forkAliasEntryToLocator forkAliasBase
+          projectLocator = toProjectLocator baseLocator
+          labels = forkAliasLabels
+       in if null labels
+            then Nothing
+            else Just (renderLocator projectLocator, labels)
+
+-- | Merge fork alias labels into a source unit's existing labels.
+mergeForkAliasLabels :: Map.Map Text [ProvidedPackageLabel] -> SourceUnit -> SourceUnit
+mergeForkAliasLabels forkAliasLabels unit =
+  if Map.null forkAliasLabels
+    then unit
+    else
+      let existingLabels = maybe Map.empty unProvidedPackageLabels (sourceUnitLabels unit)
+          mergedLabels = Map.unionWith (++) forkAliasLabels existingLabels
+       in unit{sourceUnitLabels = buildProvidedPackageLabels mergedLabels}
 
 buildProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
