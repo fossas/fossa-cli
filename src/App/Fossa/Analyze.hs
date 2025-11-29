@@ -65,8 +65,8 @@ import App.Fossa.ManualDeps (
   ForkAliasEntry (..),
   ManualDepsResult (..),
   analyzeFossaDepsFile,
-  forkAliasEntryToLocator
-  )
+  forkAliasEntryToLocator,
+ )
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -166,8 +166,8 @@ import Srclib.Types (
   renderLocator,
   sourceUnitToFullSourceUnit,
   toProjectLocator,
-  translateSourceUnitLocators
-  )
+  translateSourceUnitLocators,
+ )
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
