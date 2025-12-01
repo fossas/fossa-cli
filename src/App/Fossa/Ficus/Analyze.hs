@@ -332,7 +332,7 @@ runFicus maybeDebugDir ficusConfig = do
                       let vendoredDep = findingToVendoredDependency finding
                       when (isJust currentSnippetResults && isJust analysisFinding) $
                         hPutStrLn stderr $
-                          "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
+                          "[" ++ timestamp ++ "] ERROR " <> "Unexpected mutliple snippet scan results"
                       let newSnippetResults = currentSnippetResults <|> analysisFinding
                       let newVendoredDeps = case vendoredDep of
                             Just dep -> dep : currentVendoredDeps
