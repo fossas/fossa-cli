@@ -22,7 +22,7 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Graphing qualified
-import Path (mkAbsDir)
+import Path (Abs, Dir, Path, mkAbsDir)
 import Srclib.Types (
   Locator (..),
   ProvidedPackageLabel (..),
