@@ -22,7 +22,7 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Graphing qualified
-import Path (Abs, Dir, Path, mkAbsDir)
+import Path (mkAbsDir)
 import Srclib.Types
   ( Locator (..)
   , ProvidedPackageLabel (..)
@@ -30,9 +30,6 @@ import Srclib.Types
   , ProvidedPackageLabels (..)
   , SourceUnit (..)
   , SourceUnitBuild (..)
-  , SourceUnitDependency (..)
-  , buildProvidedPackageLabels
-  , toProjectLocator
   , unProvidedPackageLabels
   )
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldMatchList)
