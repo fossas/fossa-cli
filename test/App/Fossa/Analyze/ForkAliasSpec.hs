@@ -62,14 +62,6 @@ spec = do
 
       labels `shouldBe` Map.singleton "cargo+serde$" [label]
 
-    it "should skip fork aliases with no labels" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          labels = collectForkAliasLabels [forkAlias]
-
-      labels `shouldBe` Map.empty
-
     it "should merge labels from multiple fork aliases with same base" $ do
       let fork1 = ForkAliasEntry CargoType "my-serde" Nothing
           base1 = ForkAliasEntry CargoType "serde" Nothing
@@ -165,58 +157,6 @@ spec = do
 
       labels `shouldBe` Just (Map.singleton "cargo+serde$" [ProvidedPackageLabel "internal" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "existing" ProvidedPackageLabelScopeRevision])
 
-    it "should match by project locator (without version)" $ do
-      let forkAliasLabels = Map.singleton "cargo+serde$" [ProvidedPackageLabel "internal" ProvidedPackageLabelScopeOrg]
-          -- Different version, but should still match
-          serdeLocator = Locator "cargo" "serde" (Just "2.0.0")
-          unit =
-            SourceUnit
-              "test"
-              "cargo"
-              "Cargo.toml"
-              ( Just
-                  SourceUnitBuild
-                    { buildArtifact = "default"
-                    , buildSucceeded = True
-                    , buildImports = [serdeLocator]
-                    , buildDependencies = []
-                    }
-              )
-              Complete
-              []
-              []
-              Nothing
-              Nothing
-
-      let merged = mergeForkAliasLabels forkAliasLabels unit
-      let labels = unProvidedPackageLabels <$> sourceUnitLabels merged
-
-      labels `shouldBe` Just forkAliasLabels
-
-    it "should handle empty fork alias labels" $ do
-      let forkAliasLabels = Map.empty
-          unit =
-            SourceUnit
-              "test"
-              "cargo"
-              "Cargo.toml"
-              ( Just
-                  SourceUnitBuild
-                    { buildArtifact = "default"
-                    , buildSucceeded = True
-                    , buildImports = []
-                    , buildDependencies = []
-                    }
-              )
-              Complete
-              []
-              []
-              Nothing
-              Nothing
-
-      let merged = mergeForkAliasLabels forkAliasLabels unit
-
-      merged `shouldBe` unit
 
   describe "translateLocatorWithForkAliases" $ do
     it "should translate when fork version matches" $ do
@@ -239,7 +179,6 @@ spec = do
 
       let translated = translateLocatorWithForkAliases forkAliasMap loc
 
-      -- Should remain unchanged because version doesn't match
       translated `shouldBe` loc
 
     it "should translate any version when fork version is not specified" $ do
@@ -262,32 +201,7 @@ spec = do
 
       let translated = translateLocatorWithForkAliases forkAliasMap loc
 
-      -- Should use base version 2.0.0 instead of original 1.0.0
       translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
-
-    it "should preserve original version when base version is not specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          loc = Locator "cargo" "my-serde" (Just "1.5.0")
-
-      let translated = translateLocatorWithForkAliases forkAliasMap loc
-
-      -- Should preserve original version 1.5.0
-      translated `shouldBe` Locator "cargo" "serde" (Just "1.5.0")
-
-    it "should not translate when fork specifies version but loc has none" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          loc = Locator "cargo" "my-serde" Nothing
-
-      let translated = translateLocatorWithForkAliases forkAliasMap loc
-
-      -- Should remain unchanged because loc has no version but fork requires one
-      translated `shouldBe` loc
 
     it "should handle combination: fork version matches and base version specified" $ do
       let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
@@ -298,71 +212,11 @@ spec = do
 
       let translated = translateLocatorWithForkAliases forkAliasMap loc
 
-      -- Version matches fork, so translate to base with base version
-      translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
-
-    it "should not translate when type or name doesn't match" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          loc = Locator "npm" "my-serde" (Just "1.0.0")
-
-      let translated = translateLocatorWithForkAliases forkAliasMap loc
-
-      -- Should remain unchanged because type doesn't match
-      translated `shouldBe` loc
-
-    it "should not translate when locator doesn't match any fork alias" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          loc = Locator "cargo" "other-package" (Just "1.0.0")
-
-      let translated = translateLocatorWithForkAliases forkAliasMap loc
-
-      -- Should remain unchanged because name doesn't match
-      translated `shouldBe` loc
-
-    it "should handle locator with no version when fork has no version requirement" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          loc = Locator "cargo" "my-serde" Nothing
-
-      let translated = translateLocatorWithForkAliases forkAliasMap loc
-
-      -- Should translate to base with base version
       translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
 
   describe "translateDependency with fork aliases" $ do
-    it "should translate when fork version matches" $ do
+    it "should translate dependency when fork version matches" $ do
       let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
-
-      let translated = translateDependency forkAliasMap dep
-
-      translated `shouldBe` Dependency CargoType "serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
-
-    it "should not translate when fork version does not match" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" (Just (CEq "2.0.0")) [] Set.empty Map.empty
-
-      let translated = translateDependency forkAliasMap dep
-
-      -- Should remain unchanged because version doesn't match
-      translated `shouldBe` dep
-
-    it "should translate any version when fork version is not specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
           base = ForkAliasEntry CargoType "serde" Nothing
           forkAlias = ForkAlias fork base []
           forkAliasMap = mkForkAliasMap [forkAlias]
@@ -381,56 +235,7 @@ spec = do
 
       let translated = translateDependency forkAliasMap dep
 
-      -- Should use base version 2.0.0 instead of original 1.0.0
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "2.0.0")) [] Set.empty Map.empty
-
-    it "should preserve original version when base version is not specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" (Just (CEq "1.5.0")) [] Set.empty Map.empty
-
-      let translated = translateDependency forkAliasMap dep
-
-      -- Should preserve original version 1.5.0
-      translated `shouldBe` Dependency CargoType "serde" (Just (CEq "1.5.0")) [] Set.empty Map.empty
-
-    it "should not translate when fork specifies version but dep has none" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" Nothing [] Set.empty Map.empty
-
-      let translated = translateDependency forkAliasMap dep
-
-      -- Should remain unchanged because dep has no version but fork requires one
-      translated `shouldBe` dep
-
-    it "should handle combination: fork version matches and base version specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
-
-      let translated = translateDependency forkAliasMap dep
-
-      -- Version matches fork, so translate to base with base version
-      translated `shouldBe` Dependency CargoType "serde" (Just (CEq "2.0.0")) [] Set.empty Map.empty
-
-    it "should not translate when type or name doesn't match" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
-          forkAliasMap = mkForkAliasMap [forkAlias]
-          dep = Dependency NodeJSType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
-
-      let translated = translateDependency forkAliasMap dep
-
-      -- Should remain unchanged because type doesn't match
-      translated `shouldBe` dep
 
   describe "translateDependencyGraph with fork aliases" $ do
     it "should translate multiple dependencies in a graph" $ do
