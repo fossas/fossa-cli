@@ -4,15 +4,15 @@
 
 module App.Fossa.Analyze.ForkAliasSpec (spec) where
 
-import App.Fossa.Analyze.ForkAlias
-  ( buildProject
-  , collectForkAliasLabels
-  , mergeForkAliasLabels
-  , mkForkAliasMap
-  , translateDependency
-  , translateDependencyGraph
-  , translateLocatorWithForkAliases
-  )
+import App.Fossa.Analyze.ForkAlias (
+  buildProject,
+  collectForkAliasLabels,
+  mergeForkAliasLabels,
+  mkForkAliasMap,
+  translateDependency,
+  translateDependencyGraph,
+  translateLocatorWithForkAliases,
+ )
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..), forkAliasEntryToLocator)
 import Data.Aeson qualified as Aeson
@@ -23,17 +23,25 @@ import Data.Set qualified as Set
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
 import Graphing qualified
 import Path (mkAbsDir)
-import Srclib.Types
-  ( Locator (..)
-  , ProvidedPackageLabel (..)
-  , ProvidedPackageLabelScope (..)
-  , ProvidedPackageLabels (..)
-  , SourceUnit (..)
-  , SourceUnitBuild (..)
-  , unProvidedPackageLabels
-  )
+import Srclib.Types (
+  Locator (..),
+  ProvidedPackageLabel (..),
+  ProvidedPackageLabelScope (..),
+  ProvidedPackageLabels (..),
+  SourceUnit (..),
+  SourceUnitBuild (..),
+  unProvidedPackageLabels,
+ )
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldMatchList)
 import Types (DiscoveredProjectType (CargoProjectType), GraphBreadth (Complete))
+
+#ifdef mingw32_HOST_OS
+testPath :: Path Abs Dir
+testPath = $(mkAbsDir "C:/test")
+#else
+testPath :: Path Abs Dir
+testPath = $(mkAbsDir "/test")
+#endif
 
 spec :: Spec
 spec = do
@@ -141,7 +149,6 @@ spec = do
 
       labels `shouldBe` Just (Map.singleton "cargo+serde$" [ProvidedPackageLabel "internal" ProvidedPackageLabelScopeOrg, ProvidedPackageLabel "existing" ProvidedPackageLabelScopeRevision])
 
-
   describe "translateLocatorWithForkAliases" $ do
     it "should translate when fork version matches" $ do
       let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
@@ -248,11 +255,6 @@ spec = do
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
           graph = Graphing.deeps [dep]
-#ifdef mingw32_HOST_OS
-          testPath = $(mkAbsDir "C:/test")
-#else
-          testPath = $(mkAbsDir "/test")
-#endif
           project =
             ProjectResult
               { projectResultType = CargoProjectType
@@ -262,10 +264,8 @@ spec = do
               , projectResultManifestFiles = []
               }
 
-          result = buildProject forkAliasMap project
-
       -- Verify it's a JSON object with expected fields
-      case result of
+      case buildProject forkAliasMap project of
         Aeson.Object obj -> do
           -- Check that path and graph fields exist
           let pathKey = Key.fromString "path"
