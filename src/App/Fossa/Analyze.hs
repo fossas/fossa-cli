@@ -679,13 +679,15 @@ collectForkAliasLabels = Map.fromListWith (++) . mapMaybe forkAliasToLabel
 
 -- | Merge fork alias labels into a source unit's existing labels.
 mergeForkAliasLabels :: Map.Map Text [ProvidedPackageLabel] -> SourceUnit -> SourceUnit
-mergeForkAliasLabels forkAliasLabels unit =
-  if Map.null forkAliasLabels
-    then unit
-    else
-      let existingLabels = maybe Map.empty unProvidedPackageLabels (sourceUnitLabels unit)
-          mergedLabels = Map.unionWith (++) forkAliasLabels existingLabels
-       in unit{sourceUnitLabels = buildProvidedPackageLabels mergedLabels}
+mergeForkAliasLabels forkAliasLabels unit
+  | Map.null forkAliasLabels = unit
+  | otherwise =
+      unit
+        { sourceUnitLabels =
+            buildProvidedPackageLabels $
+              Map.unionWith (++) forkAliasLabels $
+                maybe Map.empty unProvidedPackageLabels (sourceUnitLabels unit)
+        }
 
 buildProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =
@@ -697,14 +699,15 @@ buildProject forkAliasMap project =
 
 -- | Translate a locator using fork aliases
 -- If the fork locator exists in the list of translations, then translate the fork locator to the base locator
--- The fetcher type and project name will be translated directly. Versions are a bit more complex.
--- Versions are not required.
+-- The translated fetcher type and project name will be the fetcher type and project name of the base locator.
+-- Versions are a bit more complex.
+-- Versions are not required for either base or the fork.
 -- version matching rules:
---   - If fork version is specified, only that exact version matches
---   - If fork version is not specified, any version matches
+--   - If the fork version is specified, only that exact version matches
+--   - If the fork version is not specified, any fork version matches
 -- Translation rules:
---   - If base version is specified, always convert to that version
---   - If base version is not specified, preserve the original version from the fork
+--   - If the base version is specified, always convert to that version
+--   - If the base version is not specified, preserve the original version from the fork
 translateLocatorWithForkAliases :: Map.Map Locator ForkAlias -> Locator -> Locator
 translateLocatorWithForkAliases forkAliasMap loc =
   let projectLocator = toProjectLocator loc
