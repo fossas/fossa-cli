@@ -100,4 +100,7 @@ The time it takes to scan newer versions of your codebase will depend on how
 many files in the new version have not been previously scanned. A file has been
 previously scanned if the exact same file has ever been scanned by Vendetta.
 FOSSA recommends scanning your codebase on a regular basis to keep scan times
-low.
+low. Additionally, if you intend on running Vendetta as part of your CI
+pipeline, it might be best to do a manual run first on a local machine. That
+way, future automated scans of your project will be able to benefit from the
+initial caching done in the first scan.
