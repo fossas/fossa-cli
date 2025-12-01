@@ -6,17 +6,9 @@ module Ficus.FicusSpec (spec) where
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Types (ProjectRevision (..))
-import Control.Carrier.Diagnostics (runDiagnostics)
-import Control.Carrier.Stack (runStack)
-import Control.Carrier.StickyLogger (ignoreStickyLogger)
 import Control.Effect.Lift (sendIO)
 import Control.Timeout (Duration (Seconds))
-import Data.List (isInfixOf)
 import Data.String.Conversion (toText)
-import Diag.Result (Result (Failure, Success))
-import Effect.Exec (runExecIO)
-import Effect.Logger (ignoreLogger)
-import Effect.ReadFS (runReadFSIO)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Dir, Path, Rel, reldir, (</>))
 import Path.IO qualified as PIO
@@ -58,34 +50,21 @@ spec = do
 
       let strategies = [FicusStrategySnippetScan, FicusStrategyVendetta]
 
-      result <- sendIO $ runStack . runDiagnostics . ignoreStickyLogger . ignoreLogger . runExecIO . runReadFSIO $ analyzeWithFicus testDataDir apiOpts revision strategies Nothing (Just 10) Nothing
+      result <- analyzeWithFicus testDataDir apiOpts revision strategies Nothing (Just 10) Nothing
 
       case result of
-        Success _warnings analysisResult -> do
-          case analysisResult of
-            Just results -> do
-              case snippetScanResults results of
-                Just snippetResults -> do
-                  ficusSnippetScanResultsAnalysisId snippetResults `shouldSatisfy'` (> 0)
-                _ -> do
-                  -- No snippet scan results returned - this is acceptable for integration testing
-                  True `shouldBe'` True
-
-              case vendoredDependencyScanResults results of
-                Just (FicusVendoredDependencyScanResults (Just srcUnit)) -> do
-                  sourceUnitName srcUnit `shouldBe'` "ficus-vendored-dependencies"
-                _ -> do
-                  -- No vendetta results returned - this is acceptable for integration testing
-                  True `shouldBe'` True
-            _ -> expectationFailure' "Ficus analysis returned no results unexpectedly."
-        Failure _warnings errors -> do
-          let failureMsg = show errors
-          case apiOpts of
-            Just _ -> do
-              -- With API credentials, accept 404/temp-storage errors as valid connectivity tests
-              if "404" `isInfixOf` failureMsg || "temp-storage" `isInfixOf` failureMsg || "Status(" `isInfixOf` failureMsg
-                then True `shouldBe'` True -- Expected API connectivity issue
-                else expectationFailure' ("Ficus integration test failed unexpectedly: " ++ failureMsg)
-            Nothing -> do
-              -- Without API credentials, analysis failure is expected
+        Just results -> do
+          case snippetScanResults results of
+            Just snippetResults -> do
+              ficusSnippetScanResultsAnalysisId snippetResults `shouldSatisfy'` (> 0)
+            _ -> do
+              -- No snippet scan results returned - this is acceptable for integration testing
               True `shouldBe'` True
+
+          case vendoredDependencyScanResults results of
+            Just (FicusVendoredDependencyScanResults (Just srcUnit)) -> do
+              sourceUnitName srcUnit `shouldBe'` "ficus-vendored-dependencies"
+            _ -> do
+              -- No vendetta results returned - this is acceptable for integration testing
+              True `shouldBe'` True
+        _ -> expectationFailure' "Ficus analysis returned no results unexpectedly."
