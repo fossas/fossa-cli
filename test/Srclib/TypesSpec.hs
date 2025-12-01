@@ -1,11 +1,6 @@
 module Srclib.TypesSpec (spec) where
 
-import App.Fossa.Analyze.ForkAlias (mkForkAliasMap, translateDependency, translateDependencyGraph, translateLocatorWithForkAliases)
-import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
 import Data.Map qualified as Map
-import Data.Set qualified as Set
-import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
-import Graphing qualified
 import Srclib.Types (
   Locator (..),
   SourceUnit (..),
@@ -14,7 +9,7 @@ import Srclib.Types (
   toProjectLocator,
   translateSourceUnitLocators,
  )
-import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldMatchList)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Types (GraphBreadth (Complete))
 
 spec :: Spec

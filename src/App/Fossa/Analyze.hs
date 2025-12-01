@@ -72,10 +72,8 @@ import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
 import App.Fossa.ManualDeps (
   ForkAlias (..),
-  ForkAliasEntry (..),
   ManualDepsResult (..),
   analyzeFossaDepsFile,
-  forkAliasEntryToLocator,
  )
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
@@ -93,7 +91,6 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
-import Control.Applicative ((<|>))
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -129,10 +126,8 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
-import DepTypes (Dependency (..), VerConstraint (CEq))
 import Diag.Diagnostic as DI
 import Diag.Result (Result (Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -150,8 +145,6 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
-import Graphing (Graphing)
-import Graphing qualified
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -164,7 +157,6 @@ import Prettyprinter.Render.Terminal (
   Color (Cyan, Green, Yellow),
   color,
  )
-import Srclib.Converter (toLocator)
 import Srclib.Converter qualified as Srclib
 import Srclib.Types (
   LicenseSourceUnit (..),
