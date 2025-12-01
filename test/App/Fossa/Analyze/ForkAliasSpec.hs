@@ -275,7 +275,7 @@ spec = do
               , projectResultManifestFiles = []
               }
 
-      let result = buildProject forkAliasMap project
+          result = buildProject forkAliasMap project
 
       -- Verify it's a JSON object with expected fields
       case result of
