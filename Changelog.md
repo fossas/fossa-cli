@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.13.2
+- Add fork-aliasing. Use this if you are using a fork of a dependency, but want FOSSA to treat it as if you were using the base version that you forked from. ([#1620](https://github.com/fossas/fossa-cli/pull/1620))
+
 ## 3.13.1
 - Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
 - Update snippet scanning documentation ([#1615](https://github.com/fossas/fossa-cli/pull/1615))

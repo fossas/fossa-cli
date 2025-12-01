@@ -93,7 +93,7 @@ For more details, please refer to the [feature](../../features/vendored-dependen
 
 ### `fork-aliases:`
 
-Denotes mapping of fork dependencies to their base dependencies. This is useful when you have forked a dependency and want it to be treated as the original dependency in FOSSA.
+Denotes mapping of fork dependencies to their base dependencies. This is useful when you have forked a dependency and want it to be treated as the original dependency by FOSSA. This, for example, will allow FOSSA to find and report security issues that are associated with the root project.
 
 - `fork`: The fork dependency entry that should be aliased to the base dependency. (Required)
   - `type`: Type of the fork dependency. (Required)
@@ -105,11 +105,10 @@ Denotes mapping of fork dependencies to their base dependencies. This is useful 
   - `version`: Version of the base dependency. (Optional)
 - `labels`: An optional list of labels to be added to the fork alias.
 
-**Matching rules:**
+**Version Matching rules:**
 - If `fork` version is specified, only that exact version will be translated
 - If `fork` version is not specified, any version will match
 
-**Translation rules:**
 - If `base` version is specified, the dependency will always be translated to that version
 - If `base` version is not specified, the original version from the fork is preserved
 
