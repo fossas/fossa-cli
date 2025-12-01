@@ -69,7 +69,7 @@ import App.Fossa.ManualDeps (
  )
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
-import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
+import App.Fossa.Reachability.Upload (analyzeForReachability, dependenciesOf, onlyFoundUnits)
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.VSI.DynLinked (analyzeDynamicLinkedDeps)
 import App.Fossa.VSI.IAT.AssertRevisionBinaries (assertRevisionBinaries)
@@ -118,6 +118,7 @@ import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, isJust, mapMaybe)
+import Data.Set qualified as Set
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
@@ -678,16 +679,24 @@ collectForkAliasLabels = Map.fromListWith (++) . mapMaybe forkAliasToLabel
             else Just (renderLocator projectLocator, labels)
 
 -- | Merge fork alias labels into a source unit's existing labels.
+-- Only applies labels for dependencies that actually exist in the source unit.
 mergeForkAliasLabels :: Map.Map Text [ProvidedPackageLabel] -> SourceUnit -> SourceUnit
 mergeForkAliasLabels forkAliasLabels unit
   | Map.null forkAliasLabels = unit
   | otherwise =
-      unit
-        { sourceUnitLabels =
-            buildProvidedPackageLabels $
-              Map.unionWith (++) forkAliasLabels $
-                maybe Map.empty unProvidedPackageLabels (sourceUnitLabels unit)
-        }
+      let -- Get all project locators (without version) from this source unit
+          unitProjectLocators = Set.fromList $ map (renderLocator . toProjectLocator) $ dependenciesOf unit
+          -- Only include labels for dependencies that exist in this source unit
+          matchingLabels = Map.filterWithKey (\locatorStr _ -> Set.member locatorStr unitProjectLocators) forkAliasLabels
+       in if Map.null matchingLabels
+            then unit
+            else
+              unit
+                { sourceUnitLabels =
+                    buildProvidedPackageLabels $
+                      Map.unionWith (++) matchingLabels $
+                        maybe Map.empty unProvidedPackageLabels (sourceUnitLabels unit)
+                }
 
 buildProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
 buildProject forkAliasMap project =

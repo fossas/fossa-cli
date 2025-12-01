@@ -105,3 +105,6 @@ fork-aliases:
     base:
       type: cargo
       name: serde
+    labels:
+    - label: serde-fork-dep-label
+      scope: org

@@ -78,7 +78,7 @@ import Fossa.API.Types (ApiOpts, OrgId, Organization (..), orgFileUpload)
 import Path (Abs, Dir, File, Path, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Srclib.Converter (depTypeToFetcher)
-import Srclib.Types (AdditionalDepData (..), Locator (..), ProvidedPackageLabel, SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), buildProvidedPackageLabels, parseLocator, renderLocator, someBaseToOriginPath, toProjectLocator)
+import Srclib.Types (AdditionalDepData (..), Locator (..), ProvidedPackageLabel, SourceRemoteDep (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (SourceUnitDependency), SourceUserDefDep (..), buildProvidedPackageLabels, parseLocator, renderLocator, someBaseToOriginPath)
 import System.FilePath (takeExtension)
 import Types (ArchiveUploadType (..), GraphBreadth (..))
 
@@ -245,8 +245,10 @@ collectInteriorLabels org ManualDependencies{..} =
       <> mapMaybe customDepToLabel customDependencies
       <> mapMaybe (remoteDepToLabel org) remoteDependencies
       <> mapMaybe locatorDepToLabel locatorDependencies
-      <> mapMaybe forkAliasToLabel forkAliases
   where
+    -- Fork alias labels are handled separately in Analyze.hs via collectForkAliasLabels
+    -- and mergeForkAliasLabels, so we don't include them here
+
     liftEmpty :: (a, [b]) -> Maybe (a, [b])
     liftEmpty (_, []) = Nothing
     liftEmpty (a, xs) = Just (a, xs)
@@ -278,13 +280,6 @@ collectInteriorLabels org ManualDependencies{..} =
     locatorDepToLabel :: LocatorDependency -> Maybe (Text, [ProvidedPackageLabel])
     locatorDepToLabel (LocatorDependencyPlain _) = Nothing
     locatorDepToLabel (LocatorDependencyStructured locator labels) = liftEmpty (renderLocator locator, labels)
-
-    forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
-    forkAliasToLabel ForkAlias{..} =
-      -- Use project locator (without version) so labels match any version of the translated dependency
-      let baseLocator = forkAliasEntryToLocator forkAliasBase
-          projectLocator = toProjectLocator baseLocator
-       in liftEmpty (renderLocator projectLocator, forkAliasLabels)
 
 -- | Run either archive upload or native license scan.
 scanAndUpload ::

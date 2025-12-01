@@ -97,7 +97,7 @@ theWorksLabeled = ManualDependencies references customs vendors remotes locators
       , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
       ]
     forkAliases =
-      [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) []]
+      [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) [ProvidedPackageLabel "serde-fork-dep-label" ProvidedPackageLabelScopeOrg]]
 
 theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
 theWorksLabels org =
