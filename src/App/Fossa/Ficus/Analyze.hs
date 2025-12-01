@@ -316,21 +316,20 @@ runFicus maybeDebugDir ficusConfig = do
               )
             .| CCL.mapMaybe decodeStrictText
             .| CC.foldM
-              ( \acc message -> do
+              ( \(currentSnippetResults, currentVendoredDeps) message -> do
                   -- Log messages as they come, with timestamps
                   timestamp <- currentTimeStamp
                   case message of
                     FicusMessageError err -> do
                       hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
-                      pure acc
+                      pure (currentSnippetResults, currentVendoredDeps)
                     FicusMessageDebug dbg -> do
                       hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
-                      pure acc
+                      pure (currentSnippetResults, currentVendoredDeps)
                     FicusMessageFinding finding -> do
                       hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
                       let analysisFinding = findingToSnippetScanResult finding
                       let vendoredDep = findingToVendoredDependency finding
-                      let (currentSnippetResults, currentVendoredDeps) = acc
                       when (isJust currentSnippetResults && isJust analysisFinding) $
                         hPutStrLn stderr $
                           "[" ++ timestamp ++ "] ERROR " <> "Found multiple ficus analysis responses."
