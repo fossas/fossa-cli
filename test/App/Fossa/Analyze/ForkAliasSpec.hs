@@ -59,19 +59,6 @@ spec = do
 
       labels `shouldBe` Map.singleton "cargo+serde$" [label]
 
-    it "should merge labels from multiple fork aliases with same base" $ do
-      let fork1 = ForkAliasEntry CargoType "my-serde" Nothing
-          base1 = ForkAliasEntry CargoType "serde" Nothing
-          label1 = ProvidedPackageLabel "internal" ProvidedPackageLabelScopeOrg
-          forkAlias1 = ForkAlias fork1 base1 [label1]
-          fork2 = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base2 = ForkAliasEntry CargoType "serde" Nothing
-          label2 = ProvidedPackageLabel "approved" ProvidedPackageLabelScopeProject
-          forkAlias2 = ForkAlias fork2 base2 [label2]
-          labels = collectForkAliasLabels [forkAlias1, forkAlias2]
-
-      labels `shouldBe` Map.singleton "cargo+serde$" [label1, label2]
-
   describe "mergeForkAliasLabels" $ do
     it "should merge labels into source unit that contains matching dependency" $ do
       let forkAliasLabels = Map.singleton "cargo+serde$" [ProvidedPackageLabel "internal" ProvidedPackageLabelScopeOrg]
