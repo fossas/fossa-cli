@@ -301,7 +301,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
-      enableSnippetScan = Config.xSnippetScan cfg
+      enableSnippetScan = Config.snippetScan cfg
 
   manualSrcUnits <-
     Diag.errorBoundaryIO . diagToDebug $
