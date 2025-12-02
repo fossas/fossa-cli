@@ -657,6 +657,7 @@ test-suite unit-tests
     Erlang.Rebar3TreeSpec
     Extra.ListSpec
     Extra.TextSpec
+    Ficus.FicusSpec
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
@@ -758,7 +759,6 @@ test-suite integration-tests
     Analysis.CocoapodsSpec
     Analysis.ElixirSpec
     Analysis.ErlangSpec
-    Analysis.FicusSpec
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
     Analysis.GoSpec
