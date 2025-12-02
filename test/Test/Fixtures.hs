@@ -75,6 +75,7 @@ import App.Types (Mode (..), OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
@@ -337,12 +338,13 @@ sourceUnitBuildMaven =
     [ ipAddr
     , spotBugs
     ]
-    [ SourceUnitDependency logger []
-    , SourceUnitDependency ipAddr []
+    [ SourceUnitDependency logger [] Aeson.Null
+    , SourceUnitDependency ipAddr [] Aeson.Null
     , SourceUnitDependency
         spotBugs
         [ logger
         ]
+        Aeson.Null
     ]
   where
     ipAddr :: Locator
@@ -387,6 +389,7 @@ vsiSourceUnit =
                           , locatorRevision = Just "1.2.3"
                           }
                     , sourceDepImports = []
+                    , sourceDepData = Aeson.Null
                     }
                 ]
             }
@@ -675,6 +678,7 @@ standardAnalyzeConfig =
     , ANZ.mode = NonStrict
     , ANZ.xSnippetScan = False
     , ANZ.debugDir = Nothing
+    , ANZ.xVendetta = False
     }
 
 sampleJarParsedContent :: Text

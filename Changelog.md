@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.14.0
+- Adds `--x-vendetta` flag for vendored dependency identification ([#1607](https://github.com/fossas/fossa-cli/pull/1607))
+
 ## 3.13.1
 - Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
 - Update snippet scanning documentation ([#1615](https://github.com/fossas/fossa-cli/pull/1615))
