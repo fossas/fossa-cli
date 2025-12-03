@@ -676,7 +676,7 @@ standardAnalyzeConfig =
     , ANZ.reachabilityConfig = mempty
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
-    , ANZ.xSnippetScan = False
+    , ANZ.snippetScan = False
     , ANZ.debugDir = Nothing
     , ANZ.xVendetta = False
     }
