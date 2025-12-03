@@ -9,6 +9,7 @@ module Srclib.Types (
   AdditionalDepData (..),
   SourceUserDefDep (..),
   SourceRemoteDep (..),
+  LocatorWithMetadata (..),
   Locator (..),
   LicenseSourceUnit (..),
   LicenseScanType (..),
@@ -411,7 +412,7 @@ data SourceUnitBuild = SourceUnitBuild
 data SourceUnitDependency = SourceUnitDependency
   { sourceDepLocator :: Locator
   , sourceDepImports :: [Locator] -- omitempty
-  -- , sourceDepData :: Aeson.Value
+  , sourceDepData :: Data.Aeson.Value
   }
   deriving (Eq, Ord, Show)
 
@@ -477,6 +478,12 @@ parseProvidedPackageLabelScope :: Text -> ProvidedPackageLabelScope
 parseProvidedPackageLabelScope "org" = ProvidedPackageLabelScopeOrg
 parseProvidedPackageLabelScope "project" = ProvidedPackageLabelScopeProject
 parseProvidedPackageLabelScope _ = ProvidedPackageLabelScopeRevision
+
+data LocatorWithMetadata = LocatorWithMetadata
+  { locatorWithMetadataLocator :: Locator
+  , locatorWithMetadataData :: Data.Aeson.Value
+  }
+  deriving (Eq, Ord, Show)
 
 data Locator = Locator
   { locatorFetcher :: Text
@@ -553,6 +560,7 @@ instance ToJSON SourceUnitDependency where
     object
       [ "locator" .= sourceDepLocator
       , "imports" .= sourceDepImports
+      , "metadata" .= sourceDepData
       ]
 
 instance FromJSON SourceUnitDependency where
@@ -560,6 +568,7 @@ instance FromJSON SourceUnitDependency where
     SourceUnitDependency
       <$> obj .: "locator"
       <*> obj .: "imports"
+      <*> obj .: "metadata"
 
 instance ToJSON AdditionalDepData where
   toJSON AdditionalDepData{..} =

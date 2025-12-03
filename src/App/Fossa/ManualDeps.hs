@@ -372,7 +372,7 @@ mkLinuxPackage :: Text -> Text -> Text -> Text
 mkLinuxPackage depName os osVersion = depName <> "#" <> os <> "#" <> osVersion
 
 addEmptyDep :: Locator -> SourceUnitDependency
-addEmptyDep loc = SourceUnitDependency loc []
+addEmptyDep loc = SourceUnitDependency loc [] Data.Aeson.Null
 
 toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
 toAdditionalData customDeps remoteDeps =
