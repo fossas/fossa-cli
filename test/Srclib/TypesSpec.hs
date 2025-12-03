@@ -1,5 +1,6 @@
 module Srclib.TypesSpec (spec) where
 
+import Data.Aeson qualified as Aeson
 import Data.Map qualified as Map
 import Srclib.Types (
   Locator (..),
@@ -55,7 +56,7 @@ spec = do
           baseLocator = Locator "go" "github.com/stretchr/testify" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
           translateLocator = simpleTranslate translationMap
-          dep = SourceUnitDependency myForkLocator []
+          dep = SourceUnitDependency myForkLocator [] Aeson.Null
           sourceUnit =
             SourceUnit
               "test"
@@ -88,7 +89,7 @@ spec = do
           baseLocator = Locator "go" "github.com/gin-gonic/gin" Nothing
           translationMap = Map.singleton (toProjectLocator myForkLocator) baseLocator
           translateLocator = simpleTranslate translationMap
-          dep = SourceUnitDependency (Locator "go" "other" Nothing) [myForkLocator]
+          dep = SourceUnitDependency (Locator "go" "other" Nothing) [myForkLocator] Aeson.Null
           sourceUnit =
             SourceUnit
               "test"
