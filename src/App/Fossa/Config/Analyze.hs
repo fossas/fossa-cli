@@ -24,6 +24,8 @@ module App.Fossa.Config.Analyze (
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
   StrictMode (..),
+  ExperimentalSnippetScan (..),
+  SnippetScan (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -142,6 +144,8 @@ data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
 data IgnoreOrgWideCustomLicenseScanConfigs = IgnoreOrgWideCustomLicenseScanConfigs deriving (Generic)
 data StaticOnlyTactics = StaticOnlyTactics deriving (Generic)
 data StrictMode = StrictMode deriving (Generic, Show)
+data ExperimentalSnippetScan = ExperimentalSnippetScan deriving (Generic)
+data SnippetScan = SnippetScan deriving (Generic)
 
 data BinaryDiscovery = BinaryDiscovery deriving (Generic)
 data IncludeAll = IncludeAll deriving (Generic)
@@ -183,6 +187,12 @@ instance ToJSON DynamicLinkInspect where
   toEncoding = genericToEncoding defaultOptions
 
 instance ToJSON ExcludeManifestStrategies where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON ExperimentalSnippetScan where
+  toEncoding = genericToEncoding defaultOptions
+
+instance ToJSON SnippetScan where
   toEncoding = genericToEncoding defaultOptions
 
 data VSIModeOptions = VSIModeOptions
@@ -239,7 +249,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeStaticOnlyTactics :: Flag StaticOnlyTactics
   , analyzeWithoutDefaultFilters :: Flag WithoutDefaultFilters
   , analyzeStrictMode :: Flag StrictMode
-  , analyzeSnippetScan :: Bool
+  , analyzeExperimentalSnippetScan :: Flag ExperimentalSnippetScan
+  , analyzeSnippetScan :: Flag SnippetScan
   , analyzeVendetta :: Bool
   }
   deriving (Eq, Ord, Show)
@@ -279,7 +290,7 @@ data AnalyzeConfig = AnalyzeConfig
   , reachabilityConfig :: ReachabilityConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
-  , xSnippetScan :: Bool
+  , snippetScan :: Bool
   , debugDir :: Maybe FilePath
   , xVendetta :: Bool
   }
@@ -353,7 +364,8 @@ cliParser =
     <*> flagOpt StaticOnlyTactics (applyFossaStyle <> long "static-only-analysis" <> stringToHelpDoc "Only analyze the project using static strategies.")
     <*> withoutDefaultFilterParser fossaAnalyzeDefaultFilterDocUrl
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
-    <*> switch (applyFossaStyle <> long "x-snippet-scan" <> stringToHelpDoc "Experimental flag to enable snippet scanning to identify open source code snippets using fingerprinting.")
+    <*> flagOpt ExperimentalSnippetScan (applyFossaStyle <> long "x-snippet-scan" <> hidden)
+    <*> flagOpt SnippetScan (applyFossaStyle <> long "snippet-scan" <> stringToHelpDoc "Enable snippet scanning to identify open source code snippets using fingerprinting.")
     <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
@@ -548,6 +560,21 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
       (_, True) -> pure FirstPartyScansOffFromFlag
       (False, False) -> pure FirstPartyScansUseDefault
 
+  let experimentalSnippetScanFlagUsed = fromFlag ExperimentalSnippetScan analyzeExperimentalSnippetScan
+  when experimentalSnippetScanFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --x-snippet-scan flag is deprecated."
+        , ""
+        , "Please use --snippet-scan instead."
+        , ""
+        , "In the future, usage of the --x-snippet-scan flag may result in a fatal error."
+        ]
+
+  let snippetScanEnabled = experimentalSnippetScanFlagUsed || fromFlag SnippetScan analyzeSnippetScan
+
   AnalyzeConfig
     <$> basedir
     <*> scanDestination
@@ -569,7 +596,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> resolveReachabilityOptions reachabilityConfig
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
-    <*> pure analyzeSnippetScan
+    <*> pure snippetScanEnabled
     <*> pure maybeDebugDir
     <*> pure analyzeVendetta
 
