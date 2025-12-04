@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedRecordDot #-}
 
 module App.Fossa.Analyze.ForkAlias (
   -- * Fork alias map and labels
@@ -48,7 +48,7 @@ import Srclib.Types (
 -- The map is keyed by project locator (type+name, no version) to allow lookup by type+name.
 -- The value is the full ForkAlias to check version matching and get base translation info.
 mkForkAliasMap :: [ForkAlias] -> Map.Map Locator ForkAlias
-mkForkAliasMap = Map.fromList . map (\alias@ForkAlias{..} -> (toProjectLocator (forkAliasEntryToLocator forkAliasFork), alias))
+mkForkAliasMap = Map.fromList . map (\alias -> (toProjectLocator (forkAliasEntryToLocator alias.forkAliasFork), alias))
 
 -- | Collect labels from fork aliases into a map keyed by locator string.
 -- Labels are keyed by project locator (without version) so they match any version.
@@ -56,11 +56,11 @@ collectForkAliasLabels :: [ForkAlias] -> Map.Map Text [ProvidedPackageLabel]
 collectForkAliasLabels = Map.fromListWith (++) . mapMaybe forkAliasToLabel
   where
     forkAliasToLabel :: ForkAlias -> Maybe (Text, [ProvidedPackageLabel])
-    forkAliasToLabel ForkAlias{..} =
+    forkAliasToLabel forkAlias =
       -- Use project locator (without version) so labels match any version of the translated dependency
-      let baseLocator = forkAliasEntryToLocator forkAliasBase
+      let baseLocator = forkAliasEntryToLocator forkAlias.forkAliasBase
           projectLocator = toProjectLocator baseLocator
-          labels = forkAliasLabels
+          labels = forkAlias.forkAliasLabels
        in if null labels
             then Nothing
             else Just (renderLocator projectLocator, labels)
