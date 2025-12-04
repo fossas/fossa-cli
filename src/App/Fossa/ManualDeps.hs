@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -419,14 +420,23 @@ data ManualDependencies = ManualDependencies
   }
   deriving (Eq, Ord, Show)
 
-data ForkAliasEntry = ForkAliasEntry
+data ForkAliasEntryKind = Base | Fork
+
+data ForkAliasEntry (a :: ForkAliasEntryKind) = ForkAliasEntry
   { forkAliasEntryType :: DepType
   , forkAliasEntryName :: Text
   , forkAliasEntryVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
-forkAliasEntryToLocator :: ForkAliasEntry -> Locator
+data ForkAlias = ForkAlias
+  { forkAliasFork :: ForkAliasEntry 'Fork
+  , forkAliasBase :: ForkAliasEntry 'Base
+  , forkAliasLabels :: [ProvidedPackageLabel]
+  }
+  deriving (Eq, Ord, Show)
+
+forkAliasEntryToLocator :: ForkAliasEntry a -> Locator
 forkAliasEntryToLocator ForkAliasEntry{..} =
   Locator
     { locatorFetcher = depTypeToFetcher forkAliasEntryType
@@ -434,14 +444,7 @@ forkAliasEntryToLocator ForkAliasEntry{..} =
     , locatorRevision = forkAliasEntryVersion
     }
 
-data ForkAlias = ForkAlias
-  { forkAliasFork :: ForkAliasEntry
-  , forkAliasBase :: ForkAliasEntry
-  , forkAliasLabels :: [ProvidedPackageLabel]
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ForkAliasEntry where
+instance FromJSON (ForkAliasEntry a) where
   parseJSON = withObject "ForkAliasEntry" $ \obj ->
     ForkAliasEntry
       <$> (obj .: "type" >>= depTypeParser)
