@@ -187,6 +187,7 @@ library
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Discover
     App.Fossa.Analyze.Filter
+    App.Fossa.Analyze.ForkAlias
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
@@ -567,6 +568,7 @@ test-suite unit-tests
     AlpineLinux.ParserSpec
     Android.UtilSpec
     App.DocsSpec
+    App.Fossa.Analyze.ForkAliasSpec
     App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
@@ -723,6 +725,7 @@ test-suite unit-tests
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
     Sqlite.SqliteSpec
+    Srclib.TypesSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec

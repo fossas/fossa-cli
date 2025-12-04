@@ -2,6 +2,9 @@
 ## 3.15.0
 - Make snippet scanning non-experimental. This PR deprecates `fossa analyze --x-snippet-scan`. Please use `fossa analyze --snippet-scan` instead. ([#1622](https://github.com/fossas/fossa-cli/pull/1622))
 
+## 3.14.1
+- Add fork-aliasing. Use this if you are using a fork of a dependency, but want FOSSA to treat it as if you were using the base version that you forked from. ([#1620](https://github.com/fossas/fossa-cli/pull/1620))
+
 ## 3.14.0
 - Adds `--x-vendetta` flag for vendored dependency identification ([#1607](https://github.com/fossas/fossa-cli/pull/1607))
 
