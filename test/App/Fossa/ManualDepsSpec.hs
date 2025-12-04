@@ -9,8 +9,8 @@ import App.Fossa.Config.Analyze (VendoredDependencyOptions (..))
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
   DependencyMetadata (DependencyMetadata),
-  ForkAlias (ForkAlias),
-  ForkAliasEntry (ForkAliasEntry),
+  ForkAlias (..),
+  ForkAliasEntry (..),
   LinuxReferenceDependency (..),
   LocatorDependency (..),
   ManagedReferenceDependency (..),
@@ -68,7 +68,12 @@ theWorks = ManualDependencies references customs vendors remotes locators forkAl
       , LocatorDependencyPlain (Locator "fetcher-2" "two" (Just "1.0.0"))
       ]
     forkAliases =
-      [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) []]
+      [ ForkAlias
+          { forkAliasFork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          , forkAliasBase = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          , forkAliasLabels = []
+          }
+      ]
 
 theWorksLabeled :: ManualDependencies
 theWorksLabeled = ManualDependencies references customs vendors remotes locators forkAliases
@@ -97,7 +102,12 @@ theWorksLabeled = ManualDependencies references customs vendors remotes locators
       , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
       ]
     forkAliases =
-      [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) [ProvidedPackageLabel "serde-fork-dep-label" ProvidedPackageLabelScopeOrg]]
+      [ ForkAlias
+          { forkAliasFork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          , forkAliasBase = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          , forkAliasLabels = [ProvidedPackageLabel "serde-fork-dep-label" ProvidedPackageLabelScopeOrg]
+          }
+      ]
 
 theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
 theWorksLabels org =
@@ -458,7 +468,12 @@ forkAliasManualDep =
     mempty
     mempty
     mempty
-    [ForkAlias (ForkAliasEntry CargoType "my-serde" Nothing) (ForkAliasEntry CargoType "serde" Nothing) []]
+    [ ForkAlias
+        { forkAliasFork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+        , forkAliasBase = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+        , forkAliasLabels = []
+        }
+    ]
 
 customDepWithEmptyVersion :: Text
 customDepWithEmptyVersion =

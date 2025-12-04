@@ -47,9 +47,9 @@ spec :: Spec
 spec = do
   describe "mkForkAliasMap" $ do
     it "should create a map keyed by project locator" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Just "1.0.0"}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           -- The map is keyed by project locator (without version) of the fork
           forkLocator = forkAliasEntryToLocator fork
@@ -59,10 +59,10 @@ spec = do
 
   describe "collectForkAliasLabels" $ do
     it "should collect labels from fork aliases keyed by base project locator" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
           label = ProvidedPackageLabel "internal" ProvidedPackageLabelScopeOrg
-          forkAlias = ForkAlias fork base [label]
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = [label]}
           labels = collectForkAliasLabels [forkAlias]
 
       labels `shouldBe` Map.singleton "cargo+serde$" [label]
@@ -151,9 +151,9 @@ spec = do
 
   describe "translateLocatorWithForkAliases" $ do
     it "should translate when fork version matches" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Just "1.0.0"}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           loc = Locator "cargo" "my-serde" (Just "1.0.0")
 
@@ -162,9 +162,9 @@ spec = do
       translated `shouldBe` Locator "cargo" "serde" (Just "1.0.0")
 
     it "should not translate when fork version does not match" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Just "1.0.0"}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           loc = Locator "cargo" "my-serde" (Just "2.0.0")
 
@@ -173,9 +173,9 @@ spec = do
       translated `shouldBe` loc
 
     it "should translate any version when fork version is not specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           loc = Locator "cargo" "my-serde" (Just "1.0.0")
 
@@ -184,9 +184,9 @@ spec = do
       translated `shouldBe` Locator "cargo" "serde" (Just "1.0.0")
 
     it "should use base version when specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Just "2.0.0"}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           loc = Locator "cargo" "my-serde" (Just "1.0.0")
 
@@ -195,9 +195,9 @@ spec = do
       translated `shouldBe` Locator "cargo" "serde" (Just "2.0.0")
 
     it "should handle combination: fork version matches and base version specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Just "1.0.0"}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Just "2.0.0"}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           loc = Locator "cargo" "my-serde" (Just "1.0.0")
 
@@ -207,9 +207,9 @@ spec = do
 
   describe "translateDependency with fork aliases" $ do
     it "should translate dependency when fork version matches" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" (Just "1.0.0")
-          base = ForkAliasEntry CargoType "serde" Nothing
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Just "1.0.0"}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
@@ -218,9 +218,9 @@ spec = do
       translated `shouldBe` Dependency CargoType "serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
     it "should use base version when specified" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Just "2.0.0"}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
 
@@ -230,11 +230,11 @@ spec = do
 
   describe "translateDependencyGraph with fork aliases" $ do
     it "should translate multiple dependencies in a graph" $ do
-      let fork1 = ForkAliasEntry CargoType "my-serde" Nothing
-          base1 = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          fork2 = ForkAliasEntry GoType "github.com/myorg/gin" (Just "v1.9.1")
-          base2 = ForkAliasEntry GoType "github.com/gin-gonic/gin" Nothing
-          forkAliases = [ForkAlias fork1 base1 [], ForkAlias fork2 base2 []]
+      let fork1 = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          base1 = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Just "2.0.0"}
+          fork2 = ForkAliasEntry{forkAliasEntryType = GoType, forkAliasEntryName = "github.com/myorg/gin", forkAliasEntryVersion = Just "v1.9.1"}
+          base2 = ForkAliasEntry{forkAliasEntryType = GoType, forkAliasEntryName = "github.com/gin-gonic/gin", forkAliasEntryVersion = Nothing}
+          forkAliases = [ForkAlias{forkAliasFork = fork1, forkAliasBase = base1, forkAliasLabels = []}, ForkAlias{forkAliasFork = fork2, forkAliasBase = base2, forkAliasLabels = []}]
           forkAliasMap = mkForkAliasMap forkAliases
           dep1 = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
           dep2 = Dependency GoType "github.com/myorg/gin" (Just (CEq "v1.9.1")) [] Set.empty Map.empty
@@ -249,9 +249,9 @@ spec = do
 
   describe "buildProject" $ do
     it "should build project JSON with translated graph" $ do
-      let fork = ForkAliasEntry CargoType "my-serde" Nothing
-          base = ForkAliasEntry CargoType "serde" (Just "2.0.0")
-          forkAlias = ForkAlias fork base []
+      let fork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          base = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Just "2.0.0"}
+          forkAlias = ForkAlias{forkAliasFork = fork, forkAliasBase = base, forkAliasLabels = []}
           forkAliasMap = mkForkAliasMap [forkAlias]
           dep = Dependency CargoType "my-serde" (Just (CEq "1.0.0")) [] Set.empty Map.empty
           graph = Graphing.deeps [dep]
