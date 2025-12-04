@@ -93,23 +93,35 @@ For more details, please refer to the [feature](../../features/vendored-dependen
 
 ### `fork-aliases:`
 
-Denotes mapping of fork dependencies to their base dependencies. This is useful when you have forked a dependency and want it to be treated as the original dependency by FOSSA. This, for example, will allow FOSSA to find and report security issues that are associated with the root project.
+Denotes mapping of fork dependencies to their base dependencies. This is useful when you have forked a dependency and want it to be treated as the base dependency by FOSSA. This, for example, will allow FOSSA to find and report security issues that are associated with the root project.
+
+As an example, if you have forked the Serde crate in a private repository and called it `my-serde`, then you could tell FOSSA to tranlate `my-serde` to `serde` like this:
+
+```yaml
+fork-aliases:
+- fork:
+    type: cargo
+    name: my-serde
+  base:
+    type: cargo
+    name: serde
+```
 
 - `fork`: The fork dependency entry that should be aliased to the base dependency. (Required)
   - `type`: Type of the fork dependency. (Required)
   - `name`: Name of the fork dependency. (Required)
-  - `version`: Version of the fork dependency. (Optional)
-- `base`: The base/original dependency entry that your fork should be aliased to. (Required)
+  - `version`: Version of the fork dependency. See "version matching rules" below for more details. (Optional)
+- `base`: The base dependency that your fork should be aliased to. (Required)
   - `type`: Type of the base dependency. (Required)
   - `name`: Name of the base dependency. (Required)
-  - `version`: Version of the base dependency. (Optional)
-- `labels`: An optional list of labels to be added to the fork alias.
+  - `version`: Version of the base dependency. See "version matching rules" below for more details. (Optional)
+- `labels`: An optional list of labels to be added to the fork alias. The dependency in FOSSA's UI will be treated as a normal dependency, so if you use an `org` scope for the label it will be applied to all versions of the base dependency across your organization. We suggest using the `project` or `revision` scope for labels on fork aliases.
 
 **Version Matching rules:**
 - If `fork` version is specified, only that exact version will be translated
-- If `fork` version is not specified, any version will match
+- If `fork` version is not specified, any version will be translated to the base dependency. The version of the translated dependency depends on whether the base version is specified or not.
 
-- If `base` version is specified, the dependency will always be translated to that version
+- If `base` version is specified, the dependency will always be translated to the specified version
 - If `base` version is not specified, the original version from the fork is preserved
 
 ```yaml
@@ -122,7 +134,7 @@ fork-aliases:
     name: serde
   labels:
   - label: internal
-    scope: org
+    scope: project
 - fork:
     type: cargo
     name: my-serde
