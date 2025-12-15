@@ -150,7 +150,7 @@ Snippet scanning identifies potential open source code snippets within your firs
 
 | Name                | Description                                                                                                                                                                           |
 |---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--x-snippet-scan`  | Enable snippet scanning during analysis. This experimental feature fingerprints your source files and checks them against FOSSA's snippet database.        |
+| `--snippet-scan`  | Enable snippet scanning during analysis. This feature fingerprints your source files and checks them against FOSSA's snippet database.        |
 
 Snippet Scanning must also be enabled for your organization, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
 

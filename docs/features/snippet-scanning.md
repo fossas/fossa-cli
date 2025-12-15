@@ -3,17 +3,17 @@
 
 Snippet scanning identifies potential open source code snippets within your first-party source code by comparing file fingerprints against FOSSA's knowledge base. This feature helps detect code that may have been copied from open source projects.
 
-Snippet Scanning runs as part of `fossa analyze`. To enable it, add the `--x-snippet-scan` flag when you run `fossa analyze`:
+Snippet Scanning runs as part of `fossa analyze`. To enable it, add the `--snippet-scan` flag when you run `fossa analyze`:
 
 ```
-fossa analyze --x-snippet-scan
+fossa analyze --snippet-scan
 ```
 
 Snippet Scanning must also be enabled for your organization, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
 
 ## How Snippet Scanning Works
 
-When `--x-snippet-scan` is enabled, the CLI:
+When `--snippet-scan` is enabled, the CLI:
 
 1. **Hashes Files First**: Creates CRC64 hashes of all source files to identify which files need fingerprinting
 2. **Checks Necessity of Fingerprinting**: Checks with FOSSA servers to determine which file hashes are already known
