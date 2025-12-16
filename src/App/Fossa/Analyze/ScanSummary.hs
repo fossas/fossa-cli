@@ -38,7 +38,6 @@ import Effect.Logger (
   AnsiStyle,
   Logger,
   Pretty (pretty),
-  Severity (SevDebug),
   hsep,
   logInfo,
  )
@@ -146,8 +145,8 @@ staticOnlyAnalysisMessage =
 -- * __poetry__ project in path: succeeded
 -- * __fpm__ project in path: skipped
 -- * __setuptools__ project in path: skipped
-renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Severity -> (Maybe Text) -> AnalysisScanResult -> Config.AnalyzeConfig -> m ()
-renderScanSummary severity maybeEndpointVersion analysisResults cfg = do
+renderScanSummary :: (Has Diag.Diagnostics sig m, Has Logger sig m, Has (Lift IO) sig m) => Bool -> (Maybe Text) -> AnalysisScanResult -> Config.AnalyzeConfig -> m ()
+renderScanSummary isDebugMode maybeEndpointVersion analysisResults cfg = do
   let endpointVersion = fromMaybe "N/A" maybeEndpointVersion
   let hasDefaultFilters = (not $ fromFlag Config.WithoutDefaultFilters $ Config.withoutDefaultFilters cfg)
 
@@ -158,7 +157,7 @@ renderScanSummary severity maybeEndpointVersion analysisResults cfg = do
       logInfoVsep summary
       logInfo "Notes"
       logInfo "-----"
-      logInfoVsep $ renderNotes someFilters hasDefaultFilters (severity /= SevDebug)
+      logInfoVsep $ renderNotes someFilters hasDefaultFilters (not isDebugMode)
 
       summaryWithWarnErrorsTmpFile <- dumpResultLogsToTempFile cfg endpointVersion analysisResults
       logInfo . pretty $ "You can also view analysis summary with warning and error messages at: " <> show summaryWithWarnErrorsTmpFile

@@ -110,15 +110,16 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   a ->
   b ->
   SnippetsCommand ->
   m SnippetsConfig
-mergeOpts _ _ (CommandAnalyze path debug _ _ output overwrite targets kinds transforms) = do
+mergeOpts _ _ _ (CommandAnalyze path debug _ _ output overwrite targets kinds transforms) = do
   root <- collectBaseDir path
   output' <- sendIO $ Path.resolveDir' output
   pure . Analyze $ AnalyzeConfig root debug output' overwrite targets kinds transforms
-mergeOpts _ _ (CommandCommit path debug _ _ analyzeOutput overwrite format targets kinds transforms) = do
+mergeOpts _ _ _ (CommandCommit path debug _ _ analyzeOutput overwrite format targets kinds transforms) = do
   root <- collectBaseDir path
   analyzeOutput' <- sendIO $ Path.resolveDir' analyzeOutput
   pure . Commit $ CommitConfig root debug analyzeOutput' overwrite format targets kinds transforms

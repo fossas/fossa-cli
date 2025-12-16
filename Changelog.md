@@ -1,4 +1,26 @@
 # FOSSA CLI Changelog
+## 3.15.0
+- Make snippet scanning non-experimental. This PR deprecates `fossa analyze --x-snippet-scan`. Please use `fossa analyze --snippet-scan` instead. ([#1622](https://github.com/fossas/fossa-cli/pull/1622))
+
+## 3.14.1
+- Add fork-aliasing. Use this if you are using a fork of a dependency, but want FOSSA to treat it as if you were using the base version that you forked from. ([#1620](https://github.com/fossas/fossa-cli/pull/1620))
+
+## 3.14.0
+- Adds `--x-vendetta` flag for vendored dependency identification ([#1607](https://github.com/fossas/fossa-cli/pull/1607))
+
+## 3.13.1
+- Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
+- Update snippet scanning documentation ([#1615](https://github.com/fossas/fossa-cli/pull/1615))
+
+## 3.13.0
+- Change how debug logs are generated. They are now generated in a file called fossa.debug.zip, which can contain multiple files. For the common case of `fossa analyze --debug`, it will now contain the debug bundle (fossa.debug.json) and the telemetry json (fossa.telemetry.json). It will also contain Ficus logs if Ficus is run via --x-snippet-scan ([#1610](https://github.com/fossas/fossa-cli/pull/1610))
+
+## 3.12.3
+- Licensing: applies a fix for proprietary license detection ([#1616](https://github.com/fossas/fossa-cli/pull/1616))
+
+## 3.12.2
+- Update the latest version of a dependency for `--x-snippet-scan`. This update will start backfilling fingerprints for ~10% of files that were previously uploaded but do not have fingerprints ([#1611](https://github.com/fossas/fossa-cli/pull/1611))
+
 ## 3.12.1
 - Update latest version of a dependency for `--x-snippet-scan`. This makes some changes to the data we send and store so that we can more easily update snippet data in the background ([#1587](https://github.com/fossas/fossa-cli/pull/1609))
 

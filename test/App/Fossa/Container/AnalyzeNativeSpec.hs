@@ -15,6 +15,7 @@ import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Control.Effect.DockerEngineApi (
   DockerEngineApiF (GetImageSize, IsDockerEngineAccessible),
  )
+import Data.Aeson qualified as Aeson
 import Data.Flag (toFlag')
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
@@ -241,6 +242,7 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
                         [ SourceUnitDependency
                             { sourceDepLocator = depLocator
                             , sourceDepImports = []
+                            , sourceDepData = Aeson.Null
                             }
                         ]
                     }

@@ -40,11 +40,12 @@ instance GetSeverity ProjectCommand where
 
 projectMergeOpts ::
   (Has Diagnostics sig m) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ProjectCommand ->
   m ProjectConfig
-projectMergeOpts cfg envvars (Edit opts) = EditCfg <$> Edit.mergeOpts cfg envvars opts
+projectMergeOpts maybeDebugDir cfgFile envVars (Edit opts) = EditCfg <$> Edit.mergeOpts maybeDebugDir cfgFile envVars opts
 
 loadConfig ::
   ( Has Diagnostics sig m

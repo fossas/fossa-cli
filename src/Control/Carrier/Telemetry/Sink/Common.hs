@@ -11,5 +11,5 @@ import Control.Carrier.Telemetry.Types (TelemetryRecord, TelemetrySink (..))
 
 -- | Emits telemetry to provided sink.
 emitTelemetry :: Has (Lift IO) sig m => TelemetrySink -> TelemetryRecord -> m ()
-emitTelemetry TelemetrySinkToFile = sinkTelemetryToFile
+emitTelemetry (TelemetrySinkToFile debugDirRef) = sinkTelemetryToFile debugDirRef
 emitTelemetry (TelemetrySinkToEndpoint apiOpts) = sinkTelemetryToEndpoint apiOpts

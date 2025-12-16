@@ -13,6 +13,7 @@ import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withFicusBinary)
 import App.Fossa.Ficus.Types (
   FicusAllFlag (..),
   FicusAnalysisFlag (..),
+  FicusAnalysisResults (..),
   FicusConfig (..),
   FicusDebug (..),
   FicusError (..),
@@ -21,7 +22,11 @@ import App.Fossa.Ficus.Types (
   FicusMessageData (..),
   FicusMessages (..),
   FicusPerStrategyFlag (..),
+  FicusScanStats (..),
   FicusSnippetScanResults (..),
+  FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta),
+  FicusVendoredDependency (..),
+  FicusVendoredDependencyScanResults (..),
  )
 import App.Types (ProjectRevision (..))
 import Control.Applicative ((<|>))
@@ -29,13 +34,14 @@ import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
-import Data.Aeson (Object, decode, decodeStrictText, (.:))
-import Data.Aeson.Types (parseMaybe)
+import Data.Aeson (decode, decodeStrictText)
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
+import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
@@ -49,8 +55,9 @@ import Effect.Logger (Logger, logDebug, logInfo)
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
-import Srclib.Types (Locator (..), renderLocator)
-import System.IO (Handle, hGetLine, hIsEOF)
+import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
+import System.FilePath ((</>))
+import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, stderr)
 import System.Process.Typed (
   createPipe,
   getStderr,
@@ -62,9 +69,10 @@ import System.Process.Typed (
   waitExitCode,
   withProcessWait,
  )
+import Text.Printf (printf)
 import Text.URI (render)
 import Text.URI.Builder (PathComponent (PathComponent), TrailingSlash (TrailingSlash), setPath)
-import Types (GlobFilter (..), LicenseScanPathFilters (..))
+import Types (GlobFilter (..), GraphBreadth (..), LicenseScanPathFilters (..))
 import Prelude
 
 newtype CustomLicensePath = CustomLicensePath {unCustomLicensePath :: Text}
@@ -89,11 +97,13 @@ analyzeWithFicus ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   ProjectRevision ->
+  [FicusStrategy] ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
-  m (Maybe FicusSnippetScanResults)
-analyzeWithFicus rootDir apiOpts revision filters snippetScanRetentionDays = do
-  analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays
+  Maybe FilePath -> -- Debug directory (if enabled)
+  m (Maybe FicusAnalysisResults)
+analyzeWithFicus rootDir apiOpts revision strategies filters snippetScanRetentionDays maybeDebugDir = do
+  Just <$> analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRetentionDays maybeDebugDir
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -103,17 +113,20 @@ analyzeWithFicusMain ::
   Path Abs Dir ->
   Maybe ApiOpts ->
   ProjectRevision ->
+  [FicusStrategy] ->
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
-  m (Maybe FicusSnippetScanResults)
-analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays = do
+  Maybe FilePath -> -- Debug directory (if enabled)
+  m FicusAnalysisResults
+analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRetentionDays maybeDebugDir = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
-  ficusResults <- runFicus ficusConfig
+  ficusResults <- runFicus maybeDebugDir ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
-  case ficusResults of
-    Just results ->
-      logInfo $ "Ficus analysis completed successfully with analysis ID: " <> pretty (ficusSnippetScanResultsAnalysisId results)
-    Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
+  when (FicusStrategySnippetScan `elem` strategies) $
+    case snippetScanResults ficusResults of
+      Just results ->
+        logInfo $ pretty (formatFicusScanSummary results)
+      Nothing -> logInfo "Ficus analysis completed but no fingerprint findings were found"
   pure ficusResults
   where
     ficusConfig =
@@ -125,24 +138,107 @@ analyzeWithFicusMain rootDir apiOpts revision filters snippetScanRetentionDays =
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
+        , ficusConfigStrategies = strategies
         }
 
-findingToAnalysisId :: FicusFinding -> Maybe Int
-findingToAnalysisId (FicusFinding (FicusMessageData strategy payload))
+findingToSnippetScanResult :: FicusFinding -> Maybe FicusSnippetScanResults
+findingToSnippetScanResult (FicusFinding (FicusMessageData strategy payload))
   | Text.toLower strategy == "fingerprint" =
-      case decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload) :: Maybe Object of
-        Just obj -> parseMaybe (.: "analysis_id") obj
-        Nothing -> Nothing
-findingToAnalysisId _ = Nothing
+      decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
+findingToSnippetScanResult _ = Nothing
+
+formatFicusScanSummary :: FicusSnippetScanResults -> Text
+formatFicusScanSummary results =
+  let stats = ficusSnippetScanResultsStats results
+      aid = ficusSnippetScanResultsAnalysisId results
+   in Text.unlines
+        [ "Ficus snippet scan completed successfully!"
+        , ""
+        , "============================================================"
+        , "Snippet scan summary:"
+        , "  Analysis ID: " <> toText (show aid)
+        , "  Bucket ID: " <> toText (show $ ficusSnippetScanResultsBucketId results)
+        , "  Files skipped: " <> toText (show $ ficusStatsSkippedFiles stats)
+        , "  Total Files processed: " <> toText (show $ ficusStatsProcessedFiles stats)
+        , "  Unique Files processed: " <> toText (show $ ficusStatsUniqueProcessedFiles stats)
+        , "  Unique Files with matches found: " <> toText (show $ ficusStatsUniqueMatchedFiles stats)
+        , "  Unique Files with no matches found: " <> toText (show $ ficusStatsUniqueUnmatchedFiles stats)
+        , "  Unique Files already in our knowledge base: " <> toText (show $ ficusStatsUniqueExistingFiles stats)
+        , "  Unique Files new to our knowledge base: " <> toText (show $ ficusStatsUniqueNewFiles stats)
+        , "  Processing time: " <> formatProcessingTime (ficusStatsProcessingTimeSeconds stats) <> "s"
+        , "============================================================"
+        , "See the docs for an explanation of this summary: https://github.com/fossas/fossa-cli/blob/master/docs/features/snippet-scanning.md#the-snippet-scan-summary"
+        ]
+  where
+    -- Format the processing time as a string with 3 decimal places
+    formatProcessingTime :: Double -> Text
+    formatProcessingTime seconds = toText (printf "%.3f" seconds :: String)
+
+findingToVendoredDependency :: FicusFinding -> Maybe FicusVendoredDependency
+findingToVendoredDependency (FicusFinding (FicusMessageData strategy payload))
+  | Text.toLower strategy == "vendetta" =
+      decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
+findingToVendoredDependency _ = Nothing
+
+vendoredDepsToSourceUnit :: [FicusVendoredDependency] -> SourceUnit
+vendoredDepsToSourceUnit deps =
+  SourceUnit
+    { sourceUnitName = "ficus-vendored-dependencies"
+    , sourceUnitType = "ficus-vendored"
+    , sourceUnitManifest = "ficus-vendored-dependencies"
+    , sourceUnitBuild =
+        Just $
+          SourceUnitBuild
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports = locators
+            , buildDependencies = dependencies
+            }
+    , sourceUnitGraphBreadth = Complete
+    , sourceUnitNoticeFiles = []
+    , sourceUnitOriginPaths = map (textToOriginPath . ficusVendoredDependencyPath) deps
+    , sourceUnitLabels = Nothing
+    , additionalData = Nothing
+    }
+  where
+    locators :: [Locator]
+    locators = map vendoredDepToLocator deps
+
+    dependencies :: [SourceUnitDependency]
+    dependencies = map vendoredDepToSourceUnitDependency deps
+
+    vendoredDepToLocator :: FicusVendoredDependency -> Locator
+    vendoredDepToLocator dep =
+      Locator
+        { locatorFetcher = ficusVendoredDependencyEcosystem dep
+        , locatorProject = ficusVendoredDependencyName dep
+        , locatorRevision = ficusVendoredDependencyVersion dep
+        }
+
+    vendoredDepToSourceUnitDependency :: FicusVendoredDependency -> SourceUnitDependency
+    vendoredDepToSourceUnitDependency dep =
+      SourceUnitDependency
+        { sourceDepLocator = vendoredDepToLocator dep
+        , sourceDepImports = []
+        , sourceDepData =
+            Aeson.object
+              [ "vendored"
+                  Aeson..= Aeson.object
+                    [ "type" Aeson..= ("directory" :: Text)
+                    , "path" Aeson..= ficusVendoredDependencyPath dep
+                    ]
+              ]
+        }
 
 runFicus ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has Logger sig m
   ) =>
+  Maybe FilePath ->
   FicusConfig ->
-  m (Maybe FicusSnippetScanResults)
-runFicus ficusConfig = do
+  m FicusAnalysisResults
+runFicus maybeDebugDir ficusConfig = do
   logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
     logDebugWithTime "Ficus binary extracted, building command..."
@@ -159,18 +255,36 @@ runFicus ficusConfig = do
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
+
+    -- Create files for teeing output if debug mode is enabled
+    (stdoutFile, stderrFile) <- case maybeDebugDir of
+      Just debugDir -> do
+        sendIO $ do
+          let stdoutPath = debugDir </> "fossa.ficus-stdout.log"
+          let stderrPath = debugDir </> "fossa.ficus-stderr.log"
+          stdoutH <- openFile stdoutPath WriteMode
+          stderrH <- openFile stderrPath WriteMode
+          pure (Just stdoutH, Just stderrH)
+      Nothing ->
+        -- No debug mode, don't tee to files
+        pure (Nothing, Nothing)
+
     (result, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
-      getCurrentTime >>= \now -> putStrLn $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
+      getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       let stdoutHandle = getStdout p
       let stderrHandle = getStderr p
       -- Start async reading of stderr to prevent blocking
-      stderrAsync <- async $ consumeStderr stderrHandle
+      stderrAsync <- async $ consumeStderr stderrHandle stderrFile
       -- Read stdout in the main thread
-      result <- streamFicusOutput stdoutHandle
+      result <- streamFicusOutput stdoutHandle stdoutFile
       -- Wait for stderr to finish
       stdErrLines <- wait stderrAsync
       exitCode <- waitExitCode p
       pure (result, exitCode, stdErrLines)
+
+    sendIO $ do
+      traverse_ hClose stdoutFile
+      traverse_ hClose stderrFile
 
     if exitCode /= ExitSuccess
       then do
@@ -187,42 +301,67 @@ runFicus ficusConfig = do
       now <- getCurrentTime
       pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
 
-    streamFicusOutput :: Handle -> IO (Maybe FicusSnippetScanResults)
-    streamFicusOutput handle =
-      Conduit.runConduit $
-        CC.sourceHandle handle
-          .| CC.decodeUtf8Lenient
-          .| CC.linesUnbounded
-          .| CCL.mapMaybe decodeStrictText
-          .| CC.foldM
-            ( \acc message -> do
-                -- Log messages as they come, with timestamps
-                timestamp <- currentTimeStamp
-                case message of
-                  FicusMessageError err -> do
-                    putStrLn $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
-                    pure acc
-                  FicusMessageDebug dbg -> do
-                    putStrLn $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
-                    pure acc
-                  FicusMessageFinding finding -> do
-                    putStrLn $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                    let analysisFinding = FicusSnippetScanResults <$> findingToAnalysisId finding
-                    when (isJust acc && isJust analysisFinding) $
-                      putStrLn $
-                        "[" ++ timestamp ++ "] ERROR " <> "Found multiple analysis ids."
-                    pure $ acc <|> analysisFinding
-            )
-            Nothing
+    streamFicusOutput :: Handle -> Maybe Handle -> IO FicusAnalysisResults
+    streamFicusOutput handle maybeFile = do
+      accumulator <-
+        Conduit.runConduit $
+          CC.sourceHandle handle
+            .| CC.decodeUtf8Lenient
+            .| CC.linesUnbounded
+            .| CC.mapM
+              ( \line -> do
+                  -- Tee raw line to file if debug mode
+                  traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
+                  pure line
+              )
+            .| CCL.mapMaybe decodeStrictText
+            .| CC.foldM
+              ( \(currentSnippetResults, currentVendoredDeps) message -> do
+                  -- Log messages as they come, with timestamps
+                  timestamp <- currentTimeStamp
+                  case message of
+                    FicusMessageError err -> do
+                      hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
+                      pure (currentSnippetResults, currentVendoredDeps)
+                    FicusMessageDebug dbg -> do
+                      hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
+                      pure (currentSnippetResults, currentVendoredDeps)
+                    FicusMessageFinding finding -> do
+                      hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
+                      let analysisFinding = findingToSnippetScanResult finding
+                      let vendoredDep = findingToVendoredDependency finding
+                      when (isJust currentSnippetResults && isJust analysisFinding) $
+                        hPutStrLn stderr $
+                          "[" ++ timestamp ++ "] ERROR " <> "Unexpected mutliple snippet scan results"
+                      let newSnippetResults = currentSnippetResults <|> analysisFinding
+                      let newVendoredDeps = case vendoredDep of
+                            Just dep -> dep : currentVendoredDeps
+                            Nothing -> currentVendoredDeps
+                      pure (newSnippetResults, newVendoredDeps)
+              )
+              (Nothing, [])
 
-    consumeStderr :: Handle -> IO [Text]
-    consumeStderr handle = do
+      let (snippetResults, vendoredDeps) = accumulator
+      let vendoredResults = case vendoredDeps of
+            [] -> Nothing
+            deps -> Just $ FicusVendoredDependencyScanResults (Just $ vendoredDepsToSourceUnit deps)
+
+      pure $
+        FicusAnalysisResults
+          { snippetScanResults = snippetResults
+          , vendoredDependencyScanResults = vendoredResults
+          }
+
+    consumeStderr :: Handle -> Maybe Handle -> IO [Text]
+    consumeStderr handle maybeFile = do
       let loop acc (count :: Int) = do
             eof <- hIsEOF handle
             if eof
               then pure (reverse acc) -- Reverse at the end to get correct order
               else do
-                line <- hGetLine handle -- output stderr
+                line <- hGetLine handle
+                -- Tee raw line to file if debug mode
+                traverse_ (`hPutStrLn` line) maybeFile
                 now <- getCurrentTime
                 let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
                 let msg = "[" ++ timestamp ++ "] STDERR " <> line
@@ -265,11 +404,15 @@ ficusCommand ficusConfig bin = do
   pure cmd
   where
     snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
+    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = concatMap (\path -> ["--exclude", unGlobFilter path]) $ ficusConfigExclude ficusConfig
+    configStrategies = concatMap (\strategy -> ["--strategy", strategyToArg strategy]) $ ficusConfigStrategies ficusConfig
+    strategyToArg = \case
+      FicusStrategySnippetScan -> "snippet-scanning"
+      FicusStrategyVendetta -> "vendetta"
 
     maskApiKeyInCommand :: Text -> Text
     maskApiKeyInCommand cmdText =

@@ -25,6 +25,7 @@ sandbox/
 fossa.debug.json
 fossa.debug.json.gz
 fossa.telemetry.json
+fossa.debug.zip
 
 # Integration Tests
 integration-test/artifacts/
