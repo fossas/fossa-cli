@@ -230,7 +230,6 @@ library
     App.Fossa.Config.SBOM.Analyze
     App.Fossa.Config.SBOM.Common
     App.Fossa.Config.SBOM.Test
-    App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.AnalyzeNative
@@ -281,9 +280,6 @@ library
     App.Fossa.RunThemis
     App.Fossa.SBOM
     App.Fossa.SBOM.Analyze
-    App.Fossa.Snippets
-    App.Fossa.Snippets.Analyze
-    App.Fossa.Snippets.Commit
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
