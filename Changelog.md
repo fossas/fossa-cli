@@ -1,4 +1,7 @@
 # FOSSA CLI Changelog
+## 3.15.1
+- A small tweak in format for `--x-vendetta` ([#1624](https://github.com/fossas/fossa-cli/pull/1624))
+
 ## 3.15.0
 - Make snippet scanning non-experimental. This PR deprecates `fossa analyze --x-snippet-scan`. Please use `fossa analyze --snippet-scan` instead. ([#1622](https://github.com/fossas/fossa-cli/pull/1622))
 
