@@ -1,4 +1,8 @@
 # FOSSA CLI Changelog
+
+## 3.15.2
+- Licensing: applies a fix for public domain detection ([#1625](https://github.com/fossas/fossa-cli/pull/1625))
+
 ## 3.15.1
 - A small tweak in format for `--x-vendetta` ([#1624](https://github.com/fossas/fossa-cli/pull/1624))
 
