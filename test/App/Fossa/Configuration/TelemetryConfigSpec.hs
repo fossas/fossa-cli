@@ -17,12 +17,14 @@ import App.Fossa.Config.ConfigFile (
   OrgWideCustomLicenseConfigPolicy (..),
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
+import App.Fossa.DebugDir (newDebugDirRef)
 import Control.Carrier.Telemetry.Sink.Common (
   TelemetrySink (
     TelemetrySinkToEndpoint,
     TelemetrySinkToFile
   ),
  )
+import Control.Effect.Lift (sendIO)
 import Data.Text (Text)
 import Fossa.API.Types (
   ApiKey (ApiKey),
@@ -102,65 +104,80 @@ spec = do
   describe "telemetry configuration" $ do
     -- This needs to be updated when default telemetry model moves to opt-out.
     it' "by default telemetry sink set to nothing, if api key is not provided" $ do
-      sink <- collectTelemetrySink noConfig defaultEnvVars noOpts
+      debugDirRef <- sendIO newDebugDirRef
+      sink <- collectTelemetrySink debugDirRef noConfig defaultEnvVars noOpts
       sink `shouldBe'` Nothing
 
     it' "by default telemetry sink set to full telemetry" $ do
-      sink <- collectTelemetrySink noConfig defaultEnvVars (Just defaultCommonOpts{optAPIKey = Just mockApiKeyRaw})
+      debugDirRef <- sendIO newDebugDirRef
+      sink <- collectTelemetrySink debugDirRef noConfig defaultEnvVars (Just defaultCommonOpts{optAPIKey = Just mockApiKeyRaw})
       sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
     describe "command opts" $ do
       it' "should set sink to nothing, when off scope is provided via command opts" $ do
+        debugDirRef <- sendIO newDebugDirRef
         sink <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just NoTelemetry, optAPIKey = Just mockApiKeyRaw})
         sink `shouldBe'` Nothing
 
       it' "should set sink to endpoint, when full scope is provided via command opts" $ do
+        debugDirRef <- sendIO newDebugDirRef
         sink <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optAPIKey = Just mockApiKeyRaw})
         sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
       it' "should set sink to file, when debug option is provided via command line" $ do
+        debugDirRef <- sendIO newDebugDirRef
         telFull <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optDebug = True, optAPIKey = Just mockApiKeyRaw})
-        telFull `shouldBe'` Just TelemetrySinkToFile
+        telFull `shouldBe'` Just (TelemetrySinkToFile debugDirRef)
 
         telOff <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars
             (Just defaultCommonOpts{optTelemetry = Just FullTelemetry, optDebug = True, optAPIKey = Just mockApiKeyRaw})
-        telOff `shouldBe'` Just TelemetrySinkToFile
+        telOff `shouldBe'` Just (TelemetrySinkToFile debugDirRef)
 
     describe "environment variables" $ do
       it' "should set sink to nothing, when off scope is provided via environment variables" $ do
+        debugDirRef <- sendIO newDebugDirRef
         sink <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars{envTelemetryScope = Just NoTelemetry, envApiKey = Just mockApiKeyRaw}
             noOpts
         sink `shouldBe'` Nothing
 
       it' "should set sink to endpoint, when full scope is provided via environment variables" $ do
+        debugDirRef <- sendIO newDebugDirRef
         sink <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars{envTelemetryScope = Just FullTelemetry, envApiKey = Just mockApiKeyRaw}
             noOpts
         sink `shouldBe'` Just (TelemetrySinkToEndpoint (ApiOpts Nothing mockApiKey defaultApiPollDelay))
 
       it' "should set sink to file, when debug option is provided via environment variable" $ do
+        debugDirRef <- sendIO newDebugDirRef
         telFull <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars
               { envTelemetryScope = Just FullTelemetry
@@ -168,10 +185,11 @@ spec = do
               , envTelemetryDebug = True
               }
             noOpts
-        telFull `shouldBe'` Just TelemetrySinkToFile
+        telFull `shouldBe'` Just (TelemetrySinkToFile debugDirRef)
 
         telOff <-
           collectTelemetrySink
+            debugDirRef
             noConfig
             defaultEnvVars
               { envTelemetryScope = Just NoTelemetry
@@ -183,16 +201,20 @@ spec = do
 
     describe "configuration file" $ do
       it' "should set sink to nothing, when off scope is provided via configuration file" $ do
+        debugDirRef <- sendIO newDebugDirRef
         sink <-
           collectTelemetrySink
+            debugDirRef
             (Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry NoTelemetry})
             defaultEnvVars
             noOpts
         sink `shouldBe'` Nothing
 
       it' "should set sink to endpoint, when full scope is provided via configuration file" $ do
+        debugDirRef <- sendIO newDebugDirRef
         sink <-
           collectTelemetrySink
+            debugDirRef
             (Just defaultConfigFile{configTelemetry = Just $ ConfigTelemetry FullTelemetry})
             defaultEnvVars
             noOpts

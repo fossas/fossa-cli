@@ -14,7 +14,6 @@ import Container.Types (
  )
 import Data.Flag (toFlag')
 import Diag.Result (Result (..))
-import Effect.Logger (Severity (SevInfo))
 import Test.Hspec (Spec, aroundAll, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
@@ -30,10 +29,10 @@ registrySourceCfg =
     , usesExperimentalScanner = True
     , dockerHost = ""
     , arch = "amd64"
-    , severity = SevInfo
     , onlySystemDeps = False
     , filterSet = mempty
     , withoutDefaultFilters = toFlag' False
+    , debugDir = Nothing
     }
 
 runAnalyze :: ContainerAnalyzeConfig -> (ContainerScan -> IO ()) -> IO ()

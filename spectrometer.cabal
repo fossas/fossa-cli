@@ -187,6 +187,7 @@ library
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Discover
     App.Fossa.Analyze.Filter
+    App.Fossa.Analyze.ForkAlias
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
@@ -229,7 +230,6 @@ library
     App.Fossa.Config.SBOM.Analyze
     App.Fossa.Config.SBOM.Common
     App.Fossa.Config.SBOM.Test
-    App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.AnalyzeNative
@@ -243,6 +243,7 @@ library
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
+    App.Fossa.DebugDir
     App.Fossa.DependencyMetadata
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
@@ -279,9 +280,6 @@ library
     App.Fossa.RunThemis
     App.Fossa.SBOM
     App.Fossa.SBOM.Analyze
-    App.Fossa.Snippets
-    App.Fossa.Snippets.Analyze
-    App.Fossa.Snippets.Commit
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
@@ -566,6 +564,7 @@ test-suite unit-tests
     AlpineLinux.ParserSpec
     Android.UtilSpec
     App.DocsSpec
+    App.Fossa.Analyze.ForkAliasSpec
     App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
@@ -656,6 +655,7 @@ test-suite unit-tests
     Erlang.Rebar3TreeSpec
     Extra.ListSpec
     Extra.TextSpec
+    Ficus.FicusSpec
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
@@ -722,6 +722,7 @@ test-suite unit-tests
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
     Sqlite.SqliteSpec
+    Srclib.TypesSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
@@ -758,7 +759,6 @@ test-suite integration-tests
     Analysis.CocoapodsSpec
     Analysis.ElixirSpec
     Analysis.ErlangSpec
-    Analysis.FicusSpec
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
     Analysis.GoSpec

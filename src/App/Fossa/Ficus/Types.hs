@@ -7,27 +7,92 @@ module App.Fossa.Ficus.Types (
   FicusDebug (..),
   FicusError (..),
   FicusAnalysisFlag (..),
+  FicusStrategy (..),
   FicusAllFlag (..),
   FicusWalkFlag (..),
   FicusNoopFlag (..),
   FicusHashFlag (..),
   FicusSnippetScanFlag,
   FicusSnippetScanResults (..),
+  FicusScanStats (..),
+  FicusVendettaFlag,
   FicusPerStrategyFlag (..),
+  FicusAnalysisResults (..),
+  FicusVendoredDependency (..),
+  FicusVendoredDependencyScanResults (..),
 ) where
 
 import App.Types (ProjectRevision)
-import Data.Aeson (FromJSON, Value (Object), withText)
-import Data.Aeson qualified as A
-import Data.Aeson.Types (Parser, (.:))
+import Data.Aeson (FromJSON (parseJSON), Value (Object), withObject, withText)
+import Data.Aeson.Types (Parser, (.:), (.:?))
 import Data.Text (Text)
 import Fossa.API.Types
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path)
+import Srclib.Types (SourceUnit)
 import Text.URI
 import Types (GlobFilter)
 
-newtype FicusSnippetScanResults = FicusSnippetScanResults {ficusSnippetScanResultsAnalysisId :: Int} deriving (Eq, Ord, Show, Generic)
+data FicusAnalysisResults = FicusAnalysisResults
+  { snippetScanResults :: Maybe FicusSnippetScanResults
+  , vendoredDependencyScanResults :: Maybe FicusVendoredDependencyScanResults
+  }
+
+newtype FicusVendoredDependencyScanResults = FicusVendoredDependencyScanResults (Maybe SourceUnit)
+
+data FicusVendoredDependency = FicusVendoredDependency
+  { ficusVendoredDependencyName :: Text
+  , ficusVendoredDependencyEcosystem :: Text
+  , ficusVendoredDependencyVersion :: Maybe Text
+  , ficusVendoredDependencyPath :: Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON FicusVendoredDependency where
+  parseJSON = withObject "FicusVendoredDependency" $ \obj ->
+    FicusVendoredDependency
+      <$> obj .: "name"
+      <*> obj .: "ecosystem"
+      <*> obj .:? "version"
+      <*> obj .: "path"
+
+data FicusSnippetScanResults = FicusSnippetScanResults
+  { ficusSnippetScanResultsAnalysisId :: Int
+  , ficusSnippetScanResultsBucketId :: Int
+  , ficusSnippetScanResultsStats :: FicusScanStats
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON FicusSnippetScanResults where
+  parseJSON = withObject "FicusSnippetScanResults" $ \obj ->
+    FicusSnippetScanResults
+      <$> obj .: "analysis_id"
+      <*> obj .: "bucket_id"
+      <*> obj .: "stats"
+
+data FicusScanStats = FicusScanStats
+  { ficusStatsSkippedFiles :: Int
+  , ficusStatsProcessedFiles :: Int
+  , ficusStatsUniqueProcessedFiles :: Int
+  , ficusStatsUniqueNewFiles :: Int
+  , ficusStatsUniqueExistingFiles :: Int
+  , ficusStatsUniqueMatchedFiles :: Int
+  , ficusStatsUniqueUnmatchedFiles :: Int
+  , ficusStatsProcessingTimeSeconds :: Double
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON FicusScanStats where
+  parseJSON = withObject "FicusScanStats" $ \obj ->
+    FicusScanStats
+      <$> obj .: "skipped_files"
+      <*> obj .: "processed_files"
+      <*> obj .: "unique_processed_files"
+      <*> obj .: "unique_new_files"
+      <*> obj .: "unique_existing_files"
+      <*> obj .: "unique_matched_files"
+      <*> obj .: "unique_unmatched_files"
+      <*> obj .: "processing_time_seconds"
 
 data FicusMessages = FicusMessages
   { ficusMessageDebugs :: [FicusDebug]
@@ -141,7 +206,13 @@ data FicusConfig = FicusConfig
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`
   , ficusConfigFlags :: [FicusPerStrategyFlag]
   , ficusConfigSnippetScanRetentionDays :: Maybe Int
+  , ficusConfigStrategies :: [FicusStrategy]
   }
+  deriving (Show, Eq, Generic)
+
+data FicusStrategy
+  = FicusStrategySnippetScan
+  | FicusStrategyVendetta
   deriving (Show, Eq, Generic)
 
 -- A flag for ficus paired with a proper strategy or pseudo-strategy.
@@ -153,6 +224,7 @@ data FicusPerStrategyFlag
   | SnippetScan FicusSnippetScanFlag
   | Noop FicusNoopFlag
   | Hash FicusHashFlag
+  | Vendetta FicusVendettaFlag
   deriving (Show, Eq, Generic)
 
 data FicusAnalysisFlag
@@ -170,6 +242,11 @@ newtype FicusNoopFlag = FicusNoopFlag FicusAnalysisFlag deriving (Show, Eq)
 newtype FicusHashFlag = FicusHashFlag FicusAnalysisFlag deriving (Show, Eq)
 
 data FicusSnippetScanFlag
-  = CommonFlag FicusAnalysisFlag
-  | BatchLen Int
+  = SnippetScanCommonFlag FicusAnalysisFlag
+  | SnippetScanBatchLen Int
+  deriving (Show, Eq)
+
+data FicusVendettaFlag
+  = VendettaCommonFlag FicusAnalysisFlag
+  | VendettaBatchLen Int
   deriving (Show, Eq)

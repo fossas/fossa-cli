@@ -1,3 +1,4 @@
+{-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -9,9 +10,13 @@ module App.Fossa.ManualDeps (
   RemoteDependency (..),
   DependencyMetadata (..),
   VendoredDependency (..),
+  ForkAlias (..),
+  ForkAliasEntry (..),
+  forkAliasEntryToLocator,
   ManualDependencies (..),
   LocatorDependency (..),
   FoundDepsFile (..),
+  ManualDepsResult (..),
   analyzeFossaDepsFile,
   findAndReadFossaDepsFile,
   findFossaDepsFile,
@@ -82,6 +87,12 @@ data FoundDepsFile
   = ManualYaml (Path Abs File)
   | ManualJSON (Path Abs File)
 
+data ManualDepsResult = ManualDepsResult
+  { manualDepsResultSourceUnit :: Maybe SourceUnit
+  , manualDepsResultForkAliases :: [ForkAlias]
+  }
+  deriving (Eq, Show)
+
 analyzeFossaDepsFile ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
@@ -95,21 +106,22 @@ analyzeFossaDepsFile ::
   Maybe FilePath ->
   Maybe ApiOpts ->
   VendoredDependencyOptions ->
-  m (Maybe SourceUnit)
+  m ManualDepsResult
 analyzeFossaDepsFile root maybeCustomFossaDepsPath maybeApiOpts vendoredDepsOptions = do
   maybeDepsFile <-
     case maybeCustomFossaDepsPath of
       Nothing -> findFossaDepsFile root
       Just filePath -> retrieveCustomFossaDepsFile filePath
   case maybeDepsFile of
-    Nothing -> pure Nothing
+    Nothing -> pure $ ManualDepsResult Nothing []
     Just depsFile -> do
       manualDeps <- context "Reading fossa-deps file" $ readFoundDeps depsFile
+      let aliases = forkAliases manualDeps
       if hasNoDeps manualDeps
-        then pure Nothing
-        else
-          context "Converting fossa-deps to partial API payload" $
-            Just <$> toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+        then pure $ ManualDepsResult Nothing aliases
+        else context "Converting fossa-deps to partial API payload" $ do
+          sourceUnit <- toSourceUnit root depsFile manualDeps maybeApiOpts vendoredDepsOptions
+          pure $ ManualDepsResult (Just sourceUnit) aliases
 
 retrieveCustomFossaDepsFile ::
   ( Has Diagnostics sig m
@@ -235,6 +247,9 @@ collectInteriorLabels org ManualDependencies{..} =
       <> mapMaybe (remoteDepToLabel org) remoteDependencies
       <> mapMaybe locatorDepToLabel locatorDependencies
   where
+    -- Fork alias labels are handled separately in Analyze.hs via collectForkAliasLabels
+    -- and mergeForkAliasLabels, so we don't include them here
+
     liftEmpty :: (a, [b]) -> Maybe (a, [b])
     liftEmpty (_, []) = Nothing
     liftEmpty (a, xs) = Just (a, xs)
@@ -358,7 +373,7 @@ mkLinuxPackage :: Text -> Text -> Text -> Text
 mkLinuxPackage depName os osVersion = depName <> "#" <> os <> "#" <> osVersion
 
 addEmptyDep :: Locator -> SourceUnitDependency
-addEmptyDep loc = SourceUnitDependency loc []
+addEmptyDep loc = SourceUnitDependency loc [] Data.Aeson.Null
 
 toAdditionalData :: Maybe (NE.NonEmpty CustomDependency) -> Maybe (NE.NonEmpty RemoteDependency) -> Maybe AdditionalDepData
 toAdditionalData customDeps remoteDeps =
@@ -401,8 +416,47 @@ data ManualDependencies = ManualDependencies
   , vendoredDependencies :: [VendoredDependency]
   , remoteDependencies :: [RemoteDependency]
   , locatorDependencies :: [LocatorDependency]
+  , forkAliases :: [ForkAlias]
   }
   deriving (Eq, Ord, Show)
+
+data ForkAliasEntryKind = Base | Fork
+
+data ForkAliasEntry (a :: ForkAliasEntryKind) = ForkAliasEntry
+  { forkAliasEntryType :: DepType
+  , forkAliasEntryName :: Text
+  , forkAliasEntryVersion :: Maybe Text
+  }
+  deriving (Eq, Ord, Show)
+
+data ForkAlias = ForkAlias
+  { forkAliasFork :: ForkAliasEntry 'Fork
+  , forkAliasBase :: ForkAliasEntry 'Base
+  , forkAliasLabels :: [ProvidedPackageLabel]
+  }
+  deriving (Eq, Ord, Show)
+
+forkAliasEntryToLocator :: ForkAliasEntry a -> Locator
+forkAliasEntryToLocator ForkAliasEntry{..} =
+  Locator
+    { locatorFetcher = depTypeToFetcher forkAliasEntryType
+    , locatorProject = forkAliasEntryName
+    , locatorRevision = forkAliasEntryVersion
+    }
+
+instance FromJSON (ForkAliasEntry a) where
+  parseJSON = withObject "ForkAliasEntry" $ \obj ->
+    ForkAliasEntry
+      <$> (obj .: "type" >>= depTypeParser)
+      <*> (obj `neText` "name")
+      <*> (unTextLike <$$> obj .:? "version")
+
+instance FromJSON ForkAlias where
+  parseJSON = withObject "ForkAlias" $ \obj ->
+    ForkAlias
+      <$> obj .: "fork"
+      <*> obj .: "base"
+      <*> obj .:? "labels" .!= []
 
 data LocatorDependency
   = LocatorDependencyPlain Locator
@@ -475,11 +529,12 @@ instance FromJSON ManualDependencies where
       <*> (obj .:? "vendored-dependencies" .!= [])
       <*> (obj .:? "remote-dependencies" .!= [])
       <*> (obj .:? "locator-dependencies" .!= [])
+      <*> (obj .:? "fork-aliases" .!= [])
     where
       isMissingOr1 :: Maybe Int -> Parser ()
       isMissingOr1 (Just x) | x /= 1 = fail $ "Invalid fossa-deps version: " <> show x
       isMissingOr1 _ = pure ()
-  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty
+  parseJSON (Null) = pure $ ManualDependencies mempty mempty mempty mempty mempty mempty
   parseJSON other = fail $ "Expected object or Null for ManualDependencies, but got: " <> show other
 
 depTypeParser :: Text -> Parser DepType

@@ -9,6 +9,7 @@ module Srclib.Types (
   AdditionalDepData (..),
   SourceUserDefDep (..),
   SourceRemoteDep (..),
+  LocatorWithMetadata (..),
   Locator (..),
   LicenseSourceUnit (..),
   LicenseScanType (..),
@@ -35,6 +36,8 @@ module Srclib.Types (
   sourceUnitToFullSourceUnit,
   licenseUnitToFullSourceUnit,
   textToOriginPath,
+  toProjectLocator,
+  translateSourceUnitLocators,
 ) where
 
 import Data.Aeson
@@ -409,7 +412,7 @@ data SourceUnitBuild = SourceUnitBuild
 data SourceUnitDependency = SourceUnitDependency
   { sourceDepLocator :: Locator
   , sourceDepImports :: [Locator] -- omitempty
-  -- , sourceDepData :: Aeson.Value
+  , sourceDepData :: Data.Aeson.Value
   }
   deriving (Eq, Ord, Show)
 
@@ -475,6 +478,12 @@ parseProvidedPackageLabelScope :: Text -> ProvidedPackageLabelScope
 parseProvidedPackageLabelScope "org" = ProvidedPackageLabelScopeOrg
 parseProvidedPackageLabelScope "project" = ProvidedPackageLabelScopeProject
 parseProvidedPackageLabelScope _ = ProvidedPackageLabelScopeRevision
+
+data LocatorWithMetadata = LocatorWithMetadata
+  { locatorWithMetadataLocator :: Locator
+  , locatorWithMetadataData :: Data.Aeson.Value
+  }
+  deriving (Eq, Ord, Show)
 
 data Locator = Locator
   { locatorFetcher :: Text
@@ -551,6 +560,7 @@ instance ToJSON SourceUnitDependency where
     object
       [ "locator" .= sourceDepLocator
       , "imports" .= sourceDepImports
+      , "metadata" .= sourceDepData
       ]
 
 instance FromJSON SourceUnitDependency where
@@ -558,6 +568,7 @@ instance FromJSON SourceUnitDependency where
     SourceUnitDependency
       <$> obj .: "locator"
       <*> obj .: "imports"
+      <*> obj .: "metadata"
 
 instance ToJSON AdditionalDepData where
   toJSON AdditionalDepData{..} =
@@ -653,3 +664,30 @@ instance ToJSON Locator where
 
 instance FromJSON Locator where
   parseJSON = withText "Locator" (pure . parseLocator)
+
+-- | Convert a locator to its project locator by removing its revision.
+-- This is used for matching locators ignoring version.
+toProjectLocator :: Locator -> Locator
+toProjectLocator loc = loc{locatorRevision = Nothing}
+
+-- | Translate all locators in a SourceUnit using a translation function.
+-- The translation function is applied to all locators in:
+-- - buildImports
+-- - sourceDepLocator in each dependency
+-- - sourceDepImports in each dependency
+translateSourceUnitLocators :: (Locator -> Locator) -> SourceUnit -> SourceUnit
+translateSourceUnitLocators translateLocator unit =
+  unit{sourceUnitBuild = translateBuild <$> sourceUnitBuild unit}
+  where
+    translateBuild :: SourceUnitBuild -> SourceUnitBuild
+    translateBuild build =
+      build
+        { buildImports = map translateLocator (buildImports build)
+        , buildDependencies = map translateDependency (buildDependencies build)
+        }
+    translateDependency :: SourceUnitDependency -> SourceUnitDependency
+    translateDependency dep =
+      dep
+        { sourceDepLocator = translateLocator (sourceDepLocator dep)
+        , sourceDepImports = map translateLocator (sourceDepImports dep)
+        }

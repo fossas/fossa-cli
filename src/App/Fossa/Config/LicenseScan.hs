@@ -55,12 +55,13 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   a ->
   b ->
   LicenseScanCommand ->
   m LicenseScanConfig
-mergeOpts _ _ (DirectScan path) = RawPathScan <$> collectBaseDir path
-mergeOpts _ _ (FossaDeps path) = VendoredDepsOutput <$> collectBaseDir path
+mergeOpts _ _ _ (DirectScan path) = RawPathScan <$> collectBaseDir path
+mergeOpts _ _ _ (FossaDeps path) = VendoredDepsOutput <$> collectBaseDir path
 
 cliParser :: Parser LicenseScanCommand
 cliParser = public <|> private

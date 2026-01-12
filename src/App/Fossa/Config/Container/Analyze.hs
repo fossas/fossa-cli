@@ -75,10 +75,10 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
     usesExperimentalScanner :: Bool
   , dockerHost :: Text
   , arch :: Text
-  , severity :: Severity
   , onlySystemDeps :: Bool
   , filterSet :: AllFilters
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
+  , debugDir :: Maybe FilePath
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -130,13 +130,13 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerAnalyzeOptions ->
   m ContainerAnalyzeConfig
-mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
+mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
   let scanDest = collectScanDestination cfgfile envvars cliOpts
-      severity = getSeverity cliOpts
       imageLoc = containerAnalyzeImage
       jsonOutput = containerJsonOutput
       arch = collectArch
@@ -158,10 +158,10 @@ mergeOpts cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> pure containerExperimentalScanner
     <*> collectDockerHost envvars
     <*> pure arch
-    <*> pure severity
     <*> pure onlySystemDeps
     <*> pure scanFilters
     <*> pure withoutDefaultFilters
+    <*> pure maybeDebugDir
 
 collectScanDestination ::
   (Has Diagnostics sig m) =>

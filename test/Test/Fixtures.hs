@@ -75,6 +75,7 @@ import App.Types (Mode (..), OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
@@ -89,7 +90,6 @@ import Discovery.Filters (
   MavenScopeFilters (MavenScopeIncludeFilters),
   comboExclude,
  )
-import Effect.Logger (Severity (..))
 import Fossa.API.CoreTypes qualified as CoreAPI
 import Fossa.API.Types (
   Archive (..),
@@ -338,12 +338,13 @@ sourceUnitBuildMaven =
     [ ipAddr
     , spotBugs
     ]
-    [ SourceUnitDependency logger []
-    , SourceUnitDependency ipAddr []
+    [ SourceUnitDependency logger [] Aeson.Null
+    , SourceUnitDependency ipAddr [] Aeson.Null
     , SourceUnitDependency
         spotBugs
         [ logger
         ]
+        Aeson.Null
     ]
   where
     ipAddr :: Locator
@@ -388,6 +389,7 @@ vsiSourceUnit =
                           , locatorRevision = Just "1.2.3"
                           }
                     , sourceDepImports = []
+                    , sourceDepData = Aeson.Null
                     }
                 ]
             }
@@ -655,7 +657,6 @@ standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
   AnalyzeConfig
     { ANZ.baseDir = App.BaseDir absDir
-    , ANZ.severity = SevDebug
     , ANZ.scanDestination = OutputStdout
     , ANZ.projectRevision = projectRevision
     , ANZ.vsiOptions = vsiOptions
@@ -675,7 +676,9 @@ standardAnalyzeConfig =
     , ANZ.reachabilityConfig = mempty
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
-    , ANZ.xSnippetScan = False
+    , ANZ.snippetScan = False
+    , ANZ.debugDir = Nothing
+    , ANZ.xVendetta = False
     }
 
 sampleJarParsedContent :: Text
