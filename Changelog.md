@@ -1,7 +1,9 @@
 # FOSSA CLI Changelog
 
 ## 3.15.3
-- Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623))
+- Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623)).
+  The `fossa snippets` subcommand has been replaced by `fossa analyze --snippet-scan` ([documentation](./docs/features/snippet-scanning.md)). If you are still using `fossa snippets`, you can temporarily keep using it by using versions of the CLI previous to this release. We will eventually be sunsetting the services that back `fossa snippets`, but will keep them running to mid-February at the very earliest. Once those services stop running then `fossa snippets` will no longer work at all, even when using older versions of the CLI. Please reach out to support@fossa.com if you have any questions.
+- Allow snippet scanning of binary files. This allows us to find exact matches for binary files. (No PR. This was implemented in a separate binary that does snippet scanning for us.)
 
 ## 3.15.2
 - Licensing: applies a fix for public domain detection ([#1625](https://github.com/fossas/fossa-cli/pull/1625))
