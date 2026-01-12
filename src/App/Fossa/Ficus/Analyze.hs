@@ -223,10 +223,11 @@ vendoredDepsToSourceUnit deps =
         , sourceDepData =
             Aeson.object
               [ "vendored"
-                  Aeson..= Aeson.object
-                    [ "type" Aeson..= ("directory" :: Text)
-                    , "path" Aeson..= ficusVendoredDependencyPath dep
-                    ]
+                  Aeson..= [ Aeson.object
+                               [ "type" Aeson..= ("directory" :: Text)
+                               , "path" Aeson..= ficusVendoredDependencyPath dep
+                               ]
+                           ]
               ]
         }
 

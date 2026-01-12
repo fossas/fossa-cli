@@ -1,6 +1,13 @@
 # FOSSA CLI Changelog
-## 3.15.1
+
+## 3.15.3
 - Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623))
+
+## 3.15.2
+- Licensing: applies a fix for public domain detection ([#1625](https://github.com/fossas/fossa-cli/pull/1625))
+
+## 3.15.1
+- A small tweak in format for `--x-vendetta` ([#1624](https://github.com/fossas/fossa-cli/pull/1624))
 
 ## 3.15.0
 - Make snippet scanning non-experimental. This PR deprecates `fossa analyze --x-snippet-scan`. Please use `fossa analyze --snippet-scan` instead. ([#1622](https://github.com/fossas/fossa-cli/pull/1622))
