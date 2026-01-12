@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.15.3
+- Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623))
+
 ## 3.15.2
 - Licensing: applies a fix for public domain detection ([#1625](https://github.com/fossas/fossa-cli/pull/1625))
 
