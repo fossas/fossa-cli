@@ -166,10 +166,8 @@ findProjects = walkWithFilters' $ \dir _ files -> do
         (Nothing, _, _) -> pure ([], WalkSkipAll)
         (Just projects, False, False) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
         (Just projects, True, _) -> do
-          -- Prefer MiniDependencyTreePlugin (built-in with sbt 1.4+) when available.
-          -- This uses the `dependencyTree` command which works reliably across sbt versions.
-          -- Even if an explicit DependencyTreePlugin is also present, we prefer the built-in
-          -- to avoid command casing issues with `dependencyBrowseTreeHTML` vs `dependencyBrowseTreeHtml`.
+          -- project is using miniature dependency tree plugin,
+          -- which is included by default with sbt 1.4+
           depTreeStdOut <-
             recover $
               context ("inferring dependencies") $
@@ -187,8 +185,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)
         (Just projects, False, True) -> do
-          -- Fallback for sbt < 1.4 with explicitly configured dependency-tree-plugin.
-          -- Uses `dependencyBrowseTreeHtml` command (lowercase for older sbt versions).
+          -- project is explicitly configured to use dependency-tree-plugin
           treeJSONs <- recover $ genTreeJson dir
           pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
 

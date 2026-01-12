@@ -2,6 +2,7 @@
 
 module Strategy.Scala.Plugin (
   hasDependencyPlugins,
+  detectDependencyPlugins,
   genTreeJson,
 ) where
 
@@ -9,6 +10,7 @@ import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Stack (context)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TextLazy
 import Effect.Exec (
@@ -25,15 +27,20 @@ import Strategy.Scala.Common (mkSbtCommand)
 getPlugins :: Command
 getPlugins = mkSbtCommand "plugins"
 
--- | Returns list of plugins used by sbt.
+-- | Returns (hasMiniDependencyTreePlugin, hasDependencyTreePlugin) by running sbt plugins.
 hasDependencyPlugins :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Bool, Bool)
 hasDependencyPlugins projectDir = do
   stdoutText <- (TextLazy.toStrict . decodeUtf8) <$> context "Identifying plugins" (execThrow projectDir getPlugins)
-  pure
-    ( Text.count ".MiniDependencyTreePlugin" stdoutText > 0
-    , Text.count ".DependencyTreePlugin" stdoutText > 0
-        || Text.count "net.virtualvoid.sbt.graph.DependencyGraphPlugin" stdoutText > 0 -- =< sbt1.4
-    )
+  pure $ detectDependencyPlugins stdoutText
+
+-- | Detect dependency plugins from sbt plugins output.
+-- Returns (hasMiniDependencyTreePlugin, hasDependencyTreePlugin).
+detectDependencyPlugins :: Text -> (Bool, Bool)
+detectDependencyPlugins stdoutText =
+  ( Text.count ".MiniDependencyTreePlugin" stdoutText > 0
+  , Text.count ".DependencyTreePlugin" stdoutText > 0
+      || Text.count "net.virtualvoid.sbt.graph.DependencyGraphPlugin" stdoutText > 0 -- sbt < 1.4
+  )
 
 -- | Generates Dependency Trees.
 -- Ref: https://github.com/sbt/sbt/blob/master/main/src/main/scala/sbt/plugins/DependencyTreeSettings.scala#L101
@@ -46,14 +53,8 @@ hasDependencyPlugins projectDir = do
 --  ./tree.html
 --  ./tree.data.js
 --
--- NOTE: Command casing varies by sbt version:
---   - sbt < 1.4: Uses lowercase `dependencyBrowseTreeHtml`
---   - sbt >= 1.4: Uses uppercase `dependencyBrowseTreeHTML`
---
--- This function uses lowercase for compatibility with sbt < 1.4.
--- For sbt >= 1.4, the built-in MiniDependencyTreePlugin is preferred
--- (via `dependencyTree` command) to avoid these casing issues.
--- See Strategy.Scala.findProjects for the plugin selection logic.
+-- This command is only used when the plugin is installed explicitly, i.e. sbt < 1.4.
+-- Newer versions of sbt will use the built-in dependency graph plugin.
 mkDependencyBrowseTreeHTMLCmd :: Command
 mkDependencyBrowseTreeHTMLCmd = mkSbtCommand "dependencyBrowseTreeHtml"
 
