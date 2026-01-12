@@ -165,13 +165,11 @@ findProjects = walkWithFilters' $ \dir _ files -> do
       case (projectsRes, miniDepPlugin, depPlugin) of
         (Nothing, _, _) -> pure ([], WalkSkipAll)
         (Just projects, False, False) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
-        (Just projects, _, True) -> do
-          -- project is explicitly configured to use dependency-tree-plugin
-          treeJSONs <- recover $ genTreeJson dir
-          pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
         (Just projects, True, _) -> do
-          -- project is using miniature dependency tree plugin,
-          -- which is included by default with sbt 1.4+
+          -- Prefer MiniDependencyTreePlugin (built-in with sbt 1.4+) when available.
+          -- This uses the `dependencyTree` command which works reliably across sbt versions.
+          -- Even if an explicit DependencyTreePlugin is also present, we prefer the built-in
+          -- to avoid command casing issues with `dependencyBrowseTreeHTML` vs `dependencyBrowseTreeHtml`.
           depTreeStdOut <-
             recover $
               context ("inferring dependencies") $
@@ -188,6 +186,11 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             (True, _) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)
+        (Just projects, False, True) -> do
+          -- Fallback for sbt < 1.4 with explicitly configured dependency-tree-plugin.
+          -- Uses `dependencyBrowseTreeHtml` command (lowercase for older sbt versions).
+          treeJSONs <- recover $ genTreeJson dir
+          pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do

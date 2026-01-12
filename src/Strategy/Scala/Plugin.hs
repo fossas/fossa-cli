@@ -46,16 +46,14 @@ hasDependencyPlugins projectDir = do
 --  ./tree.html
 --  ./tree.data.js
 --
--- This command is documented as being invoked with capital "HTML" but older versions of sbt output an error like:
+-- NOTE: Command casing varies by sbt version:
+--   - sbt < 1.4: Uses lowercase `dependencyBrowseTreeHtml`
+--   - sbt >= 1.4: Uses uppercase `dependencyBrowseTreeHTML`
 --
--- [error] Not a valid command: dependencyBrowseTreeHTML
--- [error] Not a valid project ID: dependencyBrowseTreeHTML
--- [error] Expected ':'
--- [error] Not a valid key: dependencyBrowseTreeHTML (similar: dependencyBrowseTreeHtml, dependencyBrowseTree, dependencyBrowseTreeTarget)
--- [error] dependencyBrowseTreeHTML
---
--- This command is only used when the plugin is installed explicitly, i.e. sbt < 1.4.
--- Newer versions of sbt will use the built-in dependency graph plugin.
+-- This function uses lowercase for compatibility with sbt < 1.4.
+-- For sbt >= 1.4, the built-in MiniDependencyTreePlugin is preferred
+-- (via `dependencyTree` command) to avoid these casing issues.
+-- See Strategy.Scala.findProjects for the plugin selection logic.
 mkDependencyBrowseTreeHTMLCmd :: Command
 mkDependencyBrowseTreeHTMLCmd = mkSbtCommand "dependencyBrowseTreeHtml"
 
