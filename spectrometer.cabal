@@ -717,6 +717,7 @@ test-suite unit-tests
     Ruby.GemfileLockSpec
     Ruby.ParseSpec
     Scala.CommonSpec
+    Scala.PluginSpec
     Scala.SbtDependencyTreeJsonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
