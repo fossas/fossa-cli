@@ -335,7 +335,8 @@ buildGraph lockFile = withoutLocalPackages $
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
-      let parentDep = toDependency False depName depVersion pkgMeta
+      let devOverride = isPnpm9DevInAllProjects depName
+      let parentDep = toDependency devOverride depName depVersion pkgMeta
 
       -- It is ok, if this dependency was already graphed as direct
       -- @direct 1 <> deep 1 = direct 1@
@@ -428,6 +429,23 @@ buildGraph lockFile = withoutLocalPackages $
     -- Use a project map to determine if a package should be marked dev.
     isPnpm9Dev :: Text -> ProjectMap -> Bool
     isPnpm9Dev name ProjectMap{directDevDependencies} = Map.member name directDevDependencies
+
+    isPnpm9Dep :: Text -> ProjectMap -> Bool
+    isPnpm9Dep name ProjectMap{directDependencies} = Map.member name directDependencies
+
+    -- Returns true if a dependency is either absent or a dev dependency in each workspace. If it is a
+    -- non-dev dependency in any workspace, then this function returns false. Also returns false if the
+    -- lockfile is not PNPM v9
+    isPnpm9DevInAllProjects :: Text -> Bool
+    isPnpm9DevInAllProjects depName =
+      (lockFile.lockFileVersion == PnpmLockV9)
+        && all
+          ( ( \projectImporters ->
+                isPnpm9Dev depName projectImporters || not (isPnpm9Dep depName projectImporters)
+            )
+              . snd
+          )
+          (toList lockFile.importers)
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
