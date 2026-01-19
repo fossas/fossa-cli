@@ -162,7 +162,10 @@ instance FromJSON PnpmLockFileSnapshots where
               deps <- ds .:? "dependencies" .!= mempty
               pure . HashMap.toList $ deps
       snapshots <- traverse readTransitiveDepPairs o
-      let snapshots' = Map.fromList . HashMap.toList . toHashMapText $ snapshots
+
+      -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
+      -- section which is where we look the dependency up.
+      let snapshots' = (Map.mapKeys withoutPeerDepSuffix) . Map.fromList . HashMap.toList . toHashMapText $ snapshots
       pure $
         PnpmLockFileSnapshots{snapshots = snapshots'}
 
@@ -306,7 +309,7 @@ buildGraph lockFile = withoutLocalPackages $
               <> toList (directDevDependencies projectImporters)
 
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
-        maybe (pure ()) direct $ toResolvedDependency (isPnpm9Dev depName projectImporters) depName depVersion
+        maybe (pure ()) direct $ toResolvedDependency (isPnpm9Dev depName) depName depVersion
 
     -- Add edges and deep dependencies by iterating over all packages.
     --
@@ -335,15 +338,14 @@ buildGraph lockFile = withoutLocalPackages $
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
-      let devOverride = isPnpm9DevInAllProjects depName
-      let parentDep = toDependency devOverride depName depVersion pkgMeta
+      let parentDep = toDependency (isPnpm9Dev depName) depName depVersion pkgMeta
 
       -- It is ok, if this dependency was already graphed as direct
       -- @direct 1 <> deep 1 = direct 1@
       deep parentDep
 
       for_ deepDependencies $ \(deepName, deepVersion) -> do
-        maybe (pure ()) (edge parentDep) (toResolvedDependency False deepName deepVersion)
+        maybe (pure ()) (edge parentDep) (toResolvedDependency (isPnpm9Dev deepName) deepName deepVersion)
   where
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion = case lockFileVersion lockFile of
@@ -418,34 +420,30 @@ buildGraph lockFile = withoutLocalPackages $
     --
     toResolvedDependency :: Bool -> Text -> Text -> Maybe Dependency
     toResolvedDependency devOverride depName depVersion = do
-      let maybeNonRegistrySrcPackage = Map.lookup depVersion (packages lockFile)
-      let maybeRegistrySrcPackage = Map.lookup (mkPkgKey depName depVersion) (packages lockFile)
+      let version = withoutPeerDepSuffix depVersion
+      let maybeNonRegistrySrcPackage = Map.lookup version (packages lockFile)
+      let maybeRegistrySrcPackage = Map.lookup (mkPkgKey depName version) (packages lockFile)
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
         (Just nonRegistryPkg, _) -> Just $ toDependency devOverride depName Nothing nonRegistryPkg
-        (Nothing, Just registryPkg) -> Just $ toDependency devOverride depName (Just depVersion) registryPkg
+        (Nothing, Just registryPkg) -> Just $ toDependency devOverride depName (Just version) registryPkg
 
     -- PNPM lockfile 9 doesn't store information about dev deps directly on package data.
     -- Use a project map to determine if a package should be marked dev.
-    isPnpm9Dev :: Text -> ProjectMap -> Bool
-    isPnpm9Dev name ProjectMap{directDevDependencies} = Map.member name directDevDependencies
+    isPnpm9ProjectDev :: Text -> ProjectMap -> Bool
+    isPnpm9ProjectDev name ProjectMap{directDevDependencies} = Map.member name directDevDependencies
 
-    isPnpm9Dep :: Text -> ProjectMap -> Bool
-    isPnpm9Dep name ProjectMap{directDependencies} = Map.member name directDependencies
+    isPnpm9ProjectDep :: Text -> ProjectMap -> Bool
+    isPnpm9ProjectDep name ProjectMap{directDependencies} = Map.member name directDependencies
 
     -- Returns true if a dependency is either absent or a dev dependency in each workspace. If it is a
     -- non-dev dependency in any workspace, then this function returns false. Also returns false if the
     -- lockfile is not PNPM v9
-    isPnpm9DevInAllProjects :: Text -> Bool
-    isPnpm9DevInAllProjects depName =
+    isPnpm9Dev :: Text -> Bool
+    isPnpm9Dev depName =
       (lockFile.lockFileVersion == PnpmLockV9)
-        && all
-          ( ( \projectImporters ->
-                isPnpm9Dev depName projectImporters || not (isPnpm9Dep depName projectImporters)
-            )
-              . snd
-          )
-          (toList lockFile.importers)
+        && (any ((isPnpm9ProjectDev depName) . snd) (toList lockFile.importers))
+        && not (any ((isPnpm9ProjectDep depName) . snd) (toList lockFile.importers))
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
@@ -482,15 +480,6 @@ buildGraph lockFile = withoutLocalPackages $
     withoutSymConstraint :: Text -> Text
     withoutSymConstraint version = fst $ Text.breakOn "_" version
 
-    -- Sometimes package versions include resolved peer dependency version
-    -- in parentheses. This is used by pnpm for dependency resolution, we do
-    -- not care about them, as they do not represent package version.
-    --
-    -- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
-    -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
-    withoutPeerDepSuffix :: Text -> Text
-    withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
-
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
@@ -499,3 +488,12 @@ buildGraph lockFile = withoutLocalPackages $
 
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
+
+-- Sometimes package versions include resolved peer dependency version
+-- in parentheses. This is used by pnpm for dependency resolution, we do
+-- not care about them, as they do not represent package version.
+--
+-- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
+-- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
+withoutPeerDepSuffix :: Text -> Text
+withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
