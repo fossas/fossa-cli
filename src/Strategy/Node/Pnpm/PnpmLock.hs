@@ -151,7 +151,7 @@ type SnapShotDepRev = Text
 --       dependencies:
 --       punycode: 2.3.1
 newtype PnpmLockFileSnapshots = PnpmLockFileSnapshots
-  {snapshots :: Map SnapshotDepName [(SnapshotDepName, SnapShotDepRev)]}
+  {snapshots :: HashMap.HashMap SnapshotDepName [(SnapshotDepName, SnapShotDepRev)]}
   deriving (Show, Eq, Ord, Semigroup, Monoid)
 
 instance FromJSON PnpmLockFileSnapshots where
@@ -165,7 +165,7 @@ instance FromJSON PnpmLockFileSnapshots where
 
       -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
       -- section which is where we look the dependency up.
-      let snapshots' = (Map.mapKeys withoutPeerDepSuffix) . Map.fromList . HashMap.toList . toHashMapText $ snapshots
+      let snapshots' = (HashMap.mapKeys withoutPeerDepSuffix) . toHashMapText $ snapshots
       pure $
         PnpmLockFileSnapshots{snapshots = snapshots'}
 
@@ -333,7 +333,7 @@ buildGraph lockFile = withoutLocalPackages $
       let deepDependencies =
             Map.toList (dependencies pkgMeta)
               <> Map.toList (peerDependencies pkgMeta)
-              <> fromMaybe mempty (Map.lookup pkgKey lockFile.lockFileSnapshots.snapshots)
+              <> fromMaybe mempty (HashMap.lookup pkgKey lockFile.lockFileSnapshots.snapshots)
 
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
@@ -442,8 +442,8 @@ buildGraph lockFile = withoutLocalPackages $
     isPnpm9Dev :: Text -> Bool
     isPnpm9Dev depName =
       (lockFile.lockFileVersion == PnpmLockV9)
-        && (any ((isPnpm9ProjectDev depName) . snd) (toList lockFile.importers))
-        && not (any ((isPnpm9ProjectDep depName) . snd) (toList lockFile.importers))
+        && (any (isPnpm9ProjectDev depName) lockFile.importers)
+        && not (any (isPnpm9ProjectDep depName) lockFile.importers)
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
@@ -496,4 +496,4 @@ buildGraph lockFile = withoutLocalPackages $
 -- >> withoutPeerDepSuffix "1.2.0" = "1.2.0"
 -- >> withoutPeerDepSuffix "1.2.0(babel@1.0.0)" = "1.2.0"
 withoutPeerDepSuffix :: Text -> Text
-withoutPeerDepSuffix version = fst $ Text.breakOn "(" version
+withoutPeerDepSuffix = fst . Text.breakOn "("
