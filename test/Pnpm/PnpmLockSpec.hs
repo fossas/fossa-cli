@@ -372,10 +372,25 @@ pnpmLockV6GraphSpec graph = do
 
 pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV9GraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
   describe "buildGraph" $ do
     it "should mark direct dependencies of project as direct" $ do
       expectDirect
         [ mkProdDep "uri-js@4.4.1"
         , mkDevDep "colorjs@0.1.9"
+        , mkDevDep "xml2js@0.6.2"
         ]
         graph
+
+    it "should build edges" $ do
+      -- uri-js 4.4.1
+      -- └── punycode 2.3.1
+      -- colors 0.1.9
+      -- xml2js 0.6.2
+      -- ├── sax 1.4.4
+      -- └── xmlbuilder 11.0.1
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "sax@1.4.4")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "xmlbuilder@11.0.1")
