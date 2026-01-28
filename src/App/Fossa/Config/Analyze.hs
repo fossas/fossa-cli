@@ -131,8 +131,8 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import Path.Extra (SomePath)
-import Prettyprinter (Doc, annotate, indent)
-import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), color)
+import Prettyprinter (Doc, indent)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilters (..), TargetFilter (..))
 
