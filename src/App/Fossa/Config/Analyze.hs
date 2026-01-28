@@ -413,15 +413,7 @@ experimentalUseV3GoResolver =
     . switch
     $ long "experimental-use-v3-go-resolver"
       <> applyFossaStyle
-      <> helpDoc helpMsg
-  where
-    helpMsg :: Maybe (Doc AnsiStyle)
-    helpMsg =
-      Just . formatDoc $
-        vsep
-          [ annotate (color Red) "DEPRECATED: This is now default and will be removed in the future"
-          , boldItalicized "For Go: " <> "Generate a graph of module deps based on package deps. This will be the default in the future."
-          ]
+      <> hidden
 
 experimentalAnalyzePathDependencies :: Parser Bool
 experimentalAnalyzePathDependencies =
@@ -513,6 +505,19 @@ mergeOpts maybeDebugDir cfg env cliOpts = do
         , "The functionality enabled by the flag, CLI-license-scans, is now the default method for scanning vendored-dependencies."
         , ""
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
+        ]
+
+  let useV3GoResolverFlagUsed = analyzeDynamicGoAnalysisType cliOpts == GoPackagesBasedTactic
+  when useV3GoResolverFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --experimental-use-v3-go-resolver flag is deprecated and no longer has any effect."
+        , ""
+        , "The v3 Go resolver (package-based analysis) is now the default behavior."
+        , ""
+        , "Please remove this flag from your commands."
         ]
 
   mergeStandardOpts maybeDebugDir cfg env cliOpts
