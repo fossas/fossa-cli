@@ -351,7 +351,7 @@ cliParser =
     <*> flagOpt ExcludeManifestStrategies (applyFossaStyle <> long "exclude-manifest-strategies" <> stringToHelpDoc "Exclude all manifest-based strategies for finding targets.")
     <*> vsiEnableOpt
     <*> flagOpt BinaryDiscovery (applyFossaStyle <> long "experimental-enable-binary-discovery" <> stringToHelpDoc "Reports binary files as unlicensed dependencies")
-    <*> optional (strOption (applyFossaStyle <> long "experimental-link-project-binary" <> metavar "DIR" <> stringToHelpDoc "Links output binary files to this project in FOSSA"))
+    <*> optional (strOption (applyFossaStyle <> long "experimental-link-project-binary" <> metavar "DIR" <> hidden))
     <*> optional dynamicLinkInspectOpt
     <*> many skipVSIGraphResolutionOpt
     <*> baseDirArg
@@ -460,7 +460,7 @@ skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) details)
       mconcat
         [ long "experimental-skip-vsi-graph"
         , metavar "LOCATOR"
-        , stringToHelpDoc "Skip resolving the dependencies of the given project in FOSSA"
+        , hidden
         ]
         <> applyFossaStyle
     parseLocator :: String -> Either String VSI.Locator
@@ -519,6 +519,34 @@ mergeOpts maybeDebugDir cfg env cliOpts = do
         , ""
         , "Please remove this flag from your commands."
         ]
+
+  case analyzeAssertMode cliOpts of
+    Just _ ->
+      logWarn $
+        vsep
+          [ "DEPRECATION NOTICE"
+          , "========================"
+          , "The --experimental-link-project-binary flag is deprecated and will be removed in a future release."
+          , ""
+          , "Multi-stage builds feature is being deprecated."
+          , ""
+          , "Please remove this flag from your commands."
+          ]
+    Nothing -> pure ()
+
+  case analyzeSkipVSIGraphResolution cliOpts of
+    [] -> pure ()
+    _ ->
+      logWarn $
+        vsep
+          [ "DEPRECATION NOTICE"
+          , "========================"
+          , "The --experimental-skip-vsi-graph flag is deprecated and will be removed in a future release."
+          , ""
+          , "Multi-stage builds feature is being deprecated."
+          , ""
+          , "Please remove this flag from your commands."
+          ]
 
   mergeStandardOpts maybeDebugDir cfg env cliOpts
 
