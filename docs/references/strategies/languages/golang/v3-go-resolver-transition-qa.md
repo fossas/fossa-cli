@@ -61,9 +61,9 @@ You can verify that the strategy is running by using the `--debug` flag and look
 # What is the relationship between the package-based Go modules analysis and the experimental v3 flag?
 They are the same.
 In order to get some initial feedback from users on how this new strategy works we initially released it under the --experimental-use-v3-go-resolver flag.
-The package-based Go module analysis is the same as the functionality under this flag except it is now the default. 
-When using a version of the CLI >= v3.8.5 where it is now the default you can expect to see a warning if you use this flag. 
-Eventually, this flag will be fully removed so we recommend removing it from any scripts where you currently have it active.
+The package-based Go module analysis is the same as the functionality under this flag except it is now the default.
+
+Using this flag will display a deprecation warning. Please remove this flag from any scripts where you currently have it active.
 
 # Does the package-based Go modules strategy handle local path replacements?
 The main limitation of the current strategy is that while we respect Go replace directives, we currently are only able to report on them and their dependencies if they reference a Go module and not a directory. For example, the following replace directive in a go.mod is OK:
