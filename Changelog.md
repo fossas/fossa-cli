@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.15.5
+- Jar call-graph update - Attempt to fix a reachability issue ([#1634](https://github.com/fossas/fossa-cli/pull/1634))
+
 ## 3.15.4
 - Scala fix: Prefer `MiniDependencyTreePlugin` over explicit `DependencyTreePlugin` ([#1627](https://github.com/fossas/fossa-cli/pull/1627)).
 
