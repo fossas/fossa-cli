@@ -37,7 +37,7 @@ newtype CallGraphJarParser = CallGraphJarParser {jar :: BS.ByteString}
 
 -- This jar is from: https://github.com/fossas/jar-callgraph/pull/58
 execJar :: CallGraphJarParser
-execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.2.jar")}
+execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.3.jar")}
 
 withUnpackedPlugin ::
   (Has (Lift IO) sig m) =>
