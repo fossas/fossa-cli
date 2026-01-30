@@ -194,6 +194,15 @@ extractTarBz2 dir tarGzFile =
 -- We also need to remove GNU long name entries (type 'L' and 'K') that precede
 -- symbolic/hard links, otherwise removing the link leaves orphaned long name entries
 -- which causes TwoTypeLEntries errors during unpacking.
+--
+-- GNU tar uses special entry types for paths exceeding 100 characters:
+--   - Type 'L': Contains the full path for the following entry's filename
+--   - Type 'K': Contains the full path for the following entry's link target
+--
+-- Reference: https://www.gnu.org/software/tar/manual/html_node/Standard.html
+--   (search for "typeflag" - 'L' and 'K' are GNU extensions listed in the table)
+-- Reference: https://hackage.haskell.org/package/tar/docs/Codec-Archive-Tar-Entry.html#t:GenEntryContent
+--   (see OtherEntryType documentation which explains 'L' and 'K' type codes)
 removeTarLinks :: Tar.Entries e -> Tar.Entries e
 removeTarLinks (Tar.Next x xs) =
   case Tar.entryContent x of
