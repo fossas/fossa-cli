@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.15.6
+
+- Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
+
 ## 3.15.5
 - Jar call-graph update - Attempt to fix a reachability issue ([#1634](https://github.com/fossas/fossa-cli/pull/1634))
 
