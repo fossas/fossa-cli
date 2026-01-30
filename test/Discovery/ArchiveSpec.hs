@@ -123,9 +123,11 @@ spec = do
       runStack . runDiagnostics . runFinally . failOnMaybe "extractTarXz" . withArchive extractTarXz target $ \dir -> do
         -- The symlinks are removed by removeTarLinks, but the target file should exist
         -- (it's in a deeply nested path that triggers L entries for the directories too)
-        let targetPath = dir </> $(mkRelDir "symlink-longname-test")
-              </> $(mkRelDir "very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length")
-              </> $(mkRelFile "target.txt")
+        let targetPath =
+              dir
+                </> $(mkRelDir "symlink-longname-test")
+                </> $(mkRelDir "very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length")
+                </> $(mkRelFile "target.txt")
         content <- sendIO . TIO.readFile . toFilePath $ targetPath
         pure (dir, content)
 
