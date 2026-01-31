@@ -365,7 +365,8 @@ gomodParser = do
 
     -- package name, e.g., golang.org/x/text
     -- Also supports quoted strings per go.mod spec: https://go.dev/ref/mod#go-mod-file-lexical
-    -- "Identifiers and strings are interchangeable in the go.mod grammar"
+    -- It says that "Identifiers and strings are interchangeable in the go.mod grammar"
+    -- Identifiers are sequences of non-whitespace characters. Strings are quoted sequences of characters. So we should treat them the same, and parse both.
     packageName :: Parser PackageName
     packageName =
       unquotedPackageName
@@ -387,9 +388,7 @@ gomodParser = do
     packageNameChar = alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '='
 
     modulePath :: Parser Text
-    modulePath =
-      packageName
-        <|> between (char '"') (char '"') packageName
+    modulePath = packageName
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
