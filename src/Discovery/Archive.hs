@@ -190,12 +190,38 @@ extractTarBz2 :: Has (Lift IO) sig m => Path Abs Dir -> Path Abs File -> m ()
 extractTarBz2 dir tarGzFile =
   sendIO $ Tar.unpack (fromAbsDir dir) . removeTarLinks . readTar . BZip.decompress =<< BL.readFile (fromAbsFile tarGzFile)
 
--- The tar unpacker dies when tar files reference files outside of the archive root
+-- The tar unpacker dies when tar files reference files outside of the archive root.
+-- We also need to remove GNU long name entries (type 'L' and 'K') that precede
+-- symbolic/hard links, otherwise removing the link leaves orphaned long name entries
+-- which causes TwoTypeLEntries errors during unpacking.
+--
+-- GNU tar uses special entry types for paths exceeding 100 characters:
+--   - Type 'L': Contains the full path for the following entry's filename
+--   - Type 'K': Contains the full path for the following entry's link target
+--
+-- Reference: https://www.gnu.org/software/tar/manual/html_node/Standard.html
+--   (search for "typeflag" - 'L' and 'K' are GNU extensions listed in the table)
+-- Reference: https://hackage.haskell.org/package/tar/docs/Codec-Archive-Tar-Entry.html#t:GenEntryContent
+--   (see OtherEntryType documentation which explains 'L' and 'K' type codes)
 removeTarLinks :: Tar.Entries e -> Tar.Entries e
 removeTarLinks (Tar.Next x xs) =
   case Tar.entryContent x of
     Tar.HardLink _ -> removeTarLinks xs
     Tar.SymbolicLink _ -> removeTarLinks xs
+    -- GNU long name (type 'L') or long link target (type 'K') entry:
+    -- Check if the next entry is a link that will be removed
+    Tar.OtherEntryType typeCode _ _
+      | typeCode == 'L' || typeCode == 'K' ->
+          case xs of
+            Tar.Next y ys ->
+              case Tar.entryContent y of
+                -- Next entry is a link - skip both the long name entry and the link
+                Tar.HardLink _ -> removeTarLinks ys
+                Tar.SymbolicLink _ -> removeTarLinks ys
+                -- Next entry is not a link - keep both entries
+                _ -> Tar.Next x (Tar.Next y (removeTarLinks ys))
+            -- No next entry - keep the long name entry (will likely fail anyway)
+            other -> Tar.Next x (removeTarLinks other)
     _ -> Tar.Next x (removeTarLinks xs)
 removeTarLinks Tar.Done = Tar.Done
 removeTarLinks (Tar.Fail e) = Tar.Fail e
