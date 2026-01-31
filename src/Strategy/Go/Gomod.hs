@@ -223,7 +223,7 @@ gomodParser = do
         pure ("", [])
   let nonEmptyGoMod = do
         _ <- lexeme (chunk "module")
-        name <- modulePath
+        name <- goModIdentifier
         _ <- scn
         statements <- many (statement <* scn)
         eof
@@ -267,7 +267,7 @@ gomodParser = do
     toolStatements = block "tool" singleTool
 
     -- parse the body of a single tool (without the leading "tool" lexeme)
-    singleTool = ToolStatement <$> packageName
+    singleTool = ToolStatement <$> goModIdentifier
 
     -- godebug statements
     -- e.g., godebug asynctimerchan=0
@@ -280,7 +280,7 @@ gomodParser = do
     goDebugStatements = block "godebug" singleGoDebug
 
     -- parse the body of a single debug statement (without the leading "godebug" lexeme)
-    singleGoDebug = GoDebugStatements <$> packageName
+    singleGoDebug = GoDebugStatements <$> goModIdentifier
 
     -- require statements
     -- e.g.:
@@ -293,7 +293,7 @@ gomodParser = do
     requireStatements = block "require" singleRequire
 
     -- parse the body of a single require (without the leading "require" lexeme)
-    singleRequire = RequireStatement <$> packageName <*> version
+    singleRequire = RequireStatement <$> goModIdentifier <*> version
 
     -- replace statements
     -- e.g.:
@@ -307,12 +307,12 @@ gomodParser = do
 
     -- parse the body of a single replace (without the leading "replace" lexeme)
     singleReplace :: Parser Statement
-    singleReplace = ReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> packageName <*> version
+    singleReplace = ReplaceStatement <$> goModIdentifier <* optional version <* lexeme (chunk "=>") <*> goModIdentifier <*> version
 
     -- We parse "local" replaces differently from normal replaces because we
     -- don't want to upload local file paths as a version to the backend.
     singleLocalReplace :: Parser Statement
-    singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
+    singleLocalReplace = LocalReplaceStatement <$> goModIdentifier <* optional version <* lexeme (chunk "=>") <*> anyToken
 
     -- exclude statements
     -- e.g.:
@@ -326,7 +326,7 @@ gomodParser = do
 
     -- parse the body of a single exclude (without the leading "exclude" lexeme)
     singleExclude :: Parser Statement
-    singleExclude = ExcludeStatement <$> packageName <*> version
+    singleExclude = ExcludeStatement <$> goModIdentifier <*> version
 
     -- retract statements
     -- e.g.:
@@ -363,17 +363,15 @@ gomodParser = do
       _ <- lexeme (chunk prefix)
       parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
-    -- package name, e.g., golang.org/x/text or "golang.org/x/text"
+    -- Parses a go.mod identifier (module name or package name).
+    -- e.g., golang.org/x/text or "golang.org/x/text"
     -- Supports quoted strings per go.mod spec: https://go.dev/ref/mod#go-mod-file-lexical
     -- "Identifiers and strings are interchangeable in the go.mod grammar"
-    packageName :: Parser PackageName
-    packageName = lexeme $ barePackageName <|> between (char '"') (char '"') barePackageName
+    goModIdentifier :: Parser PackageName
+    goModIdentifier = lexeme $ bareGoModIdentifier <|> between (char '"') (char '"') bareGoModIdentifier
 
-    barePackageName :: Parser PackageName
-    barePackageName = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=')
-
-    modulePath :: Parser Text
-    modulePath = packageName
+    bareGoModIdentifier :: Parser PackageName
+    bareGoModIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=')
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
