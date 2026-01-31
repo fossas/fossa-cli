@@ -363,29 +363,14 @@ gomodParser = do
       _ <- lexeme (chunk prefix)
       parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
-    -- package name, e.g., golang.org/x/text
-    -- Also supports quoted strings per go.mod spec: https://go.dev/ref/mod#go-mod-file-lexical
-    -- It says that "Identifiers and strings are interchangeable in the go.mod grammar"
-    -- Identifiers are sequences of non-whitespace characters. Strings are quoted sequences of characters. So we should treat them the same, and parse both.
+    -- package name, e.g., golang.org/x/text or "golang.org/x/text"
+    -- Supports quoted strings per go.mod spec: https://go.dev/ref/mod#go-mod-file-lexical
+    -- "Identifiers and strings are interchangeable in the go.mod grammar"
     packageName :: Parser PackageName
-    packageName =
-      unquotedPackageName
-        <|> quotedPackageName
+    packageName = lexeme $ barePackageName <|> between (char '"') (char '"') barePackageName
 
-    -- Unquoted package name with trailing whitespace consumption
-    unquotedPackageName :: Parser PackageName
-    unquotedPackageName = toText <$> lexeme (some packageNameChar)
-
-    -- Quoted package name: lexeme is applied AFTER the closing quote
-    quotedPackageName :: Parser PackageName
-    quotedPackageName = lexeme $ between (char '"') (char '"') barePackageName
-
-    -- Bare package name without lexeme (for use inside quotes)
     barePackageName :: Parser PackageName
-    barePackageName = toText <$> some packageNameChar
-
-    packageNameChar :: Parser Char
-    packageNameChar = alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '='
+    barePackageName = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=')
 
     modulePath :: Parser Text
     modulePath = packageName
