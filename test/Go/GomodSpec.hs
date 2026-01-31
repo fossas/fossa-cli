@@ -227,6 +227,11 @@ spec_parse = do
     it "fails to parse invalid go.mod" $ do
       runParser gomodParser "" `shouldFailOn` "invalid input"
 
+    -- Old-style go.mod files use quoted strings for module paths and package names
+    -- See https://go.dev/ref/mod#go-mod-file-lexical: "Identifiers and strings are interchangeable"
+    it "parses old-style go.mod with quoted package names" $ do
+      runParser gomodParser "" goModWithQuotedNames `shouldParse` gomodWithQuotedNames
+
 gomodWithRetract :: Gomod
 gomodWithRetract =
   Gomod
@@ -352,3 +357,29 @@ retract (
 	v0.65.0
   [v0.10.1, v0.10.2] // some comment
 )|]
+
+-- Old-style go.mod with quoted strings (pre-Go 1.12 format)
+-- See https://go.dev/ref/mod#go-mod-file-lexical
+goModWithQuotedNames :: Text
+goModWithQuotedNames =
+  [r|module "gopkg.in/yaml.v3"
+
+require (
+	"gopkg.in/check.v1" v0.0.0-20161208181325-20d25e280405
+)
+|]
+
+gomodWithQuotedNames :: Gomod
+gomodWithQuotedNames =
+  Gomod
+    { modName = "gopkg.in/yaml.v3"
+    , modRequires =
+        [ Require
+            { reqPackage = "gopkg.in/check.v1"
+            , reqVersion = Pseudo "20d25e280405"
+            }
+        ]
+    , modReplaces = mempty
+    , modLocalReplaces = mempty
+    , modExcludes = []
+    }
