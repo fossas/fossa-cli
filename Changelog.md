@@ -2,6 +2,7 @@
 
 ## 3.15.6
 
+- Golang: Fix a bug where we did not correctly parse old-style go.mod files with quoted package names ([#1636](https://github.com/fossas/fossa-cli/pull/1636))
 - Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
 
 ## 3.15.5
