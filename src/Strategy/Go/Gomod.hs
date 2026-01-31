@@ -365,8 +365,10 @@ gomodParser = do
 
     -- Parses a go.mod identifier (module name or package name).
     -- e.g., golang.org/x/text or "golang.org/x/text"
-    -- Supports quoted strings per go.mod spec: https://go.dev/ref/mod#go-mod-file-lexical
-    -- "Identifiers and strings are interchangeable in the go.mod grammar"
+    -- Per the go.mod spec (https://go.dev/ref/mod#go-mod-file-lexical):
+    -- "Identifiers and strings are interchangeable in the go.mod grammar."
+    -- Identifiers are sequences of non-whitespace characters.
+    -- Strings are quoted sequences of characters. We parse both.
     goModIdentifier :: Parser PackageName
     goModIdentifier = lexeme $ bareGoModIdentifier <|> between (char '"') (char '"') bareGoModIdentifier
 
