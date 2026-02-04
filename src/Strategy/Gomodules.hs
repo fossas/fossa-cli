@@ -53,7 +53,7 @@ data GomodulesProject = GomodulesProject
 instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
-  analyzeProject _ proj = getDeps proj
+  analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ = staticAnalysis
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
