@@ -20,7 +20,6 @@ module App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
-  GoDynamicTactic (..),
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
   StrictMode (..),
@@ -138,6 +137,7 @@ import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilt
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
+data DeprecatedUseV3GoResolver = DeprecatedUseV3GoResolver deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
@@ -240,7 +240,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeDynamicLinkTarget :: Maybe (FilePath)
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
-  , analyzeDynamicGoAnalysisType :: GoDynamicTactic
+  , analyzeDeprecatedUseV3GoResolver :: Flag DeprecatedUseV3GoResolver
   , analyzePathDependencies :: Bool
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
@@ -301,7 +301,6 @@ instance ToJSON AnalyzeConfig where
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
-  , useV3GoResolver :: GoDynamicTactic
   , resolvePathDependencies :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
@@ -384,14 +383,6 @@ branchHelp =
       , boldItalicized "Default: " <> "Current VCS branch"
       ]
 
-data GoDynamicTactic
-  = GoModulesBasedTactic
-  | GoPackagesBasedTactic
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON GoDynamicTactic where
-  toEncoding = genericToEncoding defaultOptions
-
 withoutDefaultFilterParser :: Text -> Parser (Flag WithoutDefaultFilters)
 withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaStyle <> long "without-default-filters" <> helpDoc helpMsg)
   where
@@ -403,17 +394,8 @@ withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaSt
           , boldItalicized "Docs: " <> pretty docsUrl
           ]
 
-experimentalUseV3GoResolver :: Parser GoDynamicTactic
-experimentalUseV3GoResolver =
-  fmap
-    ( \case
-        True -> GoPackagesBasedTactic
-        False -> GoModulesBasedTactic
-    )
-    . switch
-    $ long "experimental-use-v3-go-resolver"
-      <> applyFossaStyle
-      <> hidden
+experimentalUseV3GoResolver :: Parser (Flag DeprecatedUseV3GoResolver)
+experimentalUseV3GoResolver = flagOpt DeprecatedUseV3GoResolver (applyFossaStyle <> long "experimental-use-v3-go-resolver" <> hidden)
 
 experimentalAnalyzePathDependencies :: Parser Bool
 experimentalAnalyzePathDependencies =
@@ -507,7 +489,7 @@ mergeOpts maybeDebugDir cfg env cliOpts = do
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
 
-  let useV3GoResolverFlagUsed = analyzeDynamicGoAnalysisType cliOpts == GoPackagesBasedTactic
+  let useV3GoResolverFlagUsed = fromFlag DeprecatedUseV3GoResolver $ analyzeDeprecatedUseV3GoResolver cliOpts
   when useV3GoResolverFlagUsed $ do
     logWarn $
       vsep
@@ -688,13 +670,12 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType, analyzePathDependencies = shouldAnalyzePathDependencies} =
+collectExperimental maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies} =
   ExperimentalAnalyzeConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
-    goDynamicAnalysisType
     shouldAnalyzePathDependencies
 
 collectVendoredDeps ::

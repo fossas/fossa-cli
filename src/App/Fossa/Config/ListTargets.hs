@@ -9,7 +9,6 @@ module App.Fossa.Config.ListTargets (
 
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
-  GoDynamicTactic (GoModulesBasedTactic),
  )
 import App.Fossa.Config.Common (
   CommonOpts (..),
@@ -122,7 +121,6 @@ collectExperimental maybeCfg =
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
-    GoModulesBasedTactic -- This should be ok because its discovery should not work differently than the old Go modules tactic.
     False -- This should be ok because discovery has no impact on whether, analysis includes path dependency or not!
 
 data ListTargetsCliOpts = ListTargetsCliOpts

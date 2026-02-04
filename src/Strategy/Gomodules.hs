@@ -8,10 +8,9 @@ module Strategy.Gomodules (
 where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
 import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (Diagnostics, context, recover, (<||>))
-import Control.Effect.Reader (Reader, ask, asks)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -54,7 +53,7 @@ data GomodulesProject = GomodulesProject
 instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
-  analyzeProject _ proj = asks useV3GoResolver >>= getDeps proj
+  analyzeProject _ proj = getDeps proj
   analyzeProjectStaticOnly _ = staticAnalysis
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
@@ -66,8 +65,8 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (GetDepsEffs sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
-getDeps project goDynamicTactic = do
+getDeps :: (GetDepsEffs sig m) => GomodulesProject -> m DependencyResults
+getDeps project = do
   mode <- ask
   (graph, graphBreadth) <-
     context "Gomodules" $
