@@ -1,0 +1,20 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "devdeps-project",
+      "dependencies": {
+        "lodash": "^4.17.21"
+      },
+      "devDependencies": {
+        "typescript": "^5.0.0",
+        "jest": "^29.5.0"
+      }
+    }
+  },
+  "packages": {
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZfKzewUda7lEbFF7sBMudS3aMUvSCbiNgcvJ5NiynzQ=="],
+    "typescript": ["typescript@5.3.3", "", {"bin": {"tsc": "bin/tsc", "tsserver": "bin/tsserver"}}, "sha512-P5QFLNDH3NKVQWQ7mT8rUI9HDarfua0VSKIDQ+jsQBzSsnVjcccgNeiWGe74XsbqRLuxV5mS1ct6nGkLDTwsQ=="],
+    "jest": ["jest@29.5.0", "", {"bin": {"jest": "bin/jest.js"}}, "sha512-juAQQXNETCNmngM5KSwtSB56LmCQWfp4+kHA9ZScOH+FmWkQRAoNS59BY59PEnF4CJIkCMXWol1nKlstrDXSQ=="]
+  }
+}

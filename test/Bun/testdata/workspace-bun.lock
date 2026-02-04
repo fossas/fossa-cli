@@ -1,0 +1,28 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "root-workspace",
+      "dependencies": {
+        "express": "^4.18.0"
+      }
+    },
+    "packages/api": {
+      "name": "api-package",
+      "dependencies": {
+        "axios": "^1.4.0"
+      }
+    },
+    "packages/web": {
+      "name": "web-package",
+      "dependencies": {
+        "react": "^18.2.0"
+      }
+    }
+  },
+  "packages": {
+    "express": ["express@4.18.2", "", {}, "sha512-QqZuS6+K8SJHUJWe7J8XN7f760sSQcIQjrW+yLsd+fFQe+jCIIvCgSznTkeh8x+CPaXWUvOfyWlubLjSoO+IA=="],
+    "axios": ["axios@1.4.0", "", {}, "sha512-S4XCWMEmzvo64T9GfvQSutL57B+PkWV50oDyW73+5ddQ2cTzrxFuSMzAg+eNmyT7stBeJ7i7ZhiGW+O7zFHzA=="],
+    "react": ["react@18.2.0", "", {}, "sha512-/3IjMdb2L9QbBdWiW5e3P2/npwMBaU9mHCSJWhcoWNYG5sFZ5Vux0MmQqsrPsek0rXsadNtLrX3QJZWLEn3eNQ=="]
+  }
+}

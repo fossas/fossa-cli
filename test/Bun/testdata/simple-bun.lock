@@ -1,0 +1,14 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "simple-project",
+      "dependencies": {
+        "lodash": "^4.17.21"
+      }
+    }
+  },
+  "packages": {
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZfKzewUda7lEbFF7sBMudS3aMUvSCbiNgcvJ5NiynzQ=="]
+  }
+}
