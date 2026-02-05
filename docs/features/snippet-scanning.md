@@ -150,12 +150,8 @@ error uploading digest batch:
    3: invalid peer certificate: UnknownIssuer
 ```
 
-This error occurs when corporate network infrastructure (such as a TLS inspection
-proxy or firewall) intercepts HTTPS traffic and presents its own certificate.
-The CLI cannot verify this certificate because the signing authority is not in
-the default trust store.
-
-To resolve this, set the `ALLOW_INVALID_CERTS` environment variable:
+This can occur in environments that use custom TLS certificates. To resolve this,
+set the `ALLOW_INVALID_CERTS` environment variable:
 
 ```sh
 ALLOW_INVALID_CERTS=1 fossa analyze --snippet-scan
