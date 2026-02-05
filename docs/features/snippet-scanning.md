@@ -137,3 +137,28 @@ Here is a description of what each line means:
 <dt>Unique Files new to our knowledge base</dt>
 <dd>The number of files that do not exist in FOSSA's knowledge base. These files needed to be fingerprinted in this Snippet Scan.</dd>
 </dl>
+
+## Invalid certificate errors
+
+You may encounter an error like:
+
+```
+error uploading digest batch:
+   0: upload digests
+   1: error sending request for url (https://app.fossa.com/api/proxy/analysis/api/x/snippets/digests)
+   2: client error (Connect)
+   3: invalid peer certificate: UnknownIssuer
+```
+
+This error occurs when corporate network infrastructure (such as a TLS inspection
+proxy or firewall) intercepts HTTPS traffic and presents its own certificate.
+The CLI cannot verify this certificate because the signing authority is not in
+the default trust store.
+
+To resolve this, set the `ALLOW_INVALID_CERTS` environment variable:
+
+```sh
+ALLOW_INVALID_CERTS=1 fossa analyze --snippet-scan
+```
+
+This instructs the CLI to accept certificates it cannot verify.
