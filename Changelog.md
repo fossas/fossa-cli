@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
+
 ## 3.15.6
 
 - Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
