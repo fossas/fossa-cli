@@ -137,3 +137,24 @@ Here is a description of what each line means:
 <dt>Unique Files new to our knowledge base</dt>
 <dd>The number of files that do not exist in FOSSA's knowledge base. These files needed to be fingerprinted in this Snippet Scan.</dd>
 </dl>
+
+## Invalid certificate errors
+
+You may encounter an error like:
+
+```
+error uploading digest batch:
+   0: upload digests
+   1: error sending request for url (https://app.fossa.com/api/proxy/analysis/api/x/snippets/digests)
+   2: client error (Connect)
+   3: invalid peer certificate: UnknownIssuer
+```
+
+This can occur in environments that use custom TLS certificates. To resolve this,
+set the `ALLOW_INVALID_CERTS` environment variable:
+
+```sh
+ALLOW_INVALID_CERTS=1 fossa analyze --snippet-scan
+```
+
+This instructs the CLI to accept certificates it cannot verify.
