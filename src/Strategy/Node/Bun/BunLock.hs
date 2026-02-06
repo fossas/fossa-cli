@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedRecordDot #-}
-
 module Strategy.Node.Bun.BunLock (
   analyze,
   parseBunLock,
@@ -39,6 +38,15 @@ import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), readContentsText)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
+import qualified Text.Megaparsec as Megaparsec
+import Text.Megaparsec (try, anySingle, MonadParsec (eof))
+import Text.Megaparsec.Char (char, string, space1)
+import Control.Applicative ((<|>))
+import Text.Megaparsec.Char.Lexer (skipLineComment, skipBlockComment, lexeme, space)
+import Data.Void
+import Data.Functor (($>))
+import Control.Exception.Safe (toException)
+import Text.Megaparsec (optional)
 
 -- | Bun Lockfile structure
 -- Bun lockfile (bun.lock) is a JSONC format with the following shape:
@@ -141,11 +149,13 @@ parseBunLock ::
   m BunLockFile
 parseBunLock file = context ("Parsing bun.lock file '" <> toText (show file) <> "'") $ do
   contents <- readContentsText file
-  let stripped = stripJsoncComments contents
-      bs = encodeUtf8 stripped
+  stripped <- stripJsoncComments contents
+  let bs = encodeUtf8 stripped
   case eitherDecodeStrict bs of
     Left err -> fatal $ FileParseError (show file) (toText err)
     Right lockFile -> pure lockFile
+
+type Parser = Megaparsec.Parsec Void Text
 
 -- | Convert JSONC to valid JSON
 -- JSONC (JSON with Comments) allows:
@@ -153,73 +163,115 @@ parseBunLock file = context ("Parsing bun.lock file '" <> toText (show file) <> 
 -- 2. Trailing commas before } or ]
 --
 -- This function strips both to produce valid JSON
-stripJsoncComments :: Text -> Text
-stripJsoncComments input = removeTrailingCommas $ Text.unlines $ map processLine $ Text.lines input
-  where
-    -- Process a single line: strip comments
-    processLine :: Text -> Text
-    processLine line =
-      let stripped = Text.stripStart line
-       in if "//" `Text.isPrefixOf` stripped
-            then ""
-            else stripInlineComment line
+stripJsoncComments :: Has Diagnostics sig m => Text -> m Text
+stripJsoncComments input = case Megaparsec.parse cleaner "Cleaning JSONC" input of
+  Left e -> fatal . Megaparsec.errorBundlePretty $ e
+  Right t -> pure t
+  where cleaner = try (mappend <$> lexeme bunSpace quotedString <*> cleaner)
+          <|> try (mappend <$> lexeme bunSpace noTrailingComma <*> cleaner)
+          <|> try (mappend <$> lexeme bunSpace singleText <*> cleaner)
+          <|> (eof $> "")
 
-    -- Strip inline comments (// outside of strings)
-    stripInlineComment :: Text -> Text
-    stripInlineComment = go False
-      where
-        go :: Bool -> Text -> Text
-        go _ t | Text.null t = t
-        go inString t =
-          case Text.uncons t of
-            Nothing -> t
-            Just ('"', rest)
-              | not inString -> "\"" <> go True rest
-              | otherwise -> "\"" <> go False rest
-            Just ('\\', rest)
-              | inString ->
-                  -- Escaped char in string, take next char too
-                  case Text.uncons rest of
-                    Just (c, rest') -> "\\" <> Text.singleton c <> go True rest'
-                    Nothing -> "\\"
-              | otherwise -> "\\" <> go inString rest
-            Just ('/', rest)
-              | not inString ->
-                  case Text.uncons rest of
-                    Just ('/', _) -> "" -- Comment found, strip rest of line
-                    _ -> "/" <> go inString rest
-              | otherwise -> "/" <> go inString rest
-            Just (c, rest) -> Text.singleton c <> go inString rest
 
-    -- Remove trailing commas before } or ]
-    -- Pattern: comma followed by optional whitespace then } or ]
-    removeTrailingCommas :: Text -> Text
-    removeTrailingCommas = go False
-      where
-        go :: Bool -> Text -> Text
-        go _ t | Text.null t = t
-        go inString t =
-          case Text.uncons t of
-            Nothing -> t
-            Just ('"', rest)
-              | not inString -> "\"" <> go True rest
-              | otherwise -> "\"" <> go False rest
-            Just ('\\', rest)
-              | inString ->
-                  case Text.uncons rest of
-                    Just (c, rest') -> "\\" <> Text.singleton c <> go True rest'
-                    Nothing -> "\\"
-              | otherwise -> "\\" <> go inString rest
-            Just (',', rest)
-              | not inString ->
-                  -- Check if this comma is followed by whitespace then } or ]
-                  let afterWs = Text.dropWhile (`elem` [' ', '\t', '\n', '\r']) rest
-                   in case Text.uncons afterWs of
-                        Just ('}', _) -> go False rest -- Skip the comma
-                        Just (']', _) -> go False rest -- Skip the comma
-                        _ -> "," <> go False rest -- Keep the comma
-              | otherwise -> "," <> go inString rest
-            Just (c, rest) -> Text.singleton c <> go inString rest
+        acceptableText =
+          (try noTrailingComma)
+          <|> singleText
+
+        textChar = fmap Text.singleton . char
+
+        singleText = Text.singleton <$> anySingle
+
+        concatResults = fmap mconcat . sequenceA
+
+        escapedString :: Char -> Parser Text
+        escapedString delim = try (string ("\\" <> (Text.singleton delim)))
+                          <|> try (textChar delim)
+                          <|> (mappend <$> singleText <*> (escapedString delim))
+
+        quotedString = try singleQuotedString
+                       <|> doubleQuotedString
+
+        singleQuotedString = concatResults [(textChar '\''), (escapedString '\'')]
+
+        doubleQuotedString = concatResults [(textChar '\"'), (escapedString '\"')]
+
+        bunSpace :: Parser ()
+        bunSpace = space space1 (skipLineComment "//") (skipBlockComment "/*" "*/")
+
+        noTrailingComma :: Parser Text
+        noTrailingComma =  textChar ','
+                           *> (try (lexeme bunSpace (textChar '}'))
+                              <|> (lexeme bunSpace (textChar ']')))
+
+
+
+
+  -- removeTrailingCommas $ Text.unlines $ map processLine $ Text.lines input
+  -- where
+  --   -- Process a single line: strip comments
+  --   processLine :: Text -> Text
+  --   processLine line =
+  --     let stripped = Text.stripStart line
+  --      in if "//" `Text.isPrefixOf` stripped
+  --           then ""
+  --           else stripInlineComment line
+
+  --   -- Strip inline comments (// outside of strings)
+  --   stripInlineComment :: Text -> Text
+  --   stripInlineComment = go False
+  --     where
+  --       go :: Bool -> Text -> Text
+  --       go _ t | Text.null t = t
+  --       go inString t =
+  --         case Text.uncons t of
+  --           Nothing -> t
+  --           Just ('"', rest)
+  --             | not inString -> "\"" <> go True rest
+  --             | otherwise -> "\"" <> go False rest
+  --           Just ('\\', rest)
+  --             | inString ->
+  --                 -- Escaped char in string, take next char too
+  --                 case Text.uncons rest of
+  --                   Just (c, rest') -> "\\" <> Text.singleton c <> go True rest'
+  --                   Nothing -> "\\"
+  --             | otherwise -> "\\" <> go inString rest
+  --           Just ('/', rest)
+  --             | not inString ->
+  --                 case Text.uncons rest of
+  --                   Just ('/', _) -> "" -- Comment found, strip rest of line
+  --                   _ -> "/" <> go inString rest
+  --             | otherwise -> "/" <> go inString rest
+  --           Just (c, rest) -> Text.singleton c <> go inString rest
+
+  --   -- Remove trailing commas before } or ]
+  --   -- Pattern: comma followed by optional whitespace then } or ]
+  --   removeTrailingCommas :: Text -> Text
+  --   removeTrailingCommas = go False
+  --     where
+  --       go :: Bool -> Text -> Text
+  --       go _ t | Text.null t = t
+  --       go inString t =
+  --         case Text.uncons t of
+  --           Nothing -> t
+  --           Just ('"', rest)
+  --             | not inString -> "\"" <> go True rest
+  --             | otherwise -> "\"" <> go False rest
+  --           Just ('\\', rest)
+  --             | inString ->
+  --                 case Text.uncons rest of
+  --                   Just (c, rest') -> "\\" <> Text.singleton c <> go True rest'
+  --                   Nothing -> "\\"
+  --             | otherwise -> "\\" <> go inString rest
+  --           Just (',', rest)
+  --             | not inString ->
+  --                 -- Check if this comma is followed by whitespace then } or ]
+  --                 let afterWs = Text.dropWhile (`elem` [' ', '\t', '\n', '\r']) rest
+  --                  in case Text.uncons afterWs of
+  --                       Just ('}', _) -> go False rest -- Skip the comma
+  --                       Just (']', _) -> go False rest -- Skip the comma
+  --                       _ -> "," <> go False rest -- Keep the comma
+  --             | otherwise -> "," <> go inString rest
+  --           Just (c, rest) -> Text.singleton c <> go inString rest
 
 -- | Build a dependency graph from a parsed bun lockfile
 --
