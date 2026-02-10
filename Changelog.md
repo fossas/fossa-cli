@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
+
 ## 3.15.6
 
 - Golang: Fix a bug where we did not correctly parse old-style go.mod files with quoted package names ([#1636](https://github.com/fossas/fossa-cli/pull/1636))
