@@ -223,7 +223,7 @@ gomodParser = do
         pure ("", [])
   let nonEmptyGoMod = do
         _ <- lexeme (chunk "module")
-        name <- modulePath
+        name <- packageName
         _ <- scn
         statements <- many (statement <* scn)
         eof
@@ -363,14 +363,17 @@ gomodParser = do
       _ <- lexeme (chunk prefix)
       parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
-    -- package name, e.g., golang.org/x/text
+    -- Parses a go.mod identifier (module name or package name).
+    -- e.g., golang.org/x/text or "golang.org/x/text"
+    -- Per the go.mod spec (https://go.dev/ref/mod#go-mod-file-lexical):
+    -- "Identifiers and strings are interchangeable in the go.mod grammar."
+    -- Identifiers are sequences of non-whitespace characters.
+    -- Strings are quoted sequences of characters. We parse both.
     packageName :: Parser PackageName
-    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '='))
+    packageName = lexeme $ bareGoModIdentifier <|> between (char '"') (char '"') bareGoModIdentifier
 
-    modulePath :: Parser Text
-    modulePath =
-      packageName
-        <|> between (char '"') (char '"') packageName
+    bareGoModIdentifier :: Parser PackageName
+    bareGoModIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=')
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef
