@@ -223,7 +223,7 @@ dependencies = [
  "getset",
  "lexical-sort",
  "log",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_json",
  "simple_logger",
  "stable-eyre",
@@ -324,7 +324,7 @@ checksum = "42e69ffd6f0917f5c029256a24d0161db17cea3997d185db0d35926308770f0e"
 dependencies = [
  "ciborium-io",
  "ciborium-ll",
- "serde 1.0.219",
+ "serde 1.0.228",
 ]
 
 [[package]]
@@ -484,7 +484,7 @@ dependencies = [
  "lazy_static 1.5.0",
  "nom",
  "rust-ini",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde-hjson",
  "serde_json",
  "toml",
@@ -571,7 +571,7 @@ dependencies = [
  "plotters",
  "rayon",
  "regex",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_derive",
  "serde_json",
  "tinytemplate",
@@ -637,9 +637,9 @@ checksum = "da692b8d1080ea3045efaab14434d40468c3d8657e42abddfffca87b428f4c1b"
 
 [[package]]
 name = "deranged"
-version = "0.4.0"
+version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c9e6a11ca8224451684bc0d7d5a7adbf8f2fd6887261a1cfc3c0432f9d4068e"
+checksum = "cc3dc5ad92c2e2d1c193bbbbdf2ea477cb81331de4f3103f267ca18368b988c4"
 dependencies = [
  "powerfmt",
 ]
@@ -803,7 +803,7 @@ dependencies = [
  "base64 0.22.1",
  "getset",
  "iter-read",
- "serde 1.0.219",
+ "serde 1.0.228",
  "sha1",
  "sha2",
  "strum 0.26.3",
@@ -1335,7 +1335,7 @@ dependencies = [
  "rayon",
  "retry",
  "secrecy",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_json",
  "serde_yaml",
  "snippets",
@@ -1397,9 +1397,9 @@ dependencies = [
 
 [[package]]
 name = "num-conv"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51d515d32fb182ee37cda2ccdcb92950d6a3c2893aa280e540671c2cd0f3b1d9"
+checksum = "cf97ec579c3c42f953ef76dbf8d55ac91fb219dde70e49aa4a6b7d74e9919050"
 
 [[package]]
 name = "num-traits"
@@ -1639,7 +1639,7 @@ dependencies = [
  "config",
  "directories",
  "petgraph",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde-value",
  "tint",
 ]
@@ -1797,7 +1797,7 @@ dependencies = [
  "eyre",
  "petgraph",
  "ptree",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_json",
 ]
 
@@ -1991,10 +1991,11 @@ checksum = "9dad3f759919b92c3068c696c15c3d17238234498bbdcc80f2c469606f948ac8"
 
 [[package]]
 name = "serde"
-version = "1.0.219"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
+ "serde_core",
  "serde_derive",
 ]
 
@@ -2017,14 +2018,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3a1a3341211875ef120e117ea7fd5228530ae7e7036a779fdc9117be6b3282c"
 dependencies = [
  "ordered-float",
- "serde 1.0.219",
+ "serde 1.0.228",
+]
+
+[[package]]
+name = "serde_core"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
+dependencies = [
+ "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.219"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b0276cf7f2c73365f7157c8123c21cd9a50fbbd844757af28ca1f5925fc2a00"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2040,7 +2050,7 @@ dependencies = [
  "itoa",
  "memchr",
  "ryu",
- "serde 1.0.219",
+ "serde 1.0.228",
 ]
 
 [[package]]
@@ -2052,7 +2062,7 @@ dependencies = [
  "indexmap 2.9.0",
  "itoa",
  "ryu",
- "serde 1.0.219",
+ "serde 1.0.228",
  "unsafe-libyaml",
 ]
 
@@ -2145,7 +2155,7 @@ dependencies = [
  "getset",
  "lazy_static 1.5.0",
  "regex",
- "serde 1.0.219",
+ "serde 1.0.228",
  "strum 0.24.1",
  "thiserror 1.0.69",
  "typed-builder 0.10.0",
@@ -2395,22 +2405,22 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.41"
+version = "0.3.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a7619e19bc266e0f9c5e6686659d394bc57973859340060a69221e57dbc0c40"
+checksum = "743bd48c283afc0388f9b8827b976905fb217ad9e647fae3a379a9283c4def2c"
 dependencies = [
  "deranged",
  "num-conv",
  "powerfmt",
- "serde 1.0.219",
+ "serde_core",
  "time-core",
 ]
 
 [[package]]
 name = "time-core"
-version = "0.1.4"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9e9a38711f559d9e3ce1cdb06dd7c5b8ea546bc90052da6d06bb76da74bb07c"
+checksum = "7694e1cfe791f8d31026952abf09c69ca6f6fa4e1a1229e18988f06a04a12dca"
 
 [[package]]
 name = "tint"
@@ -2437,7 +2447,7 @@ version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
 dependencies = [
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_json",
 ]
 
@@ -2447,7 +2457,7 @@ version = "0.5.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
 dependencies = [
- "serde 1.0.219",
+ "serde 1.0.228",
 ]
 
 [[package]]
@@ -2522,7 +2532,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "704b1aeb7be0d0a84fc9828cae51dab5970fee5088f83d1dd7ee6f6246fc6ff1"
 dependencies = [
- "serde 1.0.219",
+ "serde 1.0.228",
  "tracing-core",
 ]
 
@@ -2533,7 +2543,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2054a14f5307d601f88daf0553e1cbf472acc4f2c51afab632431cdcd72124d5"
 dependencies = [
  "nu-ansi-term",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_json",
  "sharded-slab",
  "smallvec",
@@ -2671,7 +2681,7 @@ dependencies = [
  "rustls",
  "rustls-native-certs",
  "rustls-pki-types",
- "serde 1.0.219",
+ "serde 1.0.228",
  "serde_json",
  "url",
  "webpki-roots 0.26.11",
@@ -3000,7 +3010,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f41bb01b8226ef4bfd589436a297c53d118f65921786300e427be8d487695cc"
 dependencies = [
- "serde 1.0.219",
+ "serde 1.0.228",
  "stable_deref_trait",
  "yoke-derive",
  "zerofrom",
