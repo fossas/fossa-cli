@@ -420,13 +420,19 @@ buildGraph lockFile = withoutLocalPackages $
     --
     toResolvedDependency :: Bool -> Text -> Text -> Maybe Dependency
     toResolvedDependency devOverride depName depVersion = do
-      let version = withoutPeerDepSuffix depVersion
-      let maybeNonRegistrySrcPackage = Map.lookup version (packages lockFile)
-      let maybeRegistrySrcPackage = Map.lookup (mkPkgKey depName version) (packages lockFile)
+      -- Some versions of the lockfile remove the peer dep suffix.
+      -- Others do not which is why it tries both.
+      let strippedVersion = withoutPeerDepSuffix depVersion
+      let maybeNonRegistrySrcPackage =
+            Map.lookup strippedVersion (packages lockFile)
+              <|> Map.lookup depVersion (packages lockFile)
+      let maybeRegistrySrcPackage =
+            fmap (strippedVersion,) (Map.lookup (mkPkgKey depName strippedVersion) (packages lockFile))
+              <|> fmap (depVersion,) (Map.lookup (mkPkgKey depName depVersion) (packages lockFile))
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
         (Just nonRegistryPkg, _) -> Just $ toDependency devOverride depName Nothing nonRegistryPkg
-        (Nothing, Just registryPkg) -> Just $ toDependency devOverride depName (Just version) registryPkg
+        (Nothing, Just (version, registryPkg)) -> Just $ toDependency devOverride depName (Just version) registryPkg
 
     -- PNPM lockfile 9 doesn't store information about dev deps directly on package data.
     -- Use a project map to determine if a package should be marked dev.

@@ -1,0 +1,18 @@
+{
+  "name": "pnpm-lock-6-transitive-peers",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "lint-staged": "10.5.4"
+  },
+  "peerDependencies": {
+    "lint-staged": "10.5.4"
+  }
+}
