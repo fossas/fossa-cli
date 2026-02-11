@@ -423,10 +423,12 @@ buildGraph lockFile = withoutLocalPackages $
       -- Some versions of the lockfile remove the peer dep suffix.
       -- Others do not which is why it tries both.
       let strippedVersion = withoutPeerDepSuffix depVersion
-      let maybeNonRegistrySrcPackage = Map.lookup strippedVersion (packages lockFile)
-                                       <|> Map.lookup depVersion (packages lockFile)
-      let maybeRegistrySrcPackage = fmap (strippedVersion,) (Map.lookup (mkPkgKey depName strippedVersion) (packages lockFile))
-                                    <|> fmap (depVersion,) (Map.lookup (mkPkgKey depName depVersion) (packages lockFile))
+      let maybeNonRegistrySrcPackage =
+            Map.lookup strippedVersion (packages lockFile)
+              <|> Map.lookup depVersion (packages lockFile)
+      let maybeRegistrySrcPackage =
+            fmap (strippedVersion,) (Map.lookup (mkPkgKey depName strippedVersion) (packages lockFile))
+              <|> fmap (depVersion,) (Map.lookup (mkPkgKey depName depVersion) (packages lockFile))
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
         (Just nonRegistryPkg, _) -> Just $ toDependency devOverride depName Nothing nonRegistryPkg

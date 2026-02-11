@@ -316,11 +316,12 @@ pnpmLockV6WithWorkspaceGraphSpec graph = do
 pnpmLockV6WithPeersSpec :: Graphing Dependency -> Spec
 pnpmLockV6WithPeersSpec graph = do
   describe "Pnpm lock V6 with transitive peer deps" $
-    do let hasEdge :: Dependency -> Dependency -> Expectation
-           hasEdge = expectEdge graph
+    do
+      let hasEdge :: Dependency -> Dependency -> Expectation
+          hasEdge = expectEdge graph
 
-       it "Should include the transitive dep that has a peer" $
-         hasEdge (mkDevDep "listr2@3.14.0") (mkDevDep "enquirer@2.4.1")
+      it "Should include the transitive dep that has a peer" $
+        hasEdge (mkDevDep "listr2@3.14.0") (mkDevDep "enquirer@2.4.1")
 
 pnpmLockV6GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6GraphSpec graph = do
