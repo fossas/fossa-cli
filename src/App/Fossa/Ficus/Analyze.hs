@@ -57,7 +57,7 @@ import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
 import System.FilePath ((</>))
-import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, stderr)
+import System.IO (Handle, IOMode (WriteMode), hClose, hPutStrLn, openFile, stderr)
 import System.Process.Typed (
   createPipe,
   getStderr,
@@ -353,31 +353,38 @@ runFicus maybeDebugDir ficusConfig = do
           , vendoredDependencyScanResults = vendoredResults
           }
 
+    -- Use Conduit with decodeUtf8Lenient to safely handle UTF-8 output from ficus.
+    -- This matches the approach used for stdout and prevents crashes on Windows
+    -- where the default system encoding (CP1252) cannot decode UTF-8 characters
+    -- like box-drawing characters (U+2501) used in ficus progress output.
     consumeStderr :: Handle -> Maybe Handle -> IO [Text]
     consumeStderr handle maybeFile = do
-      let loop acc (count :: Int) = do
-            eof <- hIsEOF handle
-            if eof
-              then pure (reverse acc) -- Reverse at the end to get correct order
-              else do
-                line <- hGetLine handle
-                -- Tee raw line to file if debug mode
-                traverse_ (`hPutStrLn` line) maybeFile
-                now <- getCurrentTime
-                let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                let msg = "[" ++ timestamp ++ "] STDERR " <> line
-                -- Keep at most the last 50 lines of stderr
-                -- I came up with 50 lines by looking at a few different error traces and making
-                -- sure that we captured all of the relevant error output, and then going a bit higher
-                -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
-                -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
-                let newAcc =
-                      if count >= 50
-                        then take 50 (toText msg : acc)
-                        else toText msg : acc
-                let newCount = min (count + 1) 50
-                loop newAcc newCount
-      loop [] 0
+      (acc, _count) <-
+        Conduit.runConduit $
+          CC.sourceHandle handle
+            .| CC.decodeUtf8Lenient
+            .| CC.linesUnbounded
+            .| CC.foldM
+              ( \(acc, count) line -> do
+                  -- Tee raw line to file if debug mode
+                  traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
+                  now <- getCurrentTime
+                  let ts = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                  let msg = toText $ "[" ++ ts ++ "] STDERR " <> toString line
+                  -- Keep at most the last 50 lines of stderr
+                  -- I came up with 50 lines by looking at a few different error traces and making
+                  -- sure that we captured all of the relevant error output, and then going a bit higher
+                  -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
+                  -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
+                  let newAcc =
+                        if count >= 50
+                          then take 50 (msg : acc)
+                          else msg : acc
+                  let newCount = min (count + 1) 50
+                  pure (newAcc, newCount)
+              )
+              ([], 0 :: Int)
+      pure (reverse acc) -- Reverse at the end to get correct order
 
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
