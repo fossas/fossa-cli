@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Node.js: Yarn and npm workspace members now appear as individual build targets (e.g. `yarn@./:my-package`) instead of being merged into a single opaque target. This allows `fossa list-targets` to show each workspace member, users to filter with `.fossa.yml`, and dependency scoping per workspace member.
+
 ## 3.15.6
 
 - Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))

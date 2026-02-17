@@ -17,6 +17,17 @@ Search for files named `package.json` and check for a corresponding
 > `package-lock.json`. The other `package.json` files in the project directory
 > will be combined to determine which dependencies are direct and which ones are
 > development.
+>
+> Each workspace member is exposed as an individual build target (e.g.
+> `npm@./:my-package`). You can view these with `fossa list-targets` and filter
+> them in `.fossa.yml`. When no filtering is applied (or all targets are
+> selected), all dependencies are included — the same as previous behavior.
+> Filtering to a specific subset of targets scopes the analysis to only those
+> members' dependencies.
+>
+> Note: Target-level dependency filtering is only supported for lockfile version
+> 1. Version 3 lockfiles will show workspace build targets in `fossa list-targets`,
+> but filtering to specific targets does not yet scope the dependency results.
 
 ## Analysis (for lockFile version 3)
 
