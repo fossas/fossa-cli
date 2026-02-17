@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Node.js: Yarn workspace members now appear as individual build targets (e.g. `yarn@./:my-package`) instead of being merged into a single opaque target. This allows `fossa list-targets` to show each workspace member, users to filter with `.fossa.yml`, and dependency scoping per workspace member.
+- Node.js: Yarn workspace members now appear as individual build targets (e.g. `yarn@./:my-package`) instead of being merged into a single opaque target.
 
 ## 3.15.6
 
