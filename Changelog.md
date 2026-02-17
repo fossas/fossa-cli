@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Node.js: Yarn workspace members now appear as individual build targets (e.g. `yarn@./:my-package`) instead of being merged into a single opaque target.
+- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 
 ## 3.15.6
 

@@ -63,7 +63,9 @@ discoveredWorkSpaceProj currDir =
   DiscoveredProject
     { projectType = NpmProjectType
     , projectPath = currDir </> $(mkRelDir "test/Node/testdata/workspace-test/")
-    , projectBuildTargets = ProjectWithoutTargets
+    , projectBuildTargets =
+        maybe ProjectWithoutTargets FoundTargets . nonEmpty $
+          Set.fromList [BuildTarget "workspace-test", BuildTarget "pkg-a", BuildTarget "pkg-b"]
     , projectData =
         NPMLock
           ( Manifest
@@ -168,12 +170,12 @@ npmLockAnalysisSpec currDir = do
 
 workspaceBuildTargetsSpec :: Path Abs Dir -> Spec
 workspaceBuildTargetsSpec currDir = describe "findWorkspaceBuildTargets" $ do
-  it "returns FoundTargets with workspace member names" $ do
+  it "returns FoundTargets with root and workspace member names" $ do
     let graph = workspaceGraphWithDeps currDir
         targets = findWorkspaceBuildTargets graph
         expected =
           maybe ProjectWithoutTargets FoundTargets . nonEmpty $
-            Set.fromList [BuildTarget "pkg-a", BuildTarget "pkg-b"]
+            Set.fromList [BuildTarget "workspace-test", BuildTarget "pkg-a", BuildTarget "pkg-b"]
     targets `shouldBe` expected
 
   it "returns ProjectWithoutTargets for single-package project" $ do
@@ -215,17 +217,24 @@ extractDepListsForTargetsSpec currDir = describe "extractDepListsForTargets" $ d
     let expectedDirect = Set.fromList [NodePackage "lodash" "^4.0.0"]
     directDeps result `shouldBe` applyTag @Production expectedDirect
 
-  it "excludes root deps when all targets selected" $ do
-    -- Yarn root package.json deps are workspace tooling (husky, prettier, etc.)
-    -- and should not be included when workspace targets are selected.
+  it "includes root deps when root target is selected" $ do
     let targets =
           maybe ProjectWithoutTargets FoundTargets . nonEmpty $
-            Set.fromList [BuildTarget "pkg-a", BuildTarget "pkg-b"]
+            Set.fromList [BuildTarget "workspace-test"]
+        result = extractDepListsForTargets targets graph
+    let expectedDirect = Set.fromList [NodePackage "husky" "^8.0.0"]
+    directDeps result `shouldBe` applyTag @Production expectedDirect
+
+  it "includes all deps when all targets selected" $ do
+    let targets =
+          maybe ProjectWithoutTargets FoundTargets . nonEmpty $
+            Set.fromList [BuildTarget "workspace-test", BuildTarget "pkg-a", BuildTarget "pkg-b"]
         result = extractDepListsForTargets targets graph
     let expectedDirect =
           Set.fromList
             [ NodePackage "lodash" "^4.0.0"
             , NodePackage "express" "^4.0.0"
+            , NodePackage "husky" "^8.0.0"
             ]
     directDeps result `shouldBe` applyTag @Production expectedDirect
 

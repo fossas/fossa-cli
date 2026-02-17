@@ -157,23 +157,26 @@ mkProject project = do
     DiscoveredProject
       { projectType = typename
       , projectPath = parent rootManifest
-      , projectBuildTargets = case project of
-          Yarn _ _ -> findWorkspaceBuildTargets graph
-          _ -> ProjectWithoutTargets
+      , projectBuildTargets = findWorkspaceBuildTargets graph
       , projectData = project
       }
 
--- | Build targets from workspace member package names.
--- If the workspace graph has children (i.e., workspace members), each child's
--- package name becomes a 'BuildTarget'. If there are no workspace children
--- (single-package project), returns 'ProjectWithoutTargets'.
+-- | Build targets from workspace package names (root + members).
+-- If the workspace graph has children (i.e., workspace members), each
+-- package name (including the root) becomes a 'BuildTarget'. If there
+-- are no workspace children (single-package project), returns
+-- 'ProjectWithoutTargets'.
 findWorkspaceBuildTargets :: PkgJsonGraph -> FoundTargets
-findWorkspaceBuildTargets graph =
-  let WorkspacePackageNames names = findWorkspaceNames graph
-   in maybe
-        ProjectWithoutTargets
-        FoundTargets
-        (NonEmptySet.nonEmpty (Set.map BuildTarget names))
+findWorkspaceBuildTargets graph@PkgJsonGraph{..} =
+  let WorkspacePackageNames childNames = findWorkspaceNames graph
+   in if Set.null childNames
+        then ProjectWithoutTargets
+        else
+          let rootName = findWorkspaceRootManifest graph >>= \m -> maybe (Left "no name") Right (packageName =<< Map.lookup m jsonLookup)
+              allNames = case rootName of
+                Right n -> Set.insert n childNames
+                Left _ -> childNames
+           in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
 
 instance AnalyzeProject NodeProject where
   analyzeProject = getDeps
@@ -188,7 +191,7 @@ getDeps ::
   NodeProject ->
   m DependencyResults
 getDeps targets (Yarn yarnLockFile graph) = analyzeYarn targets yarnLockFile graph
-getDeps _ (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
+getDeps targets (NPMLock packageLockFile graph) = analyzeNpmLock targets packageLockFile graph
 getDeps _ (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
 getDeps _ (NPM graph) = analyzeNpm graph
 
@@ -197,12 +200,12 @@ analyzePnpmLock (Manifest pnpmLockFile) = do
   result <- PnpmLock.analyze pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
 
-analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
-analyzeNpmLock (Manifest npmLockFile) graph = do
+analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
+analyzeNpmLock targets (Manifest npmLockFile) graph = do
   npmLockVersion <- detectNpmLockVersion npmLockFile
   result <- case npmLockVersion of
     NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile
-    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepLists graph) (findWorkspaceNames graph)
+    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
@@ -301,8 +304,8 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
 
 -- | Like 'extractDepLists', but scoped to the selected workspace targets.
 -- When 'ProjectWithoutTargets', includes all deps.
--- When 'FoundTargets', only includes deps from workspace members whose
--- package name matches a selected target (excluding the root's deps).
+-- When 'FoundTargets', only includes deps from packages whose
+-- package name matches a selected target (root or workspace member).
 extractDepListsForTargets :: FoundTargets -> PkgJsonGraph -> FlatDeps
 extractDepListsForTargets ProjectWithoutTargets graph = extractDepLists graph
 extractDepListsForTargets (FoundTargets targets) PkgJsonGraph{..} =

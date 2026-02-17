@@ -41,22 +41,22 @@ the full graph of dependencies.
 
 ### Workspace Build Targets
 
-Each workspace member is exposed as an individual build target. For example, a
-monorepo with packages `app`, `lib-utils`, and `lib-core` will produce targets:
+Each workspace package (including the root) is exposed as an individual build
+target. For example, a monorepo named `my-monorepo` with packages `app`,
+`lib-utils`, and `lib-core` will produce targets:
 
 ```
+yarn@./:my-monorepo
 yarn@./:app
 yarn@./:lib-utils
 yarn@./:lib-core
 ```
 
-When a subset of targets is selected, only those workspace members'
-dependencies are included in the analysis. The root `package.json`'s
-dependencies (typically workspace tooling like `husky` or `prettier`) are
-excluded when filtering to a subset.
+When a subset of targets is selected, only those packages' dependencies are
+included in the analysis.
 
-When no filtering is applied (or all targets are selected), all dependencies
-are included — including root dependencies.
+When no filtering is applied, all targets are selected and all dependencies
+from every workspace package are included in the analysis.
 
 ## FAQ
 
