@@ -157,7 +157,9 @@ mkProject project = do
     DiscoveredProject
       { projectType = typename
       , projectPath = parent rootManifest
-      , projectBuildTargets = findWorkspaceBuildTargets graph
+      , projectBuildTargets = case project of
+          Yarn _ _ -> findWorkspaceBuildTargets graph
+          _ -> ProjectWithoutTargets
       , projectData = project
       }
 
@@ -186,7 +188,7 @@ getDeps ::
   NodeProject ->
   m DependencyResults
 getDeps targets (Yarn yarnLockFile graph) = analyzeYarn targets yarnLockFile graph
-getDeps targets (NPMLock packageLockFile graph) = analyzeNpmLock targets packageLockFile graph
+getDeps _ (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
 getDeps _ (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
 getDeps _ (NPM graph) = analyzeNpm graph
 
@@ -195,12 +197,12 @@ analyzePnpmLock (Manifest pnpmLockFile) = do
   result <- PnpmLock.analyze pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
 
-analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
-analyzeNpmLock targets (Manifest npmLockFile) graph = do
+analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
+analyzeNpmLock (Manifest npmLockFile) graph = do
   npmLockVersion <- detectNpmLockVersion npmLockFile
   result <- case npmLockVersion of
     NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile
-    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
+    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepLists graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
@@ -298,20 +300,16 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
         (Map.keysSet jsonLookup)
 
 -- | Like 'extractDepLists', but scoped to the selected workspace targets.
--- When 'ProjectWithoutTargets', includes all deps (backward compatible).
--- When 'FoundTargets' matches all workspace members, includes all deps
--- (no filtering was applied by the user, so preserve current behavior).
--- When 'FoundTargets' is a subset, only includes deps from those members.
+-- When 'ProjectWithoutTargets', includes all deps.
+-- When 'FoundTargets', only includes deps from workspace members whose
+-- package name matches a selected target (excluding the root's deps).
 extractDepListsForTargets :: FoundTargets -> PkgJsonGraph -> FlatDeps
 extractDepListsForTargets ProjectWithoutTargets graph = extractDepLists graph
-extractDepListsForTargets (FoundTargets targets) graph@PkgJsonGraph{..}
-  | targetNames == allWorkspaceNames = extractDepLists graph
-  | otherwise = foldMap extractSingle selectedPackageJsons
+extractDepListsForTargets (FoundTargets targets) PkgJsonGraph{..} =
+  foldMap extractSingle selectedPackageJsons
   where
     targetNames :: Set Text
     targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
-
-    WorkspacePackageNames allWorkspaceNames = findWorkspaceNames graph
 
     selectedPackageJsons :: [PackageJson]
     selectedPackageJsons =

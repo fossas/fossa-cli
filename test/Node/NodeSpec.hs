@@ -63,9 +63,7 @@ discoveredWorkSpaceProj currDir =
   DiscoveredProject
     { projectType = NpmProjectType
     , projectPath = currDir </> $(mkRelDir "test/Node/testdata/workspace-test/")
-    , projectBuildTargets =
-        maybe ProjectWithoutTargets FoundTargets . nonEmpty $
-          Set.fromList [BuildTarget "pkg-a", BuildTarget "pkg-b"]
+    , projectBuildTargets = ProjectWithoutTargets
     , projectData =
         NPMLock
           ( Manifest
@@ -217,31 +215,19 @@ extractDepListsForTargetsSpec currDir = describe "extractDepListsForTargets" $ d
     let expectedDirect = Set.fromList [NodePackage "lodash" "^4.0.0"]
     directDeps result `shouldBe` applyTag @Production expectedDirect
 
-  it "includes all deps when all targets selected (no user filtering)" $ do
+  it "excludes root deps when all targets selected" $ do
+    -- Yarn root package.json deps are workspace tooling (husky, prettier, etc.)
+    -- and should not be included when workspace targets are selected.
     let targets =
           maybe ProjectWithoutTargets FoundTargets . nonEmpty $
             Set.fromList [BuildTarget "pkg-a", BuildTarget "pkg-b"]
         result = extractDepListsForTargets targets graph
-    -- All workspace members selected = no filtering applied, include everything
-    -- (same as ProjectWithoutTargets, preserves backward compatibility)
     let expectedDirect =
           Set.fromList
             [ NodePackage "lodash" "^4.0.0"
             , NodePackage "express" "^4.0.0"
-            , NodePackage "husky" "^8.0.0"
             ]
     directDeps result `shouldBe` applyTag @Production expectedDirect
-
-  it "root deps are preserved when no filtering applied" $ do
-    -- When no .fossa.yml filtering is configured, all workspace members are
-    -- selected. In that case, root deps (e.g. tooling) must still be included
-    -- so existing users don't lose dependencies.
-    let allTargets =
-          maybe ProjectWithoutTargets FoundTargets . nonEmpty $
-            Set.fromList [BuildTarget "pkg-a", BuildTarget "pkg-b"]
-        withAllTargets = extractDepListsForTargets allTargets graph
-        withoutTargets = extractDepListsForTargets ProjectWithoutTargets graph
-    withAllTargets `shouldBe` withoutTargets
 
 -- | A workspace graph with actual dependencies for testing extractDepListsForTargets.
 workspaceGraphWithDeps :: Path Abs Dir -> PkgJsonGraph
