@@ -41,6 +41,7 @@ module Effect.ReadFS (
   readContentsParser,
   readContentsParserBS,
   readContentsJson,
+  readContentsJsonc,
   readContentsToml,
   readContentsYaml,
   readContentsXML,
@@ -89,9 +90,10 @@ import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Either.Combinators (mapRight)
-import Data.String.Conversion (decodeUtf8, toString, toText)
+import Data.String.Conversion (decodeUtf8, encodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Data.Text.Jsonc (stripJsonc)
 import Data.Void (Void)
 import Data.Yaml (decodeEither', prettyPrintParseException)
 import Effect.Logger (renderIt)
@@ -365,6 +367,17 @@ readContentsJson file = context ("Parsing JSON file '" <> toText (toString file)
   case eitherDecodeStrict contents of
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
+
+-- | Read JSONC (JSON with Comments) from a file.
+-- Strips single-line comments, block comments, and trailing commas before parsing as JSON.
+readContentsJsonc :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
+readContentsJsonc file = context ("Parsing JSONC file '" <> toText (toString file) <> "'") $ do
+  contents <- readContentsText file
+  case stripJsonc contents of
+    Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
+    Right stripped -> case eitherDecodeStrict (encodeUtf8 stripped) of
+      Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
+      Right a -> pure a
 
 readContentsToml :: (Toml.Schema.FromValue a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsToml file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do

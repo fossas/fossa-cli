@@ -1,0 +1,233 @@
+{-# LANGUAGE TemplateHaskell #-}
+
+module Bun.BunLockSpec (
+  spec,
+) where
+
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics)
+import Data.Aeson (eitherDecodeStrict)
+import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
+import Data.String.Conversion (encodeUtf8, toText)
+import Data.Text (Text)
+import Data.Text.Jsonc (stripJsonc)
+import DepTypes (
+  DepEnvironment (EnvDevelopment, EnvProduction),
+  DepType (NodeJSType),
+  Dependency (..),
+  VerConstraint (CEq),
+ )
+import Effect.ReadFS (ReadFS, readContentsJsonc)
+import GraphUtil (expectEdge)
+import Graphing (Graphing)
+import Graphing qualified
+import Path (Abs, File, Path, fromAbsFile, mkRelDir, mkRelFile, (</>))
+import Path.IO (getCurrentDir)
+import Strategy.Node.Bun.BunLock (
+  BunLockfile (..),
+  BunPackage (..),
+  BunPackageDeps (..),
+  BunWorkspace (..),
+  buildGraph,
+  parseResolution,
+ )
+import Test.Effect (it', shouldBe')
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
+
+spec :: Spec
+spec = do
+  currentDir <- runIO getCurrentDir
+  let testdata = currentDir </> $(mkRelDir "test/Bun/testdata")
+  let jsoncPath = testdata </> $(mkRelFile "jsonc/bun.lock")
+  let depsPath = testdata </> $(mkRelFile "dependencies/bun.lock")
+  let wsPath = testdata </> $(mkRelFile "workspaces/bun.lock")
+  let bunProjectPath = testdata </> $(mkRelFile "bun-project/bun.lock")
+
+  parseResolutionSpec
+  jsoncSpec jsoncPath
+  dependenciesSpec depsPath
+  workspacesSpec wsPath
+  bunProjectSpec bunProjectPath
+
+parseResolutionSpec :: Spec
+parseResolutionSpec = describe "parseResolution" $ do
+  it "parses unscoped packages" $
+    parseResolution "lodash@4.17.21" `shouldBe` ("lodash", "4.17.21")
+
+  it "parses scoped packages" $
+    parseResolution "@scope/pkg@1.0.0" `shouldBe` ("@scope/pkg", "1.0.0")
+
+  it "parses file references" $
+    parseResolution "pkg@file:../local" `shouldBe` ("pkg", "file:../local")
+
+  it "parses workspace references" $
+    parseResolution "pkg@workspace:packages/a" `shouldBe` ("pkg", "workspace:packages/a")
+
+  it "parses git references" $
+    parseResolution "pkg@github:user/repo#abc123" `shouldBe` ("pkg", "github:user/repo#abc123")
+
+-- | JSONC: verifies that line comments, block comments, and trailing commas
+-- are stripped correctly and the result parses as a valid bun lockfile.
+jsoncSpec :: Path Abs File -> Spec
+jsoncSpec path =
+  describe "jsonc" $ do
+    it' "parses bun.lock with comments and trailing commas" $ do
+      lockfile <- parseBunLockEffect path
+      lockfileVersion lockfile `shouldBe'` 1
+      wsName (workspaces lockfile Map.! "") `shouldBe'` "jsonc-test"
+      wsDependencies (workspaces lockfile Map.! "") `shouldBe'` Map.fromList [("lodash", "^4.17.21")]
+
+-- | Dependencies: all dependency types on a single root workspace,
+-- transitive dependency chains, and environment labeling.
+dependenciesSpec :: Path Abs File -> Spec
+dependenciesSpec path =
+  describe "dependencies" $ do
+    it' "parses production, dev, and optional dependencies" $ do
+      lockfile <- parseBunLockEffect path
+      let rootWs = workspaces lockfile Map.! ""
+      wsDependencies rootWs `shouldBe'` Map.fromList [("express", "^4.18.2")]
+      wsDevDependencies rootWs `shouldBe'` Map.fromList [("typescript", "^5.0.0")]
+      wsOptionalDependencies rootWs `shouldBe'` Map.fromList [("fsevents", "^2.3.3")]
+
+    it' "parses transitive dependency info" $ do
+      lockfile <- parseBunLockEffect path
+      let expressPkg = packages lockfile Map.! "express"
+      pkgDepsDependencies (pkgDeps expressPkg) `shouldBe'` Map.fromList [("accepts", "~1.3.8")]
+
+    describe "graph" $ do
+      checkGraph path $ \graph -> do
+        let directDeps = Graphing.directList graph
+
+        it "marks production dependencies as direct" $
+          directDeps `shouldContainDep` mkProdDep "express" "4.18.2"
+
+        it "marks dev dependencies as direct" $
+          directDeps `shouldContainDep` mkDevDep "typescript" "5.3.3"
+
+        it "marks optional dependencies as direct" $
+          directDeps `shouldContainDep` mkProdDep "fsevents" "2.3.3"
+
+        it "creates transitive edges" $ do
+          expectEdge graph (mkProdDep "express" "4.18.2") (mkProdDep "accepts" "1.3.8")
+          expectEdge graph (mkProdDep "accepts" "1.3.8") (mkProdDep "mime-types" "2.1.35")
+
+-- | Workspaces: multiple workspaces, workspace refs, and workspace
+-- package filtering from the final graph.
+workspacesSpec :: Path Abs File -> Spec
+workspacesSpec path =
+  describe "workspaces" $ do
+    it' "parses multiple workspaces" $ do
+      lockfile <- parseBunLockEffect path
+      let ws = workspaces lockfile
+      Map.size ws `shouldBe'` 3
+      wsName (ws Map.! "") `shouldBe'` "workspace-root"
+      wsName (ws Map.! "packages/app") `shouldBe'` "@types/app"
+      wsName (ws Map.! "packages/utils") `shouldBe'` "utils"
+
+    it' "parses workspace package resolutions" $ do
+      lockfile <- parseBunLockEffect path
+      pkgResolution (packages lockfile Map.! "@types/app") `shouldBe'` "@types/app@workspace:packages/app"
+      pkgResolution (packages lockfile Map.! "utils") `shouldBe'` "utils@workspace:packages/utils"
+
+    describe "graph" $ do
+      checkGraph path $ \graph -> do
+        let directDeps = Graphing.directList graph
+
+        it "marks sub-workspace dependencies as direct" $
+          directDeps `shouldContainDep` mkProdDep "lodash" "4.17.21"
+
+        it "excludes workspace packages from graph" $ do
+          let names = map dependencyName (Graphing.vertexList graph)
+          names `shouldNotContain` "@types/app"
+          names `shouldNotContain` "utils"
+
+-- | Bun project: a real-world bun.lock from the bun project itself.
+-- Covers scoped packages, git refs, nested package keys, optional/peer deps
+-- in packages, and large dependency counts.
+bunProjectSpec :: Path Abs File -> Spec
+bunProjectSpec path =
+  describe "bun-project" $ do
+    it' "parses workspaces" $ do
+      lockfile <- parseBunLockEffect path
+      Map.size (workspaces lockfile) `shouldBe'` 3
+      wsName (workspaces lockfile Map.! "") `shouldBe'` "bun"
+
+    it' "parses scoped and workspace package resolutions" $ do
+      lockfile <- parseBunLockEffect path
+      let pkgs = packages lockfile
+      pkgResolution (pkgs Map.! "@types/bun") `shouldBe'` "@types/bun@workspace:packages/@types/bun"
+      pkgResolution (pkgs Map.! "esbuild") `shouldBe'` "esbuild@0.21.5"
+
+    it' "parses transitive dependency info" $ do
+      lockfile <- parseBunLockEffect path
+      let lezerCpp = packages lockfile Map.! "@lezer/cpp"
+      Map.member "@lezer/common" (pkgDepsDependencies $ pkgDeps lezerCpp) `shouldBe'` True
+
+    describe "graph" $ do
+      checkGraph path $ \graph -> do
+        it "marks dev dependencies as direct" $ do
+          let directDeps = Graphing.directList graph
+          directDeps `shouldContainDep` mkDevDep "esbuild" "0.21.5"
+          directDeps `shouldContainDep` mkDevDep "typescript" "5.9.2"
+
+        it "creates transitive edges" $
+          expectEdge graph (mkDevDep "@lezer/cpp" "1.1.3") (mkDevDep "@lezer/common" "1.3.0")
+
+        it "excludes workspace packages from graph" $ do
+          let names = map dependencyName (Graphing.vertexList graph)
+          names `shouldNotContain` "@types/bun"
+          names `shouldNotContain` "bun-types"
+
+-- | Parse a bun.lock in the effect stack (for it' tests).
+parseBunLockEffect ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs File ->
+  m BunLockfile
+parseBunLockEffect = readContentsJsonc
+
+-- | Parse a bun.lock in IO for graph tests (outside the effect stack).
+checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkGraph path graphSpec = do
+  result <- runIO $ parseBunLockIO path
+  case result of
+    Left err ->
+      describe (fromAbsFile path) $
+        it "should parse" (expectationFailure err)
+    Right lockfile -> graphSpec (buildGraph lockfile)
+
+parseBunLockIO :: Path Abs File -> IO (Either String BunLockfile)
+parseBunLockIO path = do
+  contents <- readFile (fromAbsFile path)
+  case stripJsonc (toText contents) of
+    Left err -> pure $ Left err
+    Right stripped -> pure $ eitherDecodeStrict (encodeUtf8 stripped)
+
+shouldContainDep :: [Dependency] -> Dependency -> Expectation
+shouldContainDep deps dep
+  | dep `elem` deps = pure ()
+  | otherwise = expectationFailure $ show (dependencyName dep) ++ " not found in direct dependencies"
+
+shouldNotContain :: (Eq a, Show a) => [a] -> a -> Expectation
+shouldNotContain xs x
+  | x `elem` xs = expectationFailure $ show x ++ " should not be in " ++ show xs
+  | otherwise = pure ()
+
+mkProdDep :: Text -> Text -> Dependency
+mkProdDep name version = mkDep name version EnvProduction
+
+mkDevDep :: Text -> Text -> Dependency
+mkDevDep name version = mkDep name version EnvDevelopment
+
+mkDep :: Text -> Text -> DepEnvironment -> Dependency
+mkDep name version env =
+  Dependency
+    { dependencyType = NodeJSType
+    , dependencyName = name
+    , dependencyVersion = Just (CEq version)
+    , dependencyLocations = mempty
+    , dependencyEnvironments = Set.singleton env
+    , dependencyTags = mempty
+    }
