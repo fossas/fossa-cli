@@ -101,6 +101,7 @@ import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
 import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs))
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
+import System.FilePath.Posix qualified as FP
 import Types (
   BuildTarget (BuildTarget),
   DependencyResults (DependencyResults),
@@ -234,20 +235,24 @@ resolveImporterPaths (FoundTargets targets) graph@PkgJsonGraph{..} =
   case findWorkspaceRootManifest graph of
     Left _ -> Nothing
     Right (Manifest rootManifest) ->
-      let rootDir = parent rootManifest
-          targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
-          -- Build a list of (package name, relative importer path)
-          namePathPairs =
-            [ (name, relPath)
-            | (Manifest m, pj) <- Map.toList jsonLookup
-            , let manifestDir = parent m
-            , let relPath =
-                    if manifestDir == rootDir
-                      then "."
-                      else maybe "." (Text.dropWhileEnd (== '/') . toText . toFilePath) (stripProperPrefix rootDir manifestDir)
-            , Just name <- [packageName pj]
-            ]
-       in Just $ Set.fromList [p | (name, p) <- namePathPairs, name `Set.member` targetNames]
+      Just $ Set.fromList [p | (name, p) <- namePathPairs, name `Set.member` targetNames]
+      where
+        rootDir = parent rootManifest
+        targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
+
+        namePathPairs :: [(Text, Text)]
+        namePathPairs =
+          [ (name, manifestToImporterPath m)
+          | (Manifest m, pj) <- Map.toList jsonLookup
+          , Just name <- [packageName pj]
+          ]
+
+        manifestToImporterPath :: Path Abs File -> Text
+        manifestToImporterPath m =
+          let manifestDir = parent m
+           in if manifestDir == rootDir
+                then "."
+                else maybe "." (toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock targets (Manifest npmLockFile) graph = do
