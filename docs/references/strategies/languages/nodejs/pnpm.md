@@ -148,7 +148,12 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 ```
 
 * Peer dependencies will be included in the analysis (they are treated like any other dependency).
-* Pnpm workspaces are supported.
+* Pnpm workspaces are supported. Each workspace package (including the root)
+  is exposed as an individual build target (e.g. `pnpm@./:my-app`,
+  `pnpm@./:lib-utils`). When a subset of targets is selected, only those
+  packages' dependencies are included in the analysis. When no filtering is
+  applied, all targets are selected and all dependencies from every workspace
+  package are included in the analysis.
 * Development dependencies (`dev: true`) are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
 * Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
 * `fossa-cli` supports lockFileVersion: 4.x, 5.x, 6.x, 7.x, 8.x, and 9.x.
