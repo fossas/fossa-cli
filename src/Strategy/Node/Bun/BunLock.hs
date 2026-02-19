@@ -59,7 +59,6 @@ data BunWorkspace = BunWorkspace
   , wsDependencies :: Map Text Text
   , wsDevDependencies :: Map Text Text
   , wsOptionalDependencies :: Map Text Text
-  , wsPeerDependencies :: Map Text Text
   }
   deriving (Show, Eq, Ord)
 
@@ -94,7 +93,6 @@ instance FromJSON BunWorkspace where
       <*> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
       <*> obj .:? "optionalDependencies" .!= mempty
-      <*> obj .:? "peerDependencies" .!= mempty
 
 instance FromJSON BunPackageDeps where
   parseJSON = withObject "BunPackageDeps" $ \obj ->
