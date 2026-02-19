@@ -361,33 +361,23 @@ runFicus maybeDebugDir ficusConfig = do
     -- like box-drawing characters (U+2501) used in ficus progress output.
     consumeStderr :: Handle -> Maybe Handle -> IO [Text]
     consumeStderr handle maybeFile = do
-      (acc, _count) <-
+      acc <-
         Conduit.runConduit $
           CC.sourceHandle handle
             .| CC.decodeUtf8Lenient
             .| CC.linesUnbounded
             .| CC.foldM
-              ( \(acc, count) line -> do
+              ( \acc line -> do
                   -- Tee raw line to file if debug mode
                   traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
                   now <- getCurrentTime
-                  let ts = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                  let msg = toText $ "[" ++ ts ++ "] STDERR " <> toString line
-                  -- Keep at most the last 50 lines of stderr
-                  -- I came up with 50 lines by looking at a few different error traces and making
-                  -- sure that we captured all of the relevant error output, and then going a bit higher
-                  -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
-                  -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
-                  let newAcc =
-                        if count >= 50
-                          then take 50 (msg : acc)
-                          else msg : acc
-                  let newCount = min (count + 1) 50
-                  pure (newAcc, newCount)
+                  -- Keep at most the last 50 lines of stderr (newest first during accumulation)
+                  let ts = toText $ formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                  let msg = "[" <> ts <> "] STDERR " <> line
+                  pure (take 50 (msg : acc))
               )
-              ([], 0 :: Int)
-      pure (reverse acc) -- Reverse at the end to get correct order
-
+              []
+      pure (reverse acc)
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
     displayFicusError :: FicusError -> Text
