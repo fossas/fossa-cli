@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+inheritance: true
 reviews:
   request_changes_workflow: true
   high_level_summary: false
