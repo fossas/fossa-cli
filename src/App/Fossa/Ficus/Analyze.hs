@@ -57,7 +57,7 @@ import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
 import System.FilePath ((</>))
-import System.IO (Handle, IOMode (WriteMode), hClose, hPutStrLn, openFile, stderr)
+import System.IO (Handle, IOMode (WriteMode), hClose, hPutStrLn, hSetEncoding, openFile, stderr, utf8)
 import System.Process.Typed (
   createPipe,
   getStderr,
@@ -264,7 +264,9 @@ runFicus maybeDebugDir ficusConfig = do
           let stdoutPath = debugDir </> "fossa.ficus-stdout.log"
           let stderrPath = debugDir </> "fossa.ficus-stderr.log"
           stdoutH <- openFile stdoutPath WriteMode
+          hSetEncoding stdoutH utf8
           stderrH <- openFile stderrPath WriteMode
+          hSetEncoding stderrH utf8
           pure (Just stdoutH, Just stderrH)
       Nothing ->
         -- No debug mode, don't tee to files
