@@ -1,5 +1,13 @@
 # FOSSA CLI Changelog
 
+## 3.15.8
+
+- Snippet scanning: Fix bug where proxies cause POSTs to get redirected to GETs ([#1645](https://github.com/fossas/fossa-cli/pull/1645))
+
+## 3.15.7
+
+- PNPM: Fixes an issue where transitive dependencies with peer dependencies weren't detected in lockfile v6. ([#1642](https://github.com/fossas/fossa-cli/pull/1642))
+
 ## 3.15.6
 
 - Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
