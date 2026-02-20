@@ -9,8 +9,9 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Data.Aeson (eitherDecodeStrict)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import Data.String.Conversion (encodeUtf8, toText)
+import Data.String.Conversion (encodeUtf8)
 import Data.Text (Text)
+import Data.Text.IO qualified as TextIO
 import Data.Text.Jsonc (stripJsonc)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
@@ -203,8 +204,8 @@ checkGraph path graphSpec = do
 
 parseBunLockIO :: Path Abs File -> IO (Either String BunLockfile)
 parseBunLockIO path = do
-  contents <- readFile (fromAbsFile path)
-  case stripJsonc (toText contents) of
+  contents <- TextIO.readFile (fromAbsFile path)
+  case stripJsonc contents of
     Left err -> pure $ Left err
     Right stripped -> pure $ eitherDecodeStrict (encodeUtf8 stripped)
 
