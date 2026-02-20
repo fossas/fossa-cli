@@ -49,12 +49,16 @@ Package keys use a slash-delimited path for nested `node_modules`:
 Package values are variable-length arrays depending on the resolution type:
 
 - **npm:** `["name@version", "registry", {deps}, "integrity"]`
-- **file:** `["name@file:path", {deps}]`
-- **workspace:** `["name@workspace:path"]`
 - **git:** `["name@git+url", {deps}, "hash", "integrity"]`
+- **github:** `["name@github:user/repo#ref", {deps}, "resolved"]`
+- **file:** `["name@file:path", {deps}]`
+- **link:** `["name@link:path", {deps}]`
+- **workspace:** `["name@workspace:path"]`
+
+Only **npm** and **git/github** packages are included in the dependency graph.
+File, link, workspace, root, and module resolutions are excluded.
 
 ### Environment Labeling
 
 - Dependencies declared in `devDependencies` of any workspace are labeled as development dependencies.
 - Dependencies declared in `dependencies` or `optionalDependencies` of any workspace are labeled as production dependencies.
-- Workspace packages themselves (those with `workspace:` resolutions) are excluded from the final dependency graph.

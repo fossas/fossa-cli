@@ -15,7 +15,7 @@ import Data.Text.IO qualified as TextIO
 import Data.Text.Jsonc (stripJsonc)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (NodeJSType),
+  DepType (GitType, NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -178,6 +178,10 @@ bunProjectSpec path =
         it "creates transitive edges" $
           expectEdge graph (mkDevDep "@lezer/cpp" "1.1.3") (mkDevDep "@lezer/common" "1.3.0")
 
+        it "includes git dependencies as GitType" $ do
+          let gitDeps = filter (\d -> dependencyType d == GitType) (Graphing.vertexList graph)
+          gitDeps `shouldContainDep` mkGitDep "bun-tracestrings" "oven-sh/bun.report#912ca63"
+
         it "excludes workspace packages from graph" $ do
           let names = map dependencyName (Graphing.vertexList graph)
           names `shouldNotContain` "@types/bun"
@@ -220,15 +224,18 @@ shouldNotContain xs x
   | otherwise = pure ()
 
 mkProdDep :: Text -> Text -> Dependency
-mkProdDep name version = mkDep name version EnvProduction
+mkProdDep name version = mkDep NodeJSType name version EnvProduction
 
 mkDevDep :: Text -> Text -> Dependency
-mkDevDep name version = mkDep name version EnvDevelopment
+mkDevDep name version = mkDep NodeJSType name version EnvDevelopment
 
-mkDep :: Text -> Text -> DepEnvironment -> Dependency
-mkDep name version env =
+mkGitDep :: Text -> Text -> Dependency
+mkGitDep name version = mkDep GitType name version EnvDevelopment
+
+mkDep :: DepType -> Text -> Text -> DepEnvironment -> Dependency
+mkDep depType name version env =
   Dependency
-    { dependencyType = NodeJSType
+    { dependencyType = depType
     , dependencyName = name
     , dependencyVersion = Just (CEq version)
     , dependencyLocations = mempty

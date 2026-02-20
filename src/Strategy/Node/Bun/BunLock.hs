@@ -14,7 +14,6 @@ module Strategy.Node.Bun.BunLock (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Monad (unless)
 import Data.Aeson (
   FromJSON (parseJSON),
   Value (Object),
@@ -27,21 +26,19 @@ import Data.Aeson (
 import Data.Foldable (for_)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Vector qualified as V
 import DepTypes (
   DepEnvironment (..),
-  DepType (NodeJSType),
+  DepType (GitType, NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
  )
 import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher, run)
 import Effect.ReadFS (ReadFS, readContentsJsonc)
 import Graphing (Graphing)
-import Graphing qualified
 import Path (Abs, File, Path)
 
 -- | Bun lockfile (bun.lock) in JSONC format.
@@ -160,26 +157,25 @@ analyze file = do
 -- Strategy:
 --   1. Collect all dev dependency names across all workspaces.
 --   2. For each workspace, mark its declared dependencies as direct.
---   3. For each non-workspace package, add it as a deep dependency
+--   3. For each supported package (npm, git), add it as a deep dependency
 --      and create edges to its transitive dependencies.
---   4. Filter out workspace packages from the final graph.
+--      Unsupported types (workspace, file, link, root, module) are excluded.
 buildGraph :: BunLockfile -> Graphing Dependency
-buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
+buildGraph lockfile = run . evalGrapher $ do
   for_ allWorkspaces $ \workspace -> do
     markDirectDeps EnvProduction workspace.wsDependencies
     markDirectDeps EnvDevelopment workspace.wsDevDependencies
     markDirectDeps EnvProduction workspace.wsOptionalDependencies
 
   for_ (Map.toList $ packages lockfile) $ \(_, pkg) ->
-    unless (isWorkspaceRef $ pkgResolution pkg) $ do
-      let parentDep = toDependency pkg
+    for_ (toDependency pkg) $ \parentDep -> do
       deep parentDep
       for_ (transitiveDepNames pkg) $ \childName ->
         case Map.lookup childName (packages lockfile) of
           Nothing -> pure ()
-          Just childPkg
-            | isWorkspaceRef (pkgResolution childPkg) -> pure ()
-            | otherwise -> edge parentDep (toDependency childPkg)
+          Just childPkg ->
+            for_ (toDependency childPkg) $ \childDep ->
+              edge parentDep childDep
   where
     allWorkspaces :: [BunWorkspace]
     allWorkspaces = Map.elems $ workspaces lockfile
@@ -192,9 +188,7 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
       for_ (Map.keys deps) $ \depName ->
         case Map.lookup depName (packages lockfile) of
           Nothing -> pure ()
-          Just pkg
-            | isWorkspaceRef (pkgResolution pkg) -> pure ()
-            | otherwise -> direct $ toDependencyWithEnv env pkg
+          Just pkg -> for_ (toDependencyWithEnv env pkg) direct
 
     transitiveDepNames :: BunPackage -> [Text]
     transitiveDepNames pkg =
@@ -207,43 +201,45 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
     -- devDependencies, not on how the package is reached in the dependency graph.
     -- This means transitive deps of dev deps get EnvProduction (since they aren't
     -- themselves declared in devDependencies). This matches npm v3 and pnpm behavior.
-    toDependency :: BunPackage -> Dependency
+    --
+    -- Returns Nothing for unsupported resolution types (workspace, file, link,
+    -- tarball, root, module). Only npm and git/github packages are included.
+    toDependency :: BunPackage -> Maybe Dependency
     toDependency pkg =
       let (name, version) = parseResolution (pkgResolution pkg)
           env = if Set.member name devDepNames then EnvDevelopment else EnvProduction
-       in mkDep name version env
+       in resolutionToDep name version env
 
-    toDependencyWithEnv :: DepEnvironment -> BunPackage -> Dependency
+    toDependencyWithEnv :: DepEnvironment -> BunPackage -> Maybe Dependency
     toDependencyWithEnv env pkg =
       let (name, version) = parseResolution (pkgResolution pkg)
-       in mkDep name version env
+       in resolutionToDep name version env
 
-    mkDep :: Text -> Text -> DepEnvironment -> Dependency
-    mkDep name version env =
+    -- \| Convert a parsed resolution to a Dependency based on the version prefix.
+    -- Only npm (no prefix) and git/github resolutions produce dependencies.
+    resolutionToDep :: Text -> Text -> DepEnvironment -> Maybe Dependency
+    resolutionToDep name version env
+      | "github:" `Text.isPrefixOf` version = Just $ mkDep GitType name (Text.drop 7 version) env
+      | "git+" `Text.isPrefixOf` version = Just $ mkDep GitType name (Text.drop 4 version) env
+      | isLocalRef version = Nothing
+      | otherwise = Just $ mkDep NodeJSType name version env
+
+    -- \| Check if a version string refers to a local/unsupported resolution type.
+    isLocalRef :: Text -> Bool
+    isLocalRef v =
+      "workspace:" `Text.isPrefixOf` v
+        || "file:" `Text.isPrefixOf` v
+        || "link:" `Text.isPrefixOf` v
+        || "root:" `Text.isPrefixOf` v
+        || "module:" `Text.isPrefixOf` v
+
+    mkDep :: DepType -> Text -> Text -> DepEnvironment -> Dependency
+    mkDep depType name version env =
       Dependency
-        { dependencyType = NodeJSType
+        { dependencyType = depType
         , dependencyName = name
         , dependencyVersion = if Text.null version then Nothing else Just (CEq version)
         , dependencyLocations = mempty
         , dependencyEnvironments = Set.singleton env
         , dependencyTags = mempty
         }
-
-    -- \| Check if a resolution string refers to a workspace package.
-    isWorkspaceRef :: Text -> Bool
-    isWorkspaceRef = Text.isInfixOf "workspace:"
-
-    -- \| Collect workspace package names and filter them from the graph.
-    withoutWorkspacePackages :: Graphing Dependency -> Graphing Dependency
-    withoutWorkspacePackages = Graphing.shrink (\dep -> not $ Set.member (dependencyName dep) wsPackageNames)
-
-    wsPackageNames :: Set.Set Text
-    wsPackageNames =
-      Set.fromList
-        . mapMaybe wsPackageName
-        $ Map.elems (packages lockfile)
-
-    wsPackageName :: BunPackage -> Maybe Text
-    wsPackageName pkg
-      | isWorkspaceRef (pkgResolution pkg) = Just . fst $ parseResolution (pkgResolution pkg)
-      | otherwise = Nothing
