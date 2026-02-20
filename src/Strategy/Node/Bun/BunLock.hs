@@ -203,10 +203,10 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
         <> Map.keys (pkgDepsPeerDependencies $ pkgDeps pkg)
 
     -- \| Convert a package to a Dependency, inferring environment from workspace declarations.
-    -- Only packages directly declared in a workspace's devDependencies are
-    -- labeled EnvDevelopment. Transitive deps of dev deps get EnvProduction.
-    -- This is consistent with npm v3 and pnpm, which use per-package flags
-    -- rather than propagating environment from parents.
+    -- Environment is based on whether the package name appears in any workspace's
+    -- devDependencies, not on how the package is reached in the dependency graph.
+    -- This means transitive deps of dev deps get EnvProduction (since they aren't
+    -- themselves declared in devDependencies). This matches npm v3 and pnpm behavior.
     toDependency :: BunPackage -> Dependency
     toDependency pkg =
       let (name, version) = parseResolution (pkgResolution pkg)
