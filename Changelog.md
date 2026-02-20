@@ -1,5 +1,11 @@
 # FOSSA CLI Changelog
 
+## 3.15.9
+
+- Improvements for licensing and snippet scanning ([#1649](https://github.com/fossas/fossa-cli/pull/1649))
+  - Licensing: Additional proprietary license detection
+  - Snippet scanning: Support TLS operation with platform native certificate store
+
 ## 3.15.8
 
 - Snippet scanning: Fix bug where proxies cause POSTs to get redirected to GETs ([#1645](https://github.com/fossas/fossa-cli/pull/1645))
