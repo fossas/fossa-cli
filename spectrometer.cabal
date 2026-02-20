@@ -417,6 +417,10 @@ library
     Strategy.AlpineLinux.Types
     Strategy.Android.Util
     Strategy.ApkDatabase
+    Strategy.Bazel
+    Strategy.Bazel.BazelModGraph
+    Strategy.Bazel.MavenInstall
+    Strategy.Bazel.ModuleBazel
     Strategy.BerkeleyDB
     Strategy.BerkeleyDB.Internal
     Strategy.Bundler
@@ -610,6 +614,8 @@ test-suite unit-tests
     App.Fossa.VSI.IAT.ResolveSpec
     App.Fossa.VSI.TypesSpec
     App.Fossa.VSIDepsSpec
+    Bazel.MavenInstallSpec
+    Bazel.ModuleBazelSpec
     BerkeleyDB.BerkeleyDBSpec
     BundlerSpec
     Cargo.CargoTomlSpec

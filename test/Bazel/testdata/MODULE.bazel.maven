@@ -1,0 +1,21 @@
+# MODULE.bazel with maven extension
+module(
+    name = "my_java_project",
+    version = "2.0.0",
+)
+
+bazel_dep(name = "rules_jvm_external", version = "6.6")
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    artifacts = [
+        "com.google.guava:guava:33.4.0-jre",
+        "junit:junit:4.13.2",
+        "org.slf4j:slf4j-api:2.0.16",
+    ],
+    repositories = [
+        "https://repo1.maven.org/maven2",
+        "https://maven.google.com",
+    ],
+)
+use_repo(maven, "maven")

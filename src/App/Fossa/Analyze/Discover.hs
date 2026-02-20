@@ -8,6 +8,7 @@ import Control.Effect.Reader (Has, Reader)
 import Data.Aeson qualified as Aeson
 import Discovery.Filters (AllFilters)
 import Path (Abs, Dir, Path)
+import Strategy.Bazel qualified as Bazel
 import Strategy.Bundler qualified as Bundler
 import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
@@ -48,7 +49,8 @@ import Types (DiscoveredProject)
 
 discoverFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
 discoverFuncs =
-  [ DiscoverFunc Bundler.discover
+  [ DiscoverFunc Bazel.discover
+  , DiscoverFunc Bundler.discover
   , DiscoverFunc Cabal.discover
   , DiscoverFunc Cargo.discover
   , DiscoverFunc Carthage.discover
