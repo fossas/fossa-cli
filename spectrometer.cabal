@@ -370,7 +370,6 @@ library
     Control.Timeout
     Control.Timeout.Internal
     Data.Aeson.Extra
-    Data.Text.Jsonc
     Data.Conduit.Extra
     Data.Error
     Data.FileEmbed.Extra
@@ -387,6 +386,7 @@ library
     Data.String.Conversion
     Data.Tagged
     Data.Text.Extra
+    Data.Text.Jsonc
     Data.Tracing.Instrument
     DepTypes
     Diag.Common
