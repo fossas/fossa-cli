@@ -194,7 +194,7 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
           Nothing -> pure ()
           Just pkg
             | isWorkspaceRef (pkgResolution pkg) -> pure ()
-            | otherwise -> direct $ toDependencyAs env pkg
+            | otherwise -> direct $ toDependencyWithEnv env pkg
 
     transitiveDepNames :: BunPackage -> [Text]
     transitiveDepNames pkg =
@@ -203,11 +203,23 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
         <> Map.keys (pkgDepsPeerDependencies $ pkgDeps pkg)
 
     -- \| Convert a package to a Dependency, inferring environment from workspace declarations.
+    -- Only packages directly declared in a workspace's devDependencies are
+    -- labeled EnvDevelopment. Transitive deps of dev deps get EnvProduction.
+    -- This is consistent with npm v3 and pnpm, which use per-package flags
+    -- rather than propagating environment from parents.
     toDependency :: BunPackage -> Dependency
-    toDependency pkg = toDependencyAs (envOf pkg) pkg
+    toDependency pkg =
+      let (name, version) = parseResolution (pkgResolution pkg)
+          env = if Set.member name devDepNames then EnvDevelopment else EnvProduction
+       in mkDep name version env
 
-    toDependencyAs :: DepEnvironment -> BunPackage -> Dependency
-    toDependencyAs env pkg =
+    toDependencyWithEnv :: DepEnvironment -> BunPackage -> Dependency
+    toDependencyWithEnv env pkg =
+      let (name, version) = parseResolution (pkgResolution pkg)
+       in mkDep name version env
+
+    mkDep :: Text -> Text -> DepEnvironment -> Dependency
+    mkDep name version env =
       Dependency
         { dependencyType = NodeJSType
         , dependencyName = name
@@ -216,16 +228,6 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
         , dependencyEnvironments = Set.singleton env
         , dependencyTags = mempty
         }
-      where
-        (name, version) = parseResolution (pkgResolution pkg)
-
-    -- \| Determine the environment for a package based on workspace declarations.
-    envOf :: BunPackage -> DepEnvironment
-    envOf pkg
-      | Set.member name devDepNames = EnvDevelopment
-      | otherwise = EnvProduction
-      where
-        (name, _) = parseResolution (pkgResolution pkg)
 
     -- \| Check if a resolution string refers to a workspace package.
     isWorkspaceRef :: Text -> Bool

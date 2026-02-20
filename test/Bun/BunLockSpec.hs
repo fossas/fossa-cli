@@ -112,6 +112,9 @@ dependenciesSpec path =
           expectEdge graph (mkProdDep "express" "4.18.2") (mkProdDep "accepts" "1.3.8")
           expectEdge graph (mkProdDep "accepts" "1.3.8") (mkProdDep "mime-types" "2.1.35")
 
+        it "labels transitive deps of dev deps as production" $ do
+          expectEdge graph (mkDevDep "typescript" "5.3.3") (mkProdDep "semver" "7.6.0")
+
 -- | Workspaces: multiple workspaces, workspace refs, and workspace
 -- package filtering from the final graph.
 workspacesSpec :: Path Abs File -> Spec
