@@ -480,6 +480,7 @@ library
     Strategy.Nim
     Strategy.Nim.NimbleLock
     Strategy.Node
+    Strategy.Node.Bun.BunLock
     Strategy.Node.Errors
     Strategy.Node.Npm.PackageLock
     Strategy.Node.Npm.PackageLockV3
@@ -611,6 +612,7 @@ test-suite unit-tests
     App.Fossa.VSI.TypesSpec
     App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
+    Bun.BunLockSpec
     BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
