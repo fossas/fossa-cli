@@ -53,6 +53,7 @@ import Path (Abs, File, Path)
 -- lockfile format documentation.
 data BunLockfile = BunLockfile
   { lockfileVersion :: Int
+  -- ^ Not used for analysis, but included in debug bundles.
   , workspaces :: Map WorkspacePath BunWorkspace
   , packages :: Map PackageName BunPackage
   }
