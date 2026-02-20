@@ -250,7 +250,7 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
         <> Map.keys (pkgDepsOptionalDependencies $ pkgDeps pkg)
         <> Map.keys (pkgDepsPeerDependencies $ pkgDeps pkg)
 
-    -- | Convert a package to a vertex (environment-agnostic).
+    -- \| Convert a package to a vertex (environment-agnostic).
     --
     -- Returns Nothing for unsupported resolution types (workspace, file, link,
     -- tarball, root, module). Only npm and git/github packages are included.
@@ -259,7 +259,7 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
       let (name, version) = parseResolution (pkgResolution pkg)
        in resolutionToVertex name version
 
-    -- | Convert a parsed resolution to a vertex based on the version prefix.
+    -- \| Convert a parsed resolution to a vertex based on the version prefix.
     -- Only npm (no prefix) and git resolutions produce vertices.
     resolutionToVertex :: Text -> Text -> Maybe BunDepVertex
     resolutionToVertex name version = case stripGitPrefix version of
@@ -268,7 +268,7 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
         | isUnsupportedRef version -> Nothing
         | otherwise -> Just $ mkVertex NodeJSType name version
 
-    -- | Strip a known git hosting prefix from a version string.
+    -- \| Strip a known git hosting prefix from a version string.
     stripGitPrefix :: Text -> Maybe Text
     stripGitPrefix v =
       Text.stripPrefix "github:" v
@@ -276,14 +276,14 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
         <|> Text.stripPrefix "bitbucket:" v
         <|> Text.stripPrefix "git+" v
 
-    -- | Build a GitType vertex from a git reference like @"user/repo#ref"@
+    -- \| Build a GitType vertex from a git reference like @"user/repo#ref"@
     -- or @"https://github.com/user/repo.git#ref"@.
     mkGitVertex :: Text -> BunDepVertex
     mkGitVertex ref =
       let (repo, refPart) = Text.breakOn "#" ref
        in mkVertex GitType repo (Text.drop 1 refPart)
 
-    -- | Check if a version string refers to a local/unsupported resolution type.
+    -- \| Check if a version string refers to a local/unsupported resolution type.
     isUnsupportedRef :: Text -> Bool
     isUnsupportedRef v =
       "workspace:" `Text.isPrefixOf` v
