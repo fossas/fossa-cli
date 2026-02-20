@@ -27,6 +27,7 @@ import Data.Aeson (
 import Data.Foldable (for_)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -237,8 +238,10 @@ buildGraph lockfile = withoutWorkspacePackages . run . evalGrapher $ do
     wsPackageNames :: Set.Set Text
     wsPackageNames =
       Set.fromList
-        [ name
-        | pkg <- Map.elems (packages lockfile)
-        , isWorkspaceRef (pkgResolution pkg)
-        , let (name, _) = parseResolution (pkgResolution pkg)
-        ]
+        . mapMaybe wsPackageName
+        $ Map.elems (packages lockfile)
+
+    wsPackageName :: BunPackage -> Maybe Text
+    wsPackageName pkg
+      | isWorkspaceRef (pkgResolution pkg) = Just . fst $ parseResolution (pkgResolution pkg)
+      | otherwise = Nothing
