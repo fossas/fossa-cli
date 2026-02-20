@@ -73,6 +73,7 @@ import Path (
   toFilePath,
   (</>),
  )
+import Strategy.Node.Bun.BunLock qualified as BunLock
 import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.Npm.PackageLockV3 qualified as PackageLockV3
@@ -98,7 +99,7 @@ import Strategy.Node.YarnV2.YarnLock qualified as V2
 import Types (
   DependencyResults (DependencyResults),
   DiscoveredProject (..),
-  DiscoveredProjectType (NpmProjectType, PnpmProjectType, YarnProjectType),
+  DiscoveredProjectType (BunProjectType, NpmProjectType, PnpmProjectType, YarnProjectType),
   FoundTargets (ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
   License (License),
@@ -118,7 +119,7 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType] $
+discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType] $
   context "NodeJS" $ do
     manifestList <- context "Finding nodejs/pnpm projects" $ collectManifests dir
     manifestMap <- context "Reading manifest files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
@@ -146,6 +147,7 @@ mkProject project = do
         Yarn _ g -> (g, YarnProjectType)
         NPMLock _ g -> (g, NpmProjectType)
         NPM g -> (g, NpmProjectType)
+        Bun _ g -> (g, BunProjectType)
         Pnpm _ g -> (g, PnpmProjectType)
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
@@ -172,12 +174,18 @@ getDeps ::
 getDeps (Yarn yarnLockFile graph) = analyzeYarn yarnLockFile graph
 getDeps (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
 getDeps (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
+getDeps (Bun bunLockFile _) = analyzeBunLock bunLockFile
 getDeps (NPM graph) = analyzeNpm graph
 
 analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => Manifest -> m DependencyResults
 analyzePnpmLock (Manifest pnpmLockFile) = do
   result <- PnpmLock.analyze pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
+
+analyzeBunLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
+analyzeBunLock (Manifest bunLockFile) = do
+  result <- BunLock.analyze bunLockFile
+  pure $ DependencyResults result Complete [bunLockFile]
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock (Manifest npmLockFile) graph = do
@@ -368,19 +376,23 @@ identifyProjectType graph = do
   let yarnFilePath = parent manifest Path.</> $(mkRelFile "yarn.lock")
       packageLockPath = parent manifest Path.</> $(mkRelFile "package-lock.json")
       pnpmLockPath = parent manifest Path.</> $(mkRelFile "pnpm-lock.yaml")
+      bunLockPath = parent manifest Path.</> $(mkRelFile "bun.lock")
   yarnExists <- doesFileExist yarnFilePath
   pkgLockExists <- doesFileExist packageLockPath
   pnpmLockExists <- doesFileExist pnpmLockPath
-  pure $ case (yarnExists, pkgLockExists, pnpmLockExists) of
-    (True, _, _) -> Yarn (Manifest yarnFilePath) graph
-    (_, True, _) -> NPMLock (Manifest packageLockPath) graph
-    (_, _, True) -> Pnpm (Manifest pnpmLockPath) graph
+  bunLockExists <- doesFileExist bunLockPath
+  pure $ case (yarnExists, pkgLockExists, pnpmLockExists, bunLockExists) of
+    (True, _, _, _) -> Yarn (Manifest yarnFilePath) graph
+    (_, True, _, _) -> NPMLock (Manifest packageLockPath) graph
+    (_, _, True, _) -> Pnpm (Manifest pnpmLockPath) graph
+    (_, _, _, True) -> Bun (Manifest bunLockPath) graph
     _ -> NPM graph
 
 data NodeProject
   = Yarn Manifest PkgJsonGraph
   | NPMLock Manifest PkgJsonGraph
   | NPM PkgJsonGraph
+  | Bun Manifest PkgJsonGraph
   | Pnpm Manifest PkgJsonGraph
   deriving (Eq, Ord, Show, Generic)
 
@@ -413,6 +425,7 @@ pkgGraph :: NodeProject -> PkgJsonGraph
 pkgGraph (Yarn _ pjg) = pjg
 pkgGraph (NPMLock _ pjg) = pjg
 pkgGraph (NPM pjg) = pjg
+pkgGraph (Bun _ pjg) = pjg
 pkgGraph (Pnpm _ pjg) = pjg
 
 findWorkspaceRootManifest :: PkgJsonGraph -> Either String Manifest
