@@ -52,8 +52,7 @@ import Path (Abs, File, Path)
 -- See @docs/references/strategies/languages/nodejs/bun.md@ for the full
 -- lockfile format documentation.
 data BunLockfile = BunLockfile
-  { lockfileVersion :: Int
-  , workspaces :: Map WorkspacePath BunWorkspace
+  { workspaces :: Map WorkspacePath BunWorkspace
   , packages :: Map PackageName BunPackage
   }
   deriving (Show, Eq)
@@ -122,8 +121,7 @@ data BunPackage = BunPackage
 instance FromJSON BunLockfile where
   parseJSON = withObject "BunLockfile" $ \obj ->
     BunLockfile
-      <$> obj .: "lockfileVersion"
-      <*> obj .:? "workspaces" .!= mempty
+      <$> obj .:? "workspaces" .!= mempty
       <*> obj .:? "packages" .!= mempty
 
 instance FromJSON BunWorkspace where

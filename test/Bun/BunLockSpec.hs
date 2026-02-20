@@ -81,7 +81,6 @@ jsoncSpec path =
   describe "jsonc" $ do
     it' "parses bun.lock with comments and trailing commas" $ do
       lockfile <- readContentsJsonc @BunLockfile path
-      lockfileVersion lockfile `shouldBe'` 1
       wsName (workspaces lockfile Map.! "") `shouldBe'` "jsonc-test"
       wsDependencies (workspaces lockfile Map.! "") `shouldBe'` Map.fromList [("lodash", "^4.17.21")]
 
