@@ -9,10 +9,13 @@ module Strategy.Node.Bun.BunLock (
   BunWorkspace (..),
   BunPackage (..),
   BunPackageDeps (..),
+  BunDepVertex (..),
+  BunDepLabel (..),
   parseResolution,
 ) where
 
 import Control.Algebra (Has)
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -35,36 +38,75 @@ import DepTypes (
   DepType (GitType, NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
+  insertEnvironment,
  )
-import Effect.Grapher (Grapher, deep, direct, edge, evalGrapher, run)
+import Effect.Grapher (LabeledGrapher, deep, direct, edge, label, run, withLabeling)
 import Effect.ReadFS (ReadFS, readContentsJsonc)
 import Graphing (Graphing)
 import Path (Abs, File, Path)
 
 -- | Bun lockfile (bun.lock) in JSONC format.
 --
+-- Implemented against lockfile version 1 (bun v1.2.x).
+--
 -- See @docs/references/strategies/languages/nodejs/bun.md@ for the full
 -- lockfile format documentation.
 data BunLockfile = BunLockfile
   { lockfileVersion :: Int
-  , workspaces :: Map Text BunWorkspace
-  , packages :: Map Text BunPackage
+  , workspaces :: Map WorkspacePath BunWorkspace
+  , packages :: Map PackageName BunPackage
   }
   deriving (Show, Eq)
 
+-- | Relative path from the project root to the workspace directory.
+-- The root workspace uses an empty string @""@.
+type WorkspacePath = Text
+
+-- | Package name as it appears in lockfile keys, e.g. @"lodash"@ or @"@scope/pkg"@.
+type PackageName = Text
+
+-- | Version constraint as declared in package.json, e.g. @"^4.17.21"@.
+type VersionConstraint = Text
+
+-- | Graph vertex: identifies a package without environment info.
+data BunDepVertex = BunDepVertex
+  { bunDepType :: DepType
+  , bunDepName :: Text
+  , bunDepVersion :: Maybe VerConstraint
+  }
+  deriving (Eq, Ord, Show)
+
+newtype BunDepLabel = BunDepEnv DepEnvironment
+  deriving (Eq, Ord, Show)
+
+-- | Convert a vertex and its accumulated labels into a 'Dependency'.
+vertexToDependency :: BunDepVertex -> Set.Set BunDepLabel -> Dependency
+vertexToDependency vertex = foldr applyLabel base
+  where
+    base =
+      Dependency
+        { dependencyType = bunDepType vertex
+        , dependencyName = bunDepName vertex
+        , dependencyVersion = bunDepVersion vertex
+        , dependencyLocations = mempty
+        , dependencyEnvironments = mempty
+        , dependencyTags = mempty
+        }
+    applyLabel (BunDepEnv env) = insertEnvironment env
+
 data BunWorkspace = BunWorkspace
-  { wsName :: Text
-  , wsDependencies :: Map Text Text
-  , wsDevDependencies :: Map Text Text
-  , wsOptionalDependencies :: Map Text Text
+  { wsName :: PackageName
+  , wsDependencies :: Map PackageName VersionConstraint
+  , wsDevDependencies :: Map PackageName VersionConstraint
+  , wsOptionalDependencies :: Map PackageName VersionConstraint
   }
   deriving (Show, Eq, Ord)
 
 -- | Resolved dependencies extracted from a package's info object.
 data BunPackageDeps = BunPackageDeps
-  { pkgDepsDependencies :: Map Text Text
-  , pkgDepsOptionalDependencies :: Map Text Text
-  , pkgDepsPeerDependencies :: Map Text Text
+  { pkgDepsDependencies :: Map PackageName VersionConstraint
+  , pkgDepsOptionalDependencies :: Map PackageName VersionConstraint
+  , pkgDepsPeerDependencies :: Map PackageName VersionConstraint
   }
   deriving (Show, Eq)
 
@@ -156,90 +198,107 @@ analyze file = do
 --
 -- Strategy:
 --   1. Collect all dev dependency names across all workspaces.
---   2. For each workspace, mark its declared dependencies as direct.
---   3. For each supported package (npm, git), add it as a deep dependency
---      and create edges to its transitive dependencies.
+--   2. For each workspace, mark its declared dependencies as direct
+--      and label them with their environment.
+--   3. For each supported package (npm, git), add it as a deep dependency,
+--      label it with its inferred environment, and create edges to its
+--      transitive dependencies.
 --      Unsupported types (workspace, file, link, root, module) are excluded.
+--
+-- Uses 'LabeledGrapher' so that vertices are environment-agnostic and
+-- environments accumulate as labels, avoiding duplicate vertices when
+-- the same package appears in both prod and dev across workspaces.
 buildGraph :: BunLockfile -> Graphing Dependency
-buildGraph lockfile = run . evalGrapher $ do
+buildGraph lockfile = run . withLabeling vertexToDependency $ do
   for_ allWorkspaces $ \workspace -> do
     markDirectDeps EnvProduction workspace.wsDependencies
     markDirectDeps EnvDevelopment workspace.wsDevDependencies
     markDirectDeps EnvProduction workspace.wsOptionalDependencies
 
-  for_ (Map.toList $ packages lockfile) $ \(_, pkg) ->
-    for_ (toDependency pkg) $ \parentDep -> do
-      deep parentDep
+  for_ (packages lockfile) $ \pkg ->
+    for_ (toVertex pkg) $ \parentVertex -> do
+      let (name, _) = parseResolution (pkgResolution pkg)
+          inferredEnv = if Set.member name devDepNames then EnvDevelopment else EnvProduction
+      deep parentVertex
+      label parentVertex (BunDepEnv inferredEnv)
       for_ (transitiveDepNames pkg) $ \childName ->
         case Map.lookup childName (packages lockfile) of
           Nothing -> pure ()
           Just childPkg ->
-            for_ (toDependency childPkg) $ \childDep ->
-              edge parentDep childDep
+            for_ (toVertex childPkg) $ \childVertex ->
+              edge parentVertex childVertex
   where
     allWorkspaces :: [BunWorkspace]
     allWorkspaces = Map.elems $ workspaces lockfile
 
-    devDepNames :: Set.Set Text
+    devDepNames :: Set.Set PackageName
     devDepNames = Set.fromList $ concatMap (Map.keys . wsDevDependencies) allWorkspaces
 
-    markDirectDeps :: (Has (Grapher Dependency) sig m) => DepEnvironment -> Map Text Text -> m ()
+    markDirectDeps :: (Has (LabeledGrapher BunDepVertex BunDepLabel) sig m) => DepEnvironment -> Map PackageName VersionConstraint -> m ()
     markDirectDeps env deps =
       for_ (Map.keys deps) $ \depName ->
         case Map.lookup depName (packages lockfile) of
           Nothing -> pure ()
-          Just pkg -> for_ (toDependencyWithEnv env pkg) direct
+          Just pkg -> for_ (toVertex pkg) $ \vertex -> do
+            direct vertex
+            label vertex (BunDepEnv env)
 
-    transitiveDepNames :: BunPackage -> [Text]
+    transitiveDepNames :: BunPackage -> [PackageName]
     transitiveDepNames pkg =
       Map.keys (pkgDepsDependencies $ pkgDeps pkg)
         <> Map.keys (pkgDepsOptionalDependencies $ pkgDeps pkg)
         <> Map.keys (pkgDepsPeerDependencies $ pkgDeps pkg)
 
-    -- \| Convert a package to a Dependency, inferring environment from workspace declarations.
-    -- Environment is based on whether the package name appears in any workspace's
-    -- devDependencies, not on how the package is reached in the dependency graph.
-    -- This means transitive deps of dev deps get EnvProduction (since they aren't
-    -- themselves declared in devDependencies). This matches npm v3 and pnpm behavior.
+    -- | Convert a package to a vertex (environment-agnostic).
     --
     -- Returns Nothing for unsupported resolution types (workspace, file, link,
     -- tarball, root, module). Only npm and git/github packages are included.
-    toDependency :: BunPackage -> Maybe Dependency
-    toDependency pkg =
+    toVertex :: BunPackage -> Maybe BunDepVertex
+    toVertex pkg =
       let (name, version) = parseResolution (pkgResolution pkg)
-          env = if Set.member name devDepNames then EnvDevelopment else EnvProduction
-       in resolutionToDep name version env
+       in resolutionToVertex name version
 
-    toDependencyWithEnv :: DepEnvironment -> BunPackage -> Maybe Dependency
-    toDependencyWithEnv env pkg =
-      let (name, version) = parseResolution (pkgResolution pkg)
-       in resolutionToDep name version env
+    -- | Convert a parsed resolution to a vertex based on the version prefix.
+    -- Only npm (no prefix) and git resolutions produce vertices.
+    resolutionToVertex :: Text -> Text -> Maybe BunDepVertex
+    resolutionToVertex name version = case stripGitPrefix version of
+      Just ref -> Just $ mkGitVertex ref
+      Nothing
+        | isUnsupportedRef version -> Nothing
+        | otherwise -> Just $ mkVertex NodeJSType name version
 
-    -- \| Convert a parsed resolution to a Dependency based on the version prefix.
-    -- Only npm (no prefix) and git/github resolutions produce dependencies.
-    resolutionToDep :: Text -> Text -> DepEnvironment -> Maybe Dependency
-    resolutionToDep name version env
-      | "github:" `Text.isPrefixOf` version = Just $ mkDep GitType name (Text.drop 7 version) env
-      | "git+" `Text.isPrefixOf` version = Just $ mkDep GitType name (Text.drop 4 version) env
-      | isLocalRef version = Nothing
-      | otherwise = Just $ mkDep NodeJSType name version env
+    -- | Strip a known git hosting prefix from a version string.
+    stripGitPrefix :: Text -> Maybe Text
+    stripGitPrefix v =
+      Text.stripPrefix "github:" v
+        <|> Text.stripPrefix "gitlab:" v
+        <|> Text.stripPrefix "bitbucket:" v
+        <|> Text.stripPrefix "git+" v
 
-    -- \| Check if a version string refers to a local/unsupported resolution type.
-    isLocalRef :: Text -> Bool
-    isLocalRef v =
+    -- | Build a GitType vertex from a git reference like @"user/repo#ref"@
+    -- or @"https://github.com/user/repo.git#ref"@.
+    mkGitVertex :: Text -> BunDepVertex
+    mkGitVertex ref =
+      let (repo, refPart) = Text.breakOn "#" ref
+       in mkVertex GitType repo (Text.drop 1 refPart)
+
+    -- | Check if a version string refers to a local/unsupported resolution type.
+    isUnsupportedRef :: Text -> Bool
+    isUnsupportedRef v =
       "workspace:" `Text.isPrefixOf` v
         || "file:" `Text.isPrefixOf` v
         || "link:" `Text.isPrefixOf` v
         || "root:" `Text.isPrefixOf` v
         || "module:" `Text.isPrefixOf` v
+        || "https://" `Text.isPrefixOf` v
+        || "http://" `Text.isPrefixOf` v
+        || "./" `Text.isPrefixOf` v
+        || "../" `Text.isPrefixOf` v
 
-    mkDep :: DepType -> Text -> Text -> DepEnvironment -> Dependency
-    mkDep depType name version env =
-      Dependency
-        { dependencyType = depType
-        , dependencyName = name
-        , dependencyVersion = if Text.null version then Nothing else Just (CEq version)
-        , dependencyLocations = mempty
-        , dependencyEnvironments = Set.singleton env
-        , dependencyTags = mempty
+    mkVertex :: DepType -> Text -> Text -> BunDepVertex
+    mkVertex depType name version =
+      BunDepVertex
+        { bunDepType = depType
+        , bunDepName = name
+        , bunDepVersion = if Text.null version then Nothing else Just (CEq version)
         }

@@ -62,3 +62,6 @@ File, link, workspace, root, and module resolutions are excluded.
 
 - Dependencies declared in `devDependencies` of any workspace are labeled as development dependencies.
 - Dependencies declared in `dependencies` or `optionalDependencies` of any workspace are labeled as production dependencies.
+- When the same package appears in both `dependencies` and `devDependencies` across
+  different workspaces, both environments are recorded on a single graph vertex
+  (environments accumulate rather than creating duplicate entries).

@@ -373,11 +373,9 @@ readContentsJson file = context ("Parsing JSON file '" <> toText (toString file)
 readContentsJsonc :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsJsonc file = context ("Parsing JSONC file '" <> toText (toString file) <> "'") $ do
   contents <- readContentsText file
-  case stripJsonc contents of
+  case eitherDecodeStrict . encodeUtf8 =<< stripJsonc contents of
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
-    Right stripped -> case eitherDecodeStrict (encodeUtf8 stripped) of
-      Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
-      Right a -> pure a
+    Right a -> pure a
 
 readContentsToml :: (Toml.Schema.FromValue a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsToml file = context ("Parsing TOML file '" <> toText (toString file) <> "'") $ do
