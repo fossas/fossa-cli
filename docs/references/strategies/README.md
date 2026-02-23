@@ -15,6 +15,10 @@
     - Docker
 -->
 
+### bazel
+
+- [bazel (Bzlmod)](languages/bazel/bazel.md)
+
 ### clojure
 
 - [leiningen](languages/clojure/leiningen.md)
@@ -168,6 +172,7 @@ Invoke strict analysis with the `--strict` flag when running `fossa analyze`.
 | [C#/.NET (paket)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet/paket.md)                         | Static                       | ❌                    |
 | [C#/.NET (projectassetsjson)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet/projectassetsjson.md) | Static                       | ❌                    |
 | [C#/.NET (projectjson)](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/dotnet/projectjson.md)             | Static                       | ❌                    |
+| [Bazel (Bzlmod)](languages/bazel/bazel.md)                                                                                                      | Dynamic with static fallback | ❌                    |
 | [C](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                        | Custom                       | ✅                    |
 | [C++](https://github.com/fossas/fossa-cli/tree/master/docs/references/strategies/languages/c-cpp/c-cpp.md)                                      | Custom                       | ✅                    |
 | [Clojure (leiningen)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/clojure/clojure.md)                  | Dynamic                      | ❌                    |

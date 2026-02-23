@@ -614,6 +614,7 @@ test-suite unit-tests
     App.Fossa.VSI.IAT.ResolveSpec
     App.Fossa.VSI.TypesSpec
     App.Fossa.VSIDepsSpec
+    Bazel.BazelModGraphSpec
     Bazel.MavenInstallSpec
     Bazel.ModuleBazelSpec
     BerkeleyDB.BerkeleyDBSpec

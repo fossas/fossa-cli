@@ -1,6 +1,8 @@
 module Strategy.Bazel.MavenInstall (
   MavenInstallJson (..),
   MavenArtifactInfo (..),
+  MavenDependencyTree (..),
+  TreeArtifact (..),
   parseMavenInstall,
   buildMavenInstallGraph,
 ) where
