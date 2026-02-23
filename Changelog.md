@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.16.0
 
 - nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
+- Licensing: Fix bug where public domain disclosures were being matched as GPL ([`#1650`](https://github.com/fossas/fossa-cli/pull/1650))
 
 ## 3.15.9
 
