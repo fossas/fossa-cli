@@ -39,6 +39,12 @@ Workspace entries are keyed by their relative path from the root, with `""`
 representing the root workspace. Each workspace declares its own
 `dependencies`, `devDependencies`, and `optionalDependencies`.
 
+Each workspace package (including the root) is exposed as an individual build
+target (e.g. `bun@./:my-app`, `bun@./:lib-utils`). When a subset of targets
+is selected via `.fossa.yml`, only those packages' dependencies are included
+in the analysis. When no filtering is applied, all targets are selected and
+all dependencies from every workspace package are included.
+
 ### Packages
 
 Package keys use a slash-delimited path for nested `node_modules`:

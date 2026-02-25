@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Node.js: Yarn, npm, and pnpm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`, `pnpm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
+- Node.js: Yarn, npm, pnpm, and bun workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`, `pnpm@./:my-package`, `bun@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 
 ## 3.16.0
 

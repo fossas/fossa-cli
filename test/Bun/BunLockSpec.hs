@@ -50,6 +50,7 @@ spec = do
   jsoncSpec jsoncPath
   dependenciesSpec depsPath
   workspacesSpec wsPath
+  workspaceFilterSpec wsPath
   bunProjectSpec bunProjectPath
   gitDepsSpec gitDepsPath
   mixedEnvsSpec mixedEnvsPath
@@ -152,6 +153,33 @@ workspacesSpec path =
           names `shouldNotContain` "@types/app"
           names `shouldNotContain` "utils"
 
+-- | Workspace target filtering: verify that filtering by workspace path
+-- scopes which workspaces contribute direct dependencies.
+workspaceFilterSpec :: Path Abs File -> Spec
+workspaceFilterSpec path =
+  describe "workspace target filtering" $ do
+    describe "filtered to root only" $
+      checkGraphWithFilter (Just (Set.singleton "")) path $ \graph -> do
+        let directDeps = Graphing.directList graph
+
+        it "should include root dev deps as direct" $
+          directDeps `shouldContainDep` mkDevDep "typescript" "5.3.3"
+
+        it "should not include sub-workspace deps as direct" $ do
+          let directNames = map dependencyName directDeps
+          directNames `shouldNotContain` "lodash"
+
+    describe "filtered to sub-workspace only" $
+      checkGraphWithFilter (Just (Set.singleton "packages/app")) path $ \graph -> do
+        let directDeps = Graphing.directList graph
+
+        it "should include sub-workspace deps as direct" $
+          directDeps `shouldContainDep` mkProdDep "lodash" "4.17.21"
+
+        it "should not include root deps as direct" $ do
+          let directNames = map dependencyName directDeps
+          directNames `shouldNotContain` "typescript"
+
 -- | Bun project: a real-world bun.lock from the bun project itself.
 -- Covers scoped packages, git refs, nested package keys, optional/peer deps
 -- in packages, and large dependency counts.
@@ -232,13 +260,16 @@ mixedEnvsSpec path =
 
 -- | Parse a bun.lock in IO for graph tests (outside the effect stack).
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
-checkGraph path graphSpec = do
+checkGraph = checkGraphWithFilter Nothing
+
+checkGraphWithFilter :: Maybe (Set.Set Text) -> Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkGraphWithFilter wsFilter path graphSpec = do
   result <- runIO $ parseBunLockIO path
   case result of
     Left err ->
       describe (fromAbsFile path) $
         it "should parse" (expectationFailure err)
-    Right lockfile -> graphSpec (buildGraph lockfile)
+    Right lockfile -> graphSpec (buildGraph wsFilter lockfile)
 
 parseBunLockIO :: Path Abs File -> IO (Either String BunLockfile)
 parseBunLockIO path = do
