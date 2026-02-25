@@ -290,20 +290,26 @@ instance FromJSON Resolution where
       gitRes :: Object -> Parser Resolution
       gitRes obj = GitResolve <$> (GitResolution <$> obj .: "repo" <*> obj .: "commit")
 
-analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze file = context "Analyzing Npm Lockfile (v3)" $ do
+-- | Analyze a pnpm lockfile. When @selectedImporterPaths@ is 'Nothing',
+-- all importers are included. When @Just paths@, only importers whose
+-- key is in @paths@ are treated as direct dependency sources.
+analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Maybe (Set.Set Text) -> Path Abs File -> m (Graphing Dependency)
+analyze selectedImporterPaths file = context "Analyzing Npm Lockfile (v3)" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
 
   case lockFileVersion pnpmLockFile of
     PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
     _ -> pure ()
 
-  context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
+  context "Building dependency graph" $ pure $ buildGraph selectedImporterPaths pnpmLockFile
 
-buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile = withoutLocalPackages $
+buildGraph :: Maybe (Set.Set Text) -> PnpmLockfile -> Graphing Dependency
+buildGraph selectedImporterPaths lockFile = withoutLocalPackages $
   run . evalGrapher $ do
-    for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
+    let filteredImporters = case selectedImporterPaths of
+          Nothing -> toList lockFile.importers
+          Just paths -> filter (\(k, _) -> k `Set.member` paths) (toList lockFile.importers)
+    for_ filteredImporters $ \(_, projectImporters) -> do
       let allDirectDependencies =
             toList (directDependencies projectImporters)
               <> toList (directDevDependencies projectImporters)

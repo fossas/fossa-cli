@@ -9,6 +9,7 @@ module Strategy.Node (
   getDeps,
   findWorkspaceBuildTargets,
   extractDepListsForTargets,
+  resolveImporterPaths,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -39,7 +40,7 @@ import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty qualified as NonEmptySet
-import Data.String.Conversion (decodeUtf8, toString)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Tagged (applyTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -73,6 +74,7 @@ import Path (
   Rel,
   mkRelFile,
   parent,
+  stripProperPrefix,
   toFilePath,
   (</>),
  )
@@ -99,6 +101,7 @@ import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
 import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs))
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
+import System.FilePath.Posix qualified as FP
 import Types (
   BuildTarget (BuildTarget),
   DependencyResults (DependencyResults),
@@ -160,6 +163,7 @@ mkProject project = do
       projectBuildTargets' = case project of
         Yarn _ _ -> findWorkspaceBuildTargets graph
         NPMLock _ _ -> findWorkspaceBuildTargets graph
+        Pnpm _ _ -> findWorkspaceBuildTargets graph
         _ -> ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
@@ -204,19 +208,51 @@ getDeps ::
   m DependencyResults
 getDeps targets (Yarn yarnLockFile graph) = analyzeYarn targets yarnLockFile graph
 getDeps targets (NPMLock packageLockFile graph) = analyzeNpmLock targets packageLockFile graph
-getDeps _ (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
+getDeps targets (Pnpm pnpmLockFile graph) = analyzePnpmLock targets pnpmLockFile graph
 getDeps _ (Bun bunLockFile _) = analyzeBunLock bunLockFile
 getDeps _ (NPM graph) = analyzeNpm graph
 
-analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => Manifest -> m DependencyResults
-analyzePnpmLock (Manifest pnpmLockFile) = do
-  result <- PnpmLock.analyze pnpmLockFile
+analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
+analyzePnpmLock targets (Manifest pnpmLockFile) graph = do
+  let selectedImporterPaths = resolveImporterPaths targets graph
+  result <- PnpmLock.analyze selectedImporterPaths pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
 
 analyzeBunLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
 analyzeBunLock (Manifest bunLockFile) = do
   result <- BunLock.analyze bunLockFile
   pure $ DependencyResults result Complete [bunLockFile]
+
+-- | Map selected build targets (package names) to pnpm importer paths
+-- (relative paths from the workspace root like ".", "packages/a").
+-- When 'ProjectWithoutTargets', returns Nothing (no filtering).
+-- When 'FoundTargets', looks up each target's package name in the
+-- PkgJsonGraph to find its manifest path, then computes the relative
+-- path from the workspace root.
+resolveImporterPaths :: FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
+resolveImporterPaths ProjectWithoutTargets _ = Nothing
+resolveImporterPaths (FoundTargets targets) graph@PkgJsonGraph{..} =
+  case findWorkspaceRootManifest graph of
+    Left _ -> Nothing
+    Right (Manifest rootManifest) ->
+      Just $ Set.fromList [p | (name, p) <- namePathPairs, name `Set.member` targetNames]
+      where
+        rootDir = parent rootManifest
+        targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
+
+        namePathPairs :: [(Text, Text)]
+        namePathPairs =
+          [ (name, manifestToImporterPath m)
+          | (Manifest m, pj) <- Map.toList jsonLookup
+          , Just name <- [packageName pj]
+          ]
+
+        manifestToImporterPath :: Path Abs File -> Text
+        manifestToImporterPath m =
+          let manifestDir = parent m
+           in if manifestDir == rootDir
+                then "."
+                else maybe "." (toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock targets (Manifest npmLockFile) graph = do

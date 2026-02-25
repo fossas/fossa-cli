@@ -13,7 +13,7 @@ import Data.Tagged (applyTag)
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps)
+import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, resolveImporterPaths)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -57,6 +57,7 @@ spec = do
   npmLockAnalysisSpec currDir
   workspaceBuildTargetsSpec currDir
   extractDepListsForTargetsSpec currDir
+  resolveImporterPathsSpec currDir
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =
@@ -237,6 +238,31 @@ extractDepListsForTargetsSpec currDir = describe "extractDepListsForTargets" $ d
             , NodePackage "husky" "^8.0.0"
             ]
     directDeps result `shouldBe` applyTag @Production expectedDirect
+
+resolveImporterPathsSpec :: Path Abs Dir -> Spec
+resolveImporterPathsSpec currDir = describe "resolveImporterPaths" $ do
+  let graph = workspaceGraphWithDeps currDir
+
+  it "returns Nothing for ProjectWithoutTargets" $ do
+    resolveImporterPaths ProjectWithoutTargets graph `shouldBe` Nothing
+
+  it "maps root target to \".\"" $ do
+    let targets =
+          maybe ProjectWithoutTargets FoundTargets . nonEmpty $
+            Set.fromList [BuildTarget "workspace-test"]
+    resolveImporterPaths targets graph `shouldBe` Just (Set.singleton ".")
+
+  it "maps workspace member targets to relative paths" $ do
+    let targets =
+          maybe ProjectWithoutTargets FoundTargets . nonEmpty $
+            Set.fromList [BuildTarget "pkg-a", BuildTarget "pkg-b"]
+    resolveImporterPaths targets graph `shouldBe` Just (Set.fromList ["pkg-a", "nested/pkg-b"])
+
+  it "maps all targets including root" $ do
+    let targets =
+          maybe ProjectWithoutTargets FoundTargets . nonEmpty $
+            Set.fromList [BuildTarget "workspace-test", BuildTarget "pkg-a", BuildTarget "pkg-b"]
+    resolveImporterPaths targets graph `shouldBe` Just (Set.fromList [".", "pkg-a", "nested/pkg-b"])
 
 -- | A workspace graph with actual dependencies for testing extractDepListsForTargets.
 workspaceGraphWithDeps :: Path Abs Dir -> PkgJsonGraph
