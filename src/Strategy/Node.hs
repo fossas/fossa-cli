@@ -154,12 +154,19 @@ mkProject project = do
         NPM g -> (g, NpmProjectType)
         Bun _ g -> (g, BunProjectType)
         Pnpm _ g -> (g, PnpmProjectType)
+      -- Only expose build targets for project types whose getDeps actually
+      -- honors them. Otherwise users see per-package targets in list-targets
+      -- but filtering has no effect on analysis.
+      projectBuildTargets' = case project of
+        Yarn _ _ -> findWorkspaceBuildTargets graph
+        NPMLock _ _ -> findWorkspaceBuildTargets graph
+        _ -> ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject
       { projectType = typename
       , projectPath = parent rootManifest
-      , projectBuildTargets = findWorkspaceBuildTargets graph
+      , projectBuildTargets = projectBuildTargets'
       , projectData = project
       }
 
@@ -175,10 +182,13 @@ findWorkspaceBuildTargets graph@PkgJsonGraph{..} =
         then ProjectWithoutTargets
         else
           let rootName = findWorkspaceRootManifest graph >>= \m -> maybe (Left "no name") Right (packageName =<< Map.lookup m jsonLookup)
-              allNames = case rootName of
-                Right n -> Set.insert n childNames
-                Left _ -> childNames
-           in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
+           in case rootName of
+                -- If the root package.json has no name field, fall back to
+                -- ProjectWithoutTargets so its deps aren't silently dropped.
+                Left _ -> ProjectWithoutTargets
+                Right n ->
+                  let allNames = Set.insert n childNames
+                   in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
 
 instance AnalyzeProject NodeProject where
   analyzeProject = getDeps
