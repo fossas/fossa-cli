@@ -4,6 +4,25 @@
 
 - Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 
+## 3.16.0
+
+- nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
+- Licensing: Fix bug where public domain disclosures were being matched as GPL ([`#1650`](https://github.com/fossas/fossa-cli/pull/1650))
+
+## 3.15.9
+
+- Improvements for licensing and snippet scanning ([#1649](https://github.com/fossas/fossa-cli/pull/1649))
+  - Licensing: Additional proprietary license detection
+  - Snippet scanning: Support TLS operation with platform native certificate store
+
+## 3.15.8
+
+- Snippet scanning: Fix bug where proxies cause POSTs to get redirected to GETs ([#1645](https://github.com/fossas/fossa-cli/pull/1645))
+
+## 3.15.7
+
+- PNPM: Fixes an issue where transitive dependencies with peer dependencies weren't detected in lockfile v6. ([#1642](https://github.com/fossas/fossa-cli/pull/1642))
+
 ## 3.15.6
 
 - Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
