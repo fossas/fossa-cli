@@ -2,6 +2,8 @@
 
 Bazel projects using [Bzlmod](https://bazel.build/external/module) (`MODULE.bazel`) are analyzed for dependencies. This covers `bazel_dep()` entries (modules from the Bazel Central Registry) and Maven artifacts declared via the `rules_jvm_external` extension.
 
+**Requires Bazel 6+** (Bzlmod available). The legacy `WORKSPACE` system is not supported. Bazel 9 (Jan 2026) removed `WORKSPACE` entirely, making `MODULE.bazel` the only dependency management approach.
+
 Dependencies managed by other ecosystems (Go, Node, Cargo, pip, etc.) within a Bazel project are handled by their respective strategies.
 
 | Strategy       | Direct Deps        | Transitive Deps    | Edges              | Container Scanning |
