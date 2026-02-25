@@ -10,6 +10,7 @@ module Strategy.Node (
   findWorkspaceBuildTargets,
   extractDepListsForTargets,
   resolveImporterPaths,
+  resolveBunWorkspacePaths,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -164,6 +165,7 @@ mkProject project = do
         Yarn _ _ -> findWorkspaceBuildTargets graph
         NPMLock _ _ -> findWorkspaceBuildTargets graph
         Pnpm _ _ -> findWorkspaceBuildTargets graph
+        Bun _ _ -> findWorkspaceBuildTargets graph
         _ -> ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
@@ -209,7 +211,7 @@ getDeps ::
 getDeps targets (Yarn yarnLockFile graph) = analyzeYarn targets yarnLockFile graph
 getDeps targets (NPMLock packageLockFile graph) = analyzeNpmLock targets packageLockFile graph
 getDeps targets (Pnpm pnpmLockFile graph) = analyzePnpmLock targets pnpmLockFile graph
-getDeps _ (Bun bunLockFile _) = analyzeBunLock bunLockFile
+getDeps targets (Bun bunLockFile graph) = analyzeBunLock targets bunLockFile graph
 getDeps _ (NPM graph) = analyzeNpm graph
 
 analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
@@ -218,9 +220,10 @@ analyzePnpmLock targets (Manifest pnpmLockFile) graph = do
   result <- PnpmLock.analyze selectedImporterPaths pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
 
-analyzeBunLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
-analyzeBunLock (Manifest bunLockFile) = do
-  result <- BunLock.analyze bunLockFile
+analyzeBunLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
+analyzeBunLock targets (Manifest bunLockFile) graph = do
+  let selectedWorkspacePaths = resolveBunWorkspacePaths targets graph
+  result <- BunLock.analyze selectedWorkspacePaths bunLockFile
   pure $ DependencyResults result Complete [bunLockFile]
 
 -- | Map selected build targets (package names) to pnpm importer paths
@@ -253,6 +256,33 @@ resolveImporterPaths (FoundTargets targets) graph@PkgJsonGraph{..} =
            in if manifestDir == rootDir
                 then "."
                 else maybe "." (toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
+
+-- | Like 'resolveImporterPaths' but for bun lockfiles, which use @""@
+-- for the root workspace instead of @"."@.
+resolveBunWorkspacePaths :: FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
+resolveBunWorkspacePaths ProjectWithoutTargets _ = Nothing
+resolveBunWorkspacePaths (FoundTargets targets) graph@PkgJsonGraph{..} =
+  case findWorkspaceRootManifest graph of
+    Left _ -> Nothing
+    Right (Manifest rootManifest) ->
+      Just $ Set.fromList [p | (name, p) <- namePathPairs, name `Set.member` targetNames]
+      where
+        rootDir = parent rootManifest
+        targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
+
+        namePathPairs :: [(Text, Text)]
+        namePathPairs =
+          [ (name, manifestToWorkspacePath m)
+          | (Manifest m, pj) <- Map.toList jsonLookup
+          , Just name <- [packageName pj]
+          ]
+
+        manifestToWorkspacePath :: Path Abs File -> Text
+        manifestToWorkspacePath m =
+          let manifestDir = parent m
+           in if manifestDir == rootDir
+                then ""
+                else maybe "" (toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
 
 analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock targets (Manifest npmLockFile) graph = do
