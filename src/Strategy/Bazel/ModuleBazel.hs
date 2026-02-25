@@ -32,6 +32,7 @@ import Text.Megaparsec (
   sepEndBy,
   skipMany,
   skipManyTill,
+  skipSome,
   (<|>),
  )
 import Text.Megaparsec.Char (
@@ -224,23 +225,37 @@ varAssignStatement = do
 -- | Skip an unrecognized top-level statement (function call or other).
 otherStatement :: Parser Statement
 otherStatement = do
-  _ <- identifier <|> (Text.singleton <$> char '@')
-  skipMany (try functionCall <|> try dotAccess <|> skipOneToken)
+  _ <- bareString <|> bareList <|> identifierStatement
   pure StmtOther
   where
-    functionCall = do
-      _ <- optional (char '.')
-      _ <- optional identifier
-      _ <- parens (skipManyTill anySingle (lookAhead (char ')')))
+    -- Bare string literal at top level (e.g. docstrings like "bazel-contrib/rules_oci")
+    bareString = quotedString *> pure ()
+
+    -- Bare list at top level (e.g. list comprehensions like [maven.artifact(...) for ...])
+    bareList = between (symbol "[") (symbol "]") (skipBalancedBrackets 0) *> pure ()
+
+    -- Identifier-led statement: function call, assignment, or other.
+    -- Handles: func(...), ident.method(...), ident = value, ident
+    identifierStatement = do
+      _ <- identifier <|> (Text.singleton <$> char '@')
+      -- After the initial identifier, consume either:
+      -- 1. A direct function call: (...)
+      -- 2. A method chain: .method(...)
+      -- 3. Nothing (bare identifier)
+      skipMany (try methodCallChain <|> try directParens)
+
+    -- Direct parenthesized args: (...)
+    directParens = do
+      _ <- parens (skipBalancedParens 0)
       pure ()
-    dotAccess = do
+
+    -- Method call chain: .identifier(...) or .identifier
+    methodCallChain = do
       _ <- char '.'
       _ <- identifier
+      _ <- optional (parens (skipBalancedParens 0))
       pure ()
-    skipOneToken = do
-      notFollowedBy (char '\n' <|> char '#')
-      _ <- anySingle
-      pure ()
+
 
 -- | Parse keyword arguments: name = value, ...
 keywordArgs :: Parser [(Text, StarlarkValue)]
@@ -271,20 +286,104 @@ positionalAndKeywordArgs = do
       pure (name, val)
 
 -- | Parse a Starlark value (string, list, bool, integer, identifier).
+-- After parsing a base value, optionally consume trailing method calls
+-- (.format(...), .replace(...)) and binary operators (+, %) that are
+-- common in real MODULE.bazel files.
 starlarkValue :: Parser StarlarkValue
-starlarkValue =
-  choice
-    [ SList <$> stringList
-    , SString <$> quotedString
-    , SBool True <$ symbol "True"
-    , SBool False <$ symbol "False"
-    , SInt <$> try (lexeme L.decimal)
-    , SIdentifier <$> identifier
-    ]
+starlarkValue = do
+  base <-
+    choice
+      [ SList <$> starlarkList
+      , SString <$> quotedString
+      , SBool True <$ symbol "True"
+      , SBool False <$ symbol "False"
+      , SInt <$> try (lexeme L.decimal)
+      , parenExpr
+      , identOrCall
+      ]
+  -- Consume optional trailing method calls and operators.
+  -- This handles patterns like "str".format(...), x + y, "str" % val, etc.
+  -- We don't try to evaluate them; we just consume the tokens.
+  skipMany (try methodCall <|> try binaryOp)
+  pure base
+  where
+    -- Parenthesized expression: (...) — consumed but not evaluated
+    parenExpr = parens (skipBalancedParens 0) *> pure (SString "")
+    -- An identifier optionally followed by a function call: foo(...) or just foo
+    identOrCall = do
+      name <- identifier
+      _ <- optional (parens (skipBalancedParens 0))
+      pure (SIdentifier name)
+    methodCall = do
+      _ <- char '.'
+      _ <- identifier
+      _ <- parens (skipBalancedParens 0)
+      pure ()
+    binaryOp = do
+      _ <- symbol "+" <|> symbol "%"
+      _ <- starlarkValue
+      pure ()
 
--- | Parse a list of strings: ["a", "b", ...]
-stringList :: Parser [Text]
-stringList = between (symbol "[") (symbol "]") (quotedString `sepEndBy` symbol ",")
+-- | Parse a list: [expr, expr, ...]
+-- Handles both simple string lists and lists with complex expressions.
+-- Uses balanced bracket counting to handle nested expressions.
+starlarkList :: Parser [Text]
+starlarkList = do
+  _ <- symbol "["
+  items <- listItem `sepEndBy` symbol ","
+  _ <- symbol "]"
+  pure (catMaybes items)
+  where
+    listItem = do
+      -- Try to parse as a simple quoted string first
+      (Just <$> try quotedString)
+        -- If that fails, skip a complex expression and return Nothing
+        <|> (skipComplexExpr *> pure Nothing)
+
+    -- Skip a complex expression (e.g. "str".format(...), x + y, comprehensions)
+    -- by consuming tokens until we hit a comma or closing bracket at depth 0
+    skipComplexExpr :: Parser ()
+    skipComplexExpr = skipSome (notFollowedBy (symbol "," <|> symbol "]") *> skipExprToken)
+
+    skipExprToken :: Parser ()
+    skipExprToken =
+      choice
+        [ quotedString *> pure ()
+        , between (symbol "(") (symbol ")") (skipBalancedParens 0) *> pure ()
+        , between (symbol "[") (symbol "]") (skipBalancedBrackets 0) *> pure ()
+        , identifier *> pure ()
+        , lexeme (L.decimal :: Parser Int) *> pure ()
+        , lexeme (char '.' <|> char '+' <|> char '%' <|> char '-' <|> char '*') *> pure ()
+        ]
+
+-- | Skip content inside balanced parentheses (stops before the closing ')').
+-- Call this after consuming '(' and before consuming ')'.
+skipBalancedParens :: Int -> Parser ()
+skipBalancedParens _ = skipMany oneItem
+  where
+    oneItem =
+      choice
+        [ char '(' *> skipBalancedParens 0 *> char ')' *> pure ()
+        , quotedString *> pure ()
+        , do
+            notFollowedBy (char '(' <|> char ')')
+            _ <- anySingle
+            pure ()
+        ]
+
+-- | Skip content inside balanced brackets (stops before the closing ']').
+skipBalancedBrackets :: Int -> Parser ()
+skipBalancedBrackets _ = skipMany oneItem
+  where
+    oneItem =
+      choice
+        [ char '[' *> skipBalancedBrackets 0 *> char ']' *> pure ()
+        , quotedString *> pure ()
+        , do
+            notFollowedBy (char '[' <|> char ']')
+            _ <- anySingle
+            pure ()
+        ]
 
 -- | Parse a quoted string (single or double quotes).
 quotedString :: Parser Text
