@@ -73,6 +73,16 @@ refThree = Package "three" $ Just "3.0.0"
 refFour :: Package
 refFour = Package "four" Nothing
 
+-- Packages with unresolved MSBuild variables (should be filtered out)
+refWithMSBuildVar :: Package
+refWithMSBuildVar = Package "unresolved-msbuild" $ Just "$(PackageVersion)"
+
+refWithLegacyVar :: Package
+refWithLegacyVar = Package "unresolved-legacy" $ Just "$documentProcessingContractsVersion$"
+
+refWithMixedVar :: Package
+refWithMixedVar = Package "unresolved-mixed" $ Just "1.0.$(BuildNumber)"
+
 spec :: Spec
 spec = do
   refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
@@ -88,3 +98,19 @@ spec = do
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectEdges [] graph
+
+    it "filters out packages with unresolved MSBuild variables" $ do
+      let packageRefWithVars =
+            PackageReference
+              [ ItemGroup
+                  [ refOne
+                  , refWithMSBuildVar -- $(PackageVersion) - should be filtered
+                  , refWithLegacyVar -- $documentProcessingContractsVersion$ - should be filtered
+                  , refWithMixedVar -- 1.0.$(BuildNumber) - should be filtered
+                  , refTwo
+                  ]
+              ]
+          graph = buildGraph packageRefWithVars
+      -- Only refOne and refTwo should be in the graph
+      expectDeps [dependencyOne, dependencyTwo] graph
+      expectDirect [dependencyOne, dependencyTwo] graph

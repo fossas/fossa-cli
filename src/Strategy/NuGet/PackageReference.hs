@@ -12,6 +12,7 @@ import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepType (NuGetType),
   Dependency (..),
@@ -71,9 +72,11 @@ instance FromXML Package where
       <*> optional (attr "Version" el <|> child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
-buildGraph project = Graphing.fromList (map toDependency direct)
+buildGraph project = Graphing.fromList (map toDependency validPackages)
   where
     direct = concatMap dependencies (groups project)
+    validPackages = filter (not . hasUnresolvedMSBuildVariable) direct
+
     toDependency Package{..} =
       Dependency
         { dependencyType = NuGetType
@@ -83,3 +86,19 @@ buildGraph project = Graphing.fromList (map toDependency direct)
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
         }
+
+-- | Check if a package has an unresolved MSBuild variable in its version.
+--
+-- MSBuild variables appear as:
+--   - $(VariableName) - standard MSBuild property syntax
+--   - $VariableName$  - legacy/alternate syntax seen in some projects
+--
+-- Packages with unresolved variables cannot be resolved server-side and
+-- should be filtered out to avoid timeout failures.
+hasUnresolvedMSBuildVariable :: Package -> Bool
+hasUnresolvedMSBuildVariable Package{depVersion = Nothing} = False
+hasUnresolvedMSBuildVariable Package{depVersion = Just ver} =
+  -- Check for $(VarName) pattern
+  ("$(" `Text.isInfixOf` ver && ")" `Text.isInfixOf` ver)
+    -- Check for $VarName$ pattern (legacy syntax)
+    || (Text.count "$" ver >= 2 && not (Text.null (Text.filter (== '$') ver)))

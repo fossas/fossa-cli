@@ -3,6 +3,7 @@
 ## 3.16.1
 
 - Licensing: Add support for SPDX tag-value format license declarations
+- NuGet: Filter out packages with unresolved MSBuild variables (e.g., `$(PackageVersion)`, `$VariableName$`) to prevent invalid locators that cause server-side resolution timeouts ([#1657](https://github.com/fossas/fossa-cli/pull/1657))
 
 ## 3.16.0
 
