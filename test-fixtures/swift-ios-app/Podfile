@@ -1,0 +1,7 @@
+platform :ios, '16.0'
+
+target 'CryptoApp' do
+  use_frameworks!
+  pod 'CryptoSwift', '~> 1.8'
+  pod 'OpenSSL-Universal', '~> 3.1'
+end

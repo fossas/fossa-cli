@@ -252,6 +252,9 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeExperimentalSnippetScan :: Flag ExperimentalSnippetScan
   , analyzeSnippetScan :: Flag SnippetScan
   , analyzeVendetta :: Bool
+  , analyzeCryptoScan :: Bool
+  , analyzeCryptoCbomOutput :: Maybe FilePath
+  , analyzeCryptoFipsReport :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -293,6 +296,9 @@ data AnalyzeConfig = AnalyzeConfig
   , snippetScan :: Bool
   , debugDir :: Maybe FilePath
   , xVendetta :: Bool
+  , xCryptoScan :: Bool
+  , cryptoCbomOutput :: Maybe FilePath
+  , cryptoFipsReport :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -367,6 +373,9 @@ cliParser =
     <*> flagOpt ExperimentalSnippetScan (applyFossaStyle <> long "x-snippet-scan" <> hidden)
     <*> flagOpt SnippetScan (applyFossaStyle <> long "snippet-scan" <> stringToHelpDoc "Enable snippet scanning to identify open source code snippets using fingerprinting.")
     <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
+    <*> switch (applyFossaStyle <> long "x-crypto-scan" <> stringToHelpDoc "Experimental flag to enable cryptographic algorithm detection and FIPS compliance assessment.")
+    <*> optional (strOption (applyFossaStyle <> long "crypto-cbom-output" <> metavar "FILE" <> stringToHelpDoc "Write CycloneDX 1.7 CBOM to FILE (implies --x-crypto-scan)"))
+    <*> switch (applyFossaStyle <> long "crypto-fips-report" <> stringToHelpDoc "Print detailed FIPS compliance report (implies --x-crypto-scan)")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -599,6 +608,9 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> pure snippetScanEnabled
     <*> pure maybeDebugDir
     <*> pure analyzeVendetta
+    <*> pure (analyzeCryptoScan || analyzeCryptoFipsReport || maybe False (const True) analyzeCryptoCbomOutput)
+    <*> pure analyzeCryptoCbomOutput
+    <*> pure analyzeCryptoFipsReport
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
