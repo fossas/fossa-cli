@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.16.1
+
+- Licensing: Add support for SPDX tag-value format license declarations
+
 ## 3.16.0
 
 - nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
