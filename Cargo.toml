@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "extlib/berkeleydb",
+  "extlib/cryptoscan",
   "extlib/millhone",
   "tools/diagnose",
   "tools/rendergraph",

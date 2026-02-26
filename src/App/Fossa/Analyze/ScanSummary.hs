@@ -18,6 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (StaticOnly))
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.CryptoScan.Types (CryptoFinding (..), CryptoScanResults (..), FipsStatus (..), CryptoAlgorithm (..))
 import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift
@@ -190,7 +191,7 @@ renderDefaultSkippedTargetHelp =
   ]
 
 summarize :: Config.AnalyzeConfig -> Text -> AnalysisScanResult -> Maybe ([Doc AnsiStyle])
-summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dynamicLinkingDeps lernie _) =
+summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dynamicLinkingDeps lernie _ crypto) =
   if (numProjects totalScanCount <= 0)
     then Nothing
     else
@@ -214,6 +215,7 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dy
           <> summarizeSrcUnit "fossa-deps file analysis" (Just getManualVendorDepsIdentifier) manualDeps
           <> summarizeSrcUnit "Keyword Search" (Just getLernieIdentifier) (lernieResultsKeywordSearches <$$> lernie)
           <> summarizeSrcUnit "Custom-License Search" (Just getLernieIdentifier) (lernieResultsCustomLicenses <$$> lernie)
+          <> summarizeCryptoScan crypto
           <> [""]
   where
     vsiResults = summarizeSrcUnit "vsi analysis" (Just (join . map vsiSourceUnits)) vsi
@@ -226,6 +228,7 @@ summarize cfg endpointVersion (AnalysisScanResult dps vsi binary _ manualDeps dy
         , srcUnitToScanCount manualDeps
         , srcUnitToScanCount dynamicLinkingDeps
         , srcUnitToScanCount lernie
+        , srcUnitToScanCount crypto
         ]
 
     -- This function relies on the fact that there is only ever one package in a vsi source unit dep graph.
@@ -328,6 +331,30 @@ summarizeProjectScan (Scanned _ (Success wg pr)) = successColorCoded wg $ render
 summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueFilter
 summarizeProjectScan (SkippedDueToDefaultFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueDefaultFilter
 
+summarizeCryptoScan :: Result (Maybe CryptoScanResults) -> [Doc AnsiStyle]
+summarizeCryptoScan (Success wg (Just (CryptoScanResults findings)))
+  | not (null findings) =
+      [successColorCoded wg $ listSymbol <> "Crypto Scan" <> renderSucceeded wg]
+        <> itemize ("  " <> listSymbol) renderCryptoFinding findings
+  | otherwise = []
+summarizeCryptoScan (Failure _ _) = [failColorCoded $ annotate bold $ listSymbol <> "Crypto Scan" <> renderFailed]
+summarizeCryptoScan _ = []
+
+renderCryptoFinding :: CryptoFinding -> Doc AnsiStyle
+renderCryptoFinding finding =
+  pretty (cryptoAlgorithmName $ cryptoFindingAlgorithm finding)
+    <> " ["
+    <> fipsStatusDoc (cryptoAlgorithmFipsStatus $ cryptoFindingAlgorithm finding)
+    <> "] - "
+    <> pretty (cryptoFindingFilePath finding)
+    <> ":"
+    <> viaShow (cryptoFindingLineNumber finding)
+  where
+    fipsStatusDoc :: FipsStatus -> Doc AnsiStyle
+    fipsStatusDoc FipsApproved = annotate (color Green) "FIPS Approved"
+    fipsStatusDoc FipsDeprecated = annotate (color Yellow) "FIPS Deprecated"
+    fipsStatusDoc FipsNotApproved = annotate (color Red) "Not FIPS Approved"
+
 ---------- Rendering Helpers
 
 logInfoVsep :: (Has Logger sig m) => [Doc AnsiStyle] -> m ()
@@ -389,7 +416,7 @@ countWarnings ws =
     isIgnoredErrGroup _ = False
 
 dumpResultLogsToTempFile :: (Has (Lift IO) sig m) => Config.AnalyzeConfig -> Text -> AnalysisScanResult -> m (Path Abs File)
-dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary ficus manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts) = do
+dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi binary ficus manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts cryptoResults) = do
   let doc =
         stripAnsiEscapeCodes
           . renderStrict
@@ -404,6 +431,7 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
               , renderSourceUnit "dynamic linked dependency analysis" dynamicLinkingDeps
               , renderSourceUnit "fossa-deps analysis" manualDeps
               , renderSourceUnit "Custom-license scan & Keyword Search" lernieResults
+              , renderSourceUnit "Crypto Scan" cryptoResults
               ]
 
   tmpDir <- sendIO getTempDir
@@ -411,7 +439,7 @@ dumpResultLogsToTempFile cfg endpointVersion (AnalysisScanResult projects vsi bi
   pure (tmpDir </> scanSummaryFileName)
   where
     scanSummary :: [Doc AnsiStyle]
-    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary ficus manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts))
+    scanSummary = maybeToList (vsep <$> summarize cfg endpointVersion (AnalysisScanResult projects vsi binary ficus manualDeps dynamicLinkingDeps lernieResults reachabilityAttempts cryptoResults))
 
     renderSourceUnit :: Doc AnsiStyle -> Result (Maybe a) -> Maybe (Doc AnsiStyle)
     renderSourceUnit header (Failure ws eg) = Just $ renderFailure ws eg $ vsep $ summarizeSrcUnit header Nothing (Failure ws eg)

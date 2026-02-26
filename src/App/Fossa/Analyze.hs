@@ -66,6 +66,8 @@ import App.Fossa.Config.Analyze (
  )
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
+import App.Fossa.CryptoScan.Analyze (analyzeCryptoScanCBOM, analyzeWithCryptoScan)
+import App.Fossa.CryptoScan.FipsReport (renderFipsReport)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
@@ -130,7 +132,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (resultToMaybe)
+import Diag.Result (Result (Failure, Success), resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -141,6 +143,7 @@ import Effect.Logger (
   logDebug,
   logInfo,
   logStdout,
+  logWarn,
   renderIt,
  )
 import Effect.ReadFS (ReadFS)
@@ -331,6 +334,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.snippetScan cfg
       enableVendetta = Config.xVendetta cfg
+      enableCryptoScan = Config.xCryptoScan cfg
 
   manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -403,6 +407,31 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
   let lernieResults = join . resultToMaybe $ maybeLernieResults
 
+  maybeCryptoScanResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if not enableCryptoScan
+        then do
+          logInfo "Skipping crypto scanning (--x-crypto-scan not set)"
+          pure Nothing
+        else Diag.context "crypto-scan" . runStickyLogger SevInfo $ analyzeWithCryptoScan basedir
+
+  -- Handle CBOM file output if requested (requires crypto scanning to be enabled)
+  case (enableCryptoScan, Config.cryptoCbomOutput cfg) of
+    (False, Just _) ->
+      logInfo "Skipping crypto CBOM output (--x-crypto-scan not set)"
+    (True, Just cbomPath) -> do
+      maybeCbomBytes <-
+        Diag.errorBoundaryIO . diagToDebug $
+          Diag.context "crypto-cbom-output" . runStickyLogger SevInfo $ analyzeCryptoScanCBOM basedir
+      traverse_ (Diag.flushLogs SevError SevDebug) [maybeCbomBytes]
+      case maybeCbomBytes of
+        Success _ (Just bytes) -> do
+          sendIO $ BL.writeFile cbomPath bytes
+          logInfo $ "CycloneDX 1.7 CBOM written to: " <> pretty cbomPath
+        Success _ Nothing -> logInfo "No crypto findings to write to CBOM file"
+        Failure _ _ -> logWarn "Crypto CBOM generation failed; see diagnostics above"
+    (_, Nothing) -> pure ()
+
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
       -- This is ok because 'resultToMaybe' would do that anyway.
       -- We'll use the original results to output warnings/errors below.
@@ -425,6 +454,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
   -- Flush logs from ficus
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
+  -- Flush logs from crypto scan
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeCryptoScanResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -490,9 +521,18 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults maybeFicusResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults maybeFicusResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult maybeCryptoScanResults
       isDebugMode = isJust (Config.debugDir cfg)
   renderScanSummary isDebugMode maybeEndpointAppVersion analysisResult cfg
+
+  -- Render FIPS compliance report if requested
+  when (Config.cryptoFipsReport cfg) $
+    case maybeCryptoScanResults of
+      Success _ (Just cryptoResults) -> do
+        logInfo ""
+        logInfo . renderIt $ renderFipsReport cryptoResults
+      Success _ Nothing -> logInfo "No crypto findings for FIPS report"
+      Failure _ _ -> logWarn "Crypto scan failed; skipping FIPS report"
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =

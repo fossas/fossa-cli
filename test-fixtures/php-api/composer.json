@@ -1,0 +1,9 @@
+{
+  "name": "example/crypto-api",
+  "require": {
+    "php": "^8.1",
+    "phpseclib/phpseclib": "^3.0",
+    "defuse/php-encryption": "^2.4",
+    "paragonie/sodium_compat": "^1.20"
+  }
+}

@@ -12,6 +12,7 @@ module App.Fossa.Analyze.Types (
 
 import App.Fossa.Analyze.Project (ProjectResult)
 import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.CryptoScan.Types (CryptoScanResults)
 import App.Fossa.Ficus.Types (FicusAnalysisResults)
 import App.Fossa.Lernie.Types (LernieResults)
 import App.Fossa.Reachability.Types (SourceUnitReachability (..))
@@ -86,6 +87,7 @@ data AnalysisScanResult = AnalysisScanResult
   , dynamicLinkingResult :: Result (Maybe SourceUnit)
   , lernieResult :: Result (Maybe LernieResults)
   , reachabilityResult :: [SourceUnitReachabilityAttempt]
+  , cryptoScanResult :: Result (Maybe CryptoScanResults)
   }
 
 data SourceUnitReachabilityAttempt

@@ -177,6 +177,27 @@ For more detail about how Vendetta works, how to use file filtering during
 scanning, or what information is sent to FOSSA's servers, see
 [the Vendetta feature documentation](../../features/vendetta.md).
 
+### Cryptographic Algorithm Scanning
+
+Crypto Scanning detects cryptographic algorithm usage across 10 language ecosystems
+and classifies findings against FIPS 140-3 compliance requirements. Results can be
+uploaded to FOSSA, exported as a CycloneDX 1.7 CBOM, or printed as a FIPS
+compliance report.
+
+#### Enabling Crypto Scanning
+
+| Name                           | Description                                                                                                                                                                                            |
+|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--x-crypto-scan`              | Enable cryptographic algorithm detection during analysis. This experimental feature scans source files, imports, API calls, and config files for crypto usage across 10 ecosystems.                     |
+| `--crypto-cbom-output FILE`    | Write a CycloneDX 1.7 CBOM (Cryptography Bill of Materials) JSON file to the specified path. Implies `--x-crypto-scan`.                                                                               |
+| `--crypto-fips-report`         | Print a FIPS 140-3 compliance summary to stdout with per-algorithm status and remediation suggestions. Implies `--x-crypto-scan`.                                                                      |
+
+#### More detail
+
+For more detail about how Crypto Scanning works, supported ecosystems and
+libraries, FIPS compliance reference, and CycloneDX CBOM output format, see
+[the Crypto Scanning feature documentation](../../features/crypto-scanning.md).
+
 ### Experimental Options
 
 _Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
@@ -191,6 +212,7 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | `--experimental-force-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to run                                                                                                                  |
 | `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
 | `--experimental-analyze-path-dependencies`                                               | License scan path dependencies, and include them in the final analysis. For more information, see the [path dependency overview](../experimental/path-dependency.md).                          |
+| [`--x-crypto-scan`](../experimental/crypto-scanning/README.md)                           | Enable cryptographic algorithm detection and FIPS compliance assessment. For more information, see the [crypto scanning overview](../experimental/crypto-scanning/README.md).                   |
 
 
 ### F.A.Q.
