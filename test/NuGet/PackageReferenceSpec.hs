@@ -55,6 +55,28 @@ dependencyFour =
     , dependencyTags = Map.empty
     }
 
+dependencyMSBuildVar :: Dependency
+dependencyMSBuildVar =
+  Dependency
+    { dependencyType = NuGetType
+    , dependencyName = "MSBuildVarPkg"
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.empty
+    }
+
+dependencyNuGetToken :: Dependency
+dependencyNuGetToken =
+  Dependency
+    { dependencyType = NuGetType
+    , dependencyName = "NuGetTokenPkg"
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.empty
+    }
+
 packageReference :: PackageReference
 packageReference = PackageReference itemGroupList
 
@@ -73,6 +95,16 @@ refThree = Package "three" $ Just "3.0.0"
 refFour :: Package
 refFour = Package "four" Nothing
 
+packageReferenceWithVariables :: PackageReference
+packageReferenceWithVariables =
+  PackageReference
+    [ ItemGroup
+        [ Package "one" (Just "1.0.0")
+        , Package "MSBuildVarPkg" (Just "$(SomeVersion)")
+        , Package "NuGetTokenPkg" (Just "$version$")
+        ]
+    ]
+
 spec :: Spec
 spec = do
   refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
@@ -87,4 +119,10 @@ spec = do
       let graph = buildGraph packageReference
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
+      expectEdges [] graph
+
+    it "should filter unresolved MSBuild and NuGet variable versions" $ do
+      let graph = buildGraph packageReferenceWithVariables
+      expectDeps [dependencyOne, dependencyMSBuildVar, dependencyNuGetToken] graph
+      expectDirect [dependencyOne, dependencyMSBuildVar, dependencyNuGetToken] graph
       expectEdges [] graph

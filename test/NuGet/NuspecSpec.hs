@@ -62,6 +62,31 @@ depTwo = NuGetDependency "two" "2.0.0"
 depThree :: NuGetDependency
 depThree = NuGetDependency "three" "3.0.0"
 
+nuspecWithVariables :: Nuspec
+nuspecWithVariables = Nuspec [Group [NuGetDependency "good" "1.0.0", NuGetDependency "tokenPkg" "$version$"]] [] Nothing
+
+dependencyGood :: Dependency
+dependencyGood =
+  Dependency
+    { dependencyType = NuGetType
+    , dependencyName = "good"
+    , dependencyVersion = Just (CEq "1.0.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.empty
+    }
+
+dependencyTokenPkg :: Dependency
+dependencyTokenPkg =
+  Dependency
+    { dependencyType = NuGetType
+    , dependencyName = "tokenPkg"
+    , dependencyVersion = Nothing
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.empty
+    }
+
 spec :: Spec
 spec = do
   dependenciesAndLicense <- runIO (TIO.readFile "test/NuGet/testdata/nuspec/test.nuspec")
@@ -97,4 +122,10 @@ spec = do
       let graph = buildGraph nuspec
       expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
+      expectEdges [] graph
+
+    it "should filter unresolved NuGet token variable versions" $ do
+      let graph = buildGraph nuspecWithVariables
+      expectDeps [dependencyGood, dependencyTokenPkg] graph
+      expectDirect [dependencyGood, dependencyTokenPkg] graph
       expectEdges [] graph

@@ -22,6 +22,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML (FromXML (..), attr, child, children)
 import Path (Abs, File, Path)
+import Strategy.NuGet.Util (resolvedVersion)
 import Types (
   DependencyResults (..),
   GraphBreadth (Partial),
@@ -78,7 +79,7 @@ buildGraph project = Graphing.fromList (map toDependency direct)
       Dependency
         { dependencyType = NuGetType
         , dependencyName = depID
-        , dependencyVersion = fmap CEq depVersion
+        , dependencyVersion = fmap CEq (resolvedVersion depVersion)
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty

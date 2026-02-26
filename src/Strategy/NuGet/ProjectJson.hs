@@ -44,6 +44,7 @@ import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path, parent)
+import Strategy.NuGet.Util (resolvedVersion)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -136,9 +137,11 @@ buildGraph project = Graphing.fromList (map toDependency direct)
       Dependency
         { dependencyType = NuGetType
         , dependencyName = name
-        , dependencyVersion = case Text.find ('*' ==) version of
-            Just '*' -> Just (CCompatible version)
-            _ -> Just (CEq version)
+        , dependencyVersion = case resolvedVersion (Just version) of
+            Nothing -> Nothing
+            Just v -> case Text.find ('*' ==) v of
+              Just '*' -> Just (CCompatible v)
+              _ -> Just (CEq v)
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = case dependencyType of

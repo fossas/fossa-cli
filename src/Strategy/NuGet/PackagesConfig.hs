@@ -35,6 +35,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Parse.XML (FromXML (..), attr, children)
 import Path (Abs, Dir, File, Path, parent)
+import Strategy.NuGet.Util (resolvedVersion)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -112,7 +113,7 @@ buildGraph = Graphing.fromList . map toDependency . deps
       Dependency
         { dependencyType = NuGetType
         , dependencyName = depID
-        , dependencyVersion = Just (CEq depVersion)
+        , dependencyVersion = fmap CEq (resolvedVersion (Just depVersion))
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty

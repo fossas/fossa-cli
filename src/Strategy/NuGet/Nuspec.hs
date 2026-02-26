@@ -48,6 +48,7 @@ import Parse.XML (
   defaultsTo,
  )
 import Path (Abs, Dir, File, Path, parent, toFilePath)
+import Strategy.NuGet.Util (resolvedVersion)
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
@@ -180,7 +181,7 @@ buildGraph project = Graphing.fromList (map toDependency direct)
       Dependency
         { dependencyType = NuGetType
         , dependencyName = depID
-        , dependencyVersion = Just (CEq depVersion)
+        , dependencyVersion = fmap CEq (resolvedVersion (Just depVersion))
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty
