@@ -1,0 +1,33 @@
+{
+  "key": "my_project",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "key": "rules_go",
+      "version": "0.57.0",
+      "dependencies": [
+        {
+          "key": "platforms",
+          "version": "0.0.10",
+          "dependencies": []
+        }
+      ]
+    },
+    {
+      "key": "protobuf",
+      "version": "29.3",
+      "dependencies": [
+        {
+          "key": "platforms",
+          "version": "0.0.10",
+          "dependencies": []
+        },
+        {
+          "key": "abseil-cpp",
+          "version": "20240722.0",
+          "dependencies": []
+        }
+      ]
+    }
+  ]
+}

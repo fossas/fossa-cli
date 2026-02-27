@@ -66,6 +66,8 @@ hydrateDepEnvs = hydrate dependencyEnvironments $ \envs dep ->
 data DepType
   = -- | An archive upload dependency.
     ArchiveType
+  | -- | Bazel module dependency (BCR)
+    BazelType
   | -- | Bower dependency
     BowerType
   | -- | A first-party subproject

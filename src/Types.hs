@@ -66,6 +66,7 @@ instance Monoid FoundTargets where
 data DiscoveredProjectType
   = AlpineDatabaseProjectType
   | BerkeleyDBProjectType
+  | BazelProjectType
   | BinaryDepsProjectType
   | BunProjectType
   | BundlerProjectType
@@ -119,6 +120,7 @@ projectTypeToText :: DiscoveredProjectType -> Text
 projectTypeToText = \case
   AlpineDatabaseProjectType -> "apkdb"
   BerkeleyDBProjectType -> "berkeleydb"
+  BazelProjectType -> "bazel"
   BinaryDepsProjectType -> "binary-deps"
   BunProjectType -> "bun"
   BundlerProjectType -> "bundler"

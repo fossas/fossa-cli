@@ -150,6 +150,7 @@ verConstraintToRevision = \case
 depTypeToFetcher :: DepType -> Text
 depTypeToFetcher = \case
   ArchiveType -> "archive"
+  BazelType -> "bazel"
   BowerType -> "bower"
   CarthageType -> "cart"
   CargoType -> "cargo"

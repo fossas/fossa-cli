@@ -1,0 +1,35 @@
+{
+  "dependency_tree": {
+    "artifacts": [
+      {
+        "coord": "com.google.guava:guava:33.4.0-jre",
+        "dependencies": [
+          "com.google.guava:failureaccess:1.0.2",
+          "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava"
+        ]
+      },
+      {
+        "coord": "com.google.guava:failureaccess:1.0.2",
+        "dependencies": []
+      },
+      {
+        "coord": "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava",
+        "dependencies": []
+      },
+      {
+        "coord": "junit:junit:4.13.2",
+        "dependencies": [
+          "org.hamcrest:hamcrest-core:1.3"
+        ]
+      },
+      {
+        "coord": "org.hamcrest:hamcrest-core:1.3",
+        "dependencies": []
+      },
+      {
+        "coord": "org.slf4j:slf4j-api:2.0.16",
+        "dependencies": []
+      }
+    ]
+  }
+}
