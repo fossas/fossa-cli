@@ -125,9 +125,10 @@ def mk_fossa_deps(graph):
 
     vendored_deps = []
     custom_deps = []
-    for node in graph.get('nodes', []):
+    for nodeName in graph.get('nodes', []):
+        node = graph['nodes'][nodeName]
         label = node.get("label")
-        if label.lower() in ["conanfile.txt", "conanfile.py"]:
+        if label.lower() in ["conanfile.txt", "conanfile.py"] or node.get("recipe") == "Consumer":
             logging.info(f"excluding {label} from fossa-deps, as this is a manifest file, not a dependency")
             continue
 
@@ -140,7 +141,10 @@ def mk_fossa_deps(graph):
             continue
 
         pkg_id = node.get("package_id", "none")
-        name, raw_version = name_version_of(label)
+        name = node.get("name")
+        raw_version = node.get("version")
+        if not name or not raw_version:
+            name, raw_version = name_version_of(label)
         version_params = urllib.parse.urlencode({'package_id': pkg_id}, doseq=True)
         version = f"{raw_version},{version_params}"
 
@@ -181,4 +185,6 @@ def get_graph(user_args = []):
 
 if __name__ == "__main__":
     graph = get_graph(sys.argv[1:])
+    if 'graph' in graph:
+        graph = graph['graph']
     mk_fossa_deps(graph)
