@@ -20,7 +20,6 @@ module App.Fossa.Config.Analyze (
   VendoredDependencyOptions (..),
   VSIAnalysis (..),
   VSIModeOptions (..),
-  GoDynamicTactic (..),
   StaticOnlyTactics (..),
   WithoutDefaultFilters (..),
   StrictMode (..),
@@ -131,13 +130,14 @@ import Options.Applicative (
  )
 import Path (Abs, Dir, File, Path, Rel)
 import Path.Extra (SomePath)
-import Prettyprinter (Doc, annotate, indent)
-import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green, Red), color)
+import Prettyprinter (Doc, indent)
+import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
 import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilters (..), TargetFilter (..))
 
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
+data DeprecatedUseV3GoResolver = DeprecatedUseV3GoResolver deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
@@ -240,7 +240,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeDynamicLinkTarget :: Maybe (FilePath)
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
-  , analyzeDynamicGoAnalysisType :: GoDynamicTactic
+  , analyzeDeprecatedUseV3GoResolver :: Flag DeprecatedUseV3GoResolver
   , analyzePathDependencies :: Bool
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
@@ -301,7 +301,6 @@ instance ToJSON AnalyzeConfig where
 
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
-  , useV3GoResolver :: GoDynamicTactic
   , resolvePathDependencies :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
@@ -351,7 +350,7 @@ cliParser =
     <*> flagOpt ExcludeManifestStrategies (applyFossaStyle <> long "exclude-manifest-strategies" <> stringToHelpDoc "Exclude all manifest-based strategies for finding targets.")
     <*> vsiEnableOpt
     <*> flagOpt BinaryDiscovery (applyFossaStyle <> long "experimental-enable-binary-discovery" <> stringToHelpDoc "Reports binary files as unlicensed dependencies")
-    <*> optional (strOption (applyFossaStyle <> long "experimental-link-project-binary" <> metavar "DIR" <> stringToHelpDoc "Links output binary files to this project in FOSSA"))
+    <*> optional (strOption (applyFossaStyle <> long "experimental-link-project-binary" <> metavar "DIR" <> hidden))
     <*> optional dynamicLinkInspectOpt
     <*> many skipVSIGraphResolutionOpt
     <*> baseDirArg
@@ -384,14 +383,6 @@ branchHelp =
       , boldItalicized "Default: " <> "Current VCS branch"
       ]
 
-data GoDynamicTactic
-  = GoModulesBasedTactic
-  | GoPackagesBasedTactic
-  deriving (Eq, Ord, Show, Generic)
-
-instance ToJSON GoDynamicTactic where
-  toEncoding = genericToEncoding defaultOptions
-
 withoutDefaultFilterParser :: Text -> Parser (Flag WithoutDefaultFilters)
 withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaStyle <> long "without-default-filters" <> helpDoc helpMsg)
   where
@@ -403,25 +394,8 @@ withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaSt
           , boldItalicized "Docs: " <> pretty docsUrl
           ]
 
-experimentalUseV3GoResolver :: Parser GoDynamicTactic
-experimentalUseV3GoResolver =
-  fmap
-    ( \case
-        True -> GoPackagesBasedTactic
-        False -> GoModulesBasedTactic
-    )
-    . switch
-    $ long "experimental-use-v3-go-resolver"
-      <> applyFossaStyle
-      <> helpDoc helpMsg
-  where
-    helpMsg :: Maybe (Doc AnsiStyle)
-    helpMsg =
-      Just . formatDoc $
-        vsep
-          [ annotate (color Red) "DEPRECATED: This is now default and will be removed in the future"
-          , boldItalicized "For Go: " <> "Generate a graph of module deps based on package deps. This will be the default in the future."
-          ]
+experimentalUseV3GoResolver :: Parser (Flag DeprecatedUseV3GoResolver)
+experimentalUseV3GoResolver = flagOpt DeprecatedUseV3GoResolver (applyFossaStyle <> long "experimental-use-v3-go-resolver" <> hidden)
 
 experimentalAnalyzePathDependencies :: Parser Bool
 experimentalAnalyzePathDependencies =
@@ -468,7 +442,7 @@ skipVSIGraphResolutionOpt = (option (eitherReader parseLocator) details)
       mconcat
         [ long "experimental-skip-vsi-graph"
         , metavar "LOCATOR"
-        , stringToHelpDoc "Skip resolving the dependencies of the given project in FOSSA"
+        , hidden
         ]
         <> applyFossaStyle
     parseLocator :: String -> Either String VSI.Locator
@@ -514,6 +488,47 @@ mergeOpts maybeDebugDir cfg env cliOpts = do
         , ""
         , "In the future, usage of the --experimental-native-license-scan flag may result in fatal error."
         ]
+
+  let useV3GoResolverFlagUsed = fromFlag DeprecatedUseV3GoResolver $ analyzeDeprecatedUseV3GoResolver cliOpts
+  when useV3GoResolverFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --experimental-use-v3-go-resolver flag is deprecated and no longer has any effect."
+        , ""
+        , "The v3 Go resolver (package-based analysis) is now the default behavior."
+        , ""
+        , "Please remove this flag from your commands."
+        ]
+
+  case analyzeAssertMode cliOpts of
+    Just _ ->
+      logWarn $
+        vsep
+          [ "DEPRECATION NOTICE"
+          , "========================"
+          , "The --experimental-link-project-binary flag is deprecated and will be removed in a future release."
+          , ""
+          , "Multi-stage builds feature is being deprecated."
+          , ""
+          , "Please remove this flag from your commands."
+          ]
+    Nothing -> pure ()
+
+  case analyzeSkipVSIGraphResolution cliOpts of
+    [] -> pure ()
+    _ ->
+      logWarn $
+        vsep
+          [ "DEPRECATION NOTICE"
+          , "========================"
+          , "The --experimental-skip-vsi-graph flag is deprecated and will be removed in a future release."
+          , ""
+          , "Multi-stage builds feature is being deprecated."
+          , ""
+          , "Please remove this flag from your commands."
+          ]
 
   mergeStandardOpts maybeDebugDir cfg env cliOpts
 
@@ -655,13 +670,12 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg AnalyzeCliOpts{analyzeDynamicGoAnalysisType = goDynamicAnalysisType, analyzePathDependencies = shouldAnalyzePathDependencies} =
+collectExperimental maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies} =
   ExperimentalAnalyzeConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
-    goDynamicAnalysisType
     shouldAnalyzePathDependencies
 
 collectVendoredDeps ::

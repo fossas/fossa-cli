@@ -16,7 +16,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import App.Types (Mode (..))
@@ -223,7 +223,6 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
     noExperimental =
       ExperimentalAnalyzeConfig
         Nothing
-        GoModulesBasedTactic -- Discovery is the same for both module and package centric analysis.
         False -- Discovery has no consequence from path dependency analysis config
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
@@ -377,7 +376,6 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . runReader
       ( ExperimentalAnalyzeConfig
           Nothing
-          GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
           False -- Targets are not impacted by path dependencies.
       )
     . runReader (MavenScopeIncludeFilters mempty)
