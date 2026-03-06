@@ -1,5 +1,8 @@
 # FOSSA CLI Changelog
 
+## 3.16.2
+- Licensing: Add standalone detection for Solace proprietary licenses (solace-software-2021, solace-non-production-1.0, solace-api-1.1) ([#1653](https://github.com/fossas/fossa-cli/pull/1653))
+
 ## 3.16.1
 
 - Licensing: Add support for SPDX tag-value format license declarations
