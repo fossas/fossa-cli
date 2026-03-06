@@ -575,6 +575,12 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
 
   let snippetScanEnabled = experimentalSnippetScanFlagUsed || fromFlag SnippetScan analyzeSnippetScan
 
+  when (snippetScanEnabled && analyzeOutput == Output) $
+    fatalText "The --snippet-scan and --output flags cannot be used together. Snippet scanning requires uploading results to FOSSA and is not compatible with output-only mode."
+
+  when (analyzeVendetta && analyzeOutput == Output) $
+    fatalText "The --x-vendetta and --output flags cannot be used together. Vendetta scanning requires uploading results to FOSSA and is not compatible with output-only mode."
+
   AnalyzeConfig
     <$> basedir
     <*> scanDestination
