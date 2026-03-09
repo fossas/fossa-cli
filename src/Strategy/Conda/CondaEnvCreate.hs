@@ -31,7 +31,7 @@ import Types (
   VerConstraint (CEq),
  )
 
--- conda env create --json --file <filename.yml> --dry-run --force
+-- conda env create --json --file <filename.yml> --dry-run --yes
 -- runs conda and mocks the creation of an environment based on environment.yml.
 -- The command outputs json data, including the list of resolved packages.
 condaEnvCmd :: Path Abs File -> Command
@@ -45,7 +45,7 @@ condaEnvCmd environmentYml =
         , "--file"
         , toText environmentYml
         , "--dry-run"
-        , "--force"
+        , "--yes"
         ]
     , cmdAllowErr = Never
     }
