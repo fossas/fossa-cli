@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.16.2
+
+- Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
+
 ## 3.16.1
 
 - Licensing: Add standalone detection for Solace proprietary licenses (solace-software-2021, solace-non-production-1.0, solace-api-1.1) ([#1660](https://github.com/fossas/fossa-cli/pull/1660))
