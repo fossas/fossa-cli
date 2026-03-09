@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Conda.CondaEnvCreateSpec (
@@ -18,7 +19,7 @@ import DepTypes (
 import Effect.Exec (Command (..))
 import Effect.Grapher (direct, evalGrapher)
 import Graphing (Graphing)
-import Path (mkAbsFile)
+import Path (Abs, File, Path, mkAbsFile)
 import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), buildGraph, condaEnvCmdForce, condaEnvCmdYes, parseCondaEnvDep, parseEnvCreateDeps)
 import Test.Effect (expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldContain, shouldNotContain)
@@ -99,9 +100,15 @@ spec = do
         Left err -> expectationFailure' $ "Parse JSON: " ++ err
   condaEnvCmdSpec
 
+testFile :: Path Abs File
+#ifdef mingw32_HOST_OS
+testFile = $(mkAbsFile "C:/tmp/environment.yml")
+#else
+testFile = $(mkAbsFile "/tmp/environment.yml")
+#endif
+
 condaEnvCmdSpec :: Spec
 condaEnvCmdSpec = do
-  let testFile = $(mkAbsFile "/tmp/environment.yml")
   let yesArgs = cmdArgs (condaEnvCmdYes testFile)
   let forceArgs = cmdArgs (condaEnvCmdForce testFile)
 
