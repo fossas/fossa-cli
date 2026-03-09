@@ -4,6 +4,10 @@
 
 - Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 
+## 3.16.1
+
+- Licensing: Add support for SPDX tag-value format license declarations
+
 ## 3.16.0
 
 - nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
