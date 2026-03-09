@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Conda.CondaEnvCreateSpec (
   spec,
 ) where
@@ -6,17 +8,20 @@ import Control.Carrier.Diagnostics (run)
 import Data.Aeson (eitherDecodeStrict)
 import Data.ByteString qualified as BS
 import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (
   DepType (CondaType),
   Dependency (..),
   VerConstraint (CEq),
  )
+import Effect.Exec (Command (..))
 import Effect.Grapher (direct, evalGrapher)
 import Graphing (Graphing)
-import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), buildGraph, parseCondaEnvDep, parseEnvCreateDeps)
+import Path (mkAbsFile)
+import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), buildGraph, condaEnvCmdForce, condaEnvCmdYes, parseCondaEnvDep, parseEnvCreateDeps)
 import Test.Effect (expectationFailure', it', shouldBe')
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldContain, shouldNotContain)
 import Text.Megaparsec (parse)
 import Prelude
 
@@ -92,3 +97,24 @@ spec = do
           depGraph <- buildGraph <$> parseEnvCreateDeps deps
           depGraph `shouldBe'` expected
         Left err -> expectationFailure' $ "Parse JSON: " ++ err
+  condaEnvCmdSpec
+
+condaEnvCmdSpec :: Spec
+condaEnvCmdSpec = do
+  let testFile = $(mkAbsFile "/tmp/environment.yml")
+  let yesArgs = cmdArgs (condaEnvCmdYes testFile)
+  let forceArgs = cmdArgs (condaEnvCmdForce testFile)
+
+  describe "conda env create command construction" $ do
+    it "condaEnvCmdYes uses --yes flag" $ do
+      yesArgs `shouldContain` ["--yes"]
+      yesArgs `shouldNotContain` ["--force"]
+
+    it "condaEnvCmdForce uses --force flag" $ do
+      forceArgs `shouldContain` ["--force"]
+      forceArgs `shouldNotContain` ["--yes"]
+
+    it "both commands share the same base args" $ do
+      let baseArgs = ["env", "create", "--json", "--file", toText testFile, "--dry-run"]
+      filter (`notElem` ["--yes", "--force"]) yesArgs `shouldBe` baseArgs
+      filter (`notElem` ["--yes", "--force"]) forceArgs `shouldBe` baseArgs
