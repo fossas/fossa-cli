@@ -100,6 +100,11 @@ spec = do
     checkGraph pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
     checkGraph pnpmLockV6 pnpmLockV6GraphSpec
 
+  -- v6 format with transitive peer deps
+  let pnpmLockV6WithPeers = currentDir </> $(mkRelFile "./test/Pnpm/testdata/pnpm-lock-6-transitive-peers/pnpm-lock.yaml")
+  describe "can work with v6.0 format with transitive peer deps" $
+    checkGraph pnpmLockV6WithPeers pnpmLockV6WithPeersSpec
+
   -- v9 format
   let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-project/pnpm-lock.yaml")
   -- With the advent of lockfile v9, pnpm now has its own pnpm-workspace.yaml file.
@@ -307,6 +312,16 @@ pnpmLockV6WithWorkspaceGraphSpec graph = do
       hasEdge (mkProdDep "aws-sdk@1.0.0") (mkProdDep "xml2js@0.2.4")
       hasEdge (mkProdDep "aws-sdk@1.0.0") (mkProdDep "xmlbuilder@15.1.1")
       hasEdge (mkProdDep "xml2js@0.2.4") (mkProdDep "sax@1.3.0")
+
+pnpmLockV6WithPeersSpec :: Graphing Dependency -> Spec
+pnpmLockV6WithPeersSpec graph = do
+  describe "Pnpm lock V6 with transitive peer deps" $
+    do
+      let hasEdge :: Dependency -> Dependency -> Expectation
+          hasEdge = expectEdge graph
+
+      it "Should include the transitive dep that has a peer" $
+        hasEdge (mkDevDep "listr2@3.14.0") (mkDevDep "enquirer@2.4.1")
 
 pnpmLockV6GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6GraphSpec graph = do

@@ -104,3 +104,24 @@ low. Additionally, if you intend on running Vendetta as part of your CI
 pipeline, it might be best to do a manual run first on a local machine. That
 way, future automated scans of your project will be able to benefit from the
 initial caching done in the first scan.
+
+## Invalid certificate errors
+
+You may encounter an error like:
+
+```
+error uploading digest batch:
+   0: upload digests
+   1: error sending request for url (https://app.fossa.com/api/proxy/analysis/api/x/snippets/digests)
+   2: client error (Connect)
+   3: invalid peer certificate: UnknownIssuer
+```
+
+This can occur in environments that use custom TLS certificates. To resolve this,
+set the `ALLOW_INVALID_CERTS` environment variable:
+
+```sh
+ALLOW_INVALID_CERTS=1 fossa analyze --x-vendetta
+```
+
+This instructs the CLI to accept certificates it cannot verify.

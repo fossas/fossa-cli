@@ -1,7 +1,37 @@
 # FOSSA CLI Changelog
 
+## 3.16.2
+
+- Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
+
+## 3.16.1
+
+- Licensing: Add standalone detection for Solace proprietary licenses (solace-software-2021, solace-non-production-1.0, solace-api-1.1) ([#1660](https://github.com/fossas/fossa-cli/pull/1660))
+- Licensing: Add support for SPDX tag-value format license declarations
+
+## 3.16.0
+
+- nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
+- Licensing: Fix bug where public domain disclosures were being matched as GPL ([`#1650`](https://github.com/fossas/fossa-cli/pull/1650))
+
+## 3.15.9
+
+- Improvements for licensing and snippet scanning ([#1649](https://github.com/fossas/fossa-cli/pull/1649))
+  - Licensing: Additional proprietary license detection
+  - Snippet scanning: Support TLS operation with platform native certificate store
+
+## 3.15.8
+
+- Snippet scanning: Fix bug where proxies cause POSTs to get redirected to GETs ([#1645](https://github.com/fossas/fossa-cli/pull/1645))
+
+## 3.15.7
+
+- PNPM: Fixes an issue where transitive dependencies with peer dependencies weren't detected in lockfile v6. ([#1642](https://github.com/fossas/fossa-cli/pull/1642))
+
 ## 3.15.6
 
+- Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
+- Golang: Fix a bug where we did not correctly parse old-style go.mod files with quoted package names ([#1636](https://github.com/fossas/fossa-cli/pull/1636))
 - Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
 
 ## 3.15.5
