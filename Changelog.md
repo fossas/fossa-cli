@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.16.2
 
 - Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
 
