@@ -12,12 +12,6 @@ module Strategy.Elixir.MixTree (
   parseConstraintExpr,
   toDependencyVersion,
 
-  -- * Commands (exported for testing)
-  mixDepTreeCmdProd,
-  mixDepTreeCmdFallback,
-  mixDepCmdProd,
-  mixDepCmdFallback,
-
   -- * Graphs and Analyzers
   buildGraph,
   analyze,
