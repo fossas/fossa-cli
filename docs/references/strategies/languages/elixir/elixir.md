@@ -12,7 +12,7 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 
 ## Analysis
 
-1. Run `mix deps.tree --format plain --only prod` and generate output similar to:
+1. Run `MIX_ENV=prod mix deps.tree --format plain` and generate output similar to:
 ```
 ├─ one─1.0.0 (github.com/dep/one)
 │  ├─ two─2.0.0 (hex package)
@@ -20,7 +20,7 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 │  └─ four─4.0.0 (github.com/dep/four)
 └─ five─5.0.0 (hex package)
 ```
-2. Run `mix deps --all` and generate output similar to:
+2. Run `MIX_ENV=prod mix deps --all` and generate output similar to:
 ```
 * one 1.0.0 (Hex package) (mix)
   locked at 1.0.0 (one) 3ad58ae7

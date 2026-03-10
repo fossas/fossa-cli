@@ -134,21 +134,23 @@ data MixDepResolved = MixDepResolved
   }
   deriving (Show, Ord, Eq)
 
--- | mix deps --all
+-- | MIX_ENV=prod mix deps --all
 mixDepCmd :: Command
 mixDepCmd =
   Command
-    { cmdName = "mix"
-    , cmdArgs = ["deps", "--all"]
+    { cmdName = "env"
+    , cmdArgs = ["MIX_ENV=prod", "mix", "deps", "--all"]
     , cmdAllowErr = Never
     }
 
--- | mix deps.tree --format plain.
+-- | MIX_ENV=prod mix deps.tree --format plain.
+-- We use env to set MIX_ENV=prod rather than --only prod, since --only
+-- was removed in newer versions of Mix.
 mixDepTreeCmd :: Command
 mixDepTreeCmd =
   Command
-    { cmdName = "mix"
-    , cmdArgs = ["deps.tree", "--format", "plain", "--only", "prod"]
+    { cmdName = "env"
+    , cmdArgs = ["MIX_ENV=prod", "mix", "deps.tree", "--format", "plain"]
     , cmdAllowErr = Never
     }
 
