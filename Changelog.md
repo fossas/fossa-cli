@@ -4,6 +4,7 @@
 
 - Conda: Make conda analysis work on versions of conda where the `--force` flag is deprecated for `conda env create` ([#1661](https://github.com/fossas/fossa-cli/pull/1661))
 - Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
+- Hide deprecated `--experimental-use-v3-go-resolver`, `--experimental-skip-vsi-graph` and `--experimental-link-project-binary` flags, and deprecate the `experimental-link-user-defined-dependency-binary` subcommand. The flags and subcommand still work, but are no longer documented or shown in the help text ([#1633](https://github.com/fossas/fossa-cli/pull/1633))
 
 ## 3.16.1
 
