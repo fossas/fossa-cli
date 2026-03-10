@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.16.3
 
 - Elixir: Use `MIX_ENV=prod` for accurate production dependency resolution, with fallback to `--only prod` for projects lacking `config/prod.exs` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
 - Infrastructure: Add `cmdEnvVars` field to `Command` type for setting environment variables on subprocesses via `typed-process` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
