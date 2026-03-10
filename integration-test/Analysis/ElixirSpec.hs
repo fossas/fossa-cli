@@ -6,6 +6,7 @@ module Analysis.ElixirSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Data.Map.Strict qualified as Map
 import Effect.Exec (AllowErr (Never), Command (Command))
 import Path
 import Strategy.Mix qualified as Mix
@@ -28,6 +29,7 @@ mixBuildProjectCmd =
     , "mix deps.compile"
     ]
     Never
+    Map.empty
 
 absinthe :: AnalysisTestFixture (Mix.MixProject)
 absinthe =

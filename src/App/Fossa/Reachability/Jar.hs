@@ -18,6 +18,7 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as Map
 import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
 import Data.Maybe (catMaybes)
@@ -56,7 +57,7 @@ withUnpackedPlugin plugin act =
       act pluginJarFilepath
 
 jarPraseCmd :: FilePath -> Path Abs File -> Command
-jarPraseCmd plugin target = Command "java" ["-jar", toText plugin, toText $ toFilePath target] Never
+jarPraseCmd plugin target = Command "java" ["-jar", toText plugin, toText $ toFilePath target] Never Map.empty
 
 callGraphFromJar ::
   ( Has Exec sig m

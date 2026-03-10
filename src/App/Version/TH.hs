@@ -18,6 +18,7 @@ import Control.Effect.Exception (Exception (displayException), SomeException)
 import Control.Exception.Safe (catchAny)
 import Control.Monad (when)
 import Data.ByteString.Lazy qualified as BL
+import Data.Map.Strict qualified as Map
 import Data.ByteString.Lazy qualified as BSL
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -58,6 +59,7 @@ gitTagPointCommand commit =
     { cmdName = "git"
     , cmdArgs = ["tag", "--points-at", commit]
     , cmdAllowErr = Always
+    , cmdEnvVars = Map.empty
     }
 
 -- | Return the current tag iff it is a valid semver tag.

@@ -13,6 +13,7 @@ import Data.Maybe (catMaybes)
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
 import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8, toText)
 import Data.Text (Text)
+import Data.Map.Strict qualified as Map
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson')
 import Effect.Logger (Logger, Pretty (pretty), logDebug, logWarn)
 import Effect.ReadFS (Has, ReadFS, readContentsBS)
@@ -68,6 +69,7 @@ bdbCommand bin =
     { cmdName = toText $ toPath bin
     , cmdArgs = []
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 getSystemCwd :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m (Path Abs Dir)

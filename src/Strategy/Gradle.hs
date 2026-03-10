@@ -40,6 +40,7 @@ import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as Map
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (find, traverse_)
@@ -81,6 +82,7 @@ gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["-I", toText initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (Set.toList targets)
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Run the init script on a root project.
@@ -90,6 +92,7 @@ gradleJsonDepsCmd initScriptFilepath baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["-I", toText initScriptFilepath, "jsonDeps"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 discover ::
@@ -182,6 +185,7 @@ gradleProjectsCmd baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["projects"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- We use a single empty-string target when no subprojects exist. Gradle uses an

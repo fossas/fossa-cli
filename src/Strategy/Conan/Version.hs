@@ -8,6 +8,7 @@ import Control.Monad (void)
 import Data.SemVer (Version, fromText, toText, version)
 import Data.SemVer.Constraint (Constraint (..), satisfies)
 import Data.Text (Text)
+import Data.Map.Strict qualified as Map
 import Data.Void (Void)
 import Effect.Exec (
   AllowErr (Never),
@@ -59,6 +60,7 @@ conanVersionCmd =
     { cmdName = "conan"
     , cmdArgs = ["--version"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 guardConanVersion2Gt :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ()

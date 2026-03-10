@@ -138,20 +138,22 @@ data MixDepResolved = MixDepResolved
 mixDepCmd :: Command
 mixDepCmd =
   Command
-    { cmdName = "env"
-    , cmdArgs = ["MIX_ENV=prod", "mix", "deps", "--all"]
+    { cmdName = "mix"
+    , cmdArgs = ["deps", "--all"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.singleton "MIX_ENV" "prod"
     }
 
 -- | MIX_ENV=prod mix deps.tree --format plain.
--- We use env to set MIX_ENV=prod rather than --only prod, since --only
+-- We use MIX_ENV=prod rather than --only prod, since --only
 -- was removed in newer versions of Mix.
 mixDepTreeCmd :: Command
 mixDepTreeCmd =
   Command
-    { cmdName = "env"
-    , cmdArgs = ["MIX_ENV=prod", "mix", "deps.tree", "--format", "plain"]
+    { cmdName = "mix"
+    , cmdArgs = ["deps.tree", "--format", "plain"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.singleton "MIX_ENV" "prod"
     }
 
 type Parser = Parsec Void Text

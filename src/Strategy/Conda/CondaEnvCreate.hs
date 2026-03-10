@@ -48,6 +48,7 @@ condaEnvCmd environmentYml =
         , "--force"
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 buildGraph :: [CondaEnvDep] -> Graphing Dependency

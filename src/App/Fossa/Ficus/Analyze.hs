@@ -38,6 +38,7 @@ import Data.Aeson (decode, decodeStrictText)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
+import Data.Map.Strict qualified as Map
 import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
@@ -400,6 +401,7 @@ ficusCommand ficusConfig bin = do
           { cmdName = toText $ toPath bin
           , cmdArgs = configArgs endpoint
           , cmdAllowErr = Never
+          , cmdEnvVars = Map.empty
           }
   logDebug $ "Ficus command: " <> pretty (maskApiKeyInCommand $ renderCommand cmd)
   pure cmd

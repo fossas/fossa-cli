@@ -156,11 +156,12 @@ podIpcSpecCmd podSpecPath =
     { cmdName = "pod"
     , cmdArgs = ["ipc", "spec", "--silent", podSpecPath]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- `pod --version` returns a semantic version.
 podVersionCmd :: Command
-podVersionCmd = Command{cmdName = "pod", cmdArgs = ["--version"], cmdAllowErr = Never}
+podVersionCmd = Command{cmdName = "pod", cmdArgs = ["--version"], cmdAllowErr = Never, cmdEnvVars = Map.empty}
 
 buildGraph ::
   (Has ReadFS sig m, Has Exec sig m, Has Diagnostics sig m, Has Logger sig m) =>
