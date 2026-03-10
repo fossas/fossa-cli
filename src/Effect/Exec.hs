@@ -68,9 +68,9 @@ import Data.Aeson (
   eitherDecode,
   object,
   withObject,
+  (.!=),
   (.:),
   (.:?),
-  (.!=),
  )
 import Data.Bifunctor (bimap, first, second)
 import Data.ByteString.Lazy qualified as BL
@@ -93,8 +93,8 @@ import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir, toFilePath)
 import Path.IO (AnyPath (makeAbsolute))
 import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
-import System.Exit (ExitCode (..))
 import System.Environment (getEnvironment)
+import System.Exit (ExitCode (..))
 import System.Process.Typed (
   proc,
   readProcess,
