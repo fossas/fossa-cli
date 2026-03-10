@@ -53,6 +53,7 @@ condaEnvCmdYes environmentYml =
         , "--yes"
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 condaEnvCmdForce :: Path Abs File -> Command
