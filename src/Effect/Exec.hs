@@ -136,12 +136,14 @@ instance FromJSON Command where
 instance RecordableValue Command
 instance ReplayableValue Command
 
+-- | Render a command for display in logs/diagnostics.
+-- Env var values are redacted to prevent credential leaks in debug bundles.
 renderCommand :: Command -> Text
 renderCommand Command{..} =
   let envPrefix =
         if Map.null cmdEnvVars
           then ""
-          else Text.intercalate " " (map (\(k, v) -> k <> "=" <> v) (Map.toList cmdEnvVars)) <> " "
+          else Text.intercalate " " (map (\(k, _) -> k <> "=<REDACTED>") (Map.toList cmdEnvVars)) <> " "
    in envPrefix <> Text.intercalate " " ([cmdName] <> cmdArgs)
 
 data CmdFailure = CmdFailure
