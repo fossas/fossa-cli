@@ -12,9 +12,18 @@ RUNNER_OS=$1
 PROJECT_FILE=$2
 FEATURES=$3
 
-# Install rust tooling
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-. "/home/runner/.cargo/env"
+# Use workspace-relative paths so the GitHub Actions cache (which runs on the
+# host) can restore/save the Rust toolchain and build artifacts. Without this,
+# rustup installs to /home/runner/.cargo inside the container, which the host
+# cache action never sees — causing a full reinstall on every run.
+export CARGO_HOME="${GITHUB_WORKSPACE}/.rust/cargo"
+export RUSTUP_HOME="${GITHUB_WORKSPACE}/.rust/rustup"
+export PATH="${CARGO_HOME}/bin:${PATH}"
+
+# Install Rust only if not restored from cache.
+if ! command -v cargo > /dev/null 2>&1; then
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+fi
 
 rustc -V
 cargo -V

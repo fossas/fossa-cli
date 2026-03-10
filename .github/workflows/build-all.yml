@@ -75,8 +75,8 @@ jobs:
 
     # Set up Rust.
     # This action installs the 'minimal' profile.
-    # Even on Linux ARM this is necessary because rust-cache uses it.
     - uses: dtolnay/rust-toolchain@stable
+      if: ${{ matrix.os != 'LinuxARM' }}
 
     - name: Install additional Rust tooling
       if: ${{ matrix.os != 'LinuxARM' }}
@@ -84,12 +84,26 @@ jobs:
       with:
         tool: nextest
 
+    # Rust cache for non-ARM platforms (runs cargo on the host).
     - uses: Swatinem/rust-cache@v2
+      if: ${{ matrix.os != 'LinuxARM' }}
       with:
         prefix-key: ${{ matrix.os }}
-        # The home directory inside containers is different than the one outside of them.
-        # LinuxARM needs this for its caching to work inside haskell-static-alpine.
-        cache-directories: ${{ runner.temp }}/_github_home/.cargo
+
+    # ARM Rust cache: build-arm.sh installs Rust inside a Docker container,
+    # so Swatinem/rust-cache (which runs on the host) can't help. Instead,
+    # cache the workspace-relative .rust/ and target/ dirs that build-arm.sh
+    # writes to via CARGO_HOME/RUSTUP_HOME.
+    - uses: actions/cache@v4
+      if: ${{ matrix.os == 'LinuxARM' }}
+      name: Cache ARM Rust toolchain and build
+      with:
+        path: |
+          .rust/
+          target/
+        key: ${{ matrix.os-name }}-rust-${{ hashFiles('Cargo.lock') }}
+        restore-keys: |
+          ${{ matrix.os-name }}-rust-
 
     - name: Debugging information
       run: |
