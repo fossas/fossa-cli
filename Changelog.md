@@ -2,6 +2,7 @@
 
 ## 3.16.2
 
+- Conda: Make conda analysis work on versions of conda where the `--force` flag is deprecated for `conda env create` ([#1661](https://github.com/fossas/fossa-cli/pull/1661))
 - Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
 
 ## 3.16.1
