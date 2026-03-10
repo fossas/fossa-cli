@@ -145,8 +145,11 @@ mixDepCmd =
     }
 
 -- | MIX_ENV=prod mix deps.tree --format plain.
--- We use MIX_ENV=prod rather than --only prod, since --only
--- was removed in newer versions of Mix.
+-- We use MIX_ENV=prod rather than --only prod because --only
+-- only filters the display output while still resolving
+-- dependencies in the default (dev) environment. Setting
+-- MIX_ENV=prod ensures Mix actually operates in the prod
+-- environment.
 mixDepTreeCmd :: Command
 mixDepTreeCmd =
   Command
