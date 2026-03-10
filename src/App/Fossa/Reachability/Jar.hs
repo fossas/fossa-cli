@@ -18,9 +18,9 @@ import Control.Effect.Diagnostics (
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as Map
 import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
+import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (isSuffixOf)

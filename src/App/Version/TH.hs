@@ -18,8 +18,8 @@ import Control.Effect.Exception (Exception (displayException), SomeException)
 import Control.Exception.Safe (catchAny)
 import Control.Monad (when)
 import Data.ByteString.Lazy qualified as BL
-import Data.Map.Strict qualified as Map
 import Data.ByteString.Lazy qualified as BSL
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)

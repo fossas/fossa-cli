@@ -45,8 +45,8 @@ import Data.HashMap.Strict qualified as H
 import Data.HashMap.Strict qualified as HashMap
 import Data.Hashable (Hashable)
 import Data.List (nub)
-import Data.Map.Strict qualified as Map
 import Data.List.NonEmpty qualified as NE
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ToText (toText), decodeUtf8)
 import Data.Text (Text)

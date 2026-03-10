@@ -6,8 +6,8 @@ module Strategy.Python.Pip (PythonPackage (..), PackageMetadata (..), getPackage
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, recover, warnOnErr)
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Functor (void)
-import Data.Map.Strict qualified as Map
 import Data.List (find)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)

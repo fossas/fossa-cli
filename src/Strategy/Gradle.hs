@@ -40,11 +40,11 @@ import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
-import Data.Map.Strict qualified as Map
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (find, traverse_)
 import Data.List (isPrefixOf)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set

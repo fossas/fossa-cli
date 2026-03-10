@@ -5,10 +5,10 @@ module Strategy.Conan.Version (
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (void)
+import Data.Map.Strict qualified as Map
 import Data.SemVer (Version, fromText, toText, version)
 import Data.SemVer.Constraint (Constraint (..), satisfies)
 import Data.Text (Text)
-import Data.Map.Strict qualified as Map
 import Data.Void (Void)
 import Effect.Exec (
   AllowErr (Never),

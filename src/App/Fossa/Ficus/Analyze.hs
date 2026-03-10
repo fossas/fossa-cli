@@ -38,12 +38,12 @@ import Data.Aeson (decode, decodeStrictText)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
-import Data.Map.Strict qualified as Map
 import Data.Conduit qualified as Conduit
 import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -225,9 +225,9 @@ vendoredDepsToSourceUnit deps =
             Aeson.object
               [ "vendored"
                   Aeson..= [ Aeson.object
-                               [ "type" Aeson..= ("directory" :: Text)
-                               , "path" Aeson..= ficusVendoredDependencyPath dep
-                               ]
+                              [ "type" Aeson..= ("directory" :: Text)
+                              , "path" Aeson..= ficusVendoredDependencyPath dep
+                              ]
                            ]
               ]
         }

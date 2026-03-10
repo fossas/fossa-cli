@@ -4,9 +4,9 @@ module Strategy.Scala.Common (
   mkSbtCommand,
 ) where
 
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
-import Data.Map.Strict qualified as Map
 import Data.Text qualified as Text
 import Effect.Exec (AllowErr (Never), Command (..))
 

@@ -25,8 +25,8 @@ import Control.Monad (unless)
 import Data.ByteString.Lazy qualified as BL
 import Data.Char (toLower)
 import Data.Foldable (find)
-import Data.Map.Strict qualified as Map
 import Data.HashMap.Strict qualified as HM
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
