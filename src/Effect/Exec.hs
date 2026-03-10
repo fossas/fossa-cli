@@ -68,9 +68,7 @@ import Data.Aeson (
   eitherDecode,
   object,
   withObject,
-  (.!=),
   (.:),
-  (.:?),
  )
 import Data.Bifunctor (bimap, first, second)
 import Data.ByteString.Lazy qualified as BL
@@ -133,7 +131,7 @@ instance FromJSON Command where
       <$> o .: "cmdName"
       <*> o .: "cmdArgs"
       <*> o .: "cmdAllowErr"
-      <*> o .:? "cmdEnvVars" .!= Map.empty
+      <*> o .: "cmdEnvVars"
 
 instance RecordableValue Command
 instance ReplayableValue Command
