@@ -63,7 +63,7 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
 
@@ -71,7 +71,7 @@ jobs:
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
 

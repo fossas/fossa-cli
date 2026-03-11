@@ -128,7 +128,7 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('spectrometer.cabal', matrix.project-file) }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('spectrometer.cabal', matrix.project-file, 'cabal.project.common') }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
 
@@ -136,7 +136,7 @@ jobs:
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ hashFiles('spectrometer.cabal', matrix.project-file) }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ hashFiles('spectrometer.cabal', matrix.project-file, 'cabal.project.common') }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-
 
