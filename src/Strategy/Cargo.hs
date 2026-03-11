@@ -329,6 +329,7 @@ cargoGenLockfileCmd =
     { cmdName = "cargo"
     , cmdArgs = ["generate-lockfile"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 cargoMetadataCmd :: Command
@@ -337,6 +338,7 @@ cargoMetadataCmd =
     { cmdName = "cargo"
     , cmdArgs = ["metadata"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 analyze ::

@@ -115,7 +115,7 @@ collectBinaryInfo = do
       ]
 
     mkCommand :: BinInfoCommand -> Command
-    mkCommand (BinInfoCommand (cmd, args)) = Command cmd [args] Always
+    mkCommand (BinInfoCommand (cmd, args)) = Command cmd [args] Always Map.empty
 
 collectEnvVariables :: (Has (Lift IO) sig m) => m (Map.Map Text Text)
 collectEnvVariables =
