@@ -25,6 +25,11 @@ jobs:
       with:
         lfs: true
         fetch-depth: 2
+        fetch-tags: true
+
+    - name: Get latest release tag
+      id: latest-tag
+      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
 
     - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -71,8 +76,9 @@ jobs:
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-
           ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
 
     - name: Build Rust dependencies

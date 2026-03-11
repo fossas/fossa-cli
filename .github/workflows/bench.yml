@@ -13,9 +13,14 @@ jobs:
     steps:
     - uses: dtolnay/rust-toolchain@stable
 
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         lfs: true
+        fetch-tags: true
+
+    - name: Get latest release tag
+      id: latest-tag
+      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
 
     # Adding the "git config ..." line ensures git doesn't fail during our build.
     - name: Configure Git
@@ -62,8 +67,9 @@ jobs:
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-
           ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-
 
     - name: Build Rust dependencies
