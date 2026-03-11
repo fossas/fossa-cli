@@ -14,6 +14,7 @@ import Data.Aeson (
   eitherDecode,
  )
 import Data.ByteString.Lazy qualified as BL
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), CmdSuccess (..), Command (..), Exec, execReturningStderr)
@@ -32,6 +33,7 @@ millhoneJarAnalyzeCmd cmdPath imageTarFile =
         , toText imageTarFile
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Analyze a container for Jar fingerprints using Millhone.
