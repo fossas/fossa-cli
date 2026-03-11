@@ -1,20 +1,36 @@
 name: Integration Tests
 
-# Only run workflow manually
-# Refer to https://docs.github.com/en/actions/learn-github-actions/events-that-trigger-workflows#workflow_dispatch
 on:
   push:
   workflow_dispatch:
   schedule:
     - cron: "0 5 * * *" # At 05:00 on every day.
 
-jobs:
-  integration-test:
-    name: integration-test
-    runs-on: "fossa-cli-integration-runner"
-    # Be sure to update the env below too
-    container: fossa/haskell-static-alpine:ghc-9.8.4
+# Cancel in-progress runs for the same branch so stale runs don't block the runner.
+concurrency:
+  group: integration-${{ github.ref }}
+  cancel-in-progress: true
 
+# All match patterns for integration test groups. Each group runs a subset;
+# the build job validates that every test belongs to exactly one group.
+env:
+  TEST_GROUPS: >-
+    Analysis.Maven Analysis.Gradle Analysis.Scala Analysis.Clojure
+    Analysis.Go Analysis.Rust Analysis.Erlang Analysis.Elixir
+    Analysis.Python Analysis.Ruby Analysis.Swift Analysis.Cocoapods
+    Analysis.Pnpm Analysis.Nuget Analysis.Carthage Analysis.LicenseScanner
+    Container.Analysis Reachability.Upload
+
+jobs:
+  # Build once, then run test groups in parallel.
+  # The build job populates the cabal and dist-newstyle caches.
+  # Each test job restores those caches so it doesn't need to rebuild.
+  build:
+    name: build
+    runs-on: "fossa-cli-integration-runner"
+    container: fossa/haskell-static-alpine:ghc-9.8.4
+    outputs:
+      latest-tag: ${{ steps.latest-tag.outputs.tag }}
     env:
       GHC_VERSION: '9.8.4'
 
@@ -29,13 +45,11 @@ jobs:
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      run: echo "tag=$(git tag --sort=-v:refname | head -1 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
 
     - name: Ensures git ownership check does not lead to compile error (we run git during compile for version tagging, etc.)
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-    # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
-    # so we edit /etc/group directly
     - name: Create nixbuild users/group
       run: |
         addgroup nixbld
@@ -60,11 +74,7 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    # Cache cabal store and dist-newstyle keyed on spectrometer.cabal + project file.
-    # cabal build handles staleness internally — if a transitive dep changed,
-    # it recompiles only what's needed. This avoids the 8-min cabal update +
-    # dry-run solver step that the plan-hash approach requires.
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
@@ -72,7 +82,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
@@ -98,8 +108,132 @@ jobs:
         cabal update
         $RUN_CMD || $RUN_CMD
 
-    # This is set up to run integration tests in parallel.
-    # If that becomes a problem disable it by removing the "+RTS -N -RTS" test options.
-    - name: Run all integration tests
+    # Verify every integration test is covered by at least one group pattern.
+    # Counts tests from an unfiltered --dry-run vs the union of all --match
+    # patterns. Fails if any tests would be silently skipped.
+    - name: Validate test groups cover all tests
       run: |
-        cabal test --project-file=cabal.project.ci.linux --test-show-details=direct --test-option=--times integration-tests --test-options="+RTS -N -RTS"
+        TOTAL=$(cabal test --project-file=cabal.project.ci.linux \
+          --test-show-details=direct \
+          integration-tests \
+          --test-option=--dry-run 2>&1 | grep -c "^  " || echo 0)
+
+        MATCH_ARGS=""
+        for pattern in $TEST_GROUPS; do
+          MATCH_ARGS="$MATCH_ARGS --test-option=--match --test-option=$pattern"
+        done
+        MATCHED=$(cabal test --project-file=cabal.project.ci.linux \
+          --test-show-details=direct \
+          $MATCH_ARGS \
+          integration-tests \
+          --test-option=--dry-run 2>&1 | grep -c "^  " || echo 0)
+
+        echo "Total tests: $TOTAL"
+        echo "Matched tests: $MATCHED"
+        if [ "$TOTAL" -ne "$MATCHED" ]; then
+          echo "ERROR: $((TOTAL - MATCHED)) integration tests are not covered by any group pattern."
+          echo "Update TEST_GROUPS in integrations-test.yml to include the missing patterns."
+          exit 1
+        fi
+
+    # Upload artifacts that test jobs need so they don't have to rebuild
+    # Rust or re-download vendor binaries.
+    - uses: actions/upload-artifact@v4
+      with:
+        name: vendor-bins
+        path: vendor-bins/
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: rust-release-bins
+        path: |
+          target/release/berkeleydb
+          target/release/millhone
+
+  integration-test:
+    name: test-${{ matrix.group }}
+    needs: build
+    runs-on: "fossa-cli-integration-runner"
+    container: fossa/haskell-static-alpine:ghc-9.8.4
+    env:
+      GHC_VERSION: '9.8.4'
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: jvm
+            matches: "Analysis.Maven Analysis.Gradle Analysis.Scala Analysis.Clojure"
+
+          - group: compiled
+            matches: "Analysis.Go Analysis.Rust Analysis.Erlang Analysis.Elixir"
+
+          - group: scripting-and-other
+            matches: "Analysis.Python Analysis.Ruby Analysis.Swift Analysis.Cocoapods Analysis.Pnpm Analysis.Nuget Analysis.Carthage Analysis.LicenseScanner Container.Analysis Reachability.Upload"
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        lfs: true
+        fetch-depth: 2
+
+    - name: Ensures git ownership check does not lead to compile error
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+    - name: Create nixbuild users/group
+      run: |
+        addgroup nixbld
+        adduser -D nixbld-1
+        adduser -D nixbld-2
+        adduser -D nixbld-3
+        sed 's/nixbld:x:\([[:digit:]]*\):$/nixbld:x:\1:nixbld-1,nixbld-2,nixbld-3/' /etc/group > group-changed
+        mv group-changed /etc/group
+
+    - uses: cachix/install-nix-action@v25
+      with:
+        nix_path: nixpkgs=channel:nixos-25.05
+        extra_nix_config: "build-users-group = nixbld"
+
+    # Restore caches populated by the build job.
+    - uses: actions/cache@v5
+      name: Cache cabal store
+      with:
+        path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-cabal-cache-
+
+    - uses: actions/cache@v5
+      name: Cache dist-newstyle
+      with:
+        path: ${{ github.workspace }}/dist-newstyle
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ needs.build.outputs.latest-tag }}-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ needs.build.outputs.latest-tag }}-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
+
+    # extra-source-files (vendor-bins/*, target/release/*) must exist on
+    # disk or cabal recompiles EmbeddedBinary.hs (fails under -Werror).
+    - uses: actions/download-artifact@v4
+      with:
+        name: vendor-bins
+        path: vendor-bins/
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: rust-release-bins
+        path: target/release/
+
+    - name: Run integration tests (${{ matrix.group }})
+      run: |
+        cabal update
+        MATCH_ARGS=""
+        for pattern in ${{ matrix.matches }}; do
+          MATCH_ARGS="$MATCH_ARGS --test-option=--match --test-option=$pattern"
+        done
+        cabal test --project-file=cabal.project.ci.linux \
+          --test-show-details=direct \
+          --test-option=--times \
+          $MATCH_ARGS \
+          integration-tests \
+          --test-options="+RTS -N -RTS"
