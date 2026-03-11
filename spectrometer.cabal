@@ -3,7 +3,6 @@ name:               spectrometer
 version:            0.1.0.0
 license:            MPL-2.0
 build-type:         Simple
--- cache-test: this comment exists to bust the file-hash cache key
 
 -- Trigger rebuilds when vendor-bins/* change because of:
 -- https://github.com/haskell/cabal/issues/4746.
@@ -145,6 +144,7 @@ common deps
     , raw-strings-qq               ^>=1.1
     , req                          ^>=3.13.0
     , retry                        ^>=0.9.0.0
+    , safe                         ^>=0.3
     , safe-exceptions              ^>=0.1.7
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
