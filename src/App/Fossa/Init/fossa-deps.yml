@@ -116,3 +116,27 @@
 #   metadata:                                  # Metadata of the dependency (Optional)
 #     description: Django                      # Description of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
 #     homepage: https://www.djangoproject.com  # Homepage of the dependency, this will be shown in FOSSA UI, and generated reports. (Optional)
+#
+#
+#
+# # fork-aliases
+# # --
+# # Denotes mapping of fork dependencies to their base dependencies. When a dependency
+# # matches a fork alias (by type and name, ignoring version), it is replaced with
+# # the base dependency, preserving the original version. This is useful when you have forked
+# # a dependency and want it to be treated as the original dependency in FOSSA.
+# #
+# # Learn more: https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md#fork-aliases
+# #
+# fork-aliases:
+# - fork:                                      # The fork dependency entry (Required)
+#     type: cargo                              # Type of the fork dependency (Required)
+#     name: my-serde                           # Name of the fork dependency (Required)
+#     version: 1.0.0                           # Version of the fork dependency (Optional)
+#   base:                                      # The base/original dependency entry (Required)
+#     type: cargo                              # Type of the base dependency (Required)
+#     name: serde                              # Name of the base dependency (Required)
+#     version: 1.0.0                           # Version of the base dependency (Optional)
+#   labels:                                    # Labels to be applied to the fork alias (Optional)
+#     - label: internal
+#       scope: org

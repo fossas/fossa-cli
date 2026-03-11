@@ -9,6 +9,8 @@ import App.Fossa.Config.Analyze (VendoredDependencyOptions (..))
 import App.Fossa.ManualDeps (
   CustomDependency (CustomDependency),
   DependencyMetadata (DependencyMetadata),
+  ForkAlias (..),
+  ForkAliasEntry (..),
   LinuxReferenceDependency (..),
   LocatorDependency (..),
   ManagedReferenceDependency (..),
@@ -42,7 +44,7 @@ getTestDataFile :: String -> SpecM a BS.ByteString
 getTestDataFile name = runIO . BS.readFile $ "test/App/Fossa/testdata/" <> name
 
 theWorks :: ManualDependencies
-theWorks = ManualDependencies references customs vendors remotes locators
+theWorks = ManualDependencies references customs vendors remotes locators forkAliases
   where
     references =
       [ Managed (ManagedReferenceDependency "one" GemType Nothing [])
@@ -65,9 +67,16 @@ theWorks = ManualDependencies references customs vendors remotes locators
       [ LocatorDependencyPlain (Locator "fetcher-1" "one" Nothing)
       , LocatorDependencyPlain (Locator "fetcher-2" "two" (Just "1.0.0"))
       ]
+    forkAliases =
+      [ ForkAlias
+          { forkAliasFork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          , forkAliasBase = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          , forkAliasLabels = []
+          }
+      ]
 
 theWorksLabeled :: ManualDependencies
-theWorksLabeled = ManualDependencies references customs vendors remotes locators
+theWorksLabeled = ManualDependencies references customs vendors remotes locators forkAliases
   where
     references =
       [ Managed (ManagedReferenceDependency "one" GemType Nothing [ProvidedPackageLabel "gem-label" ProvidedPackageLabelScopeRevision])
@@ -91,6 +100,13 @@ theWorksLabeled = ManualDependencies references customs vendors remotes locators
     locators =
       [ LocatorDependencyStructured (Locator "fetcher-1" "one" Nothing) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
       , LocatorDependencyStructured (Locator "fetcher-2" "two" (Just "1.0.0")) [ProvidedPackageLabel "locator-dependency-label" ProvidedPackageLabelScopeOrg]
+      ]
+    forkAliases =
+      [ ForkAlias
+          { forkAliasFork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+          , forkAliasBase = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+          , forkAliasLabels = [ProvidedPackageLabel "serde-fork-dep-label" ProvidedPackageLabelScopeOrg]
+          }
       ]
 
 theWorksLabels :: Maybe OrgId -> Map Text [ProvidedPackageLabel]
@@ -195,6 +211,7 @@ spec = do
     customDepSpec
     vendorDepSpec
     locatorDepSpec
+    forkAliasSpec
 
   describe "getScanCfg" $ do
     it' "should fail if you try to force a license scan but the FOSSA server does not support it" $ do
@@ -344,6 +361,14 @@ locatorDepSpec = do
         (encodeUtf8 locatorDepWithEmptyDep)
         "parsing Locator failed, expected String, but encountered Null"
 
+forkAliasSpec :: Spec
+forkAliasSpec = do
+  describe "fork alias" $ do
+    it "should parse fork alias" $
+      case Yaml.decodeEither' (encodeUtf8 forkAliasDep) of
+        Left err -> expectationFailure $ displayException err
+        Right yamlDeps -> yamlDeps `shouldBe` forkAliasManualDep
+
 linuxReferenceDep :: Text
 linuxReferenceDep =
   [r|
@@ -433,6 +458,22 @@ linuxRefManualDep os epoch =
     mempty
     mempty
     mempty
+    mempty
+
+forkAliasManualDep :: ManualDependencies
+forkAliasManualDep =
+  ManualDependencies
+    mempty
+    mempty
+    mempty
+    mempty
+    mempty
+    [ ForkAlias
+        { forkAliasFork = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "my-serde", forkAliasEntryVersion = Nothing}
+        , forkAliasBase = ForkAliasEntry{forkAliasEntryType = CargoType, forkAliasEntryName = "serde", forkAliasEntryVersion = Nothing}
+        , forkAliasLabels = []
+        }
+    ]
 
 customDepWithEmptyVersion :: Text
 customDepWithEmptyVersion =
@@ -537,4 +578,16 @@ locatorDepWithEmptyDep =
   [r|
 locator-dependencies:
 -
+|]
+
+forkAliasDep :: Text
+forkAliasDep =
+  [r|
+fork-aliases:
+- fork:
+    type: cargo
+    name: my-serde
+  base:
+    type: cargo
+    name: serde
 |]

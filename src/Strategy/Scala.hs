@@ -165,10 +165,6 @@ findProjects = walkWithFilters' $ \dir _ files -> do
       case (projectsRes, miniDepPlugin, depPlugin) of
         (Nothing, _, _) -> pure ([], WalkSkipAll)
         (Just projects, False, False) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
-        (Just projects, _, True) -> do
-          -- project is explicitly configured to use dependency-tree-plugin
-          treeJSONs <- recover $ genTreeJson dir
-          pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
         (Just projects, True, _) -> do
           -- project is using miniature dependency tree plugin,
           -- which is included by default with sbt 1.4+
@@ -188,6 +184,10 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             (True, _) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)
+        (Just projects, False, True) -> do
+          -- project is explicitly configured to use dependency-tree-plugin
+          treeJSONs <- recover $ genTreeJson dir
+          pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do

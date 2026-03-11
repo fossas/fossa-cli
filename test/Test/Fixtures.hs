@@ -63,7 +63,7 @@ module Test.Fixtures (
 )
 where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -75,6 +75,7 @@ import App.Types (Mode (..), OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
@@ -337,12 +338,13 @@ sourceUnitBuildMaven =
     [ ipAddr
     , spotBugs
     ]
-    [ SourceUnitDependency logger []
-    , SourceUnitDependency ipAddr []
+    [ SourceUnitDependency logger [] Aeson.Null
+    , SourceUnitDependency ipAddr [] Aeson.Null
     , SourceUnitDependency
         spotBugs
         [ logger
         ]
+        Aeson.Null
     ]
   where
     ipAddr :: Locator
@@ -387,6 +389,7 @@ vsiSourceUnit =
                           , locatorRevision = Just "1.2.3"
                           }
                     , sourceDepImports = []
+                    , sourceDepData = Aeson.Null
                     }
                 ]
             }
@@ -610,7 +613,6 @@ experimentalConfig :: ExperimentalAnalyzeConfig
 experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
-    , useV3GoResolver = GoModulesBasedTactic
     , resolvePathDependencies = False
     }
 
@@ -673,8 +675,9 @@ standardAnalyzeConfig =
     , ANZ.reachabilityConfig = mempty
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
-    , ANZ.xSnippetScan = False
+    , ANZ.snippetScan = False
     , ANZ.debugDir = Nothing
+    , ANZ.xVendetta = False
     }
 
 sampleJarParsedContent :: Text
