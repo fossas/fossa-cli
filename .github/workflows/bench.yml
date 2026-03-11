@@ -7,6 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     container: fossa/haskell-static-alpine:ghc-9.8.4
 
+    env:
+      GHC_VERSION: '9.8.4'
+
     steps:
     - uses: dtolnay/rust-toolchain@stable
 
@@ -51,17 +54,17 @@ jobs:
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ runner.os }}-benchmarks-cabal-cache-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-cabal-cache-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
-          ${{ runner.os }}-benchmarks-cabal-cache-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-cabal-cache-
 
     - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-benchmarks-dist-newstyle-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
-          ${{ runner.os }}-benchmarks-dist-newstyle-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-
 
     - name: Build Rust dependencies
       run: cargo build --release
