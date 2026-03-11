@@ -252,6 +252,7 @@ data ConfigRevision = ConfigRevision
 data ConfigTargets = ConfigTargets
   { targetsOnly :: [TargetFilter]
   , targetsExclude :: [TargetFilter]
+  , targetsExcludeManifestStrategies :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -346,6 +347,7 @@ instance FromJSON ConfigTargets where
     ConfigTargets
       <$> (obj .:? "only" .!= [])
       <*> (obj .:? "exclude" .!= [])
+      <*> (obj .:? "excludeManifestStrategies" .!= False)
 
 instance FromJSON ConfigPaths where
   parseJSON = withObject "ConfigPaths" $ \obj ->

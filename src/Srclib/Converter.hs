@@ -15,6 +15,7 @@ import Prelude
 import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import Control.Applicative ((<|>))
+import Data.Aeson qualified as Aeson
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -35,6 +36,7 @@ import Graphing qualified
 import Path (toFilePath)
 import Srclib.Types (
   Locator (..),
+  LocatorWithMetadata (..),
   OriginPath,
   SourceUnit (..),
   SourceUnitBuild (
@@ -91,17 +93,21 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     locatorAdjacent :: AM.AdjacencyMap Locator
     locatorAdjacent = Graphing.toAdjacencyMap locatorGraph
 
+    locatorsWithMetadata :: [LocatorWithMetadata]
+    locatorsWithMetadata = map (\loc -> LocatorWithMetadata{locatorWithMetadataLocator = loc, locatorWithMetadataData = Aeson.Null}) (AM.vertexList locatorAdjacent)
+
     deps :: [SourceUnitDependency]
-    deps = map (mkSourceUnitDependency locatorAdjacent) (AM.vertexList locatorAdjacent)
+    deps = map (mkSourceUnitDependency locatorAdjacent) locatorsWithMetadata
 
     imports :: [Locator]
     imports = Graphing.directList locatorGraph
 
-mkSourceUnitDependency :: AM.AdjacencyMap Locator -> Locator -> SourceUnitDependency
-mkSourceUnitDependency gr locator =
+mkSourceUnitDependency :: AM.AdjacencyMap Locator -> LocatorWithMetadata -> SourceUnitDependency
+mkSourceUnitDependency gr (LocatorWithMetadata{..}) =
   SourceUnitDependency
-    { sourceDepLocator = locator
-    , sourceDepImports = Set.toList $ AM.postSet locator gr
+    { sourceDepLocator = locatorWithMetadataLocator
+    , sourceDepImports = Set.toList $ AM.postSet locatorWithMetadataLocator gr
+    , sourceDepData = locatorWithMetadataData
     }
 
 shouldPublishDep :: Dependency -> Bool

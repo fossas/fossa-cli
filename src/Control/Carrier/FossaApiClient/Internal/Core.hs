@@ -68,6 +68,7 @@ import Fossa.API.Types (
 
 import Fossa.API.CoreTypes qualified as CoreTypes
 
+import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
 import Srclib.Types (Locator, SourceUnit, renderLocator)
 
 -- Fetches an organization from the API
@@ -130,10 +131,11 @@ uploadAnalysis ::
   ProjectRevision ->
   ProjectMetadata ->
   [SourceUnit] ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysis revision metadata units = do
+uploadAnalysis revision metadata units ficusResults = do
   apiOpts <- ask
-  API.uploadAnalysis apiOpts revision metadata units
+  API.uploadAnalysis apiOpts revision metadata units ficusResults
 
 uploadAnalysisWithFirstPartyLicenses ::
   ( API.APIClientEffs sig m
@@ -142,10 +144,11 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectRevision ->
   ProjectMetadata ->
   FileUpload ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = do
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults = do
   apiOpts <- ask
-  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata uploadKind
+  API.uploadAnalysisWithFirstPartyLicenses apiOpts revision metadata uploadKind ficusResults
 
 uploadNativeContainerScan ::
   ( API.APIClientEffs sig m
@@ -199,20 +202,22 @@ getAttribution ::
   ) =>
   ProjectRevision ->
   ReportOutputFormat ->
+  LocatorType ->
   m Text
-getAttribution revision format = do
+getAttribution revision format locatorType = do
   apiOpts <- ask
-  API.getAttribution apiOpts revision format
+  API.getAttribution apiOpts revision format locatorType
 
 getRevisionDependencyCacheStatus ::
   ( API.APIClientEffs sig m
   , Has (Reader ApiOpts) sig m
   ) =>
   ProjectRevision ->
+  LocatorType ->
   m RevisionDependencyCache
-getRevisionDependencyCacheStatus rev = do
+getRevisionDependencyCacheStatus rev locatorType = do
   apiOpts <- ask
-  API.getRevisionDependencyCacheStatus apiOpts rev
+  API.getRevisionDependencyCacheStatus apiOpts rev locatorType
 
 getSignedUploadUrl ::
   ( API.APIClientEffs sig m

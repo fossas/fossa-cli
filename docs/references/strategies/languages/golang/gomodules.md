@@ -53,8 +53,7 @@ This should eliminate some false positives found by tactics in older versions of
 
 Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
 
-This strategy was previously available only under the `--experimental-use-v3-go-resolver` flag but is now the default.
-For more information about this transition please see this [document](./v3-go-resolver-transition-qa.md).
+This strategy is the default Go analysis method. For historical context about this strategy's development, please see this [document](./v3-go-resolver-transition-qa.md).
 
 ### Experimental: Path dependencies
 
@@ -109,6 +108,15 @@ This strategy will attempt to fill in transitive dependencies by calling out to 
 If it fails or `fossa analyze` is invoked with `--static-analysis-only`, the strategy will report what it found in `go.mod` without any transitive dependencies.
 
 ## FAQ
+
+### What happens to the other directives in the `go.mod` file?
+
+The `go.mod` [file has a number of directives](https://go.dev/doc/modules/gomod-ref) other than require and replace which we parse but discard:
+
+- go - The version of GO that the project is built upon. The CLI does not support scanning build tools.
+- toolchain - Specifies the toolchain to use during compilation. 
+- tool - Developer tools that should be imported with the project. Developer tools are excluded by default.
+- godebug - Specifies default GODEBUG settings.
 
 ### Why do I see a dependency in `go.mod`, but it is not reflected in FOSSA?
 

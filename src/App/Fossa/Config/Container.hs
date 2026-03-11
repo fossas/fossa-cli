@@ -48,12 +48,13 @@ mergeOpts ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ContainerCommand ->
   m ContainerScanConfig
-mergeOpts cfgfile envvars = \case
-  ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts cfgfile envvars opts
+mergeOpts maybeDebugDir cfgfile envvars = \case
+  ContainerAnalyze opts -> AnalyzeCfg <$> Analyze.mergeOpts maybeDebugDir cfgfile envvars opts
   ContainerTest opts -> TestCfg <$> Test.mergeOpts cfgfile envvars opts
   ContainerListTargets opts -> ListTargetsCfg <$> ListTargets.mergeOpts cfgfile envvars opts
 

@@ -25,6 +25,7 @@ import Data.Aeson (
   genericToEncoding,
  )
 import Data.Aeson.Types (toJSONKeyText)
+import Data.IORef (IORef)
 import Data.Map (Map)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -38,8 +39,22 @@ import GHC.Generics (Generic)
 
 data TelemetrySink
   = TelemetrySinkToEndpoint ApiOpts
-  | TelemetrySinkToFile
-  deriving (Show, Eq, Ord)
+  | TelemetrySinkToFile (IORef (Maybe FilePath))
+
+instance Show TelemetrySink where
+  show (TelemetrySinkToEndpoint _) = "TelemetrySinkToEndpoint"
+  show (TelemetrySinkToFile _) = "TelemetrySinkToFile"
+
+instance Eq TelemetrySink where
+  TelemetrySinkToEndpoint a == TelemetrySinkToEndpoint b = a == b
+  TelemetrySinkToFile _ == TelemetrySinkToFile _ = True
+  _ == _ = False
+
+instance Ord TelemetrySink where
+  compare (TelemetrySinkToEndpoint a) (TelemetrySinkToEndpoint b) = compare a b
+  compare (TelemetrySinkToFile _) (TelemetrySinkToFile _) = EQ
+  compare (TelemetrySinkToEndpoint _) (TelemetrySinkToFile _) = LT
+  compare (TelemetrySinkToFile _) (TelemetrySinkToEndpoint _) = GT
 
 data TelemetryCtx = TelemetryCtx
   { telId :: UUID

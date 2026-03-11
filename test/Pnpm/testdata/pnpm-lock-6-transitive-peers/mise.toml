@@ -1,0 +1,10 @@
+[tools]
+pnpm = "8"
+
+[tasks.recreate]
+description = 'Use original tools and commands to recreate the package.json/pnpm-lock.yaml'
+run = '''
+rm -f pnpm-lock.yaml package.json
+pnpm init
+pnpm add --prod lint-staged@10.5.4 --save-peer
+'''

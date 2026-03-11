@@ -47,6 +47,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
 - [Integrating a Conan Project](./walkthroughs/conan.md)
 - [Configuring SSL/TLS Support Manually](./walkthroughs/ssl-cert.md)
+- [Using FOSSA CLI with HTTP Proxies](./walkthroughs/proxy-configuration.md)
 - [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)
 
 ### Features
@@ -119,17 +120,6 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 
 - [Overview and Support Policy](./references/experimental/README.md)
 
-#### Scanning Projects for Source Snippets
-
-- [Overview](./references/subcommands/snippets.md)
-- [Quickstart](./references/subcommands/snippets.md#quickstart)
-- [Frequently Asked Questions](./references/subcommands/snippets.md#faq)
-
-##### Subcommands
-
-- [`fossa snippets analyze`](./references/subcommands/snippets/analyze.md)
-- [`fossa snippets commit`](./references/subcommands/snippets/commit.md)
-
 ### References
 
 #### CLI commands
@@ -139,7 +129,6 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [`fossa init`](./references/subcommands/init.md): Generate sample config files.
 - [`fossa list-targets`](./references/subcommands/list-targets.md): Retrieve a list of filterable targets in a project.
 - [`fossa report`](./references/subcommands/report.md): Download a report of the most recent scan of a project.
-- [`fossa snippets`](./references/subcommands/snippets.md): Analyze snippets of a project and check if they exist in other open source projects FOSSA knows about.
 - [`fossa test`](./references/subcommands/test.md): View the results of the most recent scan of a project.
 - [`fossa release-group`](./references/subcommands/release-group.md): Interact with FOSSA release groups.
 - [`fossa project`](./references/subcommands/project.md): Interact with FOSSA projects.
@@ -160,6 +149,7 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [How to Debug Path Filters](./features/vendored-dependencies.md#debugging-your-path-filters)
 - [Debugging Container Analysis](./references/subcommands/container/scanner.md#debugging)
 - [Understanding SSL/TLS Certificates and FOSSA](./walkthroughs/ssl-cert.md)
+- [Using FOSSA CLI with HTTP Proxies](./walkthroughs/proxy-configuration.md)
 
 ## FAQs
 

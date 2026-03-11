@@ -176,7 +176,7 @@ An external link that will appear in the FOSSA UI for this specific project.
 The URL of your project that will appear in FOSSA. This URL is intended to be the URL to the repository of this project.
 
 #### `project.jiraProjectKey:`
-The Jira Project Key to associate with your project for improved issue triage. Refer to the [FOSSA docs](https://docs.fossa.com/docs/atlassian-jira#linking-fossa-projects-to-jira-projects) for more information.
+The Jira Project Key to associate with your project for improved issue triage. Refer to the [FOSSA docs](https://docs.fossa.com/docs/atlassian-jira) for more information.
 
 #### `project.releaseGroup:`
 The `name:` and `release:` of the release group's release to add your project to in the FOSSA dashboard.
@@ -304,6 +304,9 @@ targets:
     - type: bundler
       path: prod/docker
 ```
+
+#### `targets.excludeManifestStrategies:`
+If set to true, all manifest-based strategies for discovering targets will be skipped. This will still allow things like finding dependencies explicitly specified in fossa-deps.yml, running first-party license scans or running custom-license scans if they are configured. This setting will override any target filters or path filters.
 
 ### `paths:`
 The paths filtering section allows you to specify which paths should be scanned and which should not. The paths should be listed as their location from the root of your project.

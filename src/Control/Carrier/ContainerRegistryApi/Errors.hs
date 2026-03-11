@@ -39,6 +39,7 @@ data ContainerRegistryApiErrorKind
   | Denied
   | Unsupported
   | OtherError
+  | TooManyRequests
   deriving (Eq, Ord)
 
 instance Show ContainerRegistryApiErrorKind where
@@ -49,6 +50,7 @@ instance Show ContainerRegistryApiErrorKind where
   show Unauthorized = "UNAUTHORIZED"
   show Denied = "DENIED"
   show Unsupported = "UNSUPPORTED"
+  show TooManyRequests = "TOOMANYREQUESTS"
   show OtherError = "OTHER_UNKNOWN_ERROR"
 
 instance FromJSON ContainerRegistryApiErrorKind where
@@ -61,6 +63,7 @@ errCodeToErrKind errorKind | show NameInvalid == errorKind = NameInvalid
 errCodeToErrKind errorKind | show NameUnknown == errorKind = NameUnknown
 errCodeToErrKind errorKind | show Unauthorized == errorKind = Unauthorized
 errCodeToErrKind errorKind | show Denied == errorKind = Denied
+errCodeToErrKind errorKind | show TooManyRequests == errorKind = TooManyRequests
 errCodeToErrKind errorKind | show Unsupported == errorKind = Unsupported
 errCodeToErrKind _ = OtherError
 
@@ -103,7 +106,7 @@ instance ToDiagnostic UnknownApiError where
     let header =
           renderIt $
             vsep
-              [ "Caught unexpected error from:" <> pretty ("(" <> show (statusCode status) <> ") " <> show uri)
+              [ "Caught unexpected error from: " <> pretty ("(" <> show (statusCode status) <> ") " <> show uri)
               ]
     Errata (Just header) [] Nothing
 

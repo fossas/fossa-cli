@@ -94,6 +94,7 @@ See the linked documentation above for details.
 - [pipenv](languages/python/pipenv.md)
 - [poetry](languages/python/poetry.md)
 - [pdm](languages/python/pdm.md)
+- [uv](languages/python/uv.md)
 
 ### r
 
@@ -192,6 +193,7 @@ Invoke strict analysis with the `--strict` flag when running `fossa analyze`.
 | [Python (Poetry)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/poetry.md)                        | Static                       | ❌                    |
 | [Python (Pdm)](./languages/python/pdm.md)                                                                                                       | Static                       | ❌                    |
 | [Python (setup.py/requirements.txt)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/setuptools.md) | Dynamic with static fallback | ❌                    |
+| [Python (uv)](./languages/python/uv.md)                                                                                                         | Static                       | ❌                    |
 | [R (renv)](./languages/r/renv.md)                                                                                                               | Static                       | ❌                    |
 | [Ruby (bundler)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/ruby/ruby.md)                             | Dynamic with static fallback | ❌                    |
 | [Rust (cargo)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/rust/rust.md)                               | Dynamic                      | ❌                    |

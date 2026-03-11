@@ -16,7 +16,7 @@ import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, revi
 import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisionFromDockerEngine)
 import App.Fossa.Container.Sources.Podman (analyzeFromPodman, podmanInspectImage, revisionFromPodman)
 import App.Fossa.Container.Sources.Registry (analyzeFromRegistry, revisionFromRegistry, runWithCirceReexport)
-import App.Types (OverrideProject (..), ProjectRevision (ProjectRevision))
+import App.Types (OverrideProject (..), ProjectRevision (..))
 import Container.Docker.SourceParser (RegistryImageSource (..), parseImageUrl)
 import Container.Types (ContainerScan (..))
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)

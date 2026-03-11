@@ -72,7 +72,7 @@ With this configuration, when FOSSA CLI analyzes a Maven or Gradle project at th
 ```bash
 fossa analyze --debug
 
-cat fossa.debug.json | jq '.bundleReachabilityRaw'
+unzip -p fossa.debug.zip fossa.debug.json | jq '.bundleReachabilityRaw'
 [
   {
     "callGraphAnalysis": {
@@ -113,23 +113,24 @@ cat fossa.debug.json | jq '.bundleReachabilityRaw'
 ]
 
 
-cat fossa.debug.json | jq '.bundleReachabilityEndpoint'
+unzip -p fossa.debug.zip fossa.debug.json | jq '.bundleReachabilityEndpoint'
 {
  # content uploaded to endpoint
 }
 ```
 
-FOSSA CLI uses [jar-callgraph-1.0.2.jar](../../scripts/jar-callgraph-1.0.2.jar) to infer call path edges.
-FOSSA CLI uses `java -jar jar-callgraph-1.0.2.jar ./path/to/your/build.jar` command to record edges from
+FOSSA CLI uses [jar-callgraph-1.0.3.jar](../../scripts/jar-callgraph-1.0.3.jar) to infer call path edges.
+FOSSA CLI uses `java -jar jar-callgraph-1.0.3.jar ./path/to/your/build.jar` command to record edges from
 the your target jar. If you are running into issues with reachability, please confirm that you can execute
-`java -jar jar-callgraph-1.0.2.jar ./path/to/your/build.jar` on your environment.
+`java -jar jar-callgraph-1.0.3.jar ./path/to/your/build.jar` on your environment.
 
 <!--
 ## How do I debug reachability from endpoint?
 
 ```bash
 # get what we sent to endpoint
-cat fossa.debug.json | jq '.bundleReachabilityEndpoint' > rawReachabilityJob.json
+
+unzip -p fossa.debug.zip fossa.debug.json | jq '.bundleReachabilityEndpoint' > rawReachabilityJob.json
 
 # run job in dry mode
 >> yarn repl
@@ -183,7 +184,7 @@ You can inspect the data by running:
 
 ```bash
 ; fossa analyze --output --debug # --output to not communicate with endpoint
-; gunzip fossa.debug.json.gz     # extract produced debug bundle
+; unzip fossa.debug.zip fossa.debug.json # extract produced debug bundle
 
 # content in .bundleReachabilityRaw is uploaded
 # to endpoint for reachability analysis.
@@ -201,20 +202,3 @@ Organization: (your orgId) does not support reachability! skipping reachability 
 ```
 
 To enable, `reachability` please contact your FOSSA account manager, or [FOSSA support](https://support.fossa.com).
-
-
-3. How do I know if my project was analyzed for reachability by FOSSA CLI?
-
-FOSSA CLI will include scan summary for reachability analysis, as part of `fossa analyze` output.
-
-```text
-Reachability analysis
-  ** maven project in "/Users/dev/code/example-projects/reachability/maven/vuln-function-used/": succeeded
-```
-
-| Summary                          | Meaning                                                                      |
-|----------------------------------|------------------------------------------------------------------------------|
-| succeeded                        | Reachability analysis was successful                                         |
-| skipped (partial graph)          | Project has partial dependency graph (e.g. missing transitive dependencies)  |
-| skipped (not supported)          | Project is not supported for reachability analysis                           |
-| skipped (no dependency analysis) | Project's dependencies were not analyzed, so reachability cannot be computed |

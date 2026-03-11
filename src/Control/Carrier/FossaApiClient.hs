@@ -66,11 +66,11 @@ runFossaApiClient apiOpts action = do
             FinalizeLicenseScan components -> LicenseScanning.finalizeLicenseScan components
             FinalizeLicenseScanForPathDependency locators forceRebuild -> LicenseScanning.finalizePathDependencyScan locators forceRebuild
             GetApiOpts -> pure apiOpts
-            GetAttribution rev format -> Core.getAttribution rev format
+            GetAttribution rev format locType -> Core.getAttribution rev format locType
             GetIssues rev diffRev locatorType -> Core.getIssues rev diffRev locatorType
             GetEndpointVersion -> Core.getEndpointVersion
             GetLatestBuild rev locatorType -> Core.getLatestBuild rev locatorType
-            GetRevisionDependencyCacheStatus rev -> Core.getRevisionDependencyCacheStatus rev
+            GetRevisionDependencyCacheStatus rev locatorType -> Core.getRevisionDependencyCacheStatus rev locatorType
             GetOrganization -> Core.getOrganization
             GetPolicies -> Core.getPolicies
             GetProject rev locatorType -> Core.getProject rev locatorType
@@ -87,8 +87,8 @@ runFossaApiClient apiOpts action = do
             QueueSBOMBuild archive team rebuild -> Core.queueSBOMBuild archive team rebuild
             ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
             ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
-            UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
-            UploadAnalysisWithFirstPartyLicenses rev metadata uploadKind -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata uploadKind
+            UploadAnalysis rev metadata units ficusResults -> Core.uploadAnalysis rev metadata units ficusResults
+            UploadAnalysisWithFirstPartyLicenses rev metadata uploadKind ficusResults -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata uploadKind ficusResults
             UploadArchive url path -> Core.uploadArchive url path
             UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
             UploadContributors locator contributors -> Core.uploadContributors locator contributors

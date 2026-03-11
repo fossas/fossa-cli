@@ -35,6 +35,7 @@ In the event that caching is causing problems, FOSSA can be made to rescan this 
 - Currently, path dependencies are only supported in:
   - `golang` using the [gomod strategy](./../strategies/languages/golang/gomodules.md).
   - PDM (Python) projects via the [pdm strategy](./../strategies/languages/python/pdm.md).
+  - Rust projects via the [Cargo strategy](./../strategies/languages/rust/cargo.md).
 
 ## F.A.Q
 

@@ -37,8 +37,18 @@ When using `fossa sbom analyze`, the command respects team-scoped permissions:
 
 The `sbom test` command checks whether the most-recent scan of your FOSSA project raised license-policy or vulnerability issues. This command is usually run immediately after `fossa sbom analyze`.
 
+While `fossa sbom analyze` uploads and processes an SBOM file, `fossa sbom test` verifies the analysis results against your organization's license and security policies. The key differences:
+
+- `sbom analyze` - Uploads and scans an SBOM file, creating a build in FOSSA
+- `sbom test` - Checks if that scan found any policy violations or security issues
+
+The test command has the following behavior:
 - If there are issues, it prints them to stderr and fails with an exit code of 1
 - If there are no issues, it prints nothing and succeeds with an exit code of 0
+
+These commands are typically used together in a workflow:
+1. Run `fossa sbom analyze` to upload and analyze your SBOM
+2. Run `fossa sbom test` to verify the analysis against your organization's policies
 
 `fossa sbom test` supports the [Common FOSSA Project Flags](./analyze.md#common-fossa-project-flags).
 

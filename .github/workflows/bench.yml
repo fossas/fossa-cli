@@ -5,7 +5,7 @@ jobs:
   benchmarks:
     name: benchmarks
     runs-on: ubuntu-latest
-    container: fossa/haskell-static-alpine:ghc-9.8.2
+    container: fossa/haskell-static-alpine:ghc-9.8.4
 
     steps:
     - uses: dtolnay/rust-toolchain@stable
@@ -96,7 +96,7 @@ jobs:
         mkdir vendor-bins
         ./vendor_download.sh
       env:
-        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.FOSSABOT_ANALYSIS_VENDOR_DOWNLOAD_TOKEN }}
 
     - name: Build
       env:

@@ -59,16 +59,17 @@ instance GetSeverity ReleaseGroupCommand where
 
 releaseGroupMergeOpts ::
   (Has Diagnostics sig m) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ReleaseGroupCommand ->
   m ReleaseGroupConfig
-releaseGroupMergeOpts cfg envvars = \case
-  AddProjects opts -> AddProjectsCfg <$> AddProjects.mergeOpts cfg envvars opts
-  Create opts -> CreateCfg <$> Create.mergeOpts cfg envvars opts
-  CreateRelease opts -> CreateReleaseCfg <$> CreateRelease.mergeOpts cfg envvars opts
-  Delete opts -> DeleteCfg <$> Delete.mergeOpts cfg envvars opts
-  DeleteRelease opts -> DeleteReleaseCfg <$> DeleteRelease.mergeOpts cfg envvars opts
+releaseGroupMergeOpts maybeDebugDir cfgFile envVars = \case
+  AddProjects opts -> AddProjectsCfg <$> AddProjects.mergeOpts maybeDebugDir cfgFile envVars opts
+  Create opts -> CreateCfg <$> Create.mergeOpts maybeDebugDir cfgFile envVars opts
+  CreateRelease opts -> CreateReleaseCfg <$> CreateRelease.mergeOpts maybeDebugDir cfgFile envVars opts
+  Delete opts -> DeleteCfg <$> Delete.mergeOpts maybeDebugDir cfgFile envVars opts
+  DeleteRelease opts -> DeleteReleaseCfg <$> DeleteRelease.mergeOpts maybeDebugDir cfgFile envVars opts
 
 loadConfig ::
   ( Has Diagnostics sig m

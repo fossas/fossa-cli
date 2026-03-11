@@ -53,6 +53,7 @@ import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
   between,
+  choice,
   chunk,
   count,
   many,
@@ -87,6 +88,13 @@ data Statement
     -- the toolchain block as they are of no use to us today.
     -- Refer to: https://go.dev/doc/modules/gomod-ref#toolchain
     ToolchainStatement Text
+  | -- | dependencies in the tool block are development tools
+    -- which we do not currently support scanning, so we skip this.
+    -- Refer to: https://tip.golang.org/doc/modules/managing-dependencies#tools
+    ToolStatement Text
+  | -- | Specifies the default GODEBUG settings.
+    -- Refer to: https://go.dev/doc/modules/gomod-ref#godebug
+    GoDebugStatements Text
   deriving (Eq, Ord, Show)
 
 type PackageName = Text
@@ -210,36 +218,71 @@ parsePackageVersion lexify = parseSemOrPseudo <|> parseNonCanonical
 
 gomodParser :: Parser Gomod
 gomodParser = do
+  let emptyGoMod = do
+        eof
+        pure ("", [])
+  let nonEmptyGoMod = do
+        _ <- lexeme (chunk "module")
+        name <- packageName
+        _ <- scn
+        statements <- many (statement <* scn)
+        eof
+        pure (name, statements)
+
   _ <- scn
-  _ <- lexeme (chunk "module")
-  name <- modulePath
-  _ <- scn
-  statements <- many (statement <* scn)
-  eof
+  (name, statements) <- choice [nonEmptyGoMod, emptyGoMod]
 
   let statements' = concat statements
 
   pure (toGomod name statements')
   where
     statement =
-      (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
-        <|> (singleton <$> toolChainStatements)
+      goDebugStatements -- goDebugStatements needs to be first otherwise goVersion parser overrides it.
+        <|> (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
+        <|> (singleton <$> toolChainStatement)
+        <|> toolStatements
         <|> requireStatements
         <|> replaceStatements
         <|> excludeStatements
         <|> retractStatements
 
-    -- top-level go version statement
+    -- go version statement
     -- e.g., go 1.12
     goVersionStatement :: Parser Statement
     goVersionStatement = GoVersionStatement <$ lexeme (chunk "go") <*> goVersion
 
-    -- top-level go version statement
+    -- toolchain statement
     -- e.g., toolchain go1.21.1
-    toolChainStatements :: Parser Statement
-    toolChainStatements = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
+    toolChainStatement :: Parser Statement
+    toolChainStatement = ToolchainStatement <$ lexeme (chunk "toolchain") <*> anyToken
 
-    -- top-level require statements
+    -- tool statements
+    -- e.g.:
+    --   tool golang.org/x/tools/cmd/stringer
+    --   tool (
+    --       github.com/golangci/golangci-lint/v2/cmd/golangci-lint
+    --       github.com/fossa/fossa-cli
+    --   )
+    toolStatements :: Parser [Statement]
+    toolStatements = block "tool" singleTool
+
+    -- parse the body of a single tool (without the leading "tool" lexeme)
+    singleTool = ToolStatement <$> packageName
+
+    -- godebug statements
+    -- e.g., godebug asynctimerchan=0
+    -- godebug (
+    --     default=go1.21
+    --     panicnil=1
+    --     asynctimerchan=0
+    -- )
+    goDebugStatements :: Parser [Statement]
+    goDebugStatements = block "godebug" singleGoDebug
+
+    -- parse the body of a single debug statement (without the leading "godebug" lexeme)
+    singleGoDebug = GoDebugStatements <$> packageName
+
+    -- require statements
     -- e.g.:
     --   require golang.org/x/text v1.0.0
     --   require (
@@ -252,7 +295,7 @@ gomodParser = do
     -- parse the body of a single require (without the leading "require" lexeme)
     singleRequire = RequireStatement <$> packageName <*> version
 
-    -- top-level replace statements
+    -- replace statements
     -- e.g.:
     --   replace golang.org/x/text => golang.org/x/text v3.0.0
     --   replace (
@@ -271,7 +314,7 @@ gomodParser = do
     singleLocalReplace :: Parser Statement
     singleLocalReplace = LocalReplaceStatement <$> packageName <* optional version <* lexeme (chunk "=>") <*> anyToken
 
-    -- top-level exclude statements
+    -- exclude statements
     -- e.g.:
     --   exclude golang.org/x/text v3.0.0
     --   exclude (
@@ -285,7 +328,7 @@ gomodParser = do
     singleExclude :: Parser Statement
     singleExclude = ExcludeStatement <$> packageName <*> version
 
-    -- top-level retract statements
+    -- retract statements
     -- e.g.:
     --  retract v1.0.0
     --  retract [v1.0.0, v1.9.9]
@@ -320,14 +363,17 @@ gomodParser = do
       _ <- lexeme (chunk prefix)
       parens (many (parseSingle <* scn)) <|> (singleton <$> parseSingle)
 
-    -- package name, e.g., golang.org/x/text
+    -- Parses a go.mod identifier (module name or package name).
+    -- e.g., golang.org/x/text or "golang.org/x/text"
+    -- Per the go.mod spec (https://go.dev/ref/mod#go-mod-file-lexical):
+    -- "Identifiers and strings are interchangeable in the go.mod grammar."
+    -- Identifiers are sequences of non-whitespace characters.
+    -- Strings are quoted sequences of characters. We parse both.
     packageName :: Parser PackageName
-    packageName = toText <$> lexeme (some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_'))
+    packageName = lexeme $ bareGoModIdentifier <|> between (char '"') (char '"') bareGoModIdentifier
 
-    modulePath :: Parser Text
-    modulePath =
-      packageName
-        <|> between (char '"') (char '"') packageName
+    bareGoModIdentifier :: Parser PackageName
+    bareGoModIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=')
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef

@@ -10,21 +10,20 @@ import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
 import App.Fossa.Config.Common (
-  ScanDestination (OutputStdout, UploadScan),
+  DestinationMeta (..),
+  ScanDestination (..),
   applyReleaseGroupDeprecationWarning,
  )
 import App.Fossa.Config.Container.Analyze (
   ContainerAnalyzeConfig (..),
   JsonOutput (JsonOutput),
  )
-import App.Fossa.Config.Container.Analyze qualified as Config
 import App.Fossa.Container.Scan (extractRevision, scanImage)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Types (
   ProjectMetadata,
   ProjectRevision (..),
  )
-import Codec.Compression.GZip qualified as GZip
 import Container.Docker.SourceParser (RegistryImageSource)
 import Container.Errors (EndpointDoesNotSupportNativeContainerScan (EndpointDoesNotSupportNativeContainerScan))
 import Container.Types (ContainerScan (..))
@@ -53,7 +52,6 @@ import Effect.Logger (
   Has,
   Logger,
   Pretty (pretty),
-  Severity (..),
   logError,
   logInfo,
   logStdout,
@@ -63,6 +61,7 @@ import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path)
 import Srclib.Types (Locator (locatorRevision), locatorProject, renderLocator)
+import System.FilePath ((</>))
 
 data ContainerImageSource
   = DockerArchive (Path Abs File)
@@ -72,7 +71,7 @@ data ContainerImageSource
   deriving (Show, Eq)
 
 debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
+debugBundlePath = "fossa.debug.json"
 
 analyzeExperimental ::
   ( Has Diagnostics sig m
@@ -85,12 +84,18 @@ analyzeExperimental ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyzeExperimental cfg = do
-  case Config.severity cfg of
-    SevDebug -> do
-      (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-      sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+  let maybeDebugDir = debugDir cfg
+
+  case maybeDebugDir of
+    Just debugDir -> do
+      (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
+
+      sendIO $ do
+        let debugJsonPath = debugDir </> debugBundlePath
+        BL.writeFile debugJsonPath $ Aeson.encode bundle
+
       Diag.rethrow res
-    _ -> ignoreDebug $ analyze cfg
+    Nothing -> ignoreDebug $ analyze cfg
 
 analyze ::
   ( Has Diagnostics sig m
@@ -114,14 +119,19 @@ analyze cfg = do
         let branchText = fromMaybe "No branch (detached HEAD)" $ projectBranch revision
         logInfo ("Using branch: `" <> pretty branchText <> "`")
 
+  let doUpload apiOpts projectMetadata = runFossaApiClient apiOpts $ do
+        orgInfo <- preflightChecks $ AnalyzeChecks revision projectMetadata
+        logProjectInfo
+        void $ uploadScan orgInfo revision projectMetadata (jsonOutput cfg) scannedImage
+
+  let scannedImageToStdout = do
+        logProjectInfo
+        logStdout . decodeUtf8 $ Aeson.encode scannedImage
+
   case scanDestination cfg of
-    OutputStdout -> do
-      logProjectInfo
-      logStdout . decodeUtf8 $ Aeson.encode scannedImage
-    UploadScan apiOpts projectMetadata -> runFossaApiClient apiOpts $ do
-      orgInfo <- preflightChecks $ AnalyzeChecks revision projectMetadata
-      logProjectInfo
-      void $ uploadScan orgInfo revision projectMetadata (jsonOutput cfg) scannedImage
+    OutputStdout -> scannedImageToStdout
+    UploadScan (DestinationMeta (apiOpts, projectMetadata)) -> doUpload apiOpts projectMetadata
+    OutputAndUpload (DestinationMeta (apiOpts, projectMetadata)) -> scannedImageToStdout >> doUpload apiOpts projectMetadata
 
   pure scannedImage
 

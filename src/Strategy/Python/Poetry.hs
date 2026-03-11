@@ -115,8 +115,13 @@ findProjects = walkWithFilters' $ \dir _ files -> do
   let poetryLockFile = findFileNamed "poetry.lock" files
   let pyprojectFile = findFileNamed "pyproject.toml" files
 
-  case (poetryLockFile, pyprojectFile) of
-    (poetry, Just pyproject) -> do
+  -- TODO: It's possible to use poetry for the build backend along with uv for package management
+  -- As pyproject.toml is used by many package managers/build back ends, we need to handle this better
+  -- See https://fossa.atlassian.net/browse/ANE-2316
+  let uvlockFile = findFileNamed "uv.lock" files
+
+  case (poetryLockFile, pyprojectFile, uvlockFile) of
+    (poetry, Just pyproject, Nothing) -> do
       poetryProject <- readContentsToml pyproject
       let project = PoetryProject (ProjectDir dir) (PyProjectTomlFile pyproject) (PoetryLockFile <$> poetry)
       let pyprojectBuildBackend = getPoetryBuildBackend poetryProject
@@ -130,8 +135,10 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
     -- Without pyproject file, it is unlikely that project is a poetry project. Poetry itself does not work
     -- without [pyproject.toml manifest](https://python-poetry.org/docs/pyproject/).
-    (Just _, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
-    (Nothing, Nothing) -> pure ([], WalkContinue)
+    (Just _, Nothing, Nothing) -> context "poetry.lock file found without accompanying pyproject.toml!" $ pure ([], WalkContinue)
+    (Nothing, Nothing, Nothing) -> pure ([], WalkContinue)
+    -- Using uv for package management, don't treat this is a poetry project
+    (_, _, Just _) -> pure ([], WalkContinue)
 
 mkProject :: PoetryProject -> DiscoveredProject PoetryProject
 mkProject project =

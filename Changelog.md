@@ -1,5 +1,180 @@
 # FOSSA CLI Changelog
 
+## 3.16.2
+
+- Conda: Make conda analysis work on versions of conda where the `--force` flag is deprecated for `conda env create` ([#1661](https://github.com/fossas/fossa-cli/pull/1661))
+- Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
+- Hide deprecated `--experimental-use-v3-go-resolver`, `--experimental-skip-vsi-graph` and `--experimental-link-project-binary` flags, and deprecate the `experimental-link-user-defined-dependency-binary` subcommand. The flags and subcommand still work, but are no longer documented or shown in the help text ([#1633](https://github.com/fossas/fossa-cli/pull/1633))
+
+## 3.16.1
+
+- Licensing: Add standalone detection for Solace proprietary licenses (solace-software-2021, solace-non-production-1.0, solace-api-1.1) ([#1660](https://github.com/fossas/fossa-cli/pull/1660))
+- Licensing: Add support for SPDX tag-value format license declarations
+
+## 3.16.0
+
+- nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
+- Licensing: Fix bug where public domain disclosures were being matched as GPL ([`#1650`](https://github.com/fossas/fossa-cli/pull/1650))
+
+## 3.15.9
+
+- Improvements for licensing and snippet scanning ([#1649](https://github.com/fossas/fossa-cli/pull/1649))
+  - Licensing: Additional proprietary license detection
+  - Snippet scanning: Support TLS operation with platform native certificate store
+
+## 3.15.8
+
+- Snippet scanning: Fix bug where proxies cause POSTs to get redirected to GETs ([#1645](https://github.com/fossas/fossa-cli/pull/1645))
+
+## 3.15.7
+
+- PNPM: Fixes an issue where transitive dependencies with peer dependencies weren't detected in lockfile v6. ([#1642](https://github.com/fossas/fossa-cli/pull/1642))
+
+## 3.15.6
+
+- Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
+- Golang: Fix a bug where we did not correctly parse old-style go.mod files with quoted package names ([#1636](https://github.com/fossas/fossa-cli/pull/1636))
+- Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
+
+## 3.15.5
+- Fix reporting of transitive dependencies in pnpm v9 lockfiles ([#1632](https://github.com/fossas/fossa-cli/pull/1632))
+- Jar call-graph update - Attempt to fix a reachability issue ([#1634](https://github.com/fossas/fossa-cli/pull/1634))
+
+## 3.15.4
+- Scala fix: Prefer `MiniDependencyTreePlugin` over explicit `DependencyTreePlugin` ([#1627](https://github.com/fossas/fossa-cli/pull/1627)).
+
+## 3.15.3
+- Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623)).
+  The `fossa snippets` subcommand has been replaced by `fossa analyze --snippet-scan` ([documentation](./docs/features/snippet-scanning.md)). If you are still using `fossa snippets`, you can temporarily keep using it by using versions of the CLI previous to this release. We will eventually be sunsetting the services that back `fossa snippets`, but will keep them running to mid-February at the very earliest. Once those services stop running then `fossa snippets` will no longer work at all, even when using older versions of the CLI. Please reach out to support@fossa.com if you have any questions.
+- Allow snippet scanning of binary files. This allows us to find exact matches for binary files. (No PR. This was implemented in a separate binary that does snippet scanning for us.)
+
+## 3.15.2
+- Licensing: applies a fix for public domain detection ([#1625](https://github.com/fossas/fossa-cli/pull/1625))
+
+## 3.15.1
+- A small tweak in format for `--x-vendetta` ([#1624](https://github.com/fossas/fossa-cli/pull/1624))
+
+## 3.15.0
+- Make snippet scanning non-experimental. This PR deprecates `fossa analyze --x-snippet-scan`. Please use `fossa analyze --snippet-scan` instead. ([#1622](https://github.com/fossas/fossa-cli/pull/1622))
+
+## 3.14.1
+- Add fork-aliasing. Use this if you are using a fork of a dependency, but want FOSSA to treat it as if you were using the base version that you forked from. ([#1620](https://github.com/fossas/fossa-cli/pull/1620))
+
+## 3.14.0
+- Adds `--x-vendetta` flag for vendored dependency identification ([#1607](https://github.com/fossas/fossa-cli/pull/1607))
+
+## 3.13.1
+- Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
+- Update snippet scanning documentation ([#1615](https://github.com/fossas/fossa-cli/pull/1615))
+
+## 3.13.0
+- Change how debug logs are generated. They are now generated in a file called fossa.debug.zip, which can contain multiple files. For the common case of `fossa analyze --debug`, it will now contain the debug bundle (fossa.debug.json) and the telemetry json (fossa.telemetry.json). It will also contain Ficus logs if Ficus is run via --x-snippet-scan ([#1610](https://github.com/fossas/fossa-cli/pull/1610))
+
+## 3.12.3
+- Licensing: applies a fix for proprietary license detection ([#1616](https://github.com/fossas/fossa-cli/pull/1616))
+
+## 3.12.2
+- Update the latest version of a dependency for `--x-snippet-scan`. This update will start backfilling fingerprints for ~10% of files that were previously uploaded but do not have fingerprints ([#1611](https://github.com/fossas/fossa-cli/pull/1611))
+
+## 3.12.1
+- Update latest version of a dependency for `--x-snippet-scan`. This makes some changes to the data we send and store so that we can more easily update snippet data in the background ([#1587](https://github.com/fossas/fossa-cli/pull/1609))
+
+## 3.12.0
+- Python: Add support for projects using uv for package management ([#1604](https://github.com/fossas/fossa-cli/pull/1604))
+
+## 3.11.12
+- Allow empty `go.mod` files ([#1596](https://github.com/fossas/fossa-cli/pull/1596))
+- Add new `--exclude-manifest-strategies` option ([#1597](https://github.com/fossas/fossa-cli/pull/1597))
+- Remove reachability output from scan summary ([#1598](https://github.com/fossas/fossa-cli/pull/1598))
+- Handle path dependencies in Cargo projects ([#1599](https://github.com/fossas/fossa-cli/pull/1599))
+- Fix Cargo workspace members showing up as dependencies ([#1600](https://github.com/fossas/fossa-cli/pull/1600))
+- Fix Pipenv projects reporting all dependencies as direct dependencies ([#1601](https://github.com/fossas/fossa-cli/pull/1601))
+- Handle HTTP errors when fetching container image manifest ([#1602](https://github.com/fossas/fossa-cli/pull/1602))
+
+## 3.11.11
+
+- [Bug]The Ficus command was being constructed incorrectly if there were file exclusions in `.fossa.yml` ([#1595](https://github.com/fossas/fossa-cli/pull/1595))
+- Update Ficus to fix a bug with Windows paths (No PR)
+
+## 3.11.10
+
+- Optimize snippet scanning for time and space.([#1591](https://github.com/fossas/fossa-cli/pull/1591))
+- Go - multi line godebug and tool settings are properly parsed ([#1586](https://github.com/fossas/fossa-cli/pull/1586))
+
+## 3.11.9
+
+- Get the snippet-scan-retention-days setting from an organization, and pass it into Ficus ([#1586](https://github.com/fossas/fossa-cli/pull/1586))
+
+## 3.11.8
+
+- Update latest version of a dependency for `--x-snippet-scan`. This change outputs errors from the snippet scanning CLI so that we can debug more easily ([#1587](https://github.com/fossas/fossa-cli/pull/1587))
+
+## 3.11.7
+
+- Update latest version of a dependency for `--x-snippet-scan`. This change makes snippet scanning more resilient to errors when POSTing fingerprints and hashes, and ignores the `RUST_LOG` environment variable ([#1585](https://github.com/fossas/fossa-cli/pull/1585))
+
+## 3.11.6
+- Update latest version of a dependency for `--x-snippet-scan`. This change fixes a bug where snippet scans with large fingerprints were failing ([#1584](https://github.com/fossas/fossa-cli/pull/1584))
+
+## 3.11.5
+
+- Remove spurious log message. ([#1582](https://github.com/fossas/fossa-cli/pull/1582))
+- Update latest version of a dependency for `--x-snippet-scan`. This change will speed up scans ([#1583](https://github.com/fossas/fossa-cli/pull/1583))
+
+## 3.11.4
+
+- Stops logging a secret under `--x-snippet-scan`. ([#1579](https://github.com/fossas/fossa-cli/pull/1580))
+
+## 3.11.3
+
+- Picks up the latest version of a dependency for `--x-snippet-scan`. ([#1579](https://github.com/fossas/fossa-cli/pull/1579))
+
+## 3.11.2
+
+- A performance fix for `--x-snippet-scan`. ([#1578](https://github.com/fossas/fossa-cli/pull/1578))
+
+## 3.11.1
+
+- Better document `--x-snippet-scan`.
+
+## 3.11.0
+
+- Add a dependency on Ficus, a new internal tool.
+- Add the `--x-snippet-scan` flag, an experimental flag for using Ficus.
+
+## 3.10.14
+
+- gradle: Do not report version constraints, version contraints are contained within an`DependencyResult`, filter out any constraints by checking [`isConstraint()`](https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html#isConstraint()). ([#1563](https://github.com/fossas/fossa-cli/pull/1563))
+- container scanning: search all layers for os information. ([#1566](https://github.com/fossas/fossa-cli/pull/1566))
+
+## 3.10.13
+
+- Updates the `fossa test` output to include severity data on supported FOSSA instances ([#1562](https://github.com/fossas/fossa-cli/pull/1562))
+
+## 3.10.12
+
+- PNPM: Initial support for lockfile version 9.0 ([#1561](https://github.com/fossas/fossa-cli/pull/1561))
+
+## 3.10.11
+
+- container scanning: fix unzipping JARs that symlink to other layers #1555 ([#1555](https://github.com/fossas/fossa-cli/pull/1555))
+
+## 3.10.10
+
+- go: support the `tool` directive introduced in go Feb 2025 ([#1553](https://github.com/fossas/fossa-cli/pull/1553))
+
+## 3.10.9
+
+- CLI Args: Add a `--tee-output` argument to allow uploading results and also printing them to stdout.([#1546](https://github.com/fossas/fossa-cli/pull/1546))
+
+## 3.10.8
+
+- Custom license scans: Apply `licenseScanPathFilters` to custom license scans ([#1535](https://github.com/fossas/fossa-cli/pull/1535)).
+
+## 3.10.7
+
+- Report: Allow generating SBOMs attribution reports using fossa-cli. ([#1534](https://github.com/fossas/fossa-cli/pull/1534))
+
 ## 3.10.6
 - Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
 - Licensing: Adds support for the NREL disclaimer

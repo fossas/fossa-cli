@@ -97,3 +97,14 @@ locator-dependencies:
   labels:
   - label: locator-dependency-label
     scope: org
+
+fork-aliases:
+  - fork:
+      type: cargo
+      name: my-serde
+    base:
+      type: cargo
+      name: serde
+    labels:
+    - label: serde-fork-dep-label
+      scope: org

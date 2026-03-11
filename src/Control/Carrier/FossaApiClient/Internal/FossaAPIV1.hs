@@ -109,6 +109,7 @@ import App.Types (
   ProjectRevision (..),
   ReleaseGroupMetadata (releaseGroupName, releaseGroupRelease),
   ReleaseGroupReleaseRevision,
+  locatorAPIText,
   uploadFileTypeToFetcherName,
  )
 import App.Version (versionNumber)
@@ -183,6 +184,7 @@ import Fossa.API.Types (
   useApiOpts,
  )
 
+import App.Fossa.Ficus.Types (FicusSnippetScanResults (..))
 import Control.Effect.Reader
 import Data.Foldable (traverse_)
 import Data.List.Extra (chunk)
@@ -702,8 +704,9 @@ uploadAnalysis ::
   ProjectRevision ->
   ProjectMetadata ->
   [SourceUnit] ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
+uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits ficusResults = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -716,6 +719,8 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits = fossaReq $ do
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
+          -- Don't include snippetAnalysisId if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty (("snippetAnalysisId" =:) . ficusSnippetScanResultsAnalysisId) ficusResults
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
@@ -750,8 +755,9 @@ uploadAnalysisWithFirstPartyLicenses ::
   ProjectRevision ->
   ProjectMetadata ->
   FileUpload ->
+  Maybe FicusSnippetScanResults ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata uploadKind = fossaReq $ do
+uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata uploadKind ficusResults = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
 
   let opts =
@@ -764,8 +770,9 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload
           <> "cliLicenseScanType"
             =: toText uploadKind
           <> mkMetadataOpts metadata projectName
-          -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
+          -- Don't include snippetAnalysisId if it doesn't exist, core may not handle empty string properly.
+          <> maybe mempty (("snippetAnalysisId" =:) . ficusSnippetScanResultsAnalysisId) ficusResults
   resp <- req POST (uploadWithFirstPartyUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
@@ -941,11 +948,12 @@ getRevisionDependencyCacheStatus ::
   APIClientEffs sig m =>
   ApiOpts ->
   ProjectRevision ->
+  LocatorType ->
   m RevisionDependencyCache
-getRevisionDependencyCacheStatus apiOpts ProjectRevision{..} = fossaReq $ do
+getRevisionDependencyCacheStatus apiOpts ProjectRevision{..} locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (dependencyCacheReadyEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
+  response <- req GET (dependencyCacheReadyEndpoint baseUrl orgId (Locator (toText locatorType) projectName (Just projectRevision))) NoReqBody jsonResponse baseOpts
   pure (responseBody response)
 
 ---------- Archive and SBOM build queueing. This Endpoint ensures that after an archive or SBOM is uploaded, it is scanned.
@@ -1249,8 +1257,9 @@ getAttributionJson ::
   APIClientEffs sig m =>
   ApiOpts ->
   ProjectRevision ->
+  LocatorType ->
   m Attr.Attribution
-getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
+getAttributionJson apiOpts ProjectRevision{..} locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   let packageDownloadUrl :: String
       packageDownloadUrl = "PackageDownloadUrl"
@@ -1267,7 +1276,7 @@ getAttributionJson apiOpts ProjectRevision{..} = fossaReq $ do
           -- Large reports can take over a minute to generate, so increase the timeout to 10 minutes
           <> responseTimeoutSeconds 600
   orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator (locatorAPIText locatorType) projectName (Just projectRevision)) ReportJson) NoReqBody jsonResponse opts
   pure (responseBody response)
 
 getAttribution ::
@@ -1275,17 +1284,18 @@ getAttribution ::
   ApiOpts ->
   ProjectRevision ->
   ReportOutputFormat ->
+  LocatorType ->
   m Text
-getAttribution apiOpts revision ReportJson = fossaReq $ do
-  jsonValue <- getAttributionJson apiOpts revision
+getAttribution apiOpts revision ReportJson locatorType = fossaReq $ do
+  jsonValue <- getAttributionJson apiOpts revision locatorType
   pure . decodeUtf8 $ Aeson.encode jsonValue
-getAttribution apiOpts ProjectRevision{..} format = fossaReq $ do
+getAttribution apiOpts ProjectRevision{..} format locatorType = fossaReq $ do
   (baseUrl, baseOpts) <- useApiOpts apiOpts
   -- Large reports can take over a minute to generate, so increase the timeout to 10 minutes
   let opts = baseOpts <> responseTimeoutSeconds 600
 
   orgId <- organizationId <$> getOrganization apiOpts
-  response <- req GET (attributionEndpoint baseUrl orgId (Locator "custom" projectName (Just projectRevision)) format) NoReqBody bsResponse opts
+  response <- req GET (attributionEndpoint baseUrl orgId (Locator (locatorAPIText locatorType) projectName (Just projectRevision)) format) NoReqBody bsResponse opts
   pure (decodeUtf8 $ responseBody response)
 
 ----------

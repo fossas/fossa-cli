@@ -9,7 +9,6 @@ module App.Fossa.Config.ListTargets (
 
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
-  GoDynamicTactic (GoModulesBasedTactic),
  )
 import App.Fossa.Config.Common (
   CommonOpts (..),
@@ -100,11 +99,12 @@ mergeOpts ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   ListTargetsCliOpts ->
   m ListTargetsConfig
-mergeOpts cfgfile _envvars ListTargetsCliOpts{..} = do
+mergeOpts _ cfgfile _envvars ListTargetsCliOpts{..} = do
   let basedir = collectBaseDir cliBaseDir
       experimentalPrefs = collectExperimental cfgfile
       outputFmt = fromMaybe Legacy cliListTargetOutputFormat
@@ -121,7 +121,6 @@ collectExperimental maybeCfg =
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
-    GoModulesBasedTactic -- This should be ok because its discovery should not work differently than the old Go modules tactic.
     False -- This should be ok because discovery has no impact on whether, analysis includes path dependency or not!
 
 data ListTargetsCliOpts = ListTargetsCliOpts

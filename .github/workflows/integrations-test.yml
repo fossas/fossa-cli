@@ -13,10 +13,10 @@ jobs:
     name: integration-test
     runs-on: "fossa-cli-integration-runner"
     # Be sure to update the env below too
-    container: fossa/haskell-static-alpine:ghc-9.8.2
+    container: fossa/haskell-static-alpine:ghc-9.8.4
 
     env:
-      GHC_VERSION: '9.8.2'
+      GHC_VERSION: '9.8.4'
 
     steps:
     - uses: dtolnay/rust-toolchain@stable
@@ -42,7 +42,7 @@ jobs:
 
     - uses: cachix/install-nix-action@v25
       with:
-        nix_path: nixpkgs=channel:nixos-unstable
+        nix_path: nixpkgs=channel:nixos-25.05
         extra_nix_config: "build-users-group = nixbld"
 
     - name: Debugging information
@@ -103,7 +103,7 @@ jobs:
         mkdir vendor-bins
         ./vendor_download.sh
       env:
-        GITHUB_TOKEN: ${{ secrets.BASIS_ACCESS_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.FOSSABOT_ANALYSIS_VENDOR_DOWNLOAD_TOKEN }}
 
     - name: Build
       env:

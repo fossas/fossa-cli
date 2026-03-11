@@ -3,7 +3,7 @@ current_dir := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
 FMT_OPTS := -co -XTypeApplications -o -XImportQualifiedPost
 FIND_OPTS := src test integration-test -type f -name '*.hs'
-GHC_VERSION := 9.8.2
+GHC_VERSION := 9.8.4
 DEV_TOOLS := ghcr.io/fossas/haskell-dev-tools:${GHC_VERSION}
 MOUNTED_DEV_TOOLS_OPTS := --rm
 MOUNTED_DEV_TOOLS_OPTS += --mount "type=bind,source=${current_dir},target=/fossa-cli"
@@ -19,6 +19,9 @@ build: build-cargo
 
 build-cargo:
 	cargo build --release
+
+clean:
+	cabal clean && cargo clean
 
 # Runs units tests.
 # To run a set of unit tests matching a specific value, use ARGS
@@ -122,7 +125,7 @@ lint-cargo:
 	@cargo clippy -V
 	@cargo clippy
 
-# Build cargo deps needed b y the CLI and move them into place for cabal.
+# Build cargo deps needed by the CLI and move them into place for cabal.
 build-embedded-rust-bins: target/release/berkeleydb target/release/millhone
 	cargo build --release --bin millhone --bin berkeleydb
 
@@ -185,4 +188,4 @@ ci-shell:
 bench:
 	cabal bench --benchmark-options '+RTS -T'
 
-.PHONY: build-cli test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo
+.PHONY: build-cli test integration-test analyze install-local fmt check check-fmt lint check-ci fmt-ci build-test-data clean-test-data install-dev test-all bench build-cargo test-cargo fmt-cargo check-fmt-cargo lint-cargo clean

@@ -100,6 +100,20 @@ spec = do
     checkGraph pnpmLockV6WithWorkspace pnpmLockV6WithWorkspaceGraphSpec
     checkGraph pnpmLockV6 pnpmLockV6GraphSpec
 
+  -- v6 format with transitive peer deps
+  let pnpmLockV6WithPeers = currentDir </> $(mkRelFile "./test/Pnpm/testdata/pnpm-lock-6-transitive-peers/pnpm-lock.yaml")
+  describe "can work with v6.0 format with transitive peer deps" $
+    checkGraph pnpmLockV6WithPeers pnpmLockV6WithPeersSpec
+
+  -- v9 format
+  let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-project/pnpm-lock.yaml")
+  -- With the advent of lockfile v9, pnpm now has its own pnpm-workspace.yaml file.
+  let pnpmLockV9Workspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-project/pnpm-lock.yaml")
+
+  describe "works with v9 format" $ do
+    checkGraph pnpmLockV9 pnpmLockV9GraphSpec
+    describe "workspace" $ checkGraph pnpmLockV9Workspace pnpmLockV9GraphSpec
+
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
@@ -299,6 +313,16 @@ pnpmLockV6WithWorkspaceGraphSpec graph = do
       hasEdge (mkProdDep "aws-sdk@1.0.0") (mkProdDep "xmlbuilder@15.1.1")
       hasEdge (mkProdDep "xml2js@0.2.4") (mkProdDep "sax@1.3.0")
 
+pnpmLockV6WithPeersSpec :: Graphing Dependency -> Spec
+pnpmLockV6WithPeersSpec graph = do
+  describe "Pnpm lock V6 with transitive peer deps" $
+    do
+      let hasEdge :: Dependency -> Dependency -> Expectation
+          hasEdge = expectEdge graph
+
+      it "Should include the transitive dep that has a peer" $
+        hasEdge (mkDevDep "listr2@3.14.0") (mkDevDep "enquirer@2.4.1")
+
 pnpmLockV6GraphSpec :: Graphing Dependency -> Spec
 pnpmLockV6GraphSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
@@ -360,3 +384,28 @@ pnpmLockV6GraphSpec graph = do
       --   └── js-tokens 4.0.0
       hasEdge (mkDevDep "react@18.1.0") (mkDevDep "loose-envify@1.4.0")
       hasEdge (mkDevDep "loose-envify@1.4.0") (mkDevDep "js-tokens@4.0.0")
+
+pnpmLockV9GraphSpec :: Graphing Dependency -> Spec
+pnpmLockV9GraphSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph" $ do
+    it "should mark direct dependencies of project as direct" $ do
+      expectDirect
+        [ mkProdDep "uri-js@4.4.1"
+        , mkDevDep "colorjs@0.1.9"
+        , mkDevDep "xml2js@0.6.2"
+        ]
+        graph
+
+    it "should build edges" $ do
+      -- uri-js 4.4.1
+      -- └── punycode 2.3.1
+      -- colors 0.1.9
+      -- xml2js 0.6.2
+      -- ├── sax 1.4.4
+      -- └── xmlbuilder 11.0.1
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "sax@1.4.4")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "xmlbuilder@11.0.1")

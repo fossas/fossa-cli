@@ -114,6 +114,7 @@ expectedConfigTargets =
   ConfigTargets
     { targetsOnly = [directoryTarget, simpleTarget, complexTarget]
     , targetsExclude = []
+    , targetsExcludeManifestStrategies = False
     }
 
 expectedExperimentalConfig :: ExperimentalConfigs

@@ -153,13 +153,14 @@ waitForReportReadiness ::
   ) =>
   ProjectRevision ->
   Cancel ->
+  LocatorType ->
   m ()
-waitForReportReadiness revision cancelFlag = do
-  void $ waitForIssues revision Nothing LocatorTypeCustom cancelFlag
+waitForReportReadiness revision cancelFlag locatorType = do
+  void $ waitForIssues revision Nothing locatorType cancelFlag
 
   supportsDepCacheReadinessPolling <- orgSupportsDependenciesCachePolling <$> getOrganization
   when supportsDepCacheReadinessPolling $
-    waitForValidDependenciesCache revision cancelFlag
+    waitForValidDependenciesCache revision cancelFlag locatorType
 
 waitForValidDependenciesCache ::
   ( Has Diagnostics sig m
@@ -170,15 +171,16 @@ waitForValidDependenciesCache ::
   ) =>
   ProjectRevision ->
   Cancel ->
+  LocatorType ->
   m ()
-waitForValidDependenciesCache revision cancelFlag = do
+waitForValidDependenciesCache revision cancelFlag locatorType = do
   checkForTimeout cancelFlag
-  cacheStatus <- getRevisionDependencyCacheStatus revision
+  cacheStatus <- getRevisionDependencyCacheStatus revision locatorType
 
   case status cacheStatus of
     Ready -> pure ()
     Waiting -> do
       logSticky' $ "[ Waiting for revision's dependency cache... last status: " <> viaShow Waiting <> " ]"
       pauseForRetry
-      waitForValidDependenciesCache revision cancelFlag
+      waitForValidDependenciesCache revision cancelFlag locatorType
     UnknownDependencyCacheStatus status -> fatalText $ "unknown status of " <> status <> " received for revision's dependency cache"

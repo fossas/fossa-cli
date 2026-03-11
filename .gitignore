@@ -25,6 +25,7 @@ sandbox/
 fossa.debug.json
 fossa.debug.json.gz
 fossa.telemetry.json
+fossa.debug.zip
 
 # Integration Tests
 integration-test/artifacts/
@@ -37,8 +38,10 @@ test/App/Fossa/VSI/DynLinked/testdata/hello_standard*
 test/App/Fossa/VSI/DynLinked/testdata/hello_setuid*
 
 # Rust
-
 target/
+
+# Node (used in some tests)
+node_modules/
 
 # Include targets in test
 !test/reachability/testdata/maven-default/target

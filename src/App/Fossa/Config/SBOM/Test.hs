@@ -113,7 +113,7 @@ subcommand f =
   command
     "test"
     ( info (f <$> parser) $
-        progDescDoc (formatStringToDoc "Scan an SBOM file")
+        progDescDoc (formatStringToDoc "Check for policy violations in a previously analyzed SBOM")
     )
 
 instance GetCommonOpts SBOMTestOptions where

@@ -10,18 +10,19 @@ import App.Fossa.API.BuildWait (
   waitForReportReadiness,
   waitForScanCompletion,
  )
-import App.Fossa.Config.Report (ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
+import App.Fossa.Config.Report (ReportBase (..), ReportCliOptions, ReportConfig (..), ReportOutputFormat (ReportJson), mkSubCommand)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (ReportChecks), guardWithPreflightChecks)
 import App.Fossa.Subcommand (SubCommand)
 import App.Types (LocatorType (..), ProjectRevision (..))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.FossaApiClient (FossaApiClient, getAttribution)
 import Control.Effect.Lift (Has, Lift)
 import Control.Monad (void, when)
 import Control.Timeout (timeout')
+import Data.Functor (($>))
 import Data.String.Conversion (toText)
 import Data.Text.Extra (showT)
 import Effect.Logger (
@@ -79,13 +80,20 @@ fetchReport ReportConfig{..} =
       when (outputFormat /= ReportJson) $
         logWarn (pretty $ "\"" <> toText outputFormat <> "\" format may change independent of CLI version: it is sourced from the FOSSA service.")
 
-      logSticky "[ Waiting for build completion... ]"
+      let waitForSbomCompletion = waitForScanCompletion revision LocatorTypeSBOM cancelToken $> LocatorTypeSBOM
+          waitForCustomCompletion = waitForScanCompletion revision LocatorTypeCustom cancelToken $> LocatorTypeCustom
 
-      waitForScanCompletion revision LocatorTypeCustom cancelToken
+      logSticky "[ Waiting for build completion... ]"
+      locatorType <-
+        case reportBase of
+          SBOMBase _ -> waitForSbomCompletion
+          DirectoryBase _ -> waitForCustomCompletion <||> waitForSbomCompletion
+
       logSticky "[ Waiting for scan completion... ]"
 
-      waitForReportReadiness revision cancelToken
+      waitForReportReadiness revision cancelToken locatorType
+
       logSticky $ "[ Fetching " <> showT reportType <> " report... ]"
 
-      renderedReport <- getAttribution revision outputFormat
+      renderedReport <- getAttribution revision outputFormat locatorType
       logStdout renderedReport

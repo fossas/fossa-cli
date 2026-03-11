@@ -7,7 +7,7 @@ import Data.Function ((&))
 import Data.Map.Strict qualified as Map
 import Data.SemVer (version)
 import Data.SemVer.Internal (Identifier (..))
-import Data.Text (Text)
+import Data.Text (Text, empty)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepType (GoType), Dependency (..), VerConstraint (CEq))
 import Effect.Grapher (direct, evalGrapher)
@@ -15,7 +15,7 @@ import Graphing (Graphing (..))
 import Strategy.Go.Gomod (Gomod (..), PackageVersion (..), Require (..), buildGraph, gomodParser)
 import Strategy.Go.Types (graphingGolang)
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
-import Test.Hspec.Megaparsec (shouldParse)
+import Test.Hspec.Megaparsec (shouldFailOn, shouldParse)
 import Text.Megaparsec (runParser)
 import Text.RawString.QQ (r)
 
@@ -56,6 +56,16 @@ trivialGraph = run . evalGrapher $ do
   direct $ dep "github.com/pkg/one" "v1.0.0"
   direct $ dep "github.com/pkg/overridden" "overridden"
   direct $ dep "github.com/pkg/three/v3" "v3.0.0"
+
+emptyGomod :: Gomod
+emptyGomod =
+  Gomod
+    { modName = ""
+    , modRequires = []
+    , modReplaces = Map.empty
+    , modLocalReplaces = Map.empty
+    , modExcludes = []
+    }
 
 localReplaceGomod :: Gomod
 localReplaceGomod =
@@ -193,6 +203,9 @@ spec_parse = do
     it "parses a trivial example" $ do
       runParser gomodParser "" trivialInput `shouldParse` trivialGomod
 
+    it "parses empty go.mod" $ do
+      runParser gomodParser "" Data.Text.empty `shouldParse` emptyGomod
+
     it "parses each edge case" $ do
       runParser gomodParser "" edgecaseInput `shouldParse` edgeCaseGomod
 
@@ -210,6 +223,14 @@ spec_parse = do
       runParser gomodParser "" goModWithRetractComment2 `shouldParse` gomodWithRetract
       runParser gomodParser "" goModWithRetractComment3 `shouldParse` gomodWithRetract
       runParser gomodParser "" goModWithRetractComment4 `shouldParse` gomodWithRetract
+
+    it "fails to parse invalid go.mod" $ do
+      runParser gomodParser "" `shouldFailOn` "invalid input"
+
+    -- Old-style go.mod files use quoted strings for module paths and package names
+    -- See https://go.dev/ref/mod#go-mod-file-lexical: "Identifiers and strings are interchangeable"
+    it "parses old-style go.mod with quoted package names" $ do
+      runParser gomodParser "" goModWithQuotedNames `shouldParse` gomodWithQuotedNames
 
 gomodWithRetract :: Gomod
 gomodWithRetract =
@@ -336,3 +357,29 @@ retract (
 	v0.65.0
   [v0.10.1, v0.10.2] // some comment
 )|]
+
+-- Old-style go.mod with quoted strings (pre-Go 1.12 format)
+-- See https://go.dev/ref/mod#go-mod-file-lexical
+goModWithQuotedNames :: Text
+goModWithQuotedNames =
+  [r|module "gopkg.in/yaml.v3"
+
+require (
+	"gopkg.in/check.v1" v0.0.0-20161208181325-20d25e280405
+)
+|]
+
+gomodWithQuotedNames :: Gomod
+gomodWithQuotedNames =
+  Gomod
+    { modName = "gopkg.in/yaml.v3"
+    , modRequires =
+        [ Require
+            { reqPackage = "gopkg.in/check.v1"
+            , reqVersion = Pseudo "20d25e280405"
+            }
+        ]
+    , modReplaces = mempty
+    , modLocalReplaces = mempty
+    , modExcludes = []
+    }

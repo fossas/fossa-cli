@@ -95,6 +95,7 @@ import Fossa.API.Types (
 
 import Fossa.API.CoreTypes qualified as CoreTypes
 
+import App.Fossa.Ficus.Types (FicusSnippetScanResults)
 import Path (File, Path, Rel)
 import Srclib.Types (FullSourceUnit, LicenseSourceUnit, Locator, SourceUnit)
 
@@ -117,14 +118,14 @@ data FossaApiClientF a where
   FinalizeLicenseScan :: ArchiveComponents -> FossaApiClientF ()
   FinalizeLicenseScanForPathDependency :: [Locator] -> Bool -> FossaApiClientF ()
   GetApiOpts :: FossaApiClientF ApiOpts
-  GetAttribution :: ProjectRevision -> ReportOutputFormat -> FossaApiClientF Text
+  GetAttribution :: ProjectRevision -> ReportOutputFormat -> LocatorType -> FossaApiClientF Text
   GetCustomBuildPermissons ::
     ProjectRevision ->
     ProjectMetadata ->
     FossaApiClientF CustomBuildUploadPermissions
   GetIssues :: ProjectRevision -> Maybe DiffRevision -> LocatorType -> FossaApiClientF Issues
   GetEndpointVersion :: FossaApiClientF Text
-  GetRevisionDependencyCacheStatus :: ProjectRevision -> FossaApiClientF RevisionDependencyCache
+  GetRevisionDependencyCacheStatus :: ProjectRevision -> LocatorType -> FossaApiClientF RevisionDependencyCache
   GetLatestBuild :: ProjectRevision -> LocatorType -> FossaApiClientF Build
   GetOrganization :: FossaApiClientF Organization
   GetPolicies :: FossaApiClientF [CoreTypes.Policy]
@@ -147,11 +148,13 @@ data FossaApiClientF a where
     ProjectRevision ->
     ProjectMetadata ->
     [SourceUnit] ->
+    Maybe FicusSnippetScanResults ->
     FossaApiClientF UploadResponse
   UploadAnalysisWithFirstPartyLicenses ::
     ProjectRevision ->
     ProjectMetadata ->
     FileUpload ->
+    Maybe FicusSnippetScanResults ->
     FossaApiClientF UploadResponse
   UploadArchive :: SignedURL -> FilePath -> FossaApiClientF ByteString
   UploadNativeContainerScan ::
@@ -199,12 +202,12 @@ getApiOpts :: (Has FossaApiClient sig m) => m ApiOpts
 getApiOpts = sendSimple GetApiOpts
 
 -- | Uploads the results of an analysis and associates it to a project
-uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnit] -> m UploadResponse
-uploadAnalysis revision metadata units = sendSimple (UploadAnalysis revision metadata units)
+uploadAnalysis :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> [SourceUnit] -> Maybe FicusSnippetScanResults -> m UploadResponse
+uploadAnalysis revision metadata units ficusResults = sendSimple (UploadAnalysis revision metadata units ficusResults)
 
 -- | Uploads the results of a first-party analysis and associates it to a project
-uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> m UploadResponse
-uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata uploadKind)
+uploadAnalysisWithFirstPartyLicenses :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> FileUpload -> Maybe FicusSnippetScanResults -> m UploadResponse
+uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults = sendSimple (UploadAnalysisWithFirstPartyLicenses revision metadata uploadKind ficusResults)
 
 -- | Uploads results of container analysis performed by native scanner to a project
 uploadNativeContainerScan :: (Has FossaApiClient sig m) => ProjectRevision -> ProjectMetadata -> NativeContainer.ContainerScan -> m UploadResponse
@@ -217,14 +220,14 @@ uploadContributors locator contributors = sendSimple $ UploadContributors locato
 getLatestBuild :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m Build
 getLatestBuild rev locatorType = sendSimple $ GetLatestBuild rev locatorType
 
-getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> m RevisionDependencyCache
-getRevisionDependencyCacheStatus = sendSimple . GetRevisionDependencyCacheStatus
+getRevisionDependencyCacheStatus :: (Has FossaApiClient sig m) => ProjectRevision -> LocatorType -> m RevisionDependencyCache
+getRevisionDependencyCacheStatus locType = sendSimple . GetRevisionDependencyCacheStatus locType
 
 getIssues :: (Has FossaApiClient sig m) => ProjectRevision -> Maybe DiffRevision -> LocatorType -> m Issues
 getIssues projectRevision diffRevision locatorType = sendSimple $ GetIssues projectRevision diffRevision locatorType
 
-getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> m Text
-getAttribution revision format = sendSimple $ GetAttribution revision format
+getAttribution :: Has FossaApiClient sig m => ProjectRevision -> ReportOutputFormat -> LocatorType -> m Text
+getAttribution revision format locatorType = sendSimple $ GetAttribution revision format locatorType
 
 getSignedUploadUrl :: Has FossaApiClient sig m => ComponentUploadFileType -> PackageRevision -> m SignedURL
 getSignedUploadUrl fileType packageSpec = sendSimple $ GetSignedUploadUrl fileType packageSpec

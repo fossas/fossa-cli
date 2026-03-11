@@ -66,4 +66,4 @@ getProjectRevision sbomPath override cacheStrategy = do
   let version = fromMaybe inferredVersion $ overrideRevision override
   let revision = ProjectRevision name version Nothing
   when (cacheStrategy == WriteOnly) $ saveRevision revision
-  pure $ ProjectRevision name version Nothing
+  pure revision

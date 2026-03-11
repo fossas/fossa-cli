@@ -7,9 +7,9 @@ module App.Fossa.Analyze.Upload (
   ScanUnits (..),
 ) where
 
-import App.Docs (vulnReachabilityProductDocsUrl)
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Config.Analyze (JsonOutput (JsonOutput))
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..))
 import App.Fossa.Reachability.Types (SourceUnitReachability)
 import App.Fossa.Reachability.Upload (upload)
 import App.Types (
@@ -62,7 +62,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgSupportsReachability, organizationId), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
+import Fossa.API.Types (Organization (orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -107,17 +107,16 @@ uploadSuccessfulAnalysis ::
   ProjectRevision ->
   ScanUnits ->
   [SourceUnitReachability] ->
+  Maybe FicusAnalysisResults ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults =
   context "Uploading analysis" $ do
     dieOnMonorepoUpload revision
     org <- getOrganization
 
-    if (orgSupportsReachability org)
-      then void $ upload revision metadata reachabilityUnits
-      else do
-        logInfo . pretty $ "Organization: (" <> show (organizationId org) <> ") does not support reachability. Skipping reachability analysis upload."
-        logInfo . pretty $ "For reachability, refer to: " <> vulnReachabilityProductDocsUrl
+    when (orgSupportsReachability org) $
+      void $
+        upload revision metadata reachabilityUnits
 
     logInfo ""
     logInfo ("Using project name: `" <> pretty (projectName revision) <> "`")
@@ -126,13 +125,13 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     logInfo ("Using branch: `" <> pretty branchText <> "`")
 
     uploadResult <- case scanUnits of
-      SourceUnitOnly units -> uploadAnalysis revision metadata units
+      SourceUnitOnly units -> uploadAnalysis revision metadata units (snippetScanResults =<< ficusResults)
       LicenseSourceUnitOnly licenseSourceUnit -> do
         let mergedUnits = mergeSourceAndLicenseUnits [] licenseSourceUnit
-        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits $ orgFileUpload org
+        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults $ orgFileUpload org
       SourceAndLicenseUnits sourceUnits licenseSourceUnit -> do
         let mergedUnits = mergeSourceAndLicenseUnits sourceUnits licenseSourceUnit
-        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits $ orgFileUpload org
+        runStickyLogger SevInfo . uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults $ orgFileUpload org
 
     emitBuildWarnings uploadResult
 
@@ -167,11 +166,12 @@ uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
   ProjectRevision ->
   ProjectMetadata ->
   NE.NonEmpty FullSourceUnit ->
+  Maybe FicusAnalysisResults ->
   FileUpload ->
   m UploadResponse
-uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits uploadKind = do
+uploadAnalysisWithFirstPartyLicensesToS3AndCore revision metadata mergedUnits ficusResults uploadKind = do
   _ <- uploadAnalysisWithFirstPartyLicensesToS3 revision mergedUnits
-  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind
+  uploadAnalysisWithFirstPartyLicenses revision metadata uploadKind (snippetScanResults =<< ficusResults)
 
 uploadAnalysisWithFirstPartyLicensesToS3 ::
   ( Has Diagnostics sig m

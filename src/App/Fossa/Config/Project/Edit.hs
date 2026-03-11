@@ -130,11 +130,12 @@ projectIdentiferOptions = optional (projectIdOptions <|> projectLocatorOptions)
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   EditOpts ->
   m EditConfig
-mergeOpts maybeConfig envVars cliOpts@EditOpts{..} = do
+mergeOpts _ maybeConfig envVars cliOpts@EditOpts{..} = do
   apiOpts <- collectApiOpts maybeConfig envVars cliOpts
   maybePolicy <- maybe (pure projectPolicyOpts) (mergePolicy projectPolicyOpts) maybeConfig
   let maybeProjectIdentifer = maybe projectIdentiferOpts (mergeProjectIdentifier projectIdentiferOpts) maybeConfig

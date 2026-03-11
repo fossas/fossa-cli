@@ -10,6 +10,14 @@ module App.Fossa.Analyze (
   -- * Helpers
   toProjectResult,
   applyFiltersToProject,
+
+  -- * Fork alias translation (for testing)
+
+  -- Re-exported from App.Fossa.Analyze.ForkAlias
+  translateDependency,
+  translateDependencyGraph,
+  translateLocatorWithForkAliases,
+  mkForkAliasMap,
 ) where
 
 import App.Docs (userGuideUrl)
@@ -22,7 +30,15 @@ import App.Fossa.Analyze.Filter (
   CountedResult (..),
   checkForEmptyUpload,
  )
-import App.Fossa.Analyze.GraphMangler (graphingToGraph)
+import App.Fossa.Analyze.ForkAlias (
+  buildProject,
+  collectForkAliasLabels,
+  mergeForkAliasLabels,
+  mkForkAliasMap,
+  translateDependency,
+  translateDependencyGraph,
+  translateLocatorWithForkAliases,
+ )
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
 import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
@@ -32,7 +48,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Analyze.Upload (ScanUnits (SourceUnitOnly), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
+import App.Fossa.Analyze.Upload (ScanUnits (..), mergeSourceAndLicenseUnits, uploadSuccessfulAnalysis)
 import App.Fossa.BinaryDeps (analyzeBinaryDeps)
 import App.Fossa.Config.Analyze (
   AnalysisTacticTypes (..),
@@ -49,10 +65,17 @@ import App.Fossa.Config.Analyze (
   WithoutDefaultFilters (..),
  )
 import App.Fossa.Config.Analyze qualified as Config
+import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
+import App.Fossa.Ficus.Analyze (analyzeWithFicus)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
-import App.Fossa.ManualDeps (analyzeFossaDepsFile)
+import App.Fossa.ManualDeps (
+  ForkAlias (..),
+  ManualDepsResult (..),
+  analyzeFossaDepsFile,
+ )
 import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
@@ -69,7 +92,6 @@ import App.Types (
   ProjectRevision (..),
  )
 import App.Util (FileAncestry, ancestryDirect)
-import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -102,9 +124,11 @@ import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Map qualified as Map
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
+import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
@@ -121,7 +145,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
-import Fossa.API.Types (Organization (Organization, orgSupportsReachability))
+import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -135,14 +159,21 @@ import Prettyprinter.Render.Terminal (
   color,
  )
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (LicenseSourceUnit (..), Locator, SourceUnit, sourceUnitToFullSourceUnit)
+import Srclib.Types (
+  LicenseSourceUnit (..),
+  Locator (..),
+  SourceUnit (..),
+  sourceUnitToFullSourceUnit,
+  translateSourceUnitLocators,
+ )
+import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
-
-debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
+
+debugBundlePath :: FilePath
+debugBundlePath = "fossa.debug.json"
 
 dispatch ::
   ( Has Diag.Diagnostics sig m
@@ -170,12 +201,15 @@ analyzeMain ::
   ) =>
   AnalyzeConfig ->
   m Aeson.Value
-analyzeMain cfg = case Config.severity cfg of
-  SevDebug -> do
-    (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
-    sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+analyzeMain cfg = case Config.debugDir cfg of
+  Just debugDir -> do
+    (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ analyze cfg
+    sendIO $ do
+      let debugJsonPath = debugDir </> debugBundlePath
+      BL.writeFile debugJsonPath $ Aeson.encode bundle
+
     Diag.rethrow res
-  _ -> ignoreDebug $ analyze cfg
+  Nothing -> ignoreDebug $ analyze cfg
 
 runDependencyAnalysis ::
   ( AnalyzeProject proj
@@ -278,9 +312,8 @@ analyze ::
 analyze cfg = Diag.context "fossa-analyze" $ do
   capabilities <- sendIO getNumCapabilities
 
-  let maybeApiOpts = case destination of
-        OutputStdout -> Nothing
-        UploadScan opts _ -> Just opts
+  let maybeDestMeta = destinationMetadata destination
+      maybeApiOpts = destinationApiOpts <$> maybeDestMeta
       BaseDir basedir = Config.baseDir cfg
       destination = Config.scanDestination cfg
       filters = Config.filterSet cfg
@@ -296,19 +329,25 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
+      enableSnippetScan = Config.snippetScan cfg
+      enableVendetta = Config.xVendetta cfg
 
-  manualSrcUnits <-
+  manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
-          pure Nothing
+          pure $ ManualDepsResult Nothing []
         else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
+  let forkAliases = maybe [] manualDepsResultForkAliases (resultToMaybe manualDepsResult)
+      manualSrcUnits = fmap manualDepsResultSourceUnit manualDepsResult
 
-  orgInfo <- case destination of
-    OutputStdout -> pure Nothing
-    UploadScan apiOpts metadata ->
-      fmap Just . runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
+  orgInfo <-
+    for
+      maybeDestMeta
+      ( \(DestinationMeta (apiOpts, metadata)) ->
+          runFossaApiClient apiOpts . preflightChecks $ AnalyzeChecks revision metadata
+      )
 
   -- additional source units are built outside the standard strategy flow, because they either
   -- require additional information (eg API credentials), or they return additional information (eg user deps).
@@ -332,13 +371,36 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
           then analyzeDiscoverBinaries basedir filters
           else pure Nothing
+  let ficusStrategies =
+        catMaybes
+          [ if enableSnippetScan then Just FicusStrategySnippetScan else Nothing
+          , if enableVendetta then Just FicusStrategyVendetta else Nothing
+          ]
+  maybeFicusResults <-
+    Diag.errorBoundaryIO . diagToDebug $
+      if null ficusStrategies || filterIsVSIOnly filters
+        then do
+          pure Nothing
+        else
+          Diag.context "ficus-scanning"
+            . runStickyLogger SevInfo
+            $ analyzeWithFicus
+              basedir
+              maybeApiOpts
+              revision
+              ficusStrategies
+              (Config.licenseScanPathFilters vendoredDepsOptions)
+              (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
+              (Config.debugDir cfg)
+  let ficusResults = join $ resultToMaybe maybeFicusResults
+
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
-        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions
+        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
   let lernieResults = join . resultToMaybe $ maybeLernieResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
@@ -347,13 +409,22 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       vsiResults' :: [SourceUnit]
       vsiResults' = fromMaybe [] $ join (resultToMaybe vsiResults)
 
+      ficusResults' :: [SourceUnit]
+      ficusResults' =
+        maybeToList $
+          ficusResults
+            >>= vendoredDependencyScanResults
+            >>= \(FicusVendoredDependencyScanResults maybeSrcUnit) -> maybeSrcUnit
+
       additionalSourceUnits :: [SourceUnit]
-      additionalSourceUnits = vsiResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
+      additionalSourceUnits = vsiResults' <> ficusResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   -- Flush logs using the original Result from VSI.
   traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
   -- Flush logs from lernie
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
+  -- Flush logs from ficus
+  traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -387,21 +458,20 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let filteredProjects = mapMaybe toProjectResult projectScans
   logDebug $ "Filtered project scans: " <> pretty (show filteredProjects)
 
-  maybeEndpointAppVersion <- case destination of
-    UploadScan apiOpts _ -> runFossaApiClient apiOpts $ do
+  maybeEndpointAppVersion <- fmap join . for maybeApiOpts $
+    \apiOpts -> runFossaApiClient apiOpts $ do
       -- Using 'recovery' as API corresponding to 'getEndpointVersion',
       -- seems to be not stable and we sometimes see TimeoutError in telemetry
       version <- recover getEndpointVersion
       debugMetadata "FossaEndpointCoreVersion" version
       pure version
-    _ -> pure Nothing
 
   -- In our graph, we may have unresolved path dependencies
   -- If we are in output mode, do nothing. If we are in upload mode
   -- license scan all path dependencies, and upload findings to Endpoint,
   -- and queue a build for all path+ dependencies
-  filteredProjects' <- case (shouldAnalyzePathDependencies, destination) of
-    (True, UploadScan apiOpts _) ->
+  filteredProjects' <- case (shouldAnalyzePathDependencies, destinationMetadata destination) of
+    (True, Just (DestinationMeta (apiOpts, _))) ->
       Diag.context "path-dependencies"
         . runFossaApiClient apiOpts
         $ runStickyLogger SevInfo
@@ -420,8 +490,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           $ analyzeForReachability projectScans
   let reachabilityUnits = onlyFoundUnits reachabilityUnitsResult
 
-  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
-  renderScanSummary (severity cfg) maybeEndpointAppVersion analysisResult cfg
+  let analysisResult = AnalysisScanResult projectScans vsiResults binarySearchResults maybeFicusResults manualSrcUnits dynamicLinkedResults maybeLernieResults reachabilityUnitsResult
+      isDebugMode = isJust (Config.debugDir cfg)
+  renderScanSummary isDebugMode maybeEndpointAppVersion analysisResult cfg
 
   -- Need to check if vendored is empty as well, even if its a boolean that vendoredDeps exist
   let licenseSourceUnits =
@@ -431,28 +502,42 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Nothing, Just lernie) -> Just lernie
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
-  let outputResult = buildResult includeAll additionalSourceUnits filteredProjects' licenseSourceUnits
+  let forkAliasMap = mkForkAliasMap forkAliases
+  -- Collect labels from fork aliases to merge into source units
+  let forkAliasLabels = collectForkAliasLabels forkAliases
+
+  -- Convert projects to source units and translate fork aliases in them
+  let scannedSourceUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) filteredProjects'
+  let translatedAdditionalSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) additionalSourceUnits
+  let translatedScannedSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) scannedSourceUnits
+  let allTranslatedSourceUnits = map (mergeForkAliasLabels forkAliasLabels) (translatedAdditionalSourceUnits ++ translatedScannedSourceUnits)
+
+  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
 
   scanUnits <-
-    case (keywordSearchResultsFound, checkForEmptyUpload includeAll projectScans filteredProjects' additionalSourceUnits licenseSourceUnits) of
+    case (keywordSearchResultsFound, checkForEmptyUpload projectScans filteredProjects' allTranslatedSourceUnits licenseSourceUnits) of
       (False, NoneDiscovered) -> Diag.warn ErrNoProjectsDiscovered $> emptyScanUnits
       (True, NoneDiscovered) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  doUpload outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits
+  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
 
   pure outputResult
   where
-    doUpload result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits =
-      case destination of
-        OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
-        UploadScan apiOpts metadata ->
-          Diag.context "upload-results"
-            . runFossaApiClient apiOpts
-            $ do
-              locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits
-              doAssertRevisionBinaries iatAssertion locator
+    sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults =
+      let doUpload (DestinationMeta (apiOpts, metadata)) =
+            Diag.context "upload-results"
+              . runFossaApiClient apiOpts
+              $ do
+                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults
+                doAssertRevisionBinaries iatAssertion locator
+       in case destination of
+            OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
+            UploadScan meta -> doUpload meta
+            OutputAndUpload meta -> do
+              logStdout . decodeUtf8 $ Aeson.encode result
+              doUpload meta
 
     emptyScanUnits :: ScanUnits
     emptyScanUnits = SourceUnitOnly []
@@ -567,27 +652,17 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: Flag IncludeAll -> [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Aeson.Value
-buildResult includeAll srcUnits projects licenseSourceUnits =
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Aeson.Value
+buildResult srcUnits projects licenseSourceUnits forkAliasMap =
   Aeson.object
-    [ "projects" .= map buildProject projects
+    [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
   where
     mergedUnits = case licenseSourceUnits of
-      Nothing -> map sourceUnitToFullSourceUnit finalSourceUnits
+      Nothing -> map sourceUnitToFullSourceUnit srcUnits
       Just licenseUnits -> do
-        NE.toList $ mergeSourceAndLicenseUnits finalSourceUnits licenseUnits
-    finalSourceUnits = srcUnits ++ scannedUnits
-    scannedUnits = map (Srclib.projectToSourceUnit (fromFlag IncludeAll includeAll)) projects
-
-buildProject :: ProjectResult -> Aeson.Value
-buildProject project =
-  Aeson.object
-    [ "path" .= projectResultPath project
-    , "type" .= projectResultType project
-    , "graph" .= graphingToGraph (projectResultGraph project)
-    ]
+        NE.toList $ mergeSourceAndLicenseUnits srcUnits licenseUnits
 
 updateProgress :: Has StickyLogger sig m => Progress -> m ()
 updateProgress Progress{..} =

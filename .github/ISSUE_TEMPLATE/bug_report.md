@@ -21,7 +21,7 @@ Steps to reproduce the behavior:
 A clear and concise description of what you expected to happen.
 
 **Debug bundle**
-Please run `fossa` with the `--debug` flag and attach the resulting `fossa.debug.json.gz` file here.
+Please run `fossa` with the `--debug` flag and attach the resulting `fossa.debug.zip` file here.
 
 **Additional context**
 Add any other context you think is relevant about the problem here.

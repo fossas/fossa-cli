@@ -58,9 +58,12 @@ module Test.Fixtures (
   policy,
   team,
   excludePath,
-) where
+  absFile,
+  absDir,
+)
+where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -72,6 +75,7 @@ import App.Types (Mode (..), OverrideDynamicAnalysisBinary (..))
 import App.Types qualified as App
 import Control.Effect.FossaApiClient qualified as App
 import Control.Timeout (Duration (MilliSeconds))
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as LB
 import Data.Flag (toFlag)
 import Data.List.NonEmpty (NonEmpty)
@@ -86,11 +90,26 @@ import Discovery.Filters (
   MavenScopeFilters (MavenScopeIncludeFilters),
   comboExclude,
  )
-import Effect.Logger (Severity (..))
 import Fossa.API.CoreTypes qualified as CoreAPI
-import Fossa.API.Types (Archive (..))
+import Fossa.API.Types (
+  Archive (..),
+  OrgId (OrgId),
+  Organization (..),
+  Subscription (..),
+ )
 import Fossa.API.Types qualified as API
-import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, parseAbsDir, (</>))
+import Path (
+  Abs,
+  Dir,
+  File,
+  Path,
+  Rel,
+  mkAbsDir,
+  mkRelDir,
+  mkRelFile,
+  parseAbsDir,
+  (</>),
+ )
 import Srclib.Types (LicenseScanType (..), LicenseSourceUnit (..), Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), emptyLicenseUnit)
 import System.Directory (getTemporaryDirectory)
 import Text.RawString.QQ (r)
@@ -106,13 +125,70 @@ apiOpts =
     }
 
 organization :: API.Organization
-organization = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False False API.Free
+organization =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = False
+    , orgSubscription = Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
+    }
 
 organizationWithPreflightChecks :: API.Organization
-organizationWithPreflightChecks = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Free
+organizationWithPreflightChecks =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = True
+    , orgSubscription = Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
+    }
 
 organizationWithPremiumSubscription :: API.Organization
-organizationWithPremiumSubscription = API.Organization (API.OrgId 42) True True True CLILicenseScan True True True False False False True [] False True API.Premium
+organizationWithPremiumSubscription =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = True
+    , orgSubscription = Premium
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
+    }
 
 pushToken :: API.TokenTypeResponse
 pushToken = API.TokenTypeResponse API.Push
@@ -262,12 +338,13 @@ sourceUnitBuildMaven =
     [ ipAddr
     , spotBugs
     ]
-    [ SourceUnitDependency logger []
-    , SourceUnitDependency ipAddr []
+    [ SourceUnitDependency logger [] Aeson.Null
+    , SourceUnitDependency ipAddr [] Aeson.Null
     , SourceUnitDependency
         spotBugs
         [ logger
         ]
+        Aeson.Null
     ]
   where
     ipAddr :: Locator
@@ -312,6 +389,7 @@ vsiSourceUnit =
                           , locatorRevision = Just "1.2.3"
                           }
                     , sourceDepImports = []
+                    , sourceDepData = Aeson.Null
                     }
                 ]
             }
@@ -453,6 +531,7 @@ firstVendoredDep =
     (Just "0.0.1")
     Nothing
     []
+
 secondVendoredDep :: VendoredDependency
 secondVendoredDep =
   VendoredDependency
@@ -461,6 +540,7 @@ secondVendoredDep =
     (Just "0.0.1")
     Nothing
     []
+
 vendoredDeps :: NonEmpty VendoredDependency
 vendoredDeps = NE.fromList [firstVendoredDep, secondVendoredDep]
 
@@ -533,7 +613,6 @@ experimentalConfig :: ExperimentalAnalyzeConfig
 experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
-    , useV3GoResolver = GoModulesBasedTactic
     , resolvePathDependencies = False
     }
 
@@ -561,6 +640,7 @@ mavenScopeFilterSet :: MavenScopeFilters
 mavenScopeFilterSet = MavenScopeIncludeFilters mempty
 
 #ifdef mingw32_HOST_OS
+-- | Arbitrary absolute directory path for tests that require one.
 absDir :: Path Abs Dir
 absDir = $(mkAbsDir "C:/")
 #else
@@ -568,11 +648,14 @@ absDir :: Path Abs Dir
 absDir = $(mkAbsDir "/")
 #endif
 
+-- | Arbitrary absolute file path for tests that require one.
+absFile :: Path Abs File
+absFile = absDir </> $(Path.mkRelFile "file.txt")
+
 standardAnalyzeConfig :: AnalyzeConfig
 standardAnalyzeConfig =
   AnalyzeConfig
     { ANZ.baseDir = App.BaseDir absDir
-    , ANZ.severity = SevDebug
     , ANZ.scanDestination = OutputStdout
     , ANZ.projectRevision = projectRevision
     , ANZ.vsiOptions = vsiOptions
@@ -592,6 +675,9 @@ standardAnalyzeConfig =
     , ANZ.reachabilityConfig = mempty
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
+    , ANZ.snippetScan = False
+    , ANZ.debugDir = Nothing
+    , ANZ.xVendetta = False
     }
 
 sampleJarParsedContent :: Text
