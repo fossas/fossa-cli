@@ -11,6 +11,7 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, context, recover, 
 import Control.Effect.Reader (Reader)
 import Control.Monad (void)
 import Data.Char (isSpace)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -85,6 +86,7 @@ lddCommand binaryPath =
     { cmdName = "ldd"
     , cmdArgs = [toText binaryPath]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 type Parser = Parsec Void Text

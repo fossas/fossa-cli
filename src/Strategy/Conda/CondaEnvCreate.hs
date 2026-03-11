@@ -53,6 +53,7 @@ condaEnvCmdYes environmentYml =
         , "--yes"
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 condaEnvCmdForce :: Path Abs File -> Command
@@ -69,6 +70,7 @@ condaEnvCmdForce environmentYml =
         , "--force"
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 buildGraph :: [CondaEnvDep] -> Graphing Dependency

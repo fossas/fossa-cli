@@ -31,7 +31,7 @@ spec = do
         let binPath = toPath binPaths
         let binDir = parent binPath
         let binPathText = toText binPath
-        let command = Command binPathText ["--version"] Never
+        let command = Command binPathText ["--version"] Never mempty
 
         -- Run circe with --version argument
         result <- exec binDir command

@@ -26,6 +26,7 @@ bundleShowCmd =
     { cmdName = "bundle"
     , cmdArgs = ["show"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 analyze' :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
