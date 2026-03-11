@@ -58,6 +58,11 @@ jobs:
       with:
         lfs: true
         fetch-depth: 2
+        fetch-tags: true
+
+    - name: Get latest release tag
+      id: latest-tag
+      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -117,50 +122,29 @@ jobs:
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-    - name: Check git status and collect information
+    - name: Check git status
       # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
-      run: |
-        git status --porcelain
-        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
-
-    # Compute cache key and save to a temporary file.
-    #
-    # We compute the cache key based on the solved install plan instead of just
-    # hashing the `.cabal` file, since there are many kinds of changes that will
-    # cause `.cabal` to change (e.g. adding new source modules).
-    - name: Compute cache key (not ARM Linux)
-      if: ${{ matrix.os != 'LinuxARM' }}
-      id: compute-cache-key
-      run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
-
-    - name: Compute Cache Key (Linux Arm)
-      if: ${{ matrix.os == 'LinuxARM' }}
-      id: compute-cache-key-arm
-      uses: docker://fossa/haskell-static-alpine:ghc-9.8.4
-      with:
-        args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
+      run: git status --porcelain
 
     # The home directory inside a github container run during a step is different than one run outside of it.
     # This is why there is special logic for 'LinuxARM'.
-    # Its builds run inside a container but are cached by an action outside of it..
+    # Its builds run inside a container but are cached by an action outside of it.
     - uses: actions/cache@v4
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key || steps.compute-cache-key-arm.outputs.cabal-cache-key }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('spectrometer.cabal', matrix.project-file, 'cabal.project.common') }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ matrix.os-name }}-${{ matrix.ghc }}-
 
     - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ github.sha }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-${{ hashFiles('spectrometer.cabal', matrix.project-file, 'cabal.project.common') }}
         restore-keys: |
-          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-
           ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-
-          ${{ matrix.os-name }}-${{ matrix.ghc }}-
 
     - name: Update vendored binaries
       run: |
