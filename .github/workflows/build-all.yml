@@ -62,7 +62,7 @@ jobs:
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      run: echo "tag=$(git tag --sort=-v:refname | head -1 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
