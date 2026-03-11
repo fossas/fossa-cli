@@ -69,6 +69,7 @@ dartPubDepCmd =
     { cmdName = "dart"
     , cmdArgs = ["pub", "deps", "-s", "compact"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Represents `flutter pub deps -s compact`.
@@ -79,6 +80,7 @@ flutterPubDepCmd =
     { cmdName = "flutter"
     , cmdArgs = ["pub", "deps", "-s", "compact"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Represents `pub deps -s compact`.
@@ -90,6 +92,7 @@ pubDepJsonCmd =
     { cmdName = "pub"
     , cmdArgs = ["deps", "-s", "compact"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 data PubDepPackage = PubDepPackage

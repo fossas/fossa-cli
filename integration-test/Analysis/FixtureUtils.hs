@@ -151,6 +151,7 @@ decorateCmdWith (NixEnv pkgs) cmd =
     { cmdName = "nix-shell"
     , cmdArgs = ["-p"] <> pkgs <> ["--run"] <> [cmdName cmd <> " " <> Text.intercalate " " (cmdArgs cmd)]
     , cmdAllowErr = cmdAllowErr cmd
+    , cmdEnvVars = cmdEnvVars cmd
     }
 
 -- --------------------------------

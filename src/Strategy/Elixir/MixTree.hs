@@ -18,7 +18,7 @@ module Strategy.Elixir.MixTree (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import Control.Effect.Diagnostics (Diagnostics, Has, context, fatalText, warn)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, fatalText, warn, (<||>))
 import Control.Monad (void, when)
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
 import Data.Aeson (ToJSON)
@@ -73,17 +73,40 @@ import Types (DependencyResults (..), GraphBreadth (..))
 missingDepVersionsMsg :: Text
 missingDepVersionsMsg = "Some of dependencies versions were not resolved from `mix deps` and `mix deps.tree`. Has `mix deps.get` and `mix compile` been executed?"
 
+-- | Analyze an Elixir Mix project for its dependency graph.
+--
+-- We want to report only production dependencies, so we prefer running Mix
+-- commands with @MIX_ENV=prod@. This causes Mix to resolve dependencies in the
+-- @:prod@ environment, excluding @:dev@ and @:test@-only packages.
+--
+-- However, @MIX_ENV=prod@ can fail for projects that use
+-- @import_config "\#{Mix.env()}.exs"@ in their @config\/config.exs@ without
+-- providing a @config\/prod.exs@ file. This is a common pattern in Elixir
+-- libraries (e.g. absinthe) that only ship @dev.exs@ and @test.exs@ configs.
+--
+-- To handle both cases, we use a fallback strategy:
+--
+--   1. First, try with @MIX_ENV=prod@ — this gives the most accurate
+--      production dependency list.
+--   2. If that fails, fall back to the default environment with
+--      @--only prod@ — this filters the display output to show only
+--      production dependencies, though it still resolves in the @:dev@
+--      environment. The @--only@ flag is less precise but works for
+--      projects without prod config files.
 analyze :: (Has Exec sig m, Has Diagnostics sig m) => MixProject -> m DependencyResults
 analyze project = do
   let dir = mixDir project
-  -- Get all dependencies
+
+  -- Try MIX_ENV=prod first, falling back to --only prod if it fails.
+  -- See the module-level documentation above for why this fallback exists.
   depsAllEnvTree <-
     context "Identifying relationship among dependencies" $
-      supportedMixDeps <$> execParser mixTreeCmdOutputParser dir mixDepTreeCmd
+      (supportedMixDeps <$> execParser mixTreeCmdOutputParser dir mixDepTreeCmdProd)
+        <||> (supportedMixDeps <$> execParser mixTreeCmdOutputParser dir mixDepTreeCmdFallback)
   depsAllResolved <-
     context "Inferring dependencies versioning" $
-      Map.filter (supportedSCM . depResolvedSCM)
-        <$> execParser mixDepsCmdOutputParser dir mixDepCmd
+      (Map.filter (supportedSCM . depResolvedSCM) <$> execParser mixDepsCmdOutputParser dir mixDepCmdProd)
+        <||> (Map.filter (supportedSCM . depResolvedSCM) <$> execParser mixDepsCmdOutputParser dir mixDepCmdFallback)
 
   -- Reminder to get and compile dependencies, if not already done so.
   when (missingResolvedVersions depsAllResolved) $ warn missingDepVersionsMsg
@@ -134,22 +157,63 @@ data MixDepResolved = MixDepResolved
   }
   deriving (Show, Ord, Eq)
 
--- | mix deps --all
-mixDepCmd :: Command
-mixDepCmd =
+-- | Primary command: @MIX_ENV=prod mix deps --all@.
+--
+-- Setting @MIX_ENV=prod@ causes Mix to resolve dependencies in the production
+-- environment, which correctly excludes packages declared with
+-- @only: :dev@ or @only: :test@ in @mix.exs@.
+mixDepCmdProd :: Command
+mixDepCmdProd =
   Command
     { cmdName = "mix"
     , cmdArgs = ["deps", "--all"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.singleton "MIX_ENV" "prod"
     }
 
--- | mix deps.tree --format plain.
-mixDepTreeCmd :: Command
-mixDepTreeCmd =
+-- | Fallback command: @mix deps --all@.
+--
+-- Used when @MIX_ENV=prod@ fails (e.g. projects missing @config\/prod.exs@).
+-- Runs in the default (@:dev@) environment, which means all dependencies are
+-- returned regardless of their @only:@ declarations in @mix.exs@.
+mixDepCmdFallback :: Command
+mixDepCmdFallback =
+  Command
+    { cmdName = "mix"
+    , cmdArgs = ["deps", "--all"]
+    , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
+    }
+
+-- | Primary command: @MIX_ENV=prod mix deps.tree --format plain@.
+--
+-- Setting @MIX_ENV=prod@ causes Mix to resolve and display only production
+-- dependencies. This is more accurate than using @--only prod@, which merely
+-- filters the display output while still resolving dependencies in the
+-- default (@:dev@) environment.
+mixDepTreeCmdProd :: Command
+mixDepTreeCmdProd =
+  Command
+    { cmdName = "mix"
+    , cmdArgs = ["deps.tree", "--format", "plain"]
+    , cmdAllowErr = Never
+    , cmdEnvVars = Map.singleton "MIX_ENV" "prod"
+    }
+
+-- | Fallback command: @mix deps.tree --format plain --only prod@.
+--
+-- Used when @MIX_ENV=prod@ fails (e.g. projects missing @config\/prod.exs@).
+-- The @--only prod@ flag filters the tree output to show only production
+-- dependencies, but it still resolves in the default (@:dev@) environment.
+-- This is less precise than @MIX_ENV=prod@ but works for projects that
+-- lack production config files.
+mixDepTreeCmdFallback :: Command
+mixDepTreeCmdFallback =
   Command
     { cmdName = "mix"
     , cmdArgs = ["deps.tree", "--format", "plain", "--only", "prod"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 type Parser = Parsec Void Text
