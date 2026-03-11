@@ -11,7 +11,6 @@ import App.Fossa.Config.SBOM qualified as Config
 import App.Fossa.SBOM.Analyze qualified as Analyze
 import App.Fossa.Subcommand (SubCommand)
 import App.Fossa.Test (testMain)
-import Codec.Compression.GZip qualified as GZip
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Diagnostics (
@@ -23,17 +22,15 @@ import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Effect.Exec (Exec)
-import Effect.Logger (
-  Logger,
-  Severity (..),
- )
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
+import System.FilePath ((</>))
 
 sbomSubCommand :: SubCommand SBOMCommand SBOMScanConfig
 sbomSubCommand = Config.mkSubCommand dispatch
 
 debugBundlePath :: FilePath
-debugBundlePath = "fossa.debug.json.gz"
+debugBundlePath = "fossa.debug.json"
 
 dispatch ::
   ( Has Diagnostics sig m
@@ -47,10 +44,15 @@ dispatch ::
   m ()
 dispatch = \case
   AnalyzeCfg cfg -> do
-    case Config.severity cfg of
-      SevDebug -> do
-        (scope, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ Analyze.analyze cfg
-        sendIO . BL.writeFile debugBundlePath . GZip.compress $ Aeson.encode scope
+    case Config.debugDir cfg of
+      Just debugDir -> do
+        (bundle, res) <- collectDebugBundle cfg $ Diag.errorBoundaryIO $ Analyze.analyze cfg
+
+        -- Write debug JSON to debug directory (uncompressed)
+        sendIO $ do
+          let debugJsonPath = debugDir </> debugBundlePath
+          BL.writeFile debugJsonPath $ Aeson.encode bundle
+
         Diag.rethrow res
-      _ -> ignoreDebug $ Analyze.analyze cfg
+      Nothing -> ignoreDebug $ Analyze.analyze cfg
   TestCfg cfg -> testMain cfg

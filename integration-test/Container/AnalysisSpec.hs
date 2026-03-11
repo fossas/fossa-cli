@@ -14,7 +14,6 @@ import Container.Types (
  )
 import Data.Flag (toFlag')
 import Diag.Result (Result (..))
-import Effect.Logger (Severity (SevInfo))
 import Test.Hspec (Spec, aroundAll, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
@@ -25,15 +24,15 @@ registrySourceCfg =
   ContainerAnalyzeConfig
     { scanDestination = OutputStdout
     , revisionOverride = OverrideProject Nothing Nothing Nothing
-    , imageLocator = ImageText "public.ecr.aws/docker/library/alpine:3.19.1"
+    , imageLocator = ImageText "ghcr.io/fossas/haskell-dev-tools:9.8.4"
     , jsonOutput = toFlag' False
     , usesExperimentalScanner = True
     , dockerHost = ""
     , arch = "amd64"
-    , severity = SevInfo
     , onlySystemDeps = False
     , filterSet = mempty
     , withoutDefaultFilters = toFlag' False
+    , debugDir = Nothing
     }
 
 runAnalyze :: ContainerAnalyzeConfig -> (ContainerScan -> IO ()) -> IO ()
@@ -50,8 +49,8 @@ registrySourceAnalysis = do
       it "Has the correct OS" $
         \scan -> scan.imageData.imageOs `shouldBe` Just "alpine"
       it "Has the correct OS release version" $
-        \scan -> scan.imageData.imageOsRelease `shouldBe` Just "3.19.1"
+        \scan -> scan.imageData.imageOsRelease `shouldBe` Just "3.18.12"
       it "Has the expected image tag" $
-        \scan -> scan.imageTag `shouldBe` "public.ecr.aws/docker/library/alpine"
+        \scan -> scan.imageTag `shouldBe` "ghcr.io/fossas/haskell-dev-tools"
       it "Has at least one layer" $
         \scan -> scan.imageData.imageLayers `shouldSatisfy` (not . null)

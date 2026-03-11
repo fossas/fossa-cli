@@ -87,8 +87,8 @@ runFossaApiClient apiOpts action = do
             QueueSBOMBuild archive team rebuild -> Core.queueSBOMBuild archive team rebuild
             ResolveProjectDependencies locator -> VSI.resolveProjectDependencies locator
             ResolveUserDefinedBinary deps -> VSI.resolveUserDefinedBinary deps
-            UploadAnalysis rev metadata units -> Core.uploadAnalysis rev metadata units
-            UploadAnalysisWithFirstPartyLicenses rev metadata uploadKind -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata uploadKind
+            UploadAnalysis rev metadata units ficusResults -> Core.uploadAnalysis rev metadata units ficusResults
+            UploadAnalysisWithFirstPartyLicenses rev metadata uploadKind ficusResults -> Core.uploadAnalysisWithFirstPartyLicenses rev metadata uploadKind ficusResults
             UploadArchive url path -> Core.uploadArchive url path
             UploadNativeContainerScan revision metadata scan -> Core.uploadNativeContainerScan revision metadata scan
             UploadContributors locator contributors -> Core.uploadContributors locator contributors

@@ -6,8 +6,8 @@ This reference describes how to debug it and in what situations you may want to.
 The intended audience for this reference is both FOSSA employees and any users
 who want to debug FOSSA CLI themselves.
 
-If you are a reader inside or outside the FOSSA organization and see anything 
-that could be improved in this document, please open a pull request or 
+If you are a reader inside or outside the FOSSA organization and see anything
+that could be improved in this document, please open a pull request or
 drop us a note on [support.fossa.com](https://support.fossa.com)!
 
 ## Using this reference
@@ -93,21 +93,29 @@ fossa analyze --debug
 
 After this has run, a new file is created in the current
 working directory (the directory from which you launched `fossa`).
-This file is titled `fossa.debug.json.gz`.
+This file is titled `fossa.debug.zip`. Its contents can vary depending on the exact command you are running.
+But it will almost always contain the debug bundle in fossa.debug.json.
 
 ### Extracting a debug bundle
 
-The FOSSA CLI debug bundle is a gzipped JSON file,
-so can be extracted with just `gzip`:
+The FOSSA CLI debug bundle is a JSON file inside of fossa.debug.zip,
+
+If you want to extract every file in the zip:
+
 ```
-; gunzip fossa.debug.json.gz
+; unzip fossa.debug.zip
 ```
 
-If you also want the JSON to be formatted,
-you can do this in a single line
+
+If you only want the debug bundle, you can use
+```
+; unzip fossa.debug.zip fossa.debug.json
+```
+
+If you also want the JSON to be formatted, you can do this in a single line
 (if you have `jq` installed):
 ```
-; gunzip fossa.debug.json.gz --to-stdout | jq > fossa.debug.json
+; unzip -p fossa.debug.zip fossa.debug.json | jq > fossa.debug.json
 ```
 
 ### Reading a debug bundle

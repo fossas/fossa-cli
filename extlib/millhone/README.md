@@ -1,7 +1,6 @@
 # `millhone`
 
-This CLI is used for FOSSA snippet scanning,
-and will be accessible via `fossa snippets` in future FOSSA CLI releases.
+This CLI is used for FOSSA container JAR analysis.
 
 # Subcommands
 

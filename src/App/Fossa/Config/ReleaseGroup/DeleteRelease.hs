@@ -60,10 +60,11 @@ cliParser =
 
 mergeOpts ::
   (Has Diagnostics sig m) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   DeleteReleaseOpts ->
   m DeleteReleaseConfig
-mergeOpts maybeConfig envVars DeleteReleaseOpts{..} = do
+mergeOpts _ maybeConfig envVars DeleteReleaseOpts{..} = do
   apiOpts <- Common.collectApiOpts maybeConfig envVars releaseGroupCommon
   pure $ DeleteReleaseConfig apiOpts releaseGroupTitleOpts releaseGroupReleaseTitleOpts

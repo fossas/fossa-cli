@@ -64,7 +64,7 @@ FOSSA 3.x supports following new build managers and languages:
 
 FOSSA CLI 3.x now does automatic analysis target discovery when you run `fossa analyze`. This means that `fossa init` is no longer required. `fossa init` is now a no-op that emits a warning, and will be removed in a future release.
 
-In 1.x, modules could be manually configured with "strategies" that specified _how_ a module should be analyzed. While `fossa init` attempted to choose the best strategy, manual intervention was sometimes required depending on the project's setup. 
+In 1.x, modules could be manually configured with "strategies" that specified _how_ a module should be analyzed. While `fossa init` attempted to choose the best strategy, manual intervention was sometimes required depending on the project's setup.
 
 In 3.x, the CLI now automatically selects the optimal strategy for analysis targets given the current environment (e.g. whether a build tool is available). This is possible because discovery and analysis are now one step, so we can check the suitability of analysis strategies while discovering targets.
 
@@ -72,7 +72,7 @@ In 3.x, the CLI now automatically selects the optimal strategy for analysis targ
 
 With [`fossa-deps.{yml,json}` file](features/manual-dependencies.md), 3.x supports:
 
-- License scanning vendor dependencies 
+- License scanning vendor dependencies
 <!-- markdown-link-check-disable-next-line -->
 - Analyzing archives that are located at a specific web address (e.g. https://my-deps-source/v1.zip)
 - Manually specifying dependency by it's name and license (e.g. my-custom-dep with MIT license)
@@ -123,9 +123,9 @@ Following CLI commands are not supported with 3.x:
 ### Language Specific Changes
 
 #### Gradle
-- 3.x uses a new plugin-based strategy to perform discovery and analysis, it analyses all resolvable Gradle configurations. 
+- 3.x uses a new plugin-based strategy to perform discovery and analysis, it analyses all resolvable Gradle configurations.
 - 3.x does not accept any options: `cmd`, `task`, `timeout`, `all-configurations`, `configuration`, `retries`, `online`, `all-submodules`, and any other option supported in 1.x for Gradle analysis.
-- In 3.x, 
+- In 3.x,
    - There is no timeout (analysis may run for a long time)
    - All resolvable configurations are analyzed
    - There are no retries (CLI will attempt to analyze the project once)
@@ -134,7 +134,7 @@ Following CLI commands are not supported with 3.x:
 - Refer to [FOSSA 3.x gradle docs](references/strategies/languages/gradle/gradle.md) for more information for gradle.
 
 #### Clojure
-- 3.x performs the `lein deps :tree` strategy by default. 
+- 3.x performs the `lein deps :tree` strategy by default.
 - 3.x does not support any options - `strategy`, and `lien` for Clojure analysis.
 - Refer to [FOSSA 3.x clojure docs](references/strategies/languages/clojure/clojure.md) for more information on how 3.x performs analysis for clojure.
 
@@ -175,11 +175,11 @@ Following CLI commands are not supported with 3.x:
 #### Python
 - 3.x automatically selects the application strategy which yields the highest fidelity of dependency information.
 - 3.x uses attempts to infer requirements.txt for any file with prefix `req` in its name, and `txt` extension.
-- 3.x does not support the `strategy` or `requirement` option for Python analysis. 
+- 3.x does not support the `strategy` or `requirement` option for Python analysis.
 - Refer to [FOSSA 3.x python docs](references/strategies/languages/python/python.md) for more information on how 3.x performs analysis for python.
 
 #### Gem
-- 3.x attempts to use the `bundle show` command (`bundle` must be accessible from `$PATH`), and if it fails, it attempts to analyze dependencies from `Gemfile.lock` file. 
+- 3.x attempts to use the `bundle show` command (`bundle` must be accessible from `$PATH`), and if it fails, it attempts to analyze dependencies from `Gemfile.lock` file.
 - 3.x does not support `strategy` or `gemfile-lock-path` option for Gem Analysis.
 - Refer to [FOSSA 3.x gem docs](references/strategies/languages/ruby/ruby.md) for more information on how 3.x performs analysis for gem.
 
@@ -199,7 +199,7 @@ Since analysis targets are now automatically discovered during analysis, `fossa 
 
 ### Migrate your .fossa.yml file
 
-We've made major breaking changes in the `.fossa.yml` file format for CLI 3.x to improve clarity. You'll need to migrate your 1.x `.fossa.yml` to the new 3.x format for their configurations to apply. `.fossa.yml` for 1.x will be ignored when running cli with version greater than 1.x. We determine whether a configuration file is compatible by examining its `version` field. 
+We've made major breaking changes in the `.fossa.yml` file format for CLI 3.x to improve clarity. You'll need to migrate your 1.x `.fossa.yml` to the new 3.x format for their configurations to apply. `.fossa.yml` for 1.x will be ignored when running cli with version greater than 1.x. We determine whether a configuration file is compatible by examining its `version` field.
 
 - .fossa.yml with version field value of `1` and `2` are for 1.x.
 - .fossa.yml with version field value of `3` are for 3.x, and 2.x.
@@ -234,7 +234,7 @@ For more information, including usage information, see [FOSSAv1 report compatibi
 
 FOSSA 1.x CLI is available and can be used indefinitely. We intend to make 3.x the default target for our installation scripts (as previously described in our documentation) in July 2022. If you wish to continue using 1.x, please migrate to using `install-v1` scripts.
 
-FOSSA will only patch 1.x for security fixes. Any feature and patch development work will occur in 3.x moving forth. 
+FOSSA will only patch 1.x for security fixes. Any feature and patch development work will occur in 3.x moving forth.
 
 #### I'm getting a poor result with latest version compared 1.x.
 
@@ -252,7 +252,7 @@ You can identify your cli version by performing `fossa --version` command.
 
 #### I'm running into an error - how do I debug?
 
-You can add `--debug` argument to your fossa commands (e.g. `fossa analyze --debug`), this will emit debug logs to stdout, and create `fossa.debug.json` in working directory. 
+You can add a `--debug` argument to your fossa commands (e.g. `fossa analyze --debug`), this will emit debug logs to stdout, and create a file called `fossa.debug.zip` in the working directory that contains a debug bundle (fossa.debug.json).
 
 #### What's the difference between FOSSA CLI 1.x, 2.x, and 3.x?
 
@@ -268,7 +268,7 @@ You can add `--debug` argument to your fossa commands (e.g. `fossa analyze --deb
 
 3.x will be released on November 12, 2021.
 
-> Note: There are no breaking changes from 2.x to 3.x. The 3.x version in functional sense, continuation of 2.x version. The 3.x version was released to (1) match the `version` field of the fossa configuration file with the major release version of cli, (2) mark migration of CLI 2.x source code back into the fossa-cli repository, and (3) mark 3.x now the default target for installation for all fossa users moving forwards. 
+> Note: There are no breaking changes from 2.x to 3.x. The 3.x version in functional sense, continuation of 2.x version. The 3.x version was released to (1) match the `version` field of the fossa configuration file with the major release version of cli, (2) mark migration of CLI 2.x source code back into the fossa-cli repository, and (3) mark 3.x now the default target for installation for all fossa users moving forwards.
 
 
 If you were previously using the installation script provided at [fossas/spectrometer](https://github.com/fossas/spectrometer/), it is now recommended to use the installation latest script provided at [fossas/fossa-cli](https://github.com/fossas/fossa-cli/).

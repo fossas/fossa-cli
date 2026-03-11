@@ -65,5 +65,17 @@
    "locator-dependencies": [
       "fetcher-1+one",
       "fetcher-2+two$1.0.0"
+   ],
+   "fork-aliases": [
+      {
+         "fork": {
+            "type": "cargo",
+            "name": "my-serde"
+         },
+         "base": {
+            "type": "cargo",
+            "name": "serde"
+         }
+      }
    ]
 }

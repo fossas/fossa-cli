@@ -39,7 +39,7 @@ import Data.Maybe (mapMaybe)
 import Diag.Result (Result (..))
 import Discovery.Filters (AllFilters)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logDebug, logInfo, pretty)
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
 import Srclib.Converter (projectToSourceUnit)
 import Srclib.Types (
@@ -134,7 +134,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
     -- it is impossible to perform reachability, as we may not have all symbols
     -- used in the application to perform accurate analysis
     (Partial, _) -> do
-      logInfo . pretty $ "FOSSA CLI does not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
+      logDebug . pretty $ "FOSSA CLI does not support reachability analysis, with partial dependencies graph (skipping: " <> displayId <> ")"
       pure . SourceUnitReachabilitySkippedPartialGraph $ dpi
     (Complete, MavenProjectType) -> context "maven" $ do
       analysis <- Diag.errorBoundaryIO . diagToDebug $ case Map.lookup projectPath reachabilityJarsByProject of
@@ -163,7 +163,7 @@ callGraphOf (Scanned dpi (Success _ projectResult)) = do
     -- Exclude units for package manager/language we cannot support yet!
     _ -> do
       -- Update docs: ./docs/features/vuln_reachability.md
-      logInfo . pretty $ "FOSSA CLI does not support reachability analysis for: " <> displayId <> " yet. (skipping)"
+      logDebug . pretty $ "FOSSA CLI does not support reachability analysis for: " <> displayId <> " yet. (skipping)"
       pure . SourceUnitReachabilitySkippedNotSupported $ dpi
 -- Not possible to perform reachability analysis for projects
 -- which were not scanned (skipped due to filter), as we do not

@@ -198,6 +198,11 @@ version: 3
 #     - type: bundler
 #       path: prod/docker
 #
+#   # Don't use any manifest-based strategies when locating targets.
+#   # This has the effect of only looking for targets specified in fossa-deps.yaml.
+#   # This option will override any other filters, both target filters and path filters.
+#   excludeManifestStrategies: true
+#
 #
 # # Paths Configuration
 # # Filtering section to specify which paths should be scanned or excluded.

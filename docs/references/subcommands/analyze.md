@@ -142,6 +142,41 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | `--strict`                                                                        | Enforces strict analysis to ensure the most accurate results by rejecting fallbacks. When run with `--static-only-analysis`, the most optimal static strategy will be applied without fallbacks. |
 
 
+### Snippet Scanning
+
+Snippet scanning identifies potential open source code snippets within your first-party source code by comparing file fingerprints against FOSSA's knowledge base. This feature helps detect code that may have been copied from open source projects.
+
+#### Enabling Snippet Scanning
+
+| Name                | Description                                                                                                                                                                           |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--snippet-scan`  | Enable snippet scanning during analysis. This feature fingerprints your source files and checks them against FOSSA's snippet database.        |
+
+Snippet Scanning must also be enabled for your organization, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
+
+#### More detail
+
+For more detail about how Snippet Scanning works, how to use file filtering during Snippet Scanning, what information is sent to FOSSA's servers and a description of the Snippet Scan Summary, see [the Snippet Scanning feature documentation](../../features/snippet-scanning.md).
+
+### Vendored Dependency Scanning with Vendetta
+
+Vendetta is a feature that identifies the paths of potential open source code
+dependencies vendored in your project by comparing file hashes against FOSSA's
+knowledge base. This feature helps find dependencies that are included in your
+project directly as source.
+
+#### Enabling Vendetta
+
+| Name                | Description                                                                                                                                                                           |
+|---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--x-vendetta`      | Enable vendored dependency scanning during analysis. This experimental feature hashes your source files and checks them against FOSSA's open source component database.               |
+
+#### More detail
+
+For more detail about how Vendetta works, how to use file filtering during
+scanning, or what information is sent to FOSSA's servers, see
+[the Vendetta feature documentation](../../features/vendetta.md).
+
 ### Experimental Options
 
 _Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
@@ -151,8 +186,6 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | Name                                                                                     | Description                                                                                                                                                                                    |
 |------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).                               |
-| [`--experimental-link-project-binary './some-dir'`](../experimental/msb/README.md)       | Link the provided binary files to the project being analyzed. For more information, see the [multi stage builds overview](../experimental/msb/README.md).                                      |
-| [`--experimental-skip-vsi-graph 'custom+1/some$locator'`](../experimental/msb/README.md) | Skip resolving the dependencies of the given project that was previously linked via `--experimental-link-project-binary`.                                                                      |
 | `--experimental-force-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to run                                                                                                                  |
 | `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
 | `--experimental-analyze-path-dependencies`                                               | License scan path dependencies, and include them in the final analysis. For more information, see the [path dependency overview](../experimental/path-dependency.md).                          |

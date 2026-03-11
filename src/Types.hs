@@ -67,6 +67,7 @@ data DiscoveredProjectType
   = AlpineDatabaseProjectType
   | BerkeleyDBProjectType
   | BinaryDepsProjectType
+  | BunProjectType
   | BundlerProjectType
   | CabalProjectType
   | CargoProjectType
@@ -109,6 +110,7 @@ data DiscoveredProjectType
   | SqliteDBProjectType
   | StackProjectType
   | SwiftProjectType
+  | UvProjectType
   | VsiProjectType
   | YarnProjectType
   deriving (Eq, Ord, Show, Enum, Bounded)
@@ -118,6 +120,7 @@ projectTypeToText = \case
   AlpineDatabaseProjectType -> "apkdb"
   BerkeleyDBProjectType -> "berkeleydb"
   BinaryDepsProjectType -> "binary-deps"
+  BunProjectType -> "bun"
   BundlerProjectType -> "bundler"
   CabalProjectType -> "cabal"
   CargoProjectType -> "cargo"
@@ -160,6 +163,7 @@ projectTypeToText = \case
   SqliteDBProjectType -> "sqlitedb"
   StackProjectType -> "stack"
   SwiftProjectType -> "swift"
+  UvProjectType -> "uv"
   VsiProjectType -> "vsi"
   YarnProjectType -> "yarn"
 

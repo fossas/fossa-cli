@@ -22,7 +22,7 @@ example-project/
   main.c
 ```
 
-When scanned like `fossa snippets analyze -o snippets`,
+When scanned like `millhone analyze -o snippets`,
 would be presented like the below if all files contained a snippet match:
 ```
 snippets/
@@ -89,7 +89,7 @@ committing these results in a FOSSA scan.
 
 # Next Steps
 
-After running `fossa snippets analyze`, the next step is to run `fossa snippets commit`.
+After running `millhone analyze`, the next step is to run `millhone commit`.
 
 These are separate steps to give users the ability to edit or review the matched data
 prior to submitting the results to FOSSA.

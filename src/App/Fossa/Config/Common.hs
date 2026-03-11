@@ -114,6 +114,7 @@ import Control.Timeout (Duration (Minutes))
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Bifunctor (Bifunctor (first))
 import Data.Functor.Extra ((<$$>))
+import Data.IORef (IORef)
 import Data.Maybe (fromMaybe)
 import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
@@ -497,8 +498,8 @@ collectRevisionData' basedir cfg cache override = do
 collectAPIMetadata :: Has Diagnostics sig m => Maybe ConfigFile -> ProjectMetadata -> m ProjectMetadata
 collectAPIMetadata cfgfile cliMeta = maybe (pure cliMeta) (mergeFileCmdMetadata cliMeta) cfgfile
 
-collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
-collectTelemetrySink maybeConfigFile envvars maybeOpts = do
+collectTelemetrySink :: (Has (Lift IO) sig m, Has Diagnostics sig m) => IORef (Maybe FilePath) -> Maybe ConfigFile -> EnvVars -> Maybe CommonOpts -> m (Maybe TelemetrySink)
+collectTelemetrySink debugDirRef maybeConfigFile envvars maybeOpts = do
   let defaultScope = FullTelemetry
   -- Precedence is
   --  (1) command line
@@ -514,7 +515,7 @@ collectTelemetrySink maybeConfigFile envvars maybeOpts = do
 
   let isDebugMode = envTelemetryDebug envvars || (fmap optDebug maybeOpts == Just True)
   case (isDebugMode, providedScope) of
-    (True, FullTelemetry) -> pure $ Just TelemetrySinkToFile
+    (True, FullTelemetry) -> pure $ Just $ TelemetrySinkToFile debugDirRef
     (True, NoTelemetry) -> pure Nothing
     (False, NoTelemetry) -> pure Nothing
     (False, FullTelemetry) -> do

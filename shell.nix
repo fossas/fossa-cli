@@ -9,7 +9,7 @@
     gmp_static =
       gmp.overrideAttrs (old: { dontDisableStatic = true; });
     lzma_static =
-      lzma.overrideAttrs (old: { dontDisableStatic = true; });
+      xz.overrideAttrs (old: { dontDisableStatic = true; });
   in mkShell {
     nativeBuildInputs = [
         cabal-install
@@ -19,15 +19,18 @@
         haskellPackages.cabal-fmt
         hlint
         zlib.dev
-        zlib.static
         git
-        glibc.dev
-        glibc.static
+        pkg-config
+        xz
         bzip2_static
         bzip2_static.dev
         libffi_static.dev
         gmp_static.dev
         lzma_static.dev
+    ] ++ lib.optionals stdenv.isLinux [
+        zlib.static
+        glibc.dev
+        glibc.static
     ];
     shellHook = ''
       export LANG=C.UTF-8

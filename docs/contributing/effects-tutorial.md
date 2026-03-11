@@ -625,7 +625,7 @@ necessary for understanding how the `Member` typeclass works fundamentally.
 
 [Haskell101]: http://youtu.be/cTN1Qar4HSw
 [Haskell102]: http://youtu.be/Ug9yJnOYR4U
-[MTLTutorial]: http://two-wrongs.com/a-gentle-introduction-to-monad-transformers
+[MTLTutorial]: https://web.cs.dal.ca/~nzeh/Teaching/3137/haskell/monads/transformers/
 [fused-talk]: http://youtu.be/vfDazZfxlNs
 [eff-tutorial]: https://github.com/fused-effects/fused-effects/blob/36bec2d6c0e97f7e01df97acd15012e1735c28bf/docs/defining_effects.md
 [simple-file]: https://github.com/fossas/fossa-cli/blob/aafe05624d102eb746b85c78027983e8c128bf24/src/Control/Carrier/Simple.hs

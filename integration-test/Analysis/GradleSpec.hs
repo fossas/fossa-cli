@@ -19,7 +19,7 @@ import Test.Hspec (Spec, aroundAll, describe, it, shouldBe)
 import Types (DiscoveredProjectType (..))
 
 gradleEnv :: FixtureEnvironment
-gradleEnv = NixEnv ["gradle_7"]
+gradleEnv = NixEnv ["gradle"]
 
 springBoot :: AnalysisTestFixture (Gradle.GradleProject)
 springBoot =
@@ -29,9 +29,9 @@ springBoot =
     gradleEnv
     Nothing
     $ FixtureArtifact
-      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v3.1.0-M1.tar.gz"
+      "https://github.com/spring-projects/spring-boot/archive/refs/tags/v4.0.0-RC2.tar.gz"
       [reldir|gradle/sample/|]
-      [reldir|spring-boot-3.1.0-M1|]
+      [reldir|spring-boot-4.0.0-RC2|]
 
 gradleSettingsOnly :: AnalysisTestFixture (Gradle.GradleProject)
 gradleSettingsOnly =

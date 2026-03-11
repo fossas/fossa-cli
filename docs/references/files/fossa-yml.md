@@ -305,6 +305,9 @@ targets:
       path: prod/docker
 ```
 
+#### `targets.excludeManifestStrategies:`
+If set to true, all manifest-based strategies for discovering targets will be skipped. This will still allow things like finding dependencies explicitly specified in fossa-deps.yml, running first-party license scans or running custom-license scans if they are configured. This setting will override any target filters or path filters.
+
 ### `paths:`
 The paths filtering section allows you to specify which paths should be scanned and which should not. The paths should be listed as their location from the root of your project.
 

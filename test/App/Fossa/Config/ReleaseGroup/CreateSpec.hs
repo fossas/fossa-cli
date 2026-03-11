@@ -170,14 +170,14 @@ spec = do
       envVars = EnvVars Nothing False False Nothing Nothing mempty
   describe "mergeOpts" $ do
     it' "should use values from create opts when both create opts and config values are present" $ do
-      createConfig <- mergeOpts (Just $ configFile absFilePath) envVars createOpts
+      createConfig <- mergeOpts Nothing (Just $ configFile absFilePath) envVars createOpts
       shouldBe' expectedReleaseGroupRevisionFromOpts $ releaseGroupRevision createConfig
     it' "should use values from config when create opts values are empty" $ do
-      createConfig <- mergeOpts (Just $ configFile absFilePath) envVars emptyCreateOpts
+      createConfig <- mergeOpts Nothing (Just $ configFile absFilePath) envVars emptyCreateOpts
       shouldBe' expectedReleaseGroupRevisionFromConfig $ releaseGroupRevision createConfig
     it' "should fail when no title is provided" $ do
-      expectFatal' $ mergeOpts Nothing envVars emptyCreateOpts
+      expectFatal' $ mergeOpts Nothing Nothing envVars emptyCreateOpts
     it' "should fail when no release is provided" $ do
-      expectFatal' $ mergeOpts Nothing envVars emptyReleaseCreateOpts
+      expectFatal' $ mergeOpts Nothing Nothing envVars emptyReleaseCreateOpts
     it' "should fail when no projects are provided" $ do
-      expectFatal' $ mergeOpts Nothing envVars emptyProjectsCreateOpts
+      expectFatal' $ mergeOpts Nothing Nothing envVars emptyProjectsCreateOpts

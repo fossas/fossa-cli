@@ -270,6 +270,10 @@
                         {
                             "const": "pdm",
                             "description": "For pdm targets (python)"
+                        },
+                        {
+                            "const": "uv",
+                            "description": "For uv targets (python)"
                         }
                     ],
                     "description": "Target (package manager)"
@@ -514,6 +518,11 @@
                     "items": {
                         "$ref": "#/$defs/targetFilter"
                     }
+                },
+                "excludeManifestStrategies": {
+                    "type": "boolean",
+                    "description": "If set to true, all manifest-based strategies for discovering targets will be skipped. This has the effect of only searching dependencies explicitly specified in fossa-deps.yml. This setting will override any target filters or path filters.",
+                    "default": false
                 }
             }
         },

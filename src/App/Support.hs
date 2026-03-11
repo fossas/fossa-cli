@@ -63,7 +63,7 @@ requestReportIfPersistsWithDebugBundle = withDebugBundle requestReportIfPersists
 requestDebugBundle :: Doc ann
 requestDebugBundle =
   vsep
-    [ "In your bug report, please include FOSSA's debug bundle file: fossa.debug.json.gz."
+    [ "In your bug report, please include FOSSA's debug bundle file: fossa.debug.zip."
     , "You can generate debug bundle by using `--debug` flag, for example: `fossa analyze --debug`"
     ]
 

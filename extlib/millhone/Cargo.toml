@@ -34,7 +34,7 @@ serde_json = "1.0.107"
 serde_yaml = "0.9.25"
 rayon = "1.8.0"
 atty = "0.2.14"
-tracing-subscriber = { version = "0.3.17", features = ["json"] }
+tracing-subscriber = { version = "0.3.20", features = ["json"] }
 lazy-regex = { version = "3.0.2", features = ["std", "regex"] }
 fingerprint = { git = "https://github.com/fossas/lib-fingerprint.git", tag = "v3.0.0", default-features = false, features = ["fp-content-serialize-base64"] }
 tar = "0.4.41"

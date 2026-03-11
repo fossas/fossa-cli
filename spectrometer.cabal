@@ -22,6 +22,7 @@ extra-source-files:
   target/release/millhone
   target/release/millhone.exe
   vendor-bins/circe
+  vendor-bins/ficus
   vendor-bins/index.gob.xz
   vendor-bins/lernie
   vendor-bins/themis-cli
@@ -186,6 +187,7 @@ library
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Discover
     App.Fossa.Analyze.Filter
+    App.Fossa.Analyze.ForkAlias
     App.Fossa.Analyze.Graph
     App.Fossa.Analyze.GraphBuilder
     App.Fossa.Analyze.GraphMangler
@@ -228,7 +230,6 @@ library
     App.Fossa.Config.SBOM.Analyze
     App.Fossa.Config.SBOM.Common
     App.Fossa.Config.SBOM.Test
-    App.Fossa.Config.Snippets
     App.Fossa.Config.Test
     App.Fossa.Container
     App.Fossa.Container.AnalyzeNative
@@ -242,9 +243,12 @@ library
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
+    App.Fossa.DebugDir
     App.Fossa.DependencyMetadata
     App.Fossa.DumpBinaries
     App.Fossa.EmbeddedBinary
+    App.Fossa.Ficus.Analyze
+    App.Fossa.Ficus.Types
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze
@@ -276,9 +280,6 @@ library
     App.Fossa.RunThemis
     App.Fossa.SBOM
     App.Fossa.SBOM.Analyze
-    App.Fossa.Snippets
-    App.Fossa.Snippets.Analyze
-    App.Fossa.Snippets.Commit
     App.Fossa.Subcommand
     App.Fossa.Test
     App.Fossa.VendoredDependency
@@ -385,6 +386,7 @@ library
     Data.String.Conversion
     Data.Tagged
     Data.Text.Extra
+    Data.Text.Jsonc
     Data.Tracing.Instrument
     DepTypes
     Diag.Common
@@ -479,6 +481,7 @@ library
     Strategy.Nim
     Strategy.Nim.NimbleLock
     Strategy.Node
+    Strategy.Node.Bun.BunLock
     Strategy.Node.Errors
     Strategy.Node.Npm.PackageLock
     Strategy.Node.Npm.PackageLockV3
@@ -511,6 +514,7 @@ library
     Strategy.Python.SetupPy
     Strategy.Python.Setuptools
     Strategy.Python.Util
+    Strategy.Python.Uv
     Strategy.R
     Strategy.R.Description
     Strategy.R.Errors
@@ -562,6 +566,7 @@ test-suite unit-tests
     AlpineLinux.ParserSpec
     Android.UtilSpec
     App.DocsSpec
+    App.Fossa.Analyze.ForkAliasSpec
     App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
@@ -608,6 +613,7 @@ test-suite unit-tests
     App.Fossa.VSI.TypesSpec
     App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
+    Bun.BunLockSpec
     BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
@@ -641,6 +647,7 @@ test-suite unit-tests
     Dart.PubSpecSpec
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
+    Data.Text.JsoncSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
@@ -652,6 +659,7 @@ test-suite unit-tests
     Erlang.Rebar3TreeSpec
     Extra.ListSpec
     Extra.TextSpec
+    Ficus.FicusSpec
     Fortran.FpmTomlSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
@@ -700,6 +708,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    Python.UvSpec
     R.DescriptionSpec
     R.RenvSpec
     Reachability.GradleSpec
@@ -712,10 +721,12 @@ test-suite unit-tests
     Ruby.GemfileLockSpec
     Ruby.ParseSpec
     Scala.CommonSpec
+    Scala.PluginSpec
     Scala.SbtDependencyTreeJsonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
     Sqlite.SqliteSpec
+    Srclib.TypesSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
     Swift.Xcode.PbxprojParserSpec
@@ -763,6 +774,7 @@ test-suite integration-tests
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
+    Analysis.Python.UvSpec
     Analysis.RubySpec
     Analysis.RustSpec
     Analysis.ScalaSpec

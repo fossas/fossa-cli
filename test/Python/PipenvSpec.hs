@@ -57,15 +57,15 @@ pipfileLock =
           ]
     }
 
+pipfileToml :: PipfileToml
+pipfileToml =
+  PipfileToml
+    (pipfilePackageList ["pkgOne"])
+    (pipfilePackageList ["pkgTwo"])
+
 pipenvOutput :: [PipenvGraphDep]
 pipenvOutput =
   [ PipenvGraphDep
-      { depName = "pkgOne"
-      , depInstalled = "1.0.0"
-      , depRequired = "==1.0.0"
-      , depDependencies = []
-      }
-  , PipenvGraphDep
       { depName = "pkgTwo"
       , depInstalled = "2.0.0"
       , depRequired = "==2.0.0"
@@ -74,6 +74,12 @@ pipenvOutput =
               { depName = "pkgThree"
               , depInstalled = "3.0.0"
               , depRequired = "==3.0.0"
+              , depDependencies = []
+              }
+          , PipenvGraphDep
+              { depName = "pkgOne"
+              , depInstalled = "1.0.0"
+              , depRequired = "==1.0.0"
               , depDependencies = []
               }
           ]
@@ -124,36 +130,32 @@ depFour =
     , dependencyTags = Map.empty
     }
 
-xit :: String -> Expectation -> SpecWith (Arg Expectation)
-xit _ _ = it "is an ignored test" $ () `shouldBe` ()
-
 spec :: Spec
 spec = do
   pipLockFile <- runIO (BS.readFile "test/Python/testdata/Pipfile.lock")
 
   describe "analyzeWithCmd" $
-    -- FIXME: graphing needs to be refactored to include "reachable" alongside "direct"
-    xit "should use pipenv output for edges and tags" $ do
-      let result = buildGraph pipfileLock (Just pipenvOutput)
+    it "should use pipenv output for edges and tags" $ do
+      let result = buildGraph pipfileToml pipfileLock (Just pipenvOutput)
 
       expectDeps [depOne, depTwo, depThree] result
       expectDirect [depOne, depTwo] result
-      expectEdges [(depTwo, depThree)] result
+      expectEdges [(depTwo, depThree), (depTwo, depOne)] result
 
   describe "analyzeNoCmd" $
-    it "should set all dependencies as direct" $ do
-      let result = buildGraph pipfileLock Nothing
+    it "should have no edges and unreachable deps" $ do
+      let result = buildGraph pipfileToml pipfileLock Nothing
 
       expectDeps [depOne, depTwo, depThree, depFour] result
-      expectDirect [depOne, depTwo, depThree, depFour] result
+      expectDirect [depOne, depTwo] result
       expectEdges [] result
 
   describe "analyzeNoCmdFromFile" $
-    it "should set all dependencies as direct" $ do
+    it "should have no edges and unreachable deps" $ do
       case eitherDecodeStrict pipLockFile of
         Right res -> do
-          let result = buildGraph res Nothing
+          let result = buildGraph pipfileToml res Nothing
           expectDeps [depOne, depTwo, depThree, depFour] result
-          expectDirect [depOne, depTwo, depThree, depFour] result
+          expectDirect [depOne, depTwo] result
           expectEdges [] result
         Left _ -> expectationFailure "failed to parse"

@@ -198,11 +198,12 @@ mergeOpts ::
   , Has Exec sig m
   , Has Logger sig m
   ) =>
+  Maybe FilePath ->
   Maybe ConfigFile ->
   EnvVars ->
   TestCliOpts ->
   m TestConfig
-mergeOpts maybeConfig envvars TestCliOpts{..} = do
+mergeOpts _ maybeConfig envvars TestCliOpts{..} = do
   let baseDir = collectBaseDir testBaseDir
       apiOpts = collectApiOpts maybeConfig envvars commons
       timeout = maybe defaultTimeoutDuration Seconds testTimeout

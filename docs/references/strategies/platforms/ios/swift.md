@@ -163,6 +163,5 @@ For swift, we consider the Xcode project to be a valid Xcode project, if and onl
 
 ## References
 
-- [Swift Package Manager](https://github.com/apple/swift-package-manager)
-- [Package.swift, must begin with version specifier](https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#about-the-swift-tools-version)
-- [Package.swift, must be defined in a single nested statement, and should not be modified after initialization](https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#package)
+- [Swift Package Manager](https://docs.swift.org/swiftpm/documentation/packagemanagerdocs)
+- [Package.swift documentation](https://docs.swift.org/swiftpm/documentation/packagedescription/package/)

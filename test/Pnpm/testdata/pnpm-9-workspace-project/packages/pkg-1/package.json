@@ -11,6 +11,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.7.1",
   "devDependencies": {
-    "colorjs": "^0.1.9"
+    "colorjs": "^0.1.9",
+    "xml2js": "^0.6.2"
   }
 }

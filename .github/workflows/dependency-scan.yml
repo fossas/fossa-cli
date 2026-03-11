@@ -16,10 +16,10 @@ jobs:
         # https://github.com/actions/runner-images/issues/7061#issuecomment-1422639889
         run: |
           sudo chown -R $USER /usr/local/.ghcup
-          ghcup install ghc 9.8.2
-          ghcup set ghc 9.8.2
-          ghcup install cabal 3.10.3.0
-          ghcup set cabal 3.10.3.0
+          ghcup install ghc 9.8.4
+          ghcup set ghc 9.8.4
+          ghcup install cabal 3.12.1.0
+          ghcup set cabal 3.12.1.0
           cabal update
 
       - name: Log debug information
