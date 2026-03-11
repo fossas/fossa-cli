@@ -129,7 +129,7 @@ jobs:
     # The home directory inside a github container run during a step is different than one run outside of it.
     # This is why there is special logic for 'LinuxARM'.
     # Its builds run inside a container but are cached by an action outside of it.
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
@@ -137,7 +137,7 @@ jobs:
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
