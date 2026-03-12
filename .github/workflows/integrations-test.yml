@@ -11,15 +11,15 @@ concurrency:
   group: integration-${{ github.ref }}
   cancel-in-progress: true
 
-# All match patterns for integration test groups. Each group runs a subset;
-# the build job validates that every test belongs to exactly one group.
+# Single source of truth for integration test groups. Used by both the
+# matrix strategy and the build job's coverage validation step.
 env:
-  TEST_GROUPS: >-
-    Analysis.Maven Analysis.Gradle Analysis.Scala Analysis.Clojure
-    Analysis.Go Analysis.Rust Analysis.Erlang Analysis.Elixir
-    Analysis.Python Analysis.Ruby Analysis.Swift Analysis.Cocoapods
-    Analysis.Pnpm Analysis.Nuget Analysis.Carthage Analysis.LicenseScanner
-    Container.Analysis Reachability.Upload
+  TEST_MATRIX: >-
+    [
+      {"group": "jvm", "matches": "Analysis.Maven Analysis.Gradle Analysis.Scala Analysis.Clojure"},
+      {"group": "compiled", "matches": "Analysis.Go Analysis.Rust Analysis.Erlang Analysis.Elixir"},
+      {"group": "scripting-and-other", "matches": "Analysis.Python Analysis.Ruby Analysis.Swift Analysis.Cocoapods Analysis.Pnpm Analysis.Nuget Analysis.Carthage Analysis.LicenseScanner Container.Analysis Reachability.Upload"}
+    ]
 
 jobs:
   # Build once, then run test groups in parallel.
@@ -120,8 +120,9 @@ jobs:
           integration-tests \
           --test-option=--dry-run 2>&1 | grep -c "^  " || echo 0)
 
+        ALL_PATTERNS=$(echo '${{ env.TEST_MATRIX }}' | jq -r '.[].matches' | tr ' ' '\n' | sort -u | tr '\n' ' ')
         MATCH_ARGS=""
-        for pattern in $TEST_GROUPS; do
+        for pattern in $ALL_PATTERNS; do
           MATCH_ARGS="$MATCH_ARGS --test-option=--match --test-option=$pattern"
         done
         MATCHED=$(cabal test --project-file=cabal.project.ci.linux \
@@ -134,7 +135,7 @@ jobs:
         echo "Matched tests: $MATCHED"
         if [ "$TOTAL" -ne "$MATCHED" ]; then
           echo "ERROR: $((TOTAL - MATCHED)) integration tests are not covered by any group pattern."
-          echo "Update TEST_GROUPS in integrations-test.yml to include the missing patterns."
+          echo "Update TEST_MATRIX in integrations-test.yml to include the missing patterns."
           exit 1
         fi
 
@@ -165,15 +166,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - group: jvm
-            matches: "Analysis.Maven Analysis.Gradle Analysis.Scala Analysis.Clojure"
-
-          - group: compiled
-            matches: "Analysis.Go Analysis.Rust Analysis.Erlang Analysis.Elixir"
-
-          - group: scripting-and-other
-            matches: "Analysis.Python Analysis.Ruby Analysis.Swift Analysis.Cocoapods Analysis.Pnpm Analysis.Nuget Analysis.Carthage Analysis.LicenseScanner Container.Analysis Reachability.Upload"
+        include: ${{ fromJson(env.TEST_MATRIX) }}
 
     steps:
     - uses: actions/checkout@v5
