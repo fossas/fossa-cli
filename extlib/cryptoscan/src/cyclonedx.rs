@@ -232,12 +232,13 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
             properties: None,
         });
 
-        let unique_algos: Vec<String> = algo_refs
+        let mut unique_algos: Vec<String> = algo_refs
             .iter()
             .collect::<HashSet<_>>()
             .into_iter()
             .cloned()
             .collect();
+        unique_algos.sort();
 
         dependencies.push(BomDependency {
             dep_ref: lib_ref,
@@ -280,7 +281,7 @@ fn chrono_timestamp() -> String {
     // Simple UTC timestamp without chrono dependency
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs();
     // Format as ISO 8601 (approximate)
     let days = now / 86400;

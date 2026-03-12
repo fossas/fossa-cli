@@ -60,6 +60,17 @@ spec = describe "CryptoScan FIPS Report" $ do
       totalAlgorithms stats `shouldBe` 2
       approvedCount stats `shouldBe` 2
 
+    it "does not deduplicate same-name algorithms with different parameter sets" $ do
+      let results =
+            CryptoScanResults
+              [ (mkFinding "RSA" FipsNotApproved){cryptoFindingAlgorithm = (mkAlgorithm "RSA" FipsNotApproved){cryptoAlgorithmParameterSet = Just "1024"}}
+              , (mkFinding "RSA" FipsApproved){cryptoFindingAlgorithm = (mkAlgorithm "RSA" FipsApproved){cryptoAlgorithmParameterSet = Just "2048"}}
+              ]
+          stats = computeFipsStats results
+      totalAlgorithms stats `shouldBe` 2
+      approvedCount stats `shouldBe` 1
+      notApprovedCount stats `shouldBe` 1
+
 -- Test fixtures
 
 mkAlgorithm :: Text -> FipsStatus -> CryptoAlgorithm
