@@ -143,7 +143,7 @@ fossa analyze --output --crypto-fips-report
 
 | Category | Algorithms |
 |---|---|
-| Symmetric Encryption | AES-128/192/256 (all modes except ECB deprecated by 2030) |
+| Symmetric Encryption | AES-128/192/256 (ECB mode is deprecated by 2030) |
 | Hash Functions | SHA-256, SHA-384, SHA-512, SHA-3 family, SHAKE128/256 |
 | Signatures | RSA >= 2048-bit, ECDSA (P-256/P-384/P-521), EdDSA, ML-DSA |
 | Key Exchange | ECDH (P-256/P-384/P-521), DH >= 2048-bit, ML-KEM |
