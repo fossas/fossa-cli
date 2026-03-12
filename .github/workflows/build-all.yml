@@ -54,7 +54,7 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         lfs: true
         fetch-depth: 2
@@ -62,7 +62,9 @@ jobs:
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      run: |
+        tag="$(git tag --sort=-v:refname 2>/dev/null | head -1 || true)"
+        echo "tag=${tag:-none}" >> "$GITHUB_OUTPUT"
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -70,6 +72,17 @@ jobs:
         brew install jq
 
     # Set up Haskell.
+    # Cache ghcup installations so the setup action skips downloading GHC (~500 MB).
+    - uses: actions/cache@v5
+      if: ${{ !contains(matrix.os-name, 'Linux') }}
+      name: Cache ghcup
+      with:
+        path: |
+          ${{ runner.os == 'Windows' && 'C:\ghcup\bin' || '~/.ghcup/bin' }}
+          ${{ runner.os == 'Windows' && format('C:\ghcup\ghc\{0}', matrix.ghc) || format('~/.ghcup/ghc/{0}', matrix.ghc) }}
+          ${{ runner.os == 'Windows' && 'C:\ghcup\cache' || '~/.ghcup/cache' }}
+        key: ${{ matrix.os-name }}-ghcup-${{ matrix.ghc }}-3.10.3.0
+
     - uses: haskell-actions/setup@v2
       id: setup-haskell
       name: Setup ghc/cabal (non-alpine)
@@ -129,7 +142,7 @@ jobs:
     # The home directory inside a github container run during a step is different than one run outside of it.
     # This is why there is special logic for 'LinuxARM'.
     # Its builds run inside a container but are cached by an action outside of it.
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
@@ -137,7 +150,7 @@ jobs:
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
@@ -249,7 +262,7 @@ jobs:
            exit 1
         fi
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: ${{ matrix.os-name }}-binaries
         path: release
@@ -263,7 +276,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v5
 
     # Sets VERSION from git's tag or sha.
     # refer to: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#example-of-setting-an-output-parameter
@@ -438,7 +451,7 @@ jobs:
     # need to run for tagged release versions.
     - name: Upload release archives
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: release-archives
         path: release

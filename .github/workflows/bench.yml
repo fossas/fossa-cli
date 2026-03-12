@@ -13,14 +13,16 @@ jobs:
     steps:
     - uses: dtolnay/rust-toolchain@stable
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         lfs: true
         fetch-tags: true
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      run: |
+        tag="$(git tag --sort=-v:refname 2>/dev/null | head -1 || true)"
+        echo "tag=${tag:-none}" >> "$GITHUB_OUTPUT"
 
     # Adding the "git config ..." line ensures git doesn't fail during our build.
     - name: Configure Git
@@ -55,7 +57,7 @@ jobs:
 
     # Benchmarks build at a different optimization level, so they use
     # their own cache prefix to avoid collisions with the main build.
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
@@ -63,7 +65,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-cabal-cache-
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
