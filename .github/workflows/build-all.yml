@@ -57,7 +57,7 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         lfs: true
         fetch-depth: 2
@@ -65,7 +65,9 @@ jobs:
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git tag --sort=-v:refname | head -1 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      run: |
+        tag="$(git tag --sort=-v:refname 2>/dev/null | head -1)"
+        echo "tag=${tag:-none}" >> "$GITHUB_OUTPUT"
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -263,7 +265,7 @@ jobs:
            exit 1
         fi
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: ${{ matrix.os-name }}-binaries
         path: release
@@ -277,7 +279,7 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v5
 
     # Sets VERSION from git's tag or sha.
     # refer to: https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#example-of-setting-an-output-parameter
@@ -452,7 +454,7 @@ jobs:
     # need to run for tagged release versions.
     - name: Upload release archives
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: release-archives
         path: release

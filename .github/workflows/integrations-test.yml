@@ -37,7 +37,7 @@ jobs:
     steps:
     - uses: dtolnay/rust-toolchain@stable
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         lfs: true
         fetch-depth: 2
@@ -138,17 +138,19 @@ jobs:
 
     # Upload artifacts that test jobs need so they don't have to rebuild
     # Rust or re-download vendor binaries.
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: vendor-bins
         path: vendor-bins/
+        if-no-files-found: error
 
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v5
       with:
         name: rust-release-bins
         path: |
           target/release/berkeleydb
           target/release/millhone
+        if-no-files-found: error
 
   integration-test:
     name: test-${{ matrix.group }}
@@ -172,7 +174,7 @@ jobs:
             matches: "Analysis.Python Analysis.Ruby Analysis.Swift Analysis.Cocoapods Analysis.Pnpm Analysis.Nuget Analysis.Carthage Analysis.LicenseScanner Container.Analysis Reachability.Upload"
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         lfs: true
         fetch-depth: 2
@@ -214,12 +216,12 @@ jobs:
 
     # extra-source-files (vendor-bins/*, target/release/*) must exist on
     # disk or cabal recompiles EmbeddedBinary.hs (fails under -Werror).
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v5
       with:
         name: vendor-bins
         path: vendor-bins/
 
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v5
       with:
         name: rust-release-bins
         path: target/release/
