@@ -90,15 +90,11 @@ pub fn scan_project(project_path: &Path, ecosystems: &[String]) -> Vec<CryptoFin
 
     for entry in WalkDir::new(project_path)
         .into_iter()
+        .filter_entry(|e| !should_skip_path(e.path()))
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_file())
     {
         let path = entry.path();
-
-        // Skip hidden directories and common non-source dirs
-        if should_skip_path(path) {
-            continue;
-        }
 
         let extension = path
             .extension()
@@ -157,25 +153,26 @@ pub fn scan_project(project_path: &Path, ecosystems: &[String]) -> Vec<CryptoFin
 }
 
 fn should_skip_path(path: &Path) -> bool {
-    let path_str = path.to_string_lossy();
-    let skip_dirs = [
-        "/.git/",
-        "/node_modules/",
-        "/__pycache__/",
-        "/.venv/",
-        "/venv/",
-        "/target/",
-        "/dist/",
-        "/build/",
-        "/.tox/",
-        "/.mypy_cache/",
-        "/.pytest_cache/",
-        "/vendor/",
-        "/.gradle/",
-        "/.idea/",
-        "/.vscode/",
+    const SKIP_DIRS: &[&str] = &[
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "target",
+        "dist",
+        "build",
+        ".tox",
+        ".mypy_cache",
+        ".pytest_cache",
+        "vendor",
+        ".gradle",
+        ".idea",
+        ".vscode",
     ];
-    skip_dirs.iter().any(|d| path_str.contains(d))
+    path.file_name()
+        .and_then(|s| s.to_str())
+        .is_some_and(|name| SKIP_DIRS.contains(&name))
 }
 
 fn pattern_applies(pattern: &CryptoPattern, ecosystems: &[String], file_ext: &str, file_name: &str) -> bool {

@@ -213,6 +213,8 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
 | `--experimental-analyze-path-dependencies`                                               | License scan path dependencies, and include them in the final analysis. For more information, see the [path dependency overview](../experimental/path-dependency.md).                          |
 | [`--x-crypto-scan`](../experimental/crypto-scanning/README.md)                           | Enable cryptographic algorithm detection and FIPS compliance assessment. For more information, see the [crypto scanning overview](../experimental/crypto-scanning/README.md).                   |
+| [`--crypto-cbom-output <path>`](../experimental/crypto-scanning/README.md)               | Export a CycloneDX 1.7 CBOM (Cryptography Bill of Materials) JSON file to the specified path. Implies `--x-crypto-scan`.                                                                       |
+| [`--crypto-fips-report`](../experimental/crypto-scanning/README.md)                      | Print a FIPS 140-3 compliance summary to stdout with per-algorithm status and remediation suggestions. Implies `--x-crypto-scan`.                                                              |
 
 
 ### F.A.Q.

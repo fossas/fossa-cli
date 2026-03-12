@@ -43,9 +43,10 @@ data FipsReportStats = FipsReportStats
   deriving (Show, Eq)
 
 compliancePercentage :: FipsReportStats -> Int
-compliancePercentage FipsReportStats{..}
-  | totalAlgorithms == 0 = 100
-  | otherwise = (approvedCount * 100) `div` totalAlgorithms
+compliancePercentage FipsReportStats{..} =
+  if totalAlgorithms == 0
+    then 100
+    else (approvedCount * 100) `div` totalAlgorithms
 
 -- | Dedupe key for algorithm variants — includes parameter set so that
 -- e.g. RSA-2048 and RSA-1024 are counted separately.
@@ -98,10 +99,13 @@ renderSummary stats@FipsReportStats{..} =
     ]
 
 coloredPercentage :: Int -> Doc AnsiStyle
-coloredPercentage pct
-  | pct >= 100 = annotate (color Green) $ pretty pct <> "%"
-  | pct >= 80 = annotate (color Yellow) $ pretty pct <> "%"
-  | otherwise = annotate (color Red) $ pretty pct <> "%"
+coloredPercentage pct =
+  if pct >= 100
+    then annotate (color Green) $ pretty pct <> "%"
+    else
+      if pct >= 80
+        then annotate (color Yellow) $ pretty pct <> "%"
+        else annotate (color Red) $ pretty pct <> "%"
 
 -- Category types for grouping
 data CryptoCategory
@@ -195,24 +199,23 @@ padRight :: Int -> Text -> Doc ann
 padRight n t = pretty t <> pretty (Text.replicate (max 0 (n - Text.length t)) " ")
 
 suggestAlternative :: Text -> Text
-suggestAlternative name
-  | matchesAny ["chacha20", "chacha20-poly1305", "xchacha20"] name = "AES-256-GCM"
-  | matchesAny ["blake2", "blake2b", "blake2s", "blake3"] name = "SHA-256 / SHA-3"
-  | matchesAny ["md5"] name = "SHA-256"
-  | matchesAny ["md4"] name = "SHA-256"
-  | matchesAny ["rc4", "rc2", "blowfish", "des", "3des-encrypt"] name = "AES-256"
-  | matchesAny ["bcrypt", "argon2", "argon2i", "argon2id", "scrypt"] name = "PBKDF2"
-  | matchesAny ["x25519", "x448"] name = "ECDH P-256 / P-384"
-  | matchesAny ["curve25519"] name = "ECDH NIST curves"
-  | matchesAny ["poly1305"] name = "HMAC / CMAC"
-  | matchesAny ["siphash"] name = "HMAC"
-  | matchesAny ["whirlpool", "ripemd", "ripemd-160"] name = "SHA-256"
-  | matchesAny ["cast5", "idea", "camellia", "seed", "aria"] name = "AES-256"
-  | matchesAny ["twofish", "serpent", "threefish"] name = "AES-256"
-  | otherwise = "Review FIPS 140-3 approved algorithm list"
-
-matchesAny :: [Text] -> Text -> Bool
-matchesAny patterns t = any (\p -> Text.toLower p == Text.toLower t) patterns
+suggestAlternative name =
+  let lower = Text.toLower name
+      check patterns = any (\p -> Text.toLower p == lower) patterns
+   in if check ["chacha20", "chacha20-poly1305", "xchacha20"] then "AES-256-GCM"
+      else if check ["blake2", "blake2b", "blake2s", "blake3"] then "SHA-256 / SHA-3"
+      else if check ["md5"] then "SHA-256"
+      else if check ["md4"] then "SHA-256"
+      else if check ["rc4", "rc2", "blowfish", "des", "3des-encrypt"] then "AES-256"
+      else if check ["bcrypt", "argon2", "argon2i", "argon2id", "scrypt"] then "PBKDF2"
+      else if check ["x25519", "x448"] then "ECDH P-256 / P-384"
+      else if check ["curve25519"] then "ECDH NIST curves"
+      else if check ["poly1305"] then "HMAC / CMAC"
+      else if check ["siphash"] then "HMAC"
+      else if check ["whirlpool", "ripemd", "ripemd-160"] then "SHA-256"
+      else if check ["cast5", "idea", "camellia", "seed", "aria"] then "AES-256"
+      else if check ["twofish", "serpent", "threefish"] then "AES-256"
+      else "Review FIPS 140-3 approved algorithm list"
 
 renderKeySizeWarnings :: [CryptoFinding] -> Doc AnsiStyle
 renderKeySizeWarnings fs =
@@ -235,22 +238,27 @@ keySizeWarning finding =
    in catWarnings name paramSet
   where
     catWarnings :: Text -> Maybe Text -> [Doc AnsiStyle]
-    catWarnings name paramSet
-      | "rsa" `Text.isInfixOf` name = rsaWarning paramSet
-      | "sha-1" `Text.isInfixOf` name || "sha1" `Text.isInfixOf` name =
-          [annotate (color Yellow) "- SHA-1: Deprecated, fully disallowed after 2030-12-31"]
-      | "aes-128" `Text.isInfixOf` name || (name == "aes" && paramSet == Just "128") =
-          [annotate (color Yellow) "- AES-128: Approved but AES-256 recommended for higher security margin"]
-      | "sha-224" `Text.isInfixOf` name =
-          [annotate (color Yellow) "- SHA-224: Deprecated by 2030"]
-      | "3des" `Text.isInfixOf` name || "triple-des" `Text.isInfixOf` name =
-          [annotate (color Yellow) "- 3DES: Legacy decryption only since Jan 2024"]
-      | otherwise = []
+    catWarnings name paramSet =
+      if "rsa" `Text.isInfixOf` name then rsaWarning paramSet
+      else if "sha-1" `Text.isInfixOf` name || "sha1" `Text.isInfixOf` name then
+        [annotate (color Yellow) "- SHA-1: Deprecated, fully disallowed after 2030-12-31"]
+      else if "aes-128" `Text.isInfixOf` name || (name == "aes" && paramSet == Just "128") then
+        [annotate (color Yellow) "- AES-128: Approved but AES-256 recommended for higher security margin"]
+      else if "sha-224" `Text.isInfixOf` name then
+        [annotate (color Yellow) "- SHA-224: Deprecated by 2030"]
+      else if "3des" `Text.isInfixOf` name || "triple-des" `Text.isInfixOf` name then
+        [annotate (color Yellow) "- 3DES: Legacy decryption only since Jan 2024"]
+      else []
 
     rsaWarning :: Maybe Text -> [Doc AnsiStyle]
     rsaWarning Nothing = [annotate (color Yellow) "- RSA: Key size not detected, ensure >= 2048-bit"]
     rsaWarning (Just ps) =
       case reads (Text.unpack ps) :: [(Int, String)] of
-        [(n, "")] | n < 2048 -> [annotate (color Red) $ "- RSA-" <> pretty ps <> ": Below FIPS minimum (2048-bit required)"]
-        [(n, "")] | n < 3072 -> [annotate (color Yellow) $ "- RSA-" <> pretty ps <> ": Approved but RSA-3072+ recommended for 128-bit security"]
+        [(n, "")] ->
+          if n < 2048
+            then [annotate (color Red) $ "- RSA-" <> pretty ps <> ": Below FIPS minimum (2048-bit required)"]
+            else
+              if n < 3072
+                then [annotate (color Yellow) $ "- RSA-" <> pretty ps <> ": Approved but RSA-3072+ recommended for 128-bit security"]
+                else []
         _ -> [annotate (color Yellow) $ "- RSA-" <> pretty ps <> ": Key size format not recognized, ensure >= 2048-bit"]
