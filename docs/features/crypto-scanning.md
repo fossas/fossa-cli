@@ -76,7 +76,8 @@ fossa analyze --crypto-cbom-output /path/to/cbom.json
 This produces a standards-compliant CycloneDX 1.7 JSON file with:
 
 - `cryptographic-asset` component types
-- `cryptoProperties` with `algorithmProperties` (primitive, mode, key size, FIPS level)
+- `cryptoProperties` with `algorithmProperties` (primitive, mode, key size)
+- `fossa:fips-status` component properties for the FIPS classification
 - `provides` dependency relationships linking libraries to their algorithms
 - Algorithm OIDs where applicable
 

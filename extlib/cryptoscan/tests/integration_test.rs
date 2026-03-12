@@ -537,7 +537,8 @@ fn finding_includes_algorithm_details() {
     assert_eq!(algo["primitive"], "ae");
     assert_eq!(algo["fips_status"], "approved");
     assert!(algo["oid"].as_str().is_some(), "should include OID");
-    assert!(algo["classical_security_level"].as_u64().is_some(), "should include security level");
+    // AES-GCM without explicit key size does not have a known security level
+    assert!(algo["classical_security_level"].is_null(), "AES-GCM without key size should not guess security level");
 
     let functions = algo["crypto_functions"].as_array().unwrap();
     assert!(!functions.is_empty(), "should list crypto functions");
