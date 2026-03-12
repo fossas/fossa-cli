@@ -13,7 +13,6 @@ import App.Fossa.CryptoScan.Types (
   CryptoScanResults (..),
   FipsStatus (..),
  )
-import Data.List (nubBy)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
@@ -55,9 +54,18 @@ dedupeKey finding =
   let algo = cryptoFindingAlgorithm finding
    in (Text.toCaseFold (cryptoAlgorithmName algo), cryptoAlgorithmParameterSet algo)
 
+-- | Deduplicate findings by (name, parameterSet), keeping the first occurrence.
+-- Uses a Map for O(n log n) rather than nubBy's O(n^2).
+deduplicateFindings :: [CryptoFinding] -> [CryptoFinding]
+deduplicateFindings = Map.elems . foldl insertFirst Map.empty
+  where
+    insertFirst acc finding =
+      let key = dedupeKey finding
+       in if Map.member key acc then acc else Map.insert key finding acc
+
 computeFipsStats :: CryptoScanResults -> FipsReportStats
 computeFipsStats (CryptoScanResults findings) =
-  let uniqueAlgos = nubBy (\a b -> dedupeKey a == dedupeKey b) findings
+  let uniqueAlgos = deduplicateFindings findings
       statuses = map (cryptoAlgorithmFipsStatus . cryptoFindingAlgorithm) uniqueAlgos
    in FipsReportStats
         { totalAlgorithms = length uniqueAlgos
@@ -70,7 +78,7 @@ computeFipsStats (CryptoScanResults findings) =
 renderFipsReport :: CryptoScanResults -> Doc AnsiStyle
 renderFipsReport results@(CryptoScanResults findings) =
   let stats = computeFipsStats results
-      uniqueFindings = nubBy (\a b -> dedupeKey a == dedupeKey b) findings
+      uniqueFindings = deduplicateFindings findings
       categorized = categorizeFindings uniqueFindings
    in vsep
         [ annotate bold "FIPS Compliance Report"
