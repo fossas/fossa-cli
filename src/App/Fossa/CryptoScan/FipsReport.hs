@@ -153,9 +153,9 @@ classifyPrimitive PrimitiveOther = CatOther
 classifyPrimitive PrimitiveUnknown = CatOther
 
 categorizeFindings :: [CryptoFinding] -> Map CryptoCategory [CryptoFinding]
-categorizeFindings = foldl categorize Map.empty
+categorizeFindings = foldr categorize Map.empty
   where
-    categorize acc finding =
+    categorize finding acc =
       let cat = classifyPrimitive (cryptoAlgorithmPrimitive $ cryptoFindingAlgorithm finding)
        in Map.insertWith (++) cat [finding] acc
 
@@ -241,20 +241,20 @@ renderKeySizeWarnings fs =
 keySizeWarning :: CryptoFinding -> [Doc AnsiStyle]
 keySizeWarning finding =
   let algo = cryptoFindingAlgorithm finding
-      name = Text.toLower $ cryptoAlgorithmName algo
+      algoName = Text.toLower $ cryptoAlgorithmName algo
       paramSet = cryptoAlgorithmParameterSet algo
-   in catWarnings name paramSet
+   in catWarnings algoName paramSet
   where
     catWarnings :: Text -> Maybe Text -> [Doc AnsiStyle]
-    catWarnings name paramSet =
-      if "rsa" `Text.isInfixOf` name then rsaWarning paramSet
-      else if "sha-1" `Text.isInfixOf` name || "sha1" `Text.isInfixOf` name then
+    catWarnings n ps =
+      if "rsa" `Text.isInfixOf` n then rsaWarning ps
+      else if "sha-1" `Text.isInfixOf` n || "sha1" `Text.isInfixOf` n then
         [annotate (color Yellow) "- SHA-1: Deprecated, fully disallowed after 2030-12-31"]
-      else if "aes-128" `Text.isInfixOf` name || (name == "aes" && paramSet == Just "128") then
+      else if "aes-128" `Text.isInfixOf` n || (n == "aes" && ps == Just "128") then
         [annotate (color Yellow) "- AES-128: Approved but AES-256 recommended for higher security margin"]
-      else if "sha-224" `Text.isInfixOf` name then
+      else if "sha-224" `Text.isInfixOf` n then
         [annotate (color Yellow) "- SHA-224: Deprecated by 2030"]
-      else if "3des" `Text.isInfixOf` name || "triple-des" `Text.isInfixOf` name then
+      else if "3des" `Text.isInfixOf` n || "triple-des" `Text.isInfixOf` n then
         [annotate (color Yellow) "- 3DES: Legacy decryption only since Jan 2024"]
       else []
 

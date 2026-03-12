@@ -3,7 +3,7 @@ module App.Fossa.CryptoScan.Analyze (
   analyzeCryptoScanCBOM,
 ) where
 
-import App.Fossa.CryptoScan.Types (CryptoScanResults)
+import App.Fossa.CryptoScan.Types (CryptoScanResults (..))
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withCryptoScanBinary)
 import Control.Carrier.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift)
@@ -30,7 +30,7 @@ analyzeWithCryptoScan rootDir = withCryptoScanBinary $ \bin -> do
     Left err -> do
       fatalText $ "Failed to parse cryptoscan output: " <> toText err
     Right findings -> do
-      logDebug $ "Cryptoscan completed: " <> pretty (show findings)
+      logDebug $ "Cryptoscan completed: " <> pretty (show (length (cryptoFindings findings))) <> " findings"
       pure $ Just findings
 
 -- | Run the cryptoscan binary with CycloneDX output format and return raw JSON bytes.

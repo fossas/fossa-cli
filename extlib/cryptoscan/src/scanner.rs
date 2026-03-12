@@ -12,71 +12,66 @@ use crate::patterns::{self, CryptoPattern};
 pub fn detect_ecosystems(project_path: &Path) -> Vec<String> {
     let mut ecosystems = Vec::new();
 
+    let add_ecosystem = |eco: &str, ecosystems: &mut Vec<String>| {
+        if !ecosystems.contains(&eco.to_string()) {
+            ecosystems.push(eco.to_string());
+        }
+    };
+
     for entry in WalkDir::new(project_path)
         .max_depth(3)
         .into_iter()
+        .filter_entry(|e| !should_skip_path(e.path()))
         .filter_map(|e| e.ok())
     {
         let name = entry.file_name().to_string_lossy();
+        let ext = entry.path().extension().and_then(|e| e.to_str()).unwrap_or("");
+
+        // Detect from manifest files
         match name.as_ref() {
             "requirements.txt" | "Pipfile" | "pyproject.toml" | "setup.py" | "setup.cfg" => {
-                if !ecosystems.contains(&"python".to_string()) {
-                    ecosystems.push("python".to_string());
-                }
+                add_ecosystem("python", &mut ecosystems);
             }
             "pom.xml" | "build.gradle" | "build.gradle.kts" => {
-                if !ecosystems.contains(&"java".to_string()) {
-                    ecosystems.push("java".to_string());
-                }
+                add_ecosystem("java", &mut ecosystems);
             }
             "go.mod" | "go.sum" => {
-                if !ecosystems.contains(&"go".to_string()) {
-                    ecosystems.push("go".to_string());
-                }
+                add_ecosystem("go", &mut ecosystems);
             }
             "package.json" => {
-                if !ecosystems.contains(&"node".to_string()) {
-                    ecosystems.push("node".to_string());
-                }
+                add_ecosystem("node", &mut ecosystems);
             }
             "Cargo.toml" => {
-                if !ecosystems.contains(&"rust".to_string()) {
-                    ecosystems.push("rust".to_string());
-                }
+                add_ecosystem("rust", &mut ecosystems);
             }
             "Gemfile" | "Rakefile" => {
-                if !ecosystems.contains(&"ruby".to_string()) {
-                    ecosystems.push("ruby".to_string());
-                }
+                add_ecosystem("ruby", &mut ecosystems);
             }
             "composer.json" => {
-                if !ecosystems.contains(&"php".to_string()) {
-                    ecosystems.push("php".to_string());
-                }
+                add_ecosystem("php", &mut ecosystems);
             }
             "Package.swift" | "Podfile" => {
-                if !ecosystems.contains(&"swift".to_string()) {
-                    ecosystems.push("swift".to_string());
-                }
+                add_ecosystem("swift", &mut ecosystems);
             }
             "mix.exs" => {
-                if !ecosystems.contains(&"elixir".to_string()) {
-                    ecosystems.push("elixir".to_string());
-                }
+                add_ecosystem("elixir", &mut ecosystems);
             }
-            _ => {
-                // Detect C#/.NET by file extension
-                let ext = entry.path().extension().and_then(|e| e.to_str()).unwrap_or("");
-                if (ext == "csproj" || ext == "fsproj" || ext == "sln")
-                    && !ecosystems.contains(&"csharp".to_string())
-                {
-                    ecosystems.push("csharp".to_string());
-                }
-                // Detect Ruby by .gemspec extension
-                if ext == "gemspec" && !ecosystems.contains(&"ruby".to_string()) {
-                    ecosystems.push("ruby".to_string());
-                }
-            }
+            _ => {}
+        }
+
+        // Detect from source file extensions
+        match ext {
+            "py" => add_ecosystem("python", &mut ecosystems),
+            "java" | "kt" => add_ecosystem("java", &mut ecosystems),
+            "go" => add_ecosystem("go", &mut ecosystems),
+            "js" | "ts" => add_ecosystem("node", &mut ecosystems),
+            "rs" => add_ecosystem("rust", &mut ecosystems),
+            "rb" | "gemspec" => add_ecosystem("ruby", &mut ecosystems),
+            "php" => add_ecosystem("php", &mut ecosystems),
+            "swift" => add_ecosystem("swift", &mut ecosystems),
+            "ex" | "exs" => add_ecosystem("elixir", &mut ecosystems),
+            "cs" | "csproj" | "fsproj" | "sln" => add_ecosystem("csharp", &mut ecosystems),
+            _ => {}
         }
     }
 
@@ -211,16 +206,28 @@ fn normalize_detected_algorithm(name: &str, matched_text: &str) -> String {
             return "AES-ECB".to_string();
         }
         if lower.contains("gcm") {
+            if lower.contains("256") {
+                return "AES-256-GCM".to_string();
+            }
+            if lower.contains("192") {
+                return "AES-192-GCM".to_string();
+            }
             if lower.contains("128") {
                 return "AES-128-GCM".to_string();
             }
-            return "AES-256-GCM".to_string();
+            return "AES-GCM".to_string();
         }
         if lower.contains("cbc") {
+            if lower.contains("256") {
+                return "AES-256-CBC".to_string();
+            }
+            if lower.contains("192") {
+                return "AES-192-CBC".to_string();
+            }
             if lower.contains("128") {
                 return "AES-128-CBC".to_string();
             }
-            return "AES-256-CBC".to_string();
+            return "AES-CBC".to_string();
         }
         if lower.contains("ctr") {
             return "AES-CTR".to_string();
@@ -230,7 +237,7 @@ fn normalize_detected_algorithm(name: &str, matched_text: &str) -> String {
             return "AES-256".to_string();
         }
         if lower.contains("192") {
-            return "AES".to_string(); // AES-192 falls under generic AES
+            return "AES-192".to_string();
         }
         if lower.contains("128") {
             return "AES-128".to_string();
@@ -278,14 +285,20 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
 
     let (primitive, family, mode, param_set, curve, security, quantum, oid, functions) = match normalized.as_str() {
         // Symmetric - AES
-        "AES" | "AES-128" => (Primitive::BlockCipher, "AES", None, Some("128"), None, Some(128), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
+        "AES" => (Primitive::BlockCipher, "AES", None, None, None, None, 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
+        "AES-128" => (Primitive::BlockCipher, "AES", None, Some("128"), None, Some(128), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
+        "AES-192" => (Primitive::BlockCipher, "AES", None, Some("192"), None, Some(192), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
         "AES-256" => (Primitive::BlockCipher, "AES", None, Some("256"), None, Some(256), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
-        "AES-GCM" | "AES-256-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("256"), None, Some(256), 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
+        "AES-GCM" => (Primitive::Ae, "AES", Some("gcm"), None, None, None, 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
+        "AES-256-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("256"), None, Some(256), 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
+        "AES-192-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("192"), None, Some(192), 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
         "AES-128-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("128"), None, Some(128), 1, Some("2.16.840.1.101.3.4.1.6"), vec!["keygen", "encrypt", "decrypt", "tag"]),
-        "AES-CBC" | "AES-256-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("256"), None, Some(256), 1, None, vec!["keygen", "encrypt", "decrypt"]),
+        "AES-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), None, None, None, 1, None, vec!["keygen", "encrypt", "decrypt"]),
+        "AES-256-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("256"), None, Some(256), 1, None, vec!["keygen", "encrypt", "decrypt"]),
+        "AES-192-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("192"), None, Some(192), 1, None, vec!["keygen", "encrypt", "decrypt"]),
         "AES-128-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("128"), None, Some(128), 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-CTR" => (Primitive::BlockCipher, "AES", Some("ctr"), None, None, Some(128), 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-ECB" => (Primitive::BlockCipher, "AES", Some("ecb"), None, None, Some(128), 1, None, vec!["keygen", "encrypt", "decrypt"]),
+        "AES-CTR" => (Primitive::BlockCipher, "AES", Some("ctr"), None, None, None, 1, None, vec!["keygen", "encrypt", "decrypt"]),
+        "AES-ECB" => (Primitive::BlockCipher, "AES", Some("ecb"), None, None, None, 1, None, vec!["keygen", "encrypt", "decrypt"]),
 
         // Symmetric - non-AES
         "ChaCha20-Poly1305" | "ChaCha20" => (Primitive::Ae, "ChaCha20-Poly1305", None, Some("256"), None, Some(256), 0, None, vec!["keygen", "encrypt", "decrypt", "tag"]),
@@ -335,7 +348,19 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
         "ML-DSA" => (Primitive::Signature, "ML-DSA", None, None, None, Some(256), 5, None, vec!["keygen", "sign", "verify"]),
 
         // Generic / library-level detections
-        _ => (Primitive::Unknown, name, None, None, None, None, 0, None, vec![]),
+        other => {
+            // Handle RSA-<bits> variants (e.g., RSA-4096, RSA-3072, RSA-1024)
+            if let Some(bits_str) = other.strip_prefix("RSA-") {
+                if let Ok(bits) = bits_str.parse::<u32>() {
+                    let security = if bits >= 3072 { Some(128u32) } else { Some(112) };
+                    (Primitive::Pke, "RSA", None, Some(bits_str), None, security, 0, Some("1.2.840.113549.1.1.1"), vec!["keygen", "encrypt", "decrypt", "sign", "verify"])
+                } else {
+                    (Primitive::Unknown, other, None, None, None, None, 0, None, vec![])
+                }
+            } else {
+                (Primitive::Unknown, other, None, None, None, None, 0, None, vec![])
+            }
+        }
     };
 
     CryptoAlgorithm {
