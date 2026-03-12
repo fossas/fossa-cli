@@ -5,7 +5,7 @@ module App.Fossa.CryptoScan.Analyze (
 
 import App.Fossa.CryptoScan.Types (CryptoScanResults)
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withCryptoScanBinary)
-import Control.Carrier.Diagnostics (Diagnostics, warn)
+import Control.Carrier.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Lift (Has, Lift)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -28,8 +28,7 @@ analyzeWithCryptoScan rootDir = withCryptoScanBinary $ \bin -> do
   result <- execThrow rootDir (cryptoScanCommand bin rootDir)
   case Aeson.eitherDecode result of
     Left err -> do
-      warn $ "Failed to parse cryptoscan output: " <> toText err
-      pure Nothing
+      fatalText $ "Failed to parse cryptoscan output: " <> toText err
     Right findings -> do
       logDebug $ "Cryptoscan completed: " <> pretty (show findings)
       pure $ Just findings

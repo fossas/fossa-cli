@@ -107,95 +107,108 @@ pub struct BomDependency {
 pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
     let mut components = Vec::new();
     let mut dependencies = Vec::new();
-    let mut seen_algorithms: HashSet<String> = HashSet::new();
     let mut library_algorithms: HashMap<String, Vec<String>> = HashMap::new();
 
-    // Create cryptographic-asset components for each unique algorithm
+    // Group findings by bom_ref to aggregate detection contexts
+    let mut algo_findings: HashMap<String, Vec<&CryptoFinding>> = HashMap::new();
     for finding in findings {
         let bom_ref = make_bom_ref(&finding.algorithm.name, &finding.algorithm.oid);
+        algo_findings.entry(bom_ref).or_default().push(finding);
 
-        if seen_algorithms.contains(&bom_ref) {
-            // Still track the library -> algorithm relationship
-            if let Some(lib) = &finding.providing_library {
-                library_algorithms
-                    .entry(lib.clone())
-                    .or_default()
-                    .push(bom_ref.clone());
-            }
-            continue;
+        // Track library -> algorithm for `provides` relationships
+        if let Some(lib) = &finding.providing_library {
+            let bom_ref = make_bom_ref(&finding.algorithm.name, &finding.algorithm.oid);
+            library_algorithms
+                .entry(lib.clone())
+                .or_default()
+                .push(bom_ref);
         }
-        seen_algorithms.insert(bom_ref.clone());
+    }
 
-        let primitive_str = serde_json::to_value(&finding.algorithm.primitive)
+    // Create cryptographic-asset components with aggregated detection contexts
+    for (bom_ref, group) in &algo_findings {
+        let first = group[0];
+
+        let primitive_str = serde_json::to_value(&first.algorithm.primitive)
             .ok()
             .and_then(|v| v.as_str().map(|s| s.to_string()))
             .unwrap_or_else(|| "unknown".to_string());
 
-        let fips_label = finding.algorithm.fips_status.label().to_string();
+        let fips_label = first.algorithm.fips_status.label().to_string();
 
         let algo_props = AlgorithmProperties {
             primitive: primitive_str,
-            algorithm_family: Some(finding.algorithm.algorithm_family.clone()),
-            parameter_set_identifier: finding.algorithm.parameter_set.clone(),
-            elliptic_curve: finding.algorithm.elliptic_curve.clone(),
-            mode: finding.algorithm.mode.clone(),
+            algorithm_family: Some(first.algorithm.algorithm_family.clone()),
+            parameter_set_identifier: first.algorithm.parameter_set.clone(),
+            elliptic_curve: first.algorithm.elliptic_curve.clone(),
+            mode: first.algorithm.mode.clone(),
             execution_environment: "software-plain-ram".to_string(),
             implementation_platform: "generic".to_string(),
             certification_level: vec!["none".to_string()],
-            crypto_functions: finding.algorithm.crypto_functions.clone(),
-            classical_security_level: finding.algorithm.classical_security_level,
-            nist_quantum_security_level: if finding.algorithm.nist_quantum_security_level > 0 {
-                Some(finding.algorithm.nist_quantum_security_level)
+            crypto_functions: first.algorithm.crypto_functions.clone(),
+            classical_security_level: first.algorithm.classical_security_level,
+            nist_quantum_security_level: if first.algorithm.nist_quantum_security_level > 0 {
+                Some(first.algorithm.nist_quantum_security_level)
             } else {
                 None
             },
         };
 
+        // Aggregate detection contexts from all findings for this algorithm
+        let mut properties = vec![BomProperty {
+            name: "fossa:fips-status".to_string(),
+            value: fips_label,
+        }];
+
+        // Collect unique detection locations, methods, and ecosystems
+        let mut seen_locations: HashSet<String> = HashSet::new();
+        let mut seen_methods: HashSet<String> = HashSet::new();
+        let mut seen_ecosystems: HashSet<String> = HashSet::new();
+
+        for finding in group {
+            if seen_locations.insert(finding.file_path.clone()) {
+                properties.push(BomProperty {
+                    name: "fossa:detected-in".to_string(),
+                    value: finding.file_path.clone(),
+                });
+            }
+
+            let method_str = serde_json::to_value(&finding.detection_method)
+                .ok()
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_default();
+            if seen_methods.insert(method_str.clone()) {
+                properties.push(BomProperty {
+                    name: "fossa:detection-method".to_string(),
+                    value: method_str,
+                });
+            }
+
+            if seen_ecosystems.insert(finding.ecosystem.clone()) {
+                properties.push(BomProperty {
+                    name: "fossa:ecosystem".to_string(),
+                    value: finding.ecosystem.clone(),
+                });
+            }
+        }
+
         let component = BomComponent {
             component_type: "cryptographic-asset".to_string(),
             bom_ref: bom_ref.clone(),
-            name: finding.algorithm.name.clone(),
+            name: first.algorithm.name.clone(),
             crypto_properties: Some(CryptoProperties {
                 asset_type: "algorithm".to_string(),
                 algorithm_properties: Some(algo_props),
-                oid: finding.algorithm.oid.clone(),
+                oid: first.algorithm.oid.clone(),
             }),
-            properties: Some(vec![
-                BomProperty {
-                    name: "fossa:fips-status".to_string(),
-                    value: fips_label,
-                },
-                BomProperty {
-                    name: "fossa:detected-in".to_string(),
-                    value: finding.file_path.clone(),
-                },
-                BomProperty {
-                    name: "fossa:detection-method".to_string(),
-                    value: serde_json::to_value(&finding.detection_method)
-                        .ok()
-                        .and_then(|v| v.as_str().map(|s| s.to_string()))
-                        .unwrap_or_default(),
-                },
-                BomProperty {
-                    name: "fossa:ecosystem".to_string(),
-                    value: finding.ecosystem.clone(),
-                },
-            ]),
+            properties: Some(properties),
         };
 
         components.push(component);
 
-        // Track library -> algorithm for `provides` relationships
-        if let Some(lib) = &finding.providing_library {
-            library_algorithms
-                .entry(lib.clone())
-                .or_default()
-                .push(bom_ref.clone());
-        }
-
         // Algorithm dependency entry
         dependencies.push(BomDependency {
-            dep_ref: bom_ref,
+            dep_ref: bom_ref.clone(),
             depends_on: None,
             provides: None,
         });
@@ -256,8 +269,7 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
 fn make_bom_ref(name: &str, oid: &Option<String>) -> String {
     let sanitized = name
         .to_lowercase()
-        .replace(' ', "-")
-        .replace('/', "-");
+        .replace([' ', '/'], "-");
     match oid {
         Some(o) => format!("crypto/algorithm/{}@{}", sanitized, o),
         None => format!("crypto/algorithm/{}", sanitized),

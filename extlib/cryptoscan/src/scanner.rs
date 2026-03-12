@@ -191,7 +191,7 @@ fn pattern_applies(pattern: &CryptoPattern, ecosystems: &[String], file_ext: &st
     }
 
     // Check file extension match
-    if pattern.file_extensions.iter().any(|ext| *ext == file_ext) {
+    if pattern.file_extensions.contains(&file_ext) {
         return true;
     }
 
@@ -205,10 +205,81 @@ fn pattern_applies(pattern: &CryptoPattern, ecosystems: &[String], file_ext: &st
     false
 }
 
-fn resolve_algorithm(name: &str, _matched_text: &str) -> CryptoAlgorithm {
-    let (fips_status, _remediation) = fips::classify_algorithm(name);
+fn normalize_detected_algorithm(name: &str, matched_text: &str) -> String {
+    let lower = matched_text.to_lowercase();
 
-    let (primitive, family, mode, param_set, curve, security, quantum, oid, functions) = match name {
+    // For generic "AES" patterns, try to extract specific mode/key-size from matched text
+    if name == "AES" {
+        if lower.contains("ecb") {
+            return "AES-ECB".to_string();
+        }
+        if lower.contains("gcm") {
+            if lower.contains("128") {
+                return "AES-128-GCM".to_string();
+            }
+            return "AES-256-GCM".to_string();
+        }
+        if lower.contains("cbc") {
+            if lower.contains("128") {
+                return "AES-128-CBC".to_string();
+            }
+            return "AES-256-CBC".to_string();
+        }
+        if lower.contains("ctr") {
+            return "AES-CTR".to_string();
+        }
+        // Extract key size alone
+        if lower.contains("256") {
+            return "AES-256".to_string();
+        }
+        if lower.contains("192") {
+            return "AES".to_string(); // AES-192 falls under generic AES
+        }
+        if lower.contains("128") {
+            return "AES-128".to_string();
+        }
+    }
+
+    // For generic "SHA" or hash patterns, extract specific variant
+    if name == "SHA-256" || name == "SHA-384" || name == "SHA-512" || name == "SHA-1" || name == "SHA-3" {
+        // Already specific, keep as-is
+        return name.to_string();
+    }
+
+    // For generic "RSA" pattern, try to extract key size
+    if name == "RSA" {
+        let key_size: Option<u32> = lower
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|tok| {
+                let n = tok.parse::<u32>().ok()?;
+                if (512..=16384).contains(&n) { Some(n) } else { None }
+            });
+        if let Some(bits) = key_size {
+            return format!("RSA-{}", bits);
+        }
+    }
+
+    // For generic "ECDSA" pattern, extract curve from matched text
+    if name == "ECDSA" {
+        if lower.contains("p384") || lower.contains("p-384") || lower.contains("secp384") {
+            return "ECDSA-P384".to_string();
+        }
+        if lower.contains("p521") || lower.contains("p-521") || lower.contains("secp521") {
+            return "ECDSA-P521".to_string();
+        }
+        if lower.contains("p256") || lower.contains("p-256") || lower.contains("prime256") || lower.contains("secp256r1") {
+            return "ECDSA-P256".to_string();
+        }
+    }
+
+    name.to_string()
+}
+
+fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
+    let normalized = normalize_detected_algorithm(name, matched_text);
+    let (fips_status, _remediation) = fips::classify_algorithm(&normalized);
+
+    let (primitive, family, mode, param_set, curve, security, quantum, oid, functions) = match normalized.as_str() {
         // Symmetric - AES
         "AES" | "AES-128" => (Primitive::BlockCipher, "AES", None, Some("128"), None, Some(128), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
         "AES-256" => (Primitive::BlockCipher, "AES", None, Some("256"), None, Some(256), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
@@ -271,7 +342,7 @@ fn resolve_algorithm(name: &str, _matched_text: &str) -> CryptoAlgorithm {
     };
 
     CryptoAlgorithm {
-        name: name.to_string(),
+        name: normalized.clone(),
         algorithm_family: family.to_string(),
         primitive,
         parameter_set: param_set.map(|s| s.to_string()),
