@@ -9,11 +9,11 @@ module Strategy.Node.Pnpm.PnpmLock (
 where
 
 import Control.Applicative ((<|>))
-import Data.Bifunctor (first)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.KeyMap (toHashMapText)
+import Data.Bifunctor (first)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
