@@ -107,7 +107,8 @@ pub struct BomDependency {
 pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
     let mut components = Vec::new();
     let mut dependencies = Vec::new();
-    let mut library_algorithms: HashMap<String, Vec<String>> = HashMap::new();
+    // Key by (ecosystem, library_name) to avoid collapsing libraries across ecosystems
+    let mut library_algorithms: HashMap<(String, String), Vec<String>> = HashMap::new();
 
     // Group findings by bom_ref to aggregate detection contexts
     let mut algo_findings: HashMap<String, Vec<&CryptoFinding>> = HashMap::new();
@@ -117,7 +118,7 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
         // Track library -> algorithm for `provides` relationships
         if let Some(lib) = &finding.providing_library {
             library_algorithms
-                .entry(lib.clone())
+                .entry((finding.ecosystem.clone(), lib.clone()))
                 .or_default()
                 .push(bom_ref.clone());
         }
@@ -135,7 +136,7 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
 
         let algo_props = AlgorithmProperties {
             primitive: primitive_str,
-            algorithm_family: Some(first.algorithm.algorithm_family.clone()),
+            algorithm_family: valid_algorithm_family(&first.algorithm.algorithm_family),
             parameter_set_identifier: first.algorithm.parameter_set.clone(),
             elliptic_curve: first.algorithm.elliptic_curve.clone(),
             mode: first.algorithm.mode.clone(),
@@ -209,14 +210,8 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
     }
 
     // Create library components with `provides` relationships
-    let mut seen_libs: HashSet<String> = HashSet::new();
-    for (lib_name, algo_refs) in &library_algorithms {
-        if seen_libs.contains(lib_name) {
-            continue;
-        }
-        seen_libs.insert(lib_name.clone());
-
-        let lib_ref = format!("lib/{}", lib_name);
+    for ((ecosystem, lib_name), algo_refs) in &library_algorithms {
+        let lib_ref = format!("lib/{}/{}", ecosystem, lib_name);
 
         components.push(BomComponent {
             component_type: "library".to_string(),
@@ -267,6 +262,27 @@ fn make_bom_ref(name: &str, oid: &Option<String>) -> String {
     match oid {
         Some(o) => format!("crypto/algorithm/{}@{}", sanitized, o),
         None => format!("crypto/algorithm/{}", sanitized),
+    }
+}
+
+/// Validate an algorithm family string against the CycloneDX 1.7 registry.
+/// Returns `Some(family)` if it's a known value, `None` otherwise.
+fn valid_algorithm_family(family: &str) -> Option<String> {
+    const KNOWN_FAMILIES: &[&str] = &[
+        "AES", "RSA", "EC", "SHA-1", "SHA-2", "SHA-3", "SHAKE",
+        "3DES", "DES", "Blowfish", "RC4", "RC2", "CAST5", "IDEA",
+        "Camellia", "SEED", "ARIA", "Serpent", "Twofish", "Threefish",
+        "ChaCha20-Poly1305", "Salsa20", "HMAC", "CMAC", "GMAC", "KMAC",
+        "Poly1305", "SipHash", "ECDSA", "EdDSA", "DSA",
+        "ECDH", "DH", "X25519", "X448", "HKDF", "PBKDF2",
+        "scrypt", "Argon2", "bcrypt", "BLAKE2", "BLAKE3",
+        "MD5", "MD4", "RIPEMD", "Whirlpool",
+        "ML-KEM", "ML-DSA", "SLH-DSA", "FN-DSA",
+    ];
+    if KNOWN_FAMILIES.iter().any(|&known| known.eq_ignore_ascii_case(family)) {
+        Some(family.to_string())
+    } else {
+        None
     }
 }
 
