@@ -9,6 +9,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 where
 
 import Control.Applicative ((<|>))
+import Data.Bifunctor (first)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
@@ -168,7 +169,12 @@ instance FromJSON PnpmLockFileSnapshots where
 
       -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
       -- section which is where we look the dependency up.
-      let snapshots' = (HashMap.mapKeys withoutPeerDepSuffix) . toHashMapText $ snapshots
+      let snapshots' =
+            HashMap.fromListWith (<>)
+              . map (first withoutPeerDepSuffix)
+              . HashMap.toList
+              . toHashMapText
+              $ snapshots
       pure $
         PnpmLockFileSnapshots{snapshots = snapshots'}
 
