@@ -103,6 +103,18 @@ pub enum DetectionMethod {
     StringLiteral,
 }
 
+impl DetectionMethod {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DetectionMethod::DependencyManifest => "dependency-manifest",
+            DetectionMethod::ImportStatement => "import-statement",
+            DetectionMethod::ApiCall => "api-call",
+            DetectionMethod::ConfigFile => "config-file",
+            DetectionMethod::StringLiteral => "string-literal",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum Confidence {

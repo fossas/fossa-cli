@@ -170,10 +170,7 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
                 });
             }
 
-            let method_str = serde_json::to_value(&finding.detection_method)
-                .ok()
-                .and_then(|v| v.as_str().map(|s| s.to_string()))
-                .unwrap_or_default();
+            let method_str = finding.detection_method.as_str().to_string();
             if seen_methods.insert(method_str.clone()) {
                 properties.push(BomProperty {
                     name: "fossa:detection-method".to_string(),
