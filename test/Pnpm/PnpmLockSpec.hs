@@ -407,5 +407,5 @@ pnpmLockV9GraphSpec graph = do
       -- ├── sax 1.4.4
       -- └── xmlbuilder 11.0.1
       hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
-      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "sax@1.4.4")
-      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "xmlbuilder@11.0.1")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "sax@1.4.4")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "xmlbuilder@11.0.1")
