@@ -10,6 +10,7 @@ import Control.Effect.Lift (Has, Lift)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.String.Conversion (ToText (toText))
+import Data.Text (Text)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execThrow)
 import Effect.Logger (Logger, logDebug, pretty)
 import Path (Abs, Dir, Path)
@@ -50,17 +51,15 @@ analyzeCryptoScanCBOM rootDir = withCryptoScanBinary $ \bin -> do
   pure $ Just result
 
 cryptoScanCommand :: BinaryPaths -> Path Abs Dir -> Command
-cryptoScanCommand bin rootDir =
-  Command
-    { cmdName = toText $ toPath bin
-    , cmdArgs = ["--path", toText rootDir, "--ecosystem", "auto", "--format", "json"]
-    , cmdAllowErr = Never
-    }
+cryptoScanCommand = mkCryptoScanCommand "json"
 
 cryptoScanCycloneDxCommand :: BinaryPaths -> Path Abs Dir -> Command
-cryptoScanCycloneDxCommand bin rootDir =
+cryptoScanCycloneDxCommand = mkCryptoScanCommand "cyclonedx"
+
+mkCryptoScanCommand :: Text -> BinaryPaths -> Path Abs Dir -> Command
+mkCryptoScanCommand format bin rootDir =
   Command
     { cmdName = toText $ toPath bin
-    , cmdArgs = ["--path", toText rootDir, "--ecosystem", "auto", "--format", "cyclonedx"]
+    , cmdArgs = ["--path", toText rootDir, "--ecosystem", "auto", "--format", format]
     , cmdAllowErr = Never
     }

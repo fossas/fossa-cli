@@ -1,6 +1,6 @@
 module App.Fossa.CryptoScan.FipsReportSpec (spec) where
 
-import App.Fossa.CryptoScan.FipsReport (FipsReportStats (..), computeFipsStats)
+import App.Fossa.CryptoScan.FipsReport (FipsReportStats (..), computeFipsStats, renderFipsReport)
 import App.Fossa.CryptoScan.Types (
   Confidence (..),
   CryptoAlgorithm (..),
@@ -11,7 +11,10 @@ import App.Fossa.CryptoScan.Types (
   FipsStatus (..),
  )
 import Data.Text (Text)
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Data.Text qualified as Text
+import Prettyprinter (layoutPretty, defaultLayoutOptions)
+import Prettyprinter.Render.Terminal (renderStrict)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 
 spec :: Spec
 spec = describe "CryptoScan FIPS Report" $ do
@@ -70,6 +73,21 @@ spec = describe "CryptoScan FIPS Report" $ do
       totalAlgorithms stats `shouldBe` 2
       approvedCount stats `shouldBe` 1
       notApprovedCount stats `shouldBe` 1
+
+  describe "renderFipsReport" $ do
+    it "produces output for empty results" $ do
+      let rendered = renderStrict $ layoutPretty defaultLayoutOptions $ renderFipsReport (CryptoScanResults [])
+      rendered `shouldSatisfy` Text.isInfixOf "FIPS Compliance Report"
+
+    it "produces output for mixed results" $ do
+      let results =
+            CryptoScanResults
+              [ mkFinding "AES-256-GCM" FipsApproved
+              , mkFinding "MD5" FipsNotApproved
+              ]
+          rendered = renderStrict $ layoutPretty defaultLayoutOptions $ renderFipsReport results
+      rendered `shouldSatisfy` Text.isInfixOf "FIPS Compliance Report"
+      rendered `shouldSatisfy` Text.isInfixOf "Remediation"
 
 -- Test fixtures
 
