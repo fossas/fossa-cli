@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use uuid::Uuid;
 
 use crate::crypto_algorithm::CryptoFinding;
@@ -108,10 +108,10 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
     let mut components = Vec::new();
     let mut dependencies = Vec::new();
     // Key by (ecosystem, library_name) to avoid collapsing libraries across ecosystems
-    let mut library_algorithms: HashMap<(String, String), Vec<String>> = HashMap::new();
+    let mut library_algorithms: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
 
     // Group findings by bom_ref to aggregate detection contexts
-    let mut algo_findings: HashMap<String, Vec<&CryptoFinding>> = HashMap::new();
+    let mut algo_findings: BTreeMap<String, Vec<&CryptoFinding>> = BTreeMap::new();
     for finding in findings {
         let bom_ref = make_bom_ref(&finding.algorithm.name, &finding.algorithm.oid);
 
@@ -265,25 +265,39 @@ fn make_bom_ref(name: &str, oid: &Option<String>) -> String {
     }
 }
 
-/// Validate an algorithm family string against the CycloneDX 1.7 registry.
-/// Returns `Some(family)` if it's a known value, `None` otherwise.
+/// Validate an algorithm family string against the official CycloneDX 1.7 enum.
+/// Returns `Some(canonical_form)` if matched, `None` otherwise.
 fn valid_algorithm_family(family: &str) -> Option<String> {
-    const KNOWN_FAMILIES: &[&str] = &[
-        "AES", "RSA", "EC", "SHA-1", "SHA-2", "SHA-3", "SHAKE",
-        "3DES", "DES", "Blowfish", "RC4", "RC2", "CAST5", "IDEA",
-        "Camellia", "SEED", "ARIA", "Serpent", "Twofish", "Threefish",
-        "ChaCha20-Poly1305", "Salsa20", "HMAC", "CMAC", "GMAC", "KMAC",
-        "Poly1305", "SipHash", "ECDSA", "EdDSA", "DSA",
-        "ECDH", "DH", "X25519", "X448", "HKDF", "PBKDF2",
-        "scrypt", "Argon2", "bcrypt", "BLAKE2", "BLAKE3",
-        "MD5", "MD4", "RIPEMD", "Whirlpool",
-        "ML-KEM", "ML-DSA", "SLH-DSA", "FN-DSA",
+    // Official CycloneDX 1.7 algorithmFamily enum values (case-sensitive in schema)
+    const CANONICAL_FAMILIES: &[&str] = &[
+        "3DES", "3GPP-XOR", "A5/1", "A5/2", "AES", "ARIA", "Ascon",
+        "BLAKE2", "BLAKE3", "BLS", "Blowfish",
+        "CAMELLIA", "CAST5", "CAST6", "CMAC", "CMEA", "ChaCha", "ChaCha20",
+        "DES", "DSA",
+        "ECDH", "ECDSA", "ECIES", "EdDSA", "ElGamal",
+        "FFDH", "Fortuna",
+        "GOST",
+        "HC", "HKDF", "HMAC",
+        "IDEA", "IKE-PRF",
+        "KMAC",
+        "LMS",
+        "MD2", "MD4", "MD5", "MILENAGE", "ML-DSA", "ML-KEM", "MQV",
+        "PBES1", "PBES2", "PBKDF1", "PBKDF2", "PBMAC1", "Poly1305",
+        "RABBIT", "RC2", "RC4", "RC5", "RC6", "RIPEMD",
+        "RSAES-OAEP", "RSAES-PKCS1", "RSASSA-PKCS1", "RSASSA-PSS",
+        "SEED", "SHA-1", "SHA-2", "SHA-3", "SLH-DSA", "SNOW3G", "SP800-108",
+        "Salsa20", "Serpent", "SipHash", "Skipjack",
+        "TUAK", "Twofish",
+        "Whirlpool",
+        "X3DH", "XMSS",
+        "Yarrow",
+        "ZUC",
+        "bcrypt",
     ];
-    if KNOWN_FAMILIES.iter().any(|&known| known.eq_ignore_ascii_case(family)) {
-        Some(family.to_string())
-    } else {
-        None
-    }
+    CANONICAL_FAMILIES
+        .iter()
+        .find(|&&canonical| canonical.eq_ignore_ascii_case(family))
+        .map(|&canonical| canonical.to_string())
 }
 
 fn chrono_timestamp() -> String {
