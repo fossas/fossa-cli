@@ -164,7 +164,8 @@ instance FromJSON PnpmLockFileSnapshots where
       let readTransitiveDepPairs = withObject "Parse dependencies" $
             \ds -> do
               deps <- ds .:? "dependencies" .!= mempty
-              pure . HashMap.toList $ deps
+              optDeps <- ds .:? "optionalDependencies" .!= mempty
+              pure . HashMap.toList $ deps <> optDeps
       snapshots <- traverse readTransitiveDepPairs o
 
       -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
