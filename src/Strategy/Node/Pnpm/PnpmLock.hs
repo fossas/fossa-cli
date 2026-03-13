@@ -204,7 +204,8 @@ instance FromJSON PnpmLockfile where
 
     dependencies <- obj .:? "dependencies" .!= mempty
     devDependencies <- obj .:? "devDependencies" .!= mempty
-    let virtualRootWs = ProjectMap dependencies devDependencies
+    optionalDependencies <- obj .:? "optionalDependencies" .!= mempty
+    let virtualRootWs = ProjectMap dependencies devDependencies optionalDependencies
     let refinedImporters =
           if Map.null importers
             then Map.insert "." virtualRootWs importers
@@ -225,6 +226,7 @@ instance FromJSON PnpmLockfile where
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
   , directDevDependencies :: Map Text ProjectMapDepMetadata
+  , directOptionalDependencies :: Map Text ProjectMapDepMetadata
   }
   deriving (Show, Eq, Ord)
 
@@ -233,6 +235,7 @@ instance FromJSON ProjectMap where
     ProjectMap
       <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
+      <*> obj .:? "optionalDependencies" .!= mempty
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
   { version :: Text
@@ -315,6 +318,7 @@ buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
     for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
       let allDirectDependencies =
             toList (directDependencies projectImporters)
+              <> toList (directOptionalDependencies projectImporters)
               <> toList (directDevDependencies projectImporters)
 
       for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
@@ -520,7 +524,7 @@ buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
             Set.fromList $
               mapMaybe
                 (\(depName, ProjectMapDepMetadata depVersion) -> depIdentity <$> toResolvedDependency depName depVersion)
-                (Map.toList $ directDependencies proj)
+                (Map.toList (directDependencies proj) <> Map.toList (directOptionalDependencies proj))
         )
         lockFile.importers
 
