@@ -1,0 +1,45 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  .:
+    dependencies:
+      button:
+        specifier: ^1.0.0
+        version: 1.0.0(react@17.0.0)
+
+packages:
+  button@1.0.0:
+    resolution: {integrity: sha512-abc123==}
+
+  legacy-util@1.0.0:
+    resolution: {integrity: sha512-leg000==}
+
+  modern-util@2.0.0:
+    resolution: {integrity: sha512-mod000==}
+
+  react@16.0.0:
+    resolution: {integrity: sha512-r16000==}
+
+  react@17.0.0:
+    resolution: {integrity: sha512-r17000==}
+
+snapshots:
+  button@1.0.0(react@16.0.0):
+    dependencies:
+      legacy-util: 1.0.0
+
+  button@1.0.0(react@17.0.0):
+    dependencies:
+      modern-util: 2.0.0
+
+  legacy-util@1.0.0: {}
+
+  modern-util@2.0.0: {}
+
+  react@16.0.0: {}
+
+  react@17.0.0: {}

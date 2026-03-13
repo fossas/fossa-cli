@@ -127,6 +127,7 @@ spec = do
   let pnpmLockV9SharedDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-shared-dep/pnpm-lock.yaml")
   let pnpmLockV9LocalDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-local-dep/pnpm-lock.yaml")
   let pnpmLockV9MultiVersion = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-multi-version/pnpm-lock.yaml")
+  let pnpmLockV9PeerCollision = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-suffix-collision/pnpm-lock.yaml")
 
   describe "works with v9 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
@@ -134,6 +135,7 @@ spec = do
     describe "shared deps" $ checkGraph pnpmLockV9SharedDep pnpmLockV9SharedDepSpec
     describe "local dep env propagation" $ checkGraph pnpmLockV9LocalDep pnpmLockV9LocalDepSpec
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
+    describe "peer suffix collision" $ checkGraph pnpmLockV9PeerCollision pnpmLockV9PeerCollisionSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -453,6 +455,7 @@ pnpmLockV9SharedDepSpec graph = do
       -- xmlbuilder is dev-only (via xml2js)
       hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "xmlbuilder@11.0.1")
 
+<<<<<<< HEAD
 -- Bug 2 regression: transitive deps of a local (file:) package must inherit
 -- the environment from the importer that depends on it, even though the
 -- local package node itself is removed from the final graph.
@@ -487,3 +490,22 @@ pnpmLockV9MultiVersionSpec graph = do
       expectDep (mkProdDep "sax@1.2.1") graph
       -- sax@1.4.4 is dev-only (from app-b)
       expectDep (mkDevDep "sax@1.4.4") graph
+=======
+pnpmLockV9PeerCollisionSpec :: Graphing Dependency -> Spec
+pnpmLockV9PeerCollisionSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with peer dep suffix collision" $ do
+    it "should mark direct dependencies of project as direct" $ do
+      expectDirect
+        [ mkProdDep "button@1.0.0"
+        ]
+        graph
+
+    it "should merge deps from both peer-suffixed snapshot entries" $ do
+      -- button@1.0.0(react@16.0.0) has legacy-util, button@1.0.0(react@17.0.0) has modern-util
+      -- After merging, button@1.0.0 should have edges to both
+      hasEdge (mkProdDep "button@1.0.0") (mkProdDep "legacy-util@1.0.0")
+      hasEdge (mkProdDep "button@1.0.0") (mkProdDep "modern-util@2.0.0")
+>>>>>>> 0e17a627 (Add v9 snapshot peer dep suffix collision test)
