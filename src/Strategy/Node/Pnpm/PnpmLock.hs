@@ -17,7 +17,7 @@ import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
 import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
@@ -28,7 +28,7 @@ import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
-  Dependency (Dependency, dependencyName, dependencyType),
+  Dependency (Dependency, dependencyName, dependencyType, dependencyVersion),
   VerConstraint (CEq),
   hydrateDepEnvs,
   insertEnvironment,
@@ -304,7 +304,7 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
 buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile = maybeHydrate . withoutLocalPackages $
+buildGraph lockFile = withoutLocalPackages . maybeHydrate $
   run . evalGrapher $ do
     for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
       let allDirectDependencies =
@@ -476,8 +476,10 @@ buildGraph lockFile = maybeHydrate . withoutLocalPackages $
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
     toEnv :: Bool -> Set.Set DepEnvironment
-    toEnv _ | isV9 = mempty
-    toEnv isNotRequired = Set.singleton $ if isNotRequired then EnvDevelopment else EnvProduction
+    toEnv isNotRequired =
+      if isV9
+        then mempty
+        else Set.singleton (if isNotRequired then EnvDevelopment else EnvProduction)
 
     isV9 :: Bool
     isV9 = lockFile.lockFileVersion == PnpmLockV9
@@ -490,18 +492,40 @@ buildGraph lockFile = maybeHydrate . withoutLocalPackages $
       | otherwise = id
 
     -- Seed environment labels on direct deps based on their importer section.
+    -- Uses resolved dependency identity (type + name + version) rather than
+    -- just the package name, so that multiple versions are distinguished and
+    -- git/tarball deps are matched correctly.
     labelV9DirectDeps :: Graphing Dependency -> Graphing Dependency
     labelV9DirectDeps = Graphing.gmap $ \dep ->
-      let name = dependencyName dep
-          withProd = if Set.member name v9ProdDirectNames then insertEnvironment EnvProduction else id
-          withDev = if Set.member name v9DevDirectNames then insertEnvironment EnvDevelopment else id
+      let ident = depIdentity dep
+          withProd = if Set.member ident v9ProdDirectDeps then insertEnvironment EnvProduction else id
+          withDev = if Set.member ident v9DevDirectDeps then insertEnvironment EnvDevelopment else id
        in withProd . withDev $ dep
 
-    v9ProdDirectNames :: Set.Set Text
-    v9ProdDirectNames = foldMap (Set.fromList . Map.keys . directDependencies) lockFile.importers
+    depIdentity :: Dependency -> (DepType, Text, Maybe VerConstraint)
+    depIdentity dep = (dependencyType dep, dependencyName dep, dependencyVersion dep)
 
-    v9DevDirectNames :: Set.Set Text
-    v9DevDirectNames = foldMap (Set.fromList . Map.keys . directDevDependencies) lockFile.importers
+    v9ProdDirectDeps :: Set.Set (DepType, Text, Maybe VerConstraint)
+    v9ProdDirectDeps =
+      foldMap
+        ( \proj ->
+            Set.fromList $
+              mapMaybe
+                (\(depName, ProjectMapDepMetadata depVersion) -> depIdentity <$> toResolvedDependency depName depVersion)
+                (Map.toList $ directDependencies proj)
+        )
+        lockFile.importers
+
+    v9DevDirectDeps :: Set.Set (DepType, Text, Maybe VerConstraint)
+    v9DevDirectDeps =
+      foldMap
+        ( \proj ->
+            Set.fromList $
+              mapMaybe
+                (\(depName, ProjectMapDepMetadata depVersion) -> depIdentity <$> toResolvedDependency depName depVersion)
+                (Map.toList $ directDevDependencies proj)
+        )
+        lockFile.importers
 
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
