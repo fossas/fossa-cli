@@ -498,20 +498,10 @@ buildGraph lockFile = maybeHydrate . withoutLocalPackages $
        in withProd . withDev $ dep
 
     v9ProdDirectNames :: Set.Set Text
-    v9ProdDirectNames =
-      Set.fromList
-        [ depName
-        | (_, proj) <- toList lockFile.importers
-        , (depName, _) <- toList (directDependencies proj)
-        ]
+    v9ProdDirectNames = foldMap (Set.fromList . Map.keys . directDependencies) lockFile.importers
 
     v9DevDirectNames :: Set.Set Text
-    v9DevDirectNames =
-      Set.fromList
-        [ depName
-        | (_, proj) <- toList lockFile.importers
-        , (depName, _) <- toList (directDevDependencies proj)
-        ]
+    v9DevDirectNames = foldMap (Set.fromList . Map.keys . directDevDependencies) lockFile.importers
 
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
