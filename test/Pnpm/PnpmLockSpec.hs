@@ -119,6 +119,11 @@ spec = do
   describe "can work with v6.0 format with transitive peer deps" $
     checkGraph pnpmLockV6WithPeers pnpmLockV6WithPeersSpec
 
+  -- v6 format with optional deps
+  let pnpmLockV6OptionalDeps = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6-optional-deps.yaml")
+  describe "can work with v6.0 format with optional deps" $
+    checkGraph pnpmLockV6OptionalDeps pnpmLockV6OptionalDepsSpec
+
   -- v9 format
   let pnpmLockV9 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-project/pnpm-lock.yaml")
   -- With the advent of lockfile v9, pnpm now has its own pnpm-workspace.yaml file.
@@ -128,6 +133,7 @@ spec = do
   let pnpmLockV9LocalDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-local-dep/pnpm-lock.yaml")
   let pnpmLockV9MultiVersion = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-multi-version/pnpm-lock.yaml")
   let pnpmLockV9PeerCollision = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-suffix-collision/pnpm-lock.yaml")
+  let pnpmLockV9OptionalDeps = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-optional-deps/pnpm-lock.yaml")
 
   describe "works with v9 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
@@ -136,6 +142,7 @@ spec = do
     describe "local dep env propagation" $ checkGraph pnpmLockV9LocalDep pnpmLockV9LocalDepSpec
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "peer suffix collision" $ checkGraph pnpmLockV9PeerCollision pnpmLockV9PeerCollisionSpec
+    describe "optional deps" $ checkGraph pnpmLockV9OptionalDeps pnpmLockV9OptionalDepsSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -455,7 +462,6 @@ pnpmLockV9SharedDepSpec graph = do
       -- xmlbuilder is dev-only (via xml2js)
       hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "xmlbuilder@11.0.1")
 
-<<<<<<< HEAD
 -- Bug 2 regression: transitive deps of a local (file:) package must inherit
 -- the environment from the importer that depends on it, even though the
 -- local package node itself is removed from the final graph.
@@ -490,7 +496,7 @@ pnpmLockV9MultiVersionSpec graph = do
       expectDep (mkProdDep "sax@1.2.1") graph
       -- sax@1.4.4 is dev-only (from app-b)
       expectDep (mkDevDep "sax@1.4.4") graph
-=======
+
 pnpmLockV9PeerCollisionSpec :: Graphing Dependency -> Spec
 pnpmLockV9PeerCollisionSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
@@ -508,4 +514,39 @@ pnpmLockV9PeerCollisionSpec graph = do
       -- After merging, button@1.0.0 should have edges to both
       hasEdge (mkProdDep "button@1.0.0") (mkProdDep "legacy-util@1.0.0")
       hasEdge (mkProdDep "button@1.0.0") (mkProdDep "modern-util@2.0.0")
->>>>>>> 0e17a627 (Add v9 snapshot peer dep suffix collision test)
+
+pnpmLockV6OptionalDepsSpec :: Graphing Dependency -> Spec
+pnpmLockV6OptionalDepsSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with optional deps (v6)" $ do
+    it "should include optional direct deps as production direct dependencies" $ do
+      expectDirect
+        [ mkProdDep "uri-js@4.4.1"
+        , mkProdDep "fsevents@2.3.3"
+        , mkDevDep "colorjs@0.1.9"
+        ]
+        graph
+
+    it "should include edges from packages to their optional deps" $ do
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
+      hasEdge (mkProdDep "fsevents@2.3.3") (mkProdDep "nan@2.18.0")
+
+pnpmLockV9OptionalDepsSpec :: Graphing Dependency -> Spec
+pnpmLockV9OptionalDepsSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with optional deps (v9)" $ do
+    it "should include optional direct deps as production direct dependencies" $ do
+      expectDirect
+        [ mkProdDep "uri-js@4.4.1"
+        , mkProdDep "fsevents@2.3.3"
+        , mkDevDep "colorjs@0.1.9"
+        ]
+        graph
+
+    it "should include edges from snapshot optionalDependencies" $ do
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
+      hasEdge (mkProdDep "fsevents@2.3.3") (mkProdDep "nan@2.18.0")
