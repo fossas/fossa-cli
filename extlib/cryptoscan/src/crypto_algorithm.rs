@@ -50,6 +50,28 @@ pub enum Primitive {
     Unknown,
 }
 
+impl Primitive {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Primitive::Ae => "ae",
+            Primitive::BlockCipher => "block-cipher",
+            Primitive::StreamCipher => "stream-cipher",
+            Primitive::Hash => "hash",
+            Primitive::Mac => "mac",
+            Primitive::Signature => "signature",
+            Primitive::Pke => "pke",
+            Primitive::Kem => "kem",
+            Primitive::KeyAgree => "key-agree",
+            Primitive::Kdf => "kdf",
+            Primitive::Xof => "xof",
+            Primitive::Drbg => "drbg",
+            Primitive::Combiner => "combiner",
+            Primitive::Other => "other",
+            Primitive::Unknown => "unknown",
+        }
+    }
+}
+
 /// A single crypto finding: an algorithm detected at a specific location.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CryptoFinding {

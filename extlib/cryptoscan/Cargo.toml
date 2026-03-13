@@ -2,6 +2,7 @@
 name = "cryptoscan"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.70"
 description = "Cryptographic algorithm detection engine for FOSSA CLI"
 
 [[bin]]

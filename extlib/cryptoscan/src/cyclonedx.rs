@@ -113,26 +113,23 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
     let mut algo_findings: HashMap<String, Vec<&CryptoFinding>> = HashMap::new();
     for finding in findings {
         let bom_ref = make_bom_ref(&finding.algorithm.name, &finding.algorithm.oid);
-        algo_findings.entry(bom_ref).or_default().push(finding);
 
         // Track library -> algorithm for `provides` relationships
         if let Some(lib) = &finding.providing_library {
-            let bom_ref = make_bom_ref(&finding.algorithm.name, &finding.algorithm.oid);
             library_algorithms
                 .entry(lib.clone())
                 .or_default()
-                .push(bom_ref);
+                .push(bom_ref.clone());
         }
+
+        algo_findings.entry(bom_ref).or_default().push(finding);
     }
 
     // Create cryptographic-asset components with aggregated detection contexts
     for (bom_ref, group) in &algo_findings {
         let first = group[0];
 
-        let primitive_str = serde_json::to_value(&first.algorithm.primitive)
-            .ok()
-            .and_then(|v| v.as_str().map(|s| s.to_string()))
-            .unwrap_or_else(|| "unknown".to_string());
+        let primitive_str = first.algorithm.primitive.as_str().to_string();
 
         let fips_label = first.algorithm.fips_status.label().to_string();
 
@@ -232,13 +229,12 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
             properties: None,
         });
 
-        let mut unique_algos: Vec<String> = algo_refs
+        let unique_algos: Vec<String> = algo_refs
             .iter()
-            .collect::<HashSet<_>>()
-            .into_iter()
             .cloned()
+            .collect::<std::collections::BTreeSet<_>>()
+            .into_iter()
             .collect();
-        unique_algos.sort();
 
         dependencies.push(BomDependency {
             dep_ref: lib_ref,
@@ -326,9 +322,8 @@ fn days_to_date(days_since_epoch: u64) -> (u64, u64, u64) {
         }
         days -= md;
     }
-    if month == 0 {
-        month = 12;
-    }
+    // month is always set by the loop since days < days_in_year after year calculation
+    debug_assert!(month > 0, "days_to_date: month calculation failed");
 
     (year as u64, month as u64, (days + 1) as u64)
 }

@@ -65,8 +65,12 @@ deduplicateFindings = Map.elems . foldl insertFirst Map.empty
 
 computeFipsStats :: CryptoScanResults -> FipsReportStats
 computeFipsStats (CryptoScanResults findings) =
-  let uniqueAlgos = deduplicateFindings findings
-      statuses = map (cryptoAlgorithmFipsStatus . cryptoFindingAlgorithm) uniqueAlgos
+  computeFipsStatsFromFindings (deduplicateFindings findings)
+
+-- | Compute FIPS stats from already-deduplicated findings.
+computeFipsStatsFromFindings :: [CryptoFinding] -> FipsReportStats
+computeFipsStatsFromFindings uniqueAlgos =
+  let statuses = map (cryptoAlgorithmFipsStatus . cryptoFindingAlgorithm) uniqueAlgos
    in FipsReportStats
         { totalAlgorithms = length uniqueAlgos
         , approvedCount = length $ filter (== FipsApproved) statuses
@@ -76,9 +80,9 @@ computeFipsStats (CryptoScanResults findings) =
 
 -- | Render a comprehensive FIPS compliance report from crypto scan results.
 renderFipsReport :: CryptoScanResults -> Doc AnsiStyle
-renderFipsReport results@(CryptoScanResults findings) =
-  let stats = computeFipsStats results
-      uniqueFindings = deduplicateFindings findings
+renderFipsReport (CryptoScanResults findings) =
+  let uniqueFindings = deduplicateFindings findings
+      stats = computeFipsStatsFromFindings uniqueFindings
       categorized = categorizeFindings uniqueFindings
    in vsep
         [ annotate bold "FIPS Compliance Report"

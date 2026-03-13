@@ -42,8 +42,7 @@ fn run_scan_cyclonedx(fixture: &str, ecosystem: &str) -> Value {
         .output()
         .expect("failed to execute");
     assert!(output.status.success(), "scanner exited with error");
-    serde_json::from_value(serde_json::from_slice(&output.stdout).expect("invalid JSON"))
-        .expect("invalid CycloneDX structure")
+    serde_json::from_slice(&output.stdout).expect("invalid CycloneDX JSON")
 }
 
 fn has_algorithm(findings: &[Value], name: &str) -> bool {
