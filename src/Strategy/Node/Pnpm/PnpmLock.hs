@@ -254,6 +254,7 @@ data PackageData = PackageData
   , name :: Maybe Text -- only provided when non-registry resolver is used
   , resolution :: Resolution
   , dependencies :: Map Text Text
+  , optionalDependencies :: Map Text Text
   , peerDependencies :: Map Text Text
   }
   deriving (Show, Eq, Ord)
@@ -265,6 +266,7 @@ instance FromJSON PackageData where
       <*> obj .:? "name"
       <*> obj .: "resolution"
       <*> (obj .:? "dependencies" .!= mempty)
+      <*> (obj .:? "optionalDependencies" .!= mempty)
       <*> (obj .:? "peerDependencies" .!= mempty)
 
 data Resolution
@@ -345,6 +347,7 @@ buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
     for_ (toList lockFile.packages) $ \(pkgKey, pkgMeta) -> do
       let deepDependencies =
             Map.toList (dependencies pkgMeta)
+              <> Map.toList (optionalDependencies pkgMeta)
               <> Map.toList (peerDependencies pkgMeta)
               <> fromMaybe mempty (HashMap.lookup pkgKey lockFile.lockFileSnapshots.snapshots)
 
@@ -463,15 +466,15 @@ buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
       PnpmLockV9 -> name <> "@" <> version
 
     toDependency :: Text -> Maybe Text -> PackageData -> Dependency
-    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
+    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _ _) =
       toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
-    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
+    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _ _) =
       toDep GitType url (Just rev) isDev
-    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
+    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _ _) =
       toDep URLType url Nothing isDev
-    toDependency _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) =
+    toDependency _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _ _) =
       toDep UserType name Nothing isDev
-    toDependency name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
+    toDependency name _ (PackageData isDev Nothing (DirectoryResolve _) _ _ _) =
       toDep UserType name Nothing isDev
 
     -- Sometimes package versions include symlinked paths
