@@ -487,9 +487,10 @@ buildGraph lockFile = withoutLocalPackages . maybeHydrate $
     -- For v9: label direct deps, then propagate via hydrateDepEnvs.
     -- For non-v9: no-op (environments already set via isDev from PackageData).
     maybeHydrate :: Graphing Dependency -> Graphing Dependency
-    maybeHydrate
-      | isV9 = hydrateDepEnvs . labelV9DirectDeps
-      | otherwise = id
+    maybeHydrate =
+      if isV9
+        then hydrateDepEnvs . labelV9DirectDeps
+        else id
 
     -- Seed environment labels on direct deps based on their importer section.
     -- Uses resolved dependency identity (type + name + version) rather than
