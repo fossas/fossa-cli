@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies because v9 removed the `dev` flag from the `packages` section. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
+
 ## 3.16.3
 
 - Elixir: Use `MIX_ENV=prod` for accurate production dependency resolution, with fallback to `--only prod` for projects lacking `config/prod.exs` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
