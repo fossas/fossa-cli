@@ -3,6 +3,8 @@
 ## Unreleased
 
 - PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies in pnpm v9 projects. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
+- PNPM: Parse `optionalDependencies` from importers, packages, and snapshots across all lockfile versions. Previously, optional dependencies were silently excluded from the dependency graph. ([#1669](https://github.com/fossas/fossa-cli/pull/1669))
+- PNPM: Fix v9 snapshot peer dep suffix collision where packages with multiple peer variants (e.g. different React versions) could silently lose transitive dependencies. ([#1669](https://github.com/fossas/fossa-cli/pull/1669))
 
 ## 3.16.3
 
