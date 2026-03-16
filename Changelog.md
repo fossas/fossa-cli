@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies because v9 removed the `dev` flag from the `packages` section. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
+- PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies in pnpm v9 projects. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
 
 ## 3.16.3
 
