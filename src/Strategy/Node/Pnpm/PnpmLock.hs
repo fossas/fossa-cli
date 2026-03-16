@@ -304,7 +304,7 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
 buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile = withoutLocalPackages . maybeHydrate $
+buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
   run . evalGrapher $ do
     for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
       let allDirectDependencies =
@@ -475,7 +475,7 @@ buildGraph lockFile = withoutLocalPackages . maybeHydrate $
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
-    -- For v9, environments start empty and are set later by maybeHydrate,
+    -- For v9, environments start empty and are set later by hydrateV9Envs,
     -- which seeds direct deps from importer sections and propagates through
     -- the graph via hydrateDepEnvs. For older versions, isDev from PackageData
     -- is reliable and environments are set inline.
@@ -490,8 +490,8 @@ buildGraph lockFile = withoutLocalPackages . maybeHydrate $
 
     -- For v9: label direct deps, then propagate via hydrateDepEnvs.
     -- For non-v9: no-op (environments already set via isDev from PackageData).
-    maybeHydrate :: Graphing Dependency -> Graphing Dependency
-    maybeHydrate =
+    hydrateV9Envs :: Graphing Dependency -> Graphing Dependency
+    hydrateV9Envs =
       if isV9
         then hydrateDepEnvs . labelV9DirectDeps
         else id
