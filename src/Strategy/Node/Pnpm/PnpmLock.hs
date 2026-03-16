@@ -40,7 +40,7 @@ import Effect.Logger (
   pretty,
  )
 import Effect.ReadFS (ReadFS, readContentsYaml)
-import Graphing (Graphing, shrink)
+import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
 
