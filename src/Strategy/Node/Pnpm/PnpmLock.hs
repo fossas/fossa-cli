@@ -475,6 +475,7 @@ buildGraph lockFile = withoutLocalPackages . maybeHydrate $
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
+    -- TODO: Add a comment here about why v9 (or greater) get mempty
     toEnv :: Bool -> Set.Set DepEnvironment
     toEnv isNotRequired =
       if isV9
@@ -493,9 +494,6 @@ buildGraph lockFile = withoutLocalPackages . maybeHydrate $
         else id
 
     -- Seed environment labels on direct deps based on their importer section.
-    -- Uses resolved dependency identity (type + name + version) rather than
-    -- just the package name, so that multiple versions are distinguished and
-    -- git/tarball deps are matched correctly.
     labelV9DirectDeps :: Graphing Dependency -> Graphing Dependency
     labelV9DirectDeps = Graphing.gmap $ \dep ->
       let ident = depIdentity dep
