@@ -475,7 +475,10 @@ buildGraph lockFile = withoutLocalPackages . maybeHydrate $
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
-    -- TODO: Add a comment here about why v9 (or greater) get mempty
+    -- For v9, environments start empty and are set later by maybeHydrate,
+    -- which seeds direct deps from importer sections and propagates through
+    -- the graph via hydrateDepEnvs. For older versions, isDev from PackageData
+    -- is reliable and environments are set inline.
     toEnv :: Bool -> Set.Set DepEnvironment
     toEnv isNotRequired =
       if isV9
