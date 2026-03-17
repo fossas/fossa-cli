@@ -14,6 +14,7 @@ module Strategy.Cargo (
   getDeps,
   mkProject,
   findProjects,
+  parseGitRepoUrl,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (
@@ -32,7 +33,7 @@ import Control.Effect.Diagnostics (
   warn,
  )
 import Control.Effect.Reader (Reader)
-import Control.Monad (unless)
+import Control.Monad (guard, unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -47,7 +48,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
@@ -77,6 +78,7 @@ import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, shrinkRoots)
+import Network.URI (parseURI, uriAuthority, uriPath, uriRegName)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
 import Text.Megaparsec (
   Parsec,
@@ -373,6 +375,20 @@ instance ToDiagnostic FailedToRetrieveCargoMetadata where
 
 type PackageIdSourceKind = Text.Text
 type PackageIdSourceProtocol = Text.Text
+
+-- | Extract the git repository host+path from a cargo source URL.
+-- Input:  "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c..."
+-- Output: Just "github.com/fossas/locator-rs"
+parseGitRepoUrl :: Text -> Maybe Text
+parseGitRepoUrl src = do
+  stripped <- Text.stripPrefix "git+" src
+  uri <- parseURI (toString stripped)
+  auth <- uriAuthority uri
+  let host = Text.pack (uriRegName auth)
+      rawPath = Text.dropWhile (== '/') (Text.pack (uriPath uri))
+      cleanPath = fromMaybe rawPath (Text.stripSuffix ".git" rawPath)
+  guard (not (Text.null host) && not (Text.null cleanPath))
+  pure (host <> "/" <> cleanPath)
 
 toDependency :: PackageId -> Set CargoLabel -> Dependency
 toDependency pkg =
