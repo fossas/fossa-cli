@@ -12,6 +12,8 @@ import DepTypes
 import GraphUtil
 import Strategy.Cargo
 import Test.Hspec qualified as Test
+import Test.Hspec (shouldBe, shouldSatisfy)
+import Graphing qualified
 
 expectedMetadataPre1_77 :: CargoMetadata
 expectedMetadataPre1_77 = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodes
@@ -72,6 +74,8 @@ spec = do
 
   post1_77MetadataParseSpec
 
+  parseGitRepoUrlSpec
+
 ansiTermIdNoVersion :: PackageId
 ansiTermIdNoVersion = mkPkgId "ansi_term" "*"
 
@@ -94,7 +98,7 @@ barPathNode :: ResolveNode
 barPathNode = ResolveNode barPathDepId []
 
 barDep :: Dependency
-barDep = mkDep "bar" "2.0.0" CargoType [EnvProduction]
+barDep = mkDep "github.com/user/bar#bar" "2.0.0" CargoType [EnvProduction]
 
 jfmtNodePost1_77 :: ResolveNode
 jfmtNodePost1_77 = ResolveNode jfmtId [ansiTermNodeDep, fooNodeDep, barNodeDep]
@@ -123,3 +127,76 @@ post1_77MetadataParseSpec =
       expectDeps [ansiTermDep, clapDep, fooDep, barDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep, fooDep, barDep] graph
+
+    Test.it "git deps should produce git-backed locator names" $ do
+      let graph = buildGraph expectedMetadataPost1_77
+      -- barDep has a git+ssh source; its name should be repo-url#crate-name
+      Graphing.vertexList graph `shouldSatisfy` elem barDep
+      dependencyName barDep `shouldBe` "github.com/user/bar#bar"
+
+    Test.it "git deps with HTTPS and tag produce git-backed locator names" $ do
+      let httpsGitId = PackageId "locator" "3.0.3" "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c724df"
+          httpsGitNode = ResolveNode httpsGitId []
+          meta = CargoMetadata [] [jfmtId] $ Resolve [jfmtNodeWithHttpsGit, httpsGitNode]
+          jfmtNodeWithHttpsGit = ResolveNode jfmtId [NodeDependency httpsGitId [nullKind]]
+          expectedDep = mkDep "github.com/fossas/locator-rs#locator" "3.0.3" CargoType [EnvProduction]
+      Graphing.vertexList (buildGraph meta) `shouldSatisfy` elem expectedDep
+
+    Test.it "multiple crates from same workspace produce distinct locator names" $ do
+      let wsSource = "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c724df"
+          crateA = PackageId "locator" "3.0.3" wsSource
+          crateB = PackageId "locator-codegen" "3.0.3" wsSource
+          nodeA = ResolveNode crateA []
+          nodeB = ResolveNode crateB []
+          rootNode = ResolveNode jfmtId [NodeDependency crateA [nullKind], NodeDependency crateB [nullKind]]
+          meta = CargoMetadata [] [jfmtId] $ Resolve [rootNode, nodeA, nodeB]
+          depA = mkDep "github.com/fossas/locator-rs#locator" "3.0.3" CargoType [EnvProduction]
+          depB = mkDep "github.com/fossas/locator-rs#locator-codegen" "3.0.3" CargoType [EnvProduction]
+          graph = buildGraph meta
+      expectDeps [depA, depB] graph
+      dependencyName depA `shouldBe` "github.com/fossas/locator-rs#locator"
+      dependencyName depB `shouldBe` "github.com/fossas/locator-rs#locator-codegen"
+
+    Test.it "registry deps remain unchanged" $ do
+      let graph = buildGraph expectedMetadataPost1_77
+      Graphing.vertexList graph `shouldSatisfy` elem ansiTermDep
+      dependencyName ansiTermDep `shouldBe` "ansi_term"
+
+parseGitRepoUrlSpec :: Test.Spec
+parseGitRepoUrlSpec =
+  Test.describe "parseGitRepoUrl" $ do
+    Test.it "parses HTTPS URL with tag" $
+      parseGitRepoUrl "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c724df"
+        `shouldBe` Just "github.com/fossas/locator-rs"
+
+    Test.it "parses HTTPS URL with branch" $
+      parseGitRepoUrl "git+https://github.com/owner/repo?branch=main#abc123"
+        `shouldBe` Just "github.com/owner/repo"
+
+    Test.it "parses HTTPS URL with rev" $
+      parseGitRepoUrl "git+https://github.com/owner/repo?rev=abc123#abc123"
+        `shouldBe` Just "github.com/owner/repo"
+
+    Test.it "parses HTTPS URL with default branch" $
+      parseGitRepoUrl "git+https://github.com/owner/repo#abc123"
+        `shouldBe` Just "github.com/owner/repo"
+
+    Test.it "parses SSH URL" $
+      parseGitRepoUrl "git+ssh://git@github.com/owner/repo?tag=v1.0.0#abc123"
+        `shouldBe` Just "github.com/owner/repo"
+
+    Test.it "strips .git suffix" $
+      parseGitRepoUrl "git+https://github.com/owner/repo.git?tag=v1.0.0#abc123"
+        `shouldBe` Just "github.com/owner/repo"
+
+    Test.it "returns Nothing for registry source" $
+      parseGitRepoUrl "registry+https://github.com/rust-lang/crates.io-index"
+        `shouldBe` Nothing
+
+    Test.it "returns Nothing for path source" $
+      parseGitRepoUrl "path+file:///some/path"
+        `shouldBe` Nothing
+
+    Test.it "returns Nothing for empty string" $
+      parseGitRepoUrl ""
+        `shouldBe` Nothing
