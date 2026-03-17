@@ -425,11 +425,15 @@ toDependency pkg =
 
     -- For a path dependency, use the path as the package name. For example:
     -- path+file:///some/file/path -> /some/file/path
+    -- For a git dependency, use repo-url#crate-name. For example:
+    -- git+https://github.com/fossas/locator-rs?tag=v3.0.3#sha -> github.com/fossas/locator-rs#locator
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of
             UnresolvedPathType -> sourceUrl
-            _ -> pkgIdName pkg
+            _ -> case parseGitRepoUrl (pkgIdSource pkg) of
+              Just repoUrl -> repoUrl <> "#" <> pkgIdName pkg
+              Nothing -> pkgIdName pkg
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
