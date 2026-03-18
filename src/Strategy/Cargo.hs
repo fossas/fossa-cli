@@ -384,8 +384,8 @@ parseGitRepoUrl src = do
   stripped <- Text.stripPrefix "git+" src
   uri <- parseURI (toString stripped)
   auth <- uriAuthority uri
-  let host = Text.pack (uriRegName auth)
-      rawPath = Text.dropWhile (== '/') (Text.pack (uriPath uri))
+  let host = toText (uriRegName auth)
+      rawPath = Text.dropWhile (== '/') (toText (uriPath uri))
       cleanPath = fromMaybe rawPath (Text.stripSuffix ".git" rawPath)
   guard (not (Text.null host) && not (Text.null cleanPath))
   pure (host <> "/" <> cleanPath)

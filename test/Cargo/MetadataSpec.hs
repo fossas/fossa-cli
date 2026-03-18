@@ -10,10 +10,10 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes
 import GraphUtil
-import Strategy.Cargo
-import Test.Hspec qualified as Test
-import Test.Hspec (shouldBe, shouldSatisfy)
 import Graphing qualified
+import Strategy.Cargo
+import Test.Hspec (shouldBe, shouldSatisfy)
+import Test.Hspec qualified as Test
 
 expectedMetadataPre1_77 :: CargoMetadata
 expectedMetadataPre1_77 = CargoMetadata [] [jfmtId] $ Resolve expectedResolveNodes
