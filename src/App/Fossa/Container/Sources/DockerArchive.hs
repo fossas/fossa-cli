@@ -224,6 +224,7 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
       ExperimentalAnalyzeConfig
         Nothing
         False -- Discovery has no consequence from path dependency analysis config
+        False -- Container scanning has no org info; use plain cargo locators
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)
@@ -377,6 +378,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
       ( ExperimentalAnalyzeConfig
           Nothing
           False -- Targets are not impacted by path dependencies.
+          False -- Container scanning has no org info; use plain cargo locators
       )
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader NonStrict

@@ -145,7 +145,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
-import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
+import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsGitBackedCargoLocators, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -435,6 +435,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
+  let experimentalCfg =
+        (Config.experimental cfg)
+          { Config.useGitBackedCargoLocators = maybe False orgSupportsGitBackedCargoLocators orgInfo
+          }
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
       . runOutput @DiscoveredProjectScan
@@ -442,7 +446,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      . runReader (Config.experimental cfg)
+      . runReader experimentalCfg
       . runReader (Config.mavenScopeFilterSet cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)

@@ -302,6 +302,7 @@ instance ToJSON AnalyzeConfig where
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , resolvePathDependencies :: Bool
+  , useGitBackedCargoLocators :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -683,6 +684,7 @@ collectExperimental maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnal
         (maybeCfg >>= configExperimental >>= gradle)
     )
     shouldAnalyzePathDependencies
+    False
 
 collectVendoredDeps ::
   (Has Diagnostics sig m) =>

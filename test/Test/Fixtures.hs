@@ -142,6 +142,7 @@ organization =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
@@ -164,6 +165,7 @@ organizationWithPreflightChecks =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = True
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
@@ -186,6 +188,7 @@ organizationWithPremiumSubscription =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = True
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Premium
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
@@ -614,6 +617,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , resolvePathDependencies = False
+    , useGitBackedCargoLocators = False
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions

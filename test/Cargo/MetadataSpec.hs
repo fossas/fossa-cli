@@ -67,7 +67,7 @@ spec = do
         Right result -> result `Test.shouldBe` expectedMetadataPre1_77
 
     Test.it "should build the correct graph" $ do
-      let graph = buildGraph expectedMetadataPre1_77
+      let graph = buildGraph False expectedMetadataPre1_77
       expectDeps [ansiTermDep, clapDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep] graph
@@ -100,6 +100,9 @@ barPathNode = ResolveNode barPathDepId []
 barDep :: Dependency
 barDep = mkDep "github.com/user/bar#bar" "2.0.0" CargoType [EnvProduction]
 
+barDepFallback :: Dependency
+barDepFallback = mkDep "bar" "2.0.0" CargoType [EnvProduction]
+
 jfmtNodePost1_77 :: ResolveNode
 jfmtNodePost1_77 = ResolveNode jfmtId [ansiTermNodeDep, fooNodeDep, barNodeDep]
   where
@@ -123,13 +126,13 @@ post1_77MetadataParseSpec =
         Right result -> result `Test.shouldBe` expectedMetadataPost1_77
 
     Test.it "should build the correct graph" $ do
-      let graph = buildGraph expectedMetadataPost1_77
+      let graph = buildGraph True expectedMetadataPost1_77
       expectDeps [ansiTermDep, clapDep, fooDep, barDep] graph
       expectEdges [(clapDep, ansiTermDep)] graph
       expectDirect [clapDep, fooDep, barDep] graph
 
     Test.it "git deps should produce git-backed locator names" $ do
-      let graph = buildGraph expectedMetadataPost1_77
+      let graph = buildGraph True expectedMetadataPost1_77
       -- barDep has a git+ssh source; its name should be repo-url#crate-name
       Graphing.vertexList graph `shouldSatisfy` elem barDep
       dependencyName barDep `shouldBe` "github.com/user/bar#bar"
@@ -140,7 +143,7 @@ post1_77MetadataParseSpec =
           meta = CargoMetadata [] [jfmtId] $ Resolve [jfmtNodeWithHttpsGit, httpsGitNode]
           jfmtNodeWithHttpsGit = ResolveNode jfmtId [NodeDependency httpsGitId [nullKind]]
           expectedDep = mkDep "github.com/fossas/locator-rs#locator" "3.0.3" CargoType [EnvProduction]
-      Graphing.vertexList (buildGraph meta) `shouldSatisfy` elem expectedDep
+      Graphing.vertexList (buildGraph True meta) `shouldSatisfy` elem expectedDep
 
     Test.it "multiple crates from same workspace produce distinct locator names" $ do
       let wsSource = "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c724df"
@@ -152,15 +155,20 @@ post1_77MetadataParseSpec =
           meta = CargoMetadata [] [jfmtId] $ Resolve [rootNode, nodeA, nodeB]
           depA = mkDep "github.com/fossas/locator-rs#locator" "3.0.3" CargoType [EnvProduction]
           depB = mkDep "github.com/fossas/locator-rs#locator-codegen" "3.0.3" CargoType [EnvProduction]
-          graph = buildGraph meta
+          graph = buildGraph True meta
       expectDeps [depA, depB] graph
       dependencyName depA `shouldBe` "github.com/fossas/locator-rs#locator"
       dependencyName depB `shouldBe` "github.com/fossas/locator-rs#locator-codegen"
 
     Test.it "registry deps remain unchanged" $ do
-      let graph = buildGraph expectedMetadataPost1_77
+      let graph = buildGraph True expectedMetadataPost1_77
       Graphing.vertexList graph `shouldSatisfy` elem ansiTermDep
       dependencyName ansiTermDep `shouldBe` "ansi_term"
+
+    Test.it "git deps fall back to plain crate names when server does not support git-backed locators" $ do
+      let graph = buildGraph False expectedMetadataPost1_77
+      expectDeps [ansiTermDep, clapDep, fooDep, barDepFallback] graph
+      dependencyName barDepFallback `shouldBe` "bar"
 
 parseGitRepoUrlSpec :: Test.Spec
 parseGitRepoUrlSpec =

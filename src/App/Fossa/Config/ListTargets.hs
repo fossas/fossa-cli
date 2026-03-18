@@ -122,6 +122,7 @@ collectExperimental maybeCfg =
         (maybeCfg >>= configExperimental >>= gradle)
     )
     False -- This should be ok because discovery has no impact on whether, analysis includes path dependency or not!
+    False -- List targets has no org info; use plain cargo locators
 
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts

@@ -21,6 +21,7 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useGitBackedCargoLocators))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -32,7 +33,7 @@ import Control.Effect.Diagnostics (
   run,
   warn,
  )
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, ask)
 import Control.Monad (guard, unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -315,9 +316,10 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m) => CargoProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m, Has (Reader ExperimentalAnalyzeConfig) sig m) => CargoProject -> m DependencyResults
 getDeps project = do
-  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze $ project
+  experimentalCfg <- ask @ExperimentalAnalyzeConfig
+  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" $ analyze (useGitBackedCargoLocators experimentalCfg) project
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -348,9 +350,10 @@ analyze ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
+  Bool ->
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
-analyze (CargoProject manifestDir manifestFile) = do
+analyze emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
   exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
   unless exists $
     void $
@@ -358,7 +361,7 @@ analyze (CargoProject manifestDir manifestFile) = do
         errCtx (FailedToGenLockFile manifestFile) $
           execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
-  graph <- context "Building dependency graph" $ pure (buildGraph meta)
+  graph <- context "Building dependency graph" $ pure (buildGraph emitGitBackedLocators meta)
   pure (graph, Complete)
 
 newtype FailedToGenLockFile = FailedToGenLockFile (Path Abs File)
@@ -390,8 +393,8 @@ parseGitRepoUrl src = do
   guard (not (Text.null host) && not (Text.null cleanPath))
   pure (host <> "/" <> cleanPath)
 
-toDependency :: PackageId -> Set CargoLabel -> Dependency
-toDependency pkg =
+toDependency :: Bool -> PackageId -> Set CargoLabel -> Dependency
+toDependency emitGitBackedLocators pkg =
   foldr
     applyLabel
     Dependency
@@ -425,15 +428,17 @@ toDependency pkg =
 
     -- For a path dependency, use the path as the package name. For example:
     -- path+file:///some/file/path -> /some/file/path
-    -- For a git dependency, use repo-url#crate-name. For example:
+    -- For a git dependency when the server supports it, use repo-url#crate-name. For example:
     -- git+https://github.com/fossas/locator-rs?tag=v3.0.3#sha -> github.com/fossas/locator-rs#locator
+    -- When the server does not support git-backed locators, fall back to the plain crate name.
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of
             UnresolvedPathType -> sourceUrl
-            _ -> case parseGitRepoUrl (pkgIdSource pkg) of
-              Just repoUrl -> repoUrl <> "#" <> pkgIdName pkg
-              Nothing -> pkgIdName pkg
+            _ | emitGitBackedLocators
+              , Just repoUrl <- parseGitRepoUrl (pkgIdSource pkg) ->
+                repoUrl <> "#" <> pkgIdName pkg
+            _ -> pkgIdName pkg
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
@@ -455,12 +460,12 @@ addEdge node = do
     addLabel dep
     edge parentId $ nodePkg dep
 
-buildGraph :: CargoMetadata -> Graphing Dependency
+buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
 -- By construction, workspace members are the root nodes in the graph.
 -- Use shrinkRoots to remove them and promote their direct dependencies to the
 -- direct dependencies we report for the project.
-buildGraph meta = shrinkRoots $
-  run . withLabeling toDependency $ do
+buildGraph emitGitBackedLocators meta = shrinkRoots $
+  run . withLabeling (toDependency emitGitBackedLocators) $ do
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
 

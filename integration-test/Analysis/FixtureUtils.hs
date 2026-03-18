@@ -134,7 +134,7 @@ testRunner f env =
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
     & runReader (MavenScopeIncludeFilters mempty)
-    & runReader (ExperimentalAnalyzeConfig Nothing False)
+    & runReader (ExperimentalAnalyzeConfig Nothing False False)
     & runReader NonStrict
     & runFinally
     & runStack
