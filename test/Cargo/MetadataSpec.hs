@@ -205,6 +205,10 @@ parseGitRepoUrlSpec =
       parseGitRepoUrl "path+file:///some/path"
         `shouldBe` Nothing
 
+    Test.it "parses bare git URL without fragment" $
+      parseGitRepoUrl "git+https://github.com/owner/repo"
+        `shouldBe` Just "github.com/owner/repo"
+
     Test.it "returns Nothing for empty string" $
       parseGitRepoUrl ""
         `shouldBe` Nothing
