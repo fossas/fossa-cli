@@ -559,7 +559,7 @@ instance FromJSON Organization where
       <*> obj .:? "customLicenseScanConfigs" .!= []
       <*> obj .:? "supportsReachability" .!= False
       <*> obj .:? "supportsPreflightChecks" .!= False
-      <*> obj .:? "supportsGitBackedCargoLocators" .!= False
+      <*> obj .:? "supportsGitBackedCargoLocators" .!= True
       <*> obj .:? "subscription" .!= Free
       <*> obj .:? "snippetScanSourceCodeRetentionDays" .!= Nothing
 
