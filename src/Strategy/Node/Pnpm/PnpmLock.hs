@@ -307,6 +307,9 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
+-- Build the dependency graph, labeling direct deps with their environment
+-- (prod/dev). hydrateDepEnvs then propagates those environments to all
+-- transitive successors.
 buildGraph :: PnpmLockfile -> Graphing Dependency
 buildGraph lockFile = withoutLocalPackages . hydrateDepEnvs $
   run . withLabeling applyLabels $ do
