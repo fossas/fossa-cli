@@ -496,7 +496,7 @@ buildGraph lockFile = withoutLocalPackages . hydrateDepEnvs $
     isV9 = lockFile.lockFileVersion == PnpmLockV9
 
     applyLabels :: Dependency -> Set.Set PnpmLabel -> Dependency
-    applyLabels dep labels = foldr applyLabel dep labels
+    applyLabels = foldr applyLabel
       where
         applyLabel (PnpmEnv env) = insertEnvironment env
 
