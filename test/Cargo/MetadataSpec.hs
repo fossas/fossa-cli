@@ -4,6 +4,7 @@ module Cargo.MetadataSpec (
 
 import Data.Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.List (find)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -133,9 +134,10 @@ post1_77MetadataParseSpec =
 
     Test.it "git deps should produce git-backed locator names" $ do
       let graph = buildGraph True expectedMetadataPost1_77
-      -- barDep has a git+ssh source; its name should be repo-url#crate-name
-      Graphing.vertexList graph `shouldSatisfy` elem barDep
-      dependencyName barDep `shouldBe` "github.com/user/bar#bar"
+          vertices = Graphing.vertexList graph
+          -- Find the cargo dep with bar's version to verify its name came from the git URL
+          barVertex = find (\d -> dependencyVersion d == Just (CEq "2.0.0") && dependencyType d == CargoType) vertices
+      fmap dependencyName barVertex `shouldBe` Just "github.com/user/bar#bar"
 
     Test.it "git deps with HTTPS and tag produce git-backed locator names" $ do
       let httpsGitId = PackageId "locator" "3.0.3" "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c724df"
