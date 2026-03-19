@@ -55,16 +55,17 @@ analyzeFromDockerEngine ::
   , Has Debug sig m
   ) =>
   Bool ->
+  Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   Text ->
   m ContainerScan
-analyzeFromDockerEngine systemDepsOnly filters withoutDefaultFilters engineHost imgTag =
+analyzeFromDockerEngine useGitBackedCargo systemDepsOnly filters withoutDefaultFilters engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromDockerEngine ::
   ( Has Diagnostics sig m

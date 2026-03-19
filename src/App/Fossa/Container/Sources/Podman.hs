@@ -79,11 +79,12 @@ analyzeFromPodman ::
   , Has ReadFS sig m
   ) =>
   Bool ->
+  Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+analyzeFromPodman useGitBackedCargo systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m

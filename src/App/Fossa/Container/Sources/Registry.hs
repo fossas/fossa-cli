@@ -106,14 +106,15 @@ analyzeFromRegistry ::
   , Has ReadFS sig m
   ) =>
   Bool ->
+  Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   RegistryImageSource ->
   m ContainerScan
-analyzeFromRegistry systemDepsOnly filters withoutDefaultFilters img =
+analyzeFromRegistry useGitBackedCargo systemDepsOnly filters withoutDefaultFilters img =
   runFromRegistry
     img
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromRegistry ::
   ( Has Diagnostics sig m

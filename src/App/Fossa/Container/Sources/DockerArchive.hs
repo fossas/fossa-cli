@@ -98,11 +98,12 @@ analyzeFromDockerArchive ::
   , Has Debug sig m
   ) =>
   Bool ->
+  Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Path Abs File ->
   m ContainerScan
-analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = do
+analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
@@ -134,7 +135,7 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
 
   baseUnits <-
     context "Analyzing From Base Layer" $
-      analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo baseFs tarball
+      analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capabilities osInfo baseFs tarball
 
   let mkScan :: [ContainerScanImageLayer] -> ContainerScan
       mkScan layers =
@@ -172,7 +173,7 @@ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters tarball = 
       let squashedDigest = layerDigest . otherLayersSquashed $ image
       otherUnits <-
         context "Analyzing from Other Layers" $
-          analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
+          analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
 
       let scan =
             mkScan
@@ -190,6 +191,7 @@ analyzeLayer ::
   , Has Debug sig m
   ) =>
   Bool ->
+  Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Int ->
@@ -197,7 +199,7 @@ analyzeLayer ::
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   m [SourceUnit]
-analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo layerFs tarball = do
+analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capabilities osInfo layerFs tarball = do
   toSourceUnit
     <$> (runReader filters)
       ( do
@@ -224,7 +226,7 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
       ExperimentalAnalyzeConfig
         Nothing
         False -- Discovery has no consequence from path dependency analysis config
-        True -- Default to git-backed cargo locators when no org info is available
+        useGitBackedCargo
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)

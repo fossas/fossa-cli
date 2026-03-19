@@ -31,7 +31,7 @@ import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal, fromMaybeText)
-import Control.Effect.FossaApiClient (FossaApiClient, uploadNativeContainerScan)
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
@@ -58,7 +58,7 @@ import Effect.Logger (
   viaShow,
  )
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
+import Fossa.API.Types (ApiOpts, Organization (orgSupportsGitBackedCargoLocators, orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path)
 import Srclib.Types (Locator (locatorRevision), locatorProject, renderLocator)
 import System.FilePath ((</>))
@@ -109,7 +109,14 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyze cfg = do
-  scannedImage <- scanImage (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
+  -- Fetch org info before scanning to determine feature support (e.g., git-backed cargo locators).
+  -- For output-only mode, default to True since results aren't uploaded.
+  useGitBackedCargo <- case scanDestination cfg of
+    OutputStdout -> pure True
+    UploadScan (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
+    OutputAndUpload (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
+
+  scannedImage <- scanImage useGitBackedCargo (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
       logProjectInfo :: Has Logger sig m => m ()
       logProjectInfo = do
@@ -182,3 +189,18 @@ buildJsonSummary project locator projectUrl = do
       , "url" .= projectUrl
       , "id" .= renderLocator locator
       ]
+
+-- | Fetch the org's support for git-backed cargo locators.
+-- Defaults to True if the org info can't be fetched, since
+-- the server-side default is True for this capability.
+fetchOrgSupportsGitBackedCargo ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  m Bool
+fetchOrgSupportsGitBackedCargo apiOpts =
+  runFossaApiClient apiOpts $
+    orgSupportsGitBackedCargoLocators <$> getOrganization
