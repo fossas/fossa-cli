@@ -21,7 +21,7 @@ import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useGitBackedCargoLocators))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useGitBackedCargoLocators), UseGitBackedCargoLocators (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -319,7 +319,7 @@ mkProject project =
 getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m, Has (Reader ExperimentalAnalyzeConfig) sig m) => CargoProject -> m DependencyResults
 getDeps project = do
   experimentalCfg <- ask @ExperimentalAnalyzeConfig
-  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" $ analyze (useGitBackedCargoLocators experimentalCfg) project
+  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" $ analyze (unUseGitBackedCargoLocators $ useGitBackedCargoLocators experimentalCfg) project
   pure $
     DependencyResults
       { dependencyGraph = graph

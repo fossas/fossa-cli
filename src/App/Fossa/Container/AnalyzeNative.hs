@@ -9,6 +9,7 @@ module App.Fossa.Container.AnalyzeNative (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators (..))
 import App.Fossa.Config.Common (
   DestinationMeta (..),
   ScanDestination (..),
@@ -112,7 +113,7 @@ analyze cfg = do
   -- Fetch org info before scanning to determine feature support (e.g., git-backed cargo locators).
   -- For output-only mode, default to True since results aren't uploaded.
   useGitBackedCargo <- case scanDestination cfg of
-    OutputStdout -> pure True
+    OutputStdout -> pure $ UseGitBackedCargoLocators True
     UploadScan (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
     OutputAndUpload (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
 
@@ -200,7 +201,7 @@ fetchOrgSupportsGitBackedCargo ::
   , Has Debug sig m
   ) =>
   ApiOpts ->
-  m Bool
+  m UseGitBackedCargoLocators
 fetchOrgSupportsGitBackedCargo apiOpts =
   runFossaApiClient apiOpts $
-    orgSupportsGitBackedCargoLocators <$> getOrganization
+    UseGitBackedCargoLocators . orgSupportsGitBackedCargoLocators <$> getOrganization

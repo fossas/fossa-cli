@@ -7,7 +7,7 @@ module App.Fossa.Container.Sources.Registry (
   runWithCirceReexport,
 ) where
 
-import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
 import App.Fossa.Config.Container.Common (ImageText, unImageText)
 import App.Fossa.Container.Sources.Circe (circeReexportCommand)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
@@ -105,7 +105,7 @@ analyzeFromRegistry ::
   , Has Debug sig m
   , Has ReadFS sig m
   ) =>
-  Bool ->
+  UseGitBackedCargoLocators ->
   Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->

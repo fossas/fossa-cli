@@ -437,7 +437,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   let experimentalCfg =
         (Config.experimental cfg)
-          { Config.useGitBackedCargoLocators = maybe False orgSupportsGitBackedCargoLocators orgInfo
+          { Config.useGitBackedCargoLocators = Config.UseGitBackedCargoLocators $ maybe False orgSupportsGitBackedCargoLocators orgInfo
           }
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"

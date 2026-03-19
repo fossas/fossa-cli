@@ -5,6 +5,7 @@ module App.Fossa.Config.Analyze (
   AnalyzeCliOpts (..),
   BinaryDiscovery (..),
   ExperimentalAnalyzeConfig (..),
+  UseGitBackedCargoLocators (..),
   ForceVendoredDependencyRescans (..),
   ForceFirstPartyScans (..),
   ForceNoFirstPartyScans (..),
@@ -299,10 +300,16 @@ data AnalyzeConfig = AnalyzeConfig
 instance ToJSON AnalyzeConfig where
   toEncoding = genericToEncoding defaultOptions
 
+newtype UseGitBackedCargoLocators = UseGitBackedCargoLocators {unUseGitBackedCargoLocators :: Bool}
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON UseGitBackedCargoLocators where
+  toEncoding = genericToEncoding defaultOptions
+
 data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , resolvePathDependencies :: Bool
-  , useGitBackedCargoLocators :: Bool
+  , useGitBackedCargoLocators :: UseGitBackedCargoLocators
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -684,7 +691,7 @@ collectExperimental maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnal
         (maybeCfg >>= configExperimental >>= gradle)
     )
     shouldAnalyzePathDependencies
-    True
+    (UseGitBackedCargoLocators True)
 
 collectVendoredDeps ::
   (Has Diagnostics sig m) =>

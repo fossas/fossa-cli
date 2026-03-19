@@ -9,6 +9,7 @@ module App.Fossa.Config.ListTargets (
 
 import App.Fossa.Config.Analyze (
   ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
+  UseGitBackedCargoLocators (UseGitBackedCargoLocators),
  )
 import App.Fossa.Config.Common (
   CommonOpts (..),
@@ -122,7 +123,7 @@ collectExperimental maybeCfg =
         (maybeCfg >>= configExperimental >>= gradle)
     )
     False -- This should be ok because discovery has no impact on whether, analysis includes path dependency or not!
-    True -- Default to git-backed cargo locators when no org info is available
+    (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available
 
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts

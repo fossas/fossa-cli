@@ -617,7 +617,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , resolvePathDependencies = False
-    , useGitBackedCargoLocators = True
+    , useGitBackedCargoLocators = ANZ.UseGitBackedCargoLocators True
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions

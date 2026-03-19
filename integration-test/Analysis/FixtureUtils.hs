@@ -15,7 +15,7 @@ module Analysis.FixtureUtils (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), UseGitBackedCargoLocators (..))
 import App.Types (Mode (..), OverrideDynamicAnalysisBinary)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
@@ -134,7 +134,7 @@ testRunner f env =
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
     & runReader (MavenScopeIncludeFilters mempty)
-    & runReader (ExperimentalAnalyzeConfig Nothing False False)
+    & runReader (ExperimentalAnalyzeConfig Nothing False (UseGitBackedCargoLocators False))
     & runReader NonStrict
     & runFinally
     & runStack

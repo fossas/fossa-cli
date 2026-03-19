@@ -10,7 +10,7 @@ module App.Fossa.Container.Scan (
   ContainerImageSource (..),
 ) where
 
-import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, revisionFromDockerArchive)
 import App.Fossa.Container.Sources.DockerEngine (analyzeFromDockerEngine, revisionFromDockerEngine)
@@ -86,7 +86,7 @@ scanImage ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
-  Bool ->
+  UseGitBackedCargoLocators ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Bool ->

@@ -16,7 +16,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), UseGitBackedCargoLocators (..), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import App.Types (Mode (..))
@@ -97,7 +97,7 @@ analyzeFromDockerArchive ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
-  Bool ->
+  UseGitBackedCargoLocators ->
   Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
@@ -190,7 +190,7 @@ analyzeLayer ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
-  Bool ->
+  UseGitBackedCargoLocators ->
   Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
@@ -380,7 +380,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
       ( ExperimentalAnalyzeConfig
           Nothing
           False -- Targets are not impacted by path dependencies.
-          True -- Default to git-backed cargo locators when no org info is available
+          (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available
       )
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader NonStrict
