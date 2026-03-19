@@ -10,6 +10,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Monad (when)
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.KeyMap (toHashMapText)
@@ -17,7 +18,7 @@ import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
@@ -28,12 +29,12 @@ import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
-  Dependency (Dependency, dependencyName, dependencyType, dependencyVersion),
+  Dependency (Dependency, dependencyType),
   VerConstraint (CEq),
   hydrateDepEnvs,
   insertEnvironment,
  )
-import Effect.Grapher (deep, direct, edge, evalGrapher, run)
+import Effect.Grapher (deep, direct, edge, label, run, withLabeling)
 import Effect.Logger (
   Logger,
   logWarn,
@@ -43,6 +44,9 @@ import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
+
+newtype PnpmLabel = PnpmEnv DepEnvironment
+  deriving (Eq, Ord)
 
 -- | Pnpm Lockfile
 --
@@ -304,15 +308,18 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
 buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
-  run . evalGrapher $ do
+buildGraph lockFile = withoutLocalPackages . hydrateDepEnvs $
+  run . withLabeling applyLabels $ do
     for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
-      let allDirectDependencies =
-            toList (directDependencies projectImporters)
-              <> toList (directDevDependencies projectImporters)
+      for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+        for_ (toResolvedDependency depName depVersion) $ \dep -> do
+          direct dep
+          when isV9 $ label dep (PnpmEnv EnvProduction)
 
-      for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
-        maybe (pure ()) direct $ toResolvedDependency depName depVersion
+      for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+        for_ (toResolvedDependency depName depVersion) $ \dep -> do
+          direct dep
+          when isV9 $ label dep (PnpmEnv EnvDevelopment)
 
     -- Add edges and deep dependencies by iterating over all packages.
     --
@@ -475,10 +482,10 @@ buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
-    -- For v9, environments start empty and are set later by hydrateV9Envs,
-    -- which seeds direct deps from importer sections and propagates through
-    -- the graph via hydrateDepEnvs. For older versions, isDev from PackageData
-    -- is reliable and environments are set inline.
+    -- For v9, environments start empty and are set later via labels
+    -- during graph construction, then propagated by hydrateDepEnvs.
+    -- For older versions, isDev from PackageData is reliable and
+    -- environments are set inline.
     toEnv :: Bool -> Set.Set DepEnvironment
     toEnv isNotRequired =
       if isV9
@@ -488,46 +495,10 @@ buildGraph lockFile = withoutLocalPackages . hydrateV9Envs $
     isV9 :: Bool
     isV9 = lockFile.lockFileVersion == PnpmLockV9
 
-    -- For v9: label direct deps, then propagate via hydrateDepEnvs.
-    -- For non-v9: no-op (environments already set via isDev from PackageData).
-    hydrateV9Envs :: Graphing Dependency -> Graphing Dependency
-    hydrateV9Envs =
-      if isV9
-        then hydrateDepEnvs . labelV9DirectDeps
-        else id
-
-    -- Seed environment labels on direct deps based on their importer section.
-    labelV9DirectDeps :: Graphing Dependency -> Graphing Dependency
-    labelV9DirectDeps = Graphing.gmap $ \dep ->
-      let ident = depIdentity dep
-          withProd = if Set.member ident v9ProdDirectDeps then insertEnvironment EnvProduction else id
-          withDev = if Set.member ident v9DevDirectDeps then insertEnvironment EnvDevelopment else id
-       in withProd . withDev $ dep
-
-    depIdentity :: Dependency -> (DepType, Text, Maybe VerConstraint)
-    depIdentity dep = (dependencyType dep, dependencyName dep, dependencyVersion dep)
-
-    v9ProdDirectDeps :: Set.Set (DepType, Text, Maybe VerConstraint)
-    v9ProdDirectDeps =
-      foldMap
-        ( \proj ->
-            Set.fromList $
-              mapMaybe
-                (\(depName, ProjectMapDepMetadata depVersion) -> depIdentity <$> toResolvedDependency depName depVersion)
-                (Map.toList $ directDependencies proj)
-        )
-        lockFile.importers
-
-    v9DevDirectDeps :: Set.Set (DepType, Text, Maybe VerConstraint)
-    v9DevDirectDeps =
-      foldMap
-        ( \proj ->
-            Set.fromList $
-              mapMaybe
-                (\(depName, ProjectMapDepMetadata depVersion) -> depIdentity <$> toResolvedDependency depName depVersion)
-                (Map.toList $ directDevDependencies proj)
-        )
-        lockFile.importers
+    applyLabels :: Dependency -> Set.Set PnpmLabel -> Dependency
+    applyLabels dep labels = foldr applyLabel dep labels
+      where
+        applyLabel (PnpmEnv env) = insertEnvironment env
 
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
