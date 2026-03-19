@@ -684,7 +684,7 @@ collectExperimental maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnal
         (maybeCfg >>= configExperimental >>= gradle)
     )
     shouldAnalyzePathDependencies
-    False
+    True
 
 collectVendoredDeps ::
   (Has Diagnostics sig m) =>

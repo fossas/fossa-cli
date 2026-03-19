@@ -617,7 +617,7 @@ experimentalConfig =
   ExperimentalAnalyzeConfig
     { allowedGradleConfigs = Nothing
     , resolvePathDependencies = False
-    , useGitBackedCargoLocators = False
+    , useGitBackedCargoLocators = True
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions
