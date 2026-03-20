@@ -28,7 +28,5 @@ export CABAL_CACHE_KEY
 echo "Cabal cache key: $CABAL_CACHE_KEY"
 echo "cabal-cache-key=$CABAL_CACHE_KEY" >> "$GITHUB_OUTPUT"
 
-echo "Home dotfiles in container: $(ls -al ~/.*)"
-
 # Cleanup. Restoring this cache seems to fail if the directory already exists.
 rm -rf dist-newstyle
