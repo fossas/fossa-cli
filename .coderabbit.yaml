@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
 inheritance: true
 reviews:
-  request_changes_workflow: true
+  request_changes_workflow: false
   high_level_summary: false
   review_status: false
   commit_status: false
@@ -16,6 +16,10 @@ reviews:
   suggested_reviewers: false
   in_progress_fortune: false
   poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+    auto_incremental_review: false
 chat:
   integrations:
     jira:
