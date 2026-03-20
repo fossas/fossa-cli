@@ -16,6 +16,7 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import GraphUtil (
+  expectDep,
   expectDirect,
   expectEdge,
  )
@@ -30,6 +31,19 @@ mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
 
 mkDevDep :: Text -> Dependency
 mkDevDep nameAtVersion = mkDep nameAtVersion (Just EnvDevelopment)
+
+mkBothEnvDep :: Text -> Dependency
+mkBothEnvDep nameAtVersion = do
+  let nameAndVersionSplit = Text.splitOn "@" nameAtVersion
+      name = head nameAndVersionSplit
+      version = last nameAndVersionSplit
+  Dependency
+    NodeJSType
+    name
+    (CEq <$> Just version)
+    mempty
+    (Set.fromList [EnvProduction, EnvDevelopment])
+    mempty
 
 mkDep :: Text -> Maybe DepEnvironment -> Dependency
 mkDep nameAtVersion env = do
@@ -110,9 +124,16 @@ spec = do
   -- With the advent of lockfile v9, pnpm now has its own pnpm-workspace.yaml file.
   let pnpmLockV9Workspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-project/pnpm-lock.yaml")
 
+  let pnpmLockV9SharedDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-shared-dep/pnpm-lock.yaml")
+  let pnpmLockV9LocalDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-local-dep/pnpm-lock.yaml")
+  let pnpmLockV9MultiVersion = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-multi-version/pnpm-lock.yaml")
+
   describe "works with v9 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
     describe "workspace" $ checkGraph pnpmLockV9Workspace pnpmLockV9GraphSpec
+    describe "shared deps" $ checkGraph pnpmLockV9SharedDep pnpmLockV9SharedDepSpec
+    describe "local dep env propagation" $ checkGraph pnpmLockV9LocalDep pnpmLockV9LocalDepSpec
+    describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -407,5 +428,62 @@ pnpmLockV9GraphSpec graph = do
       -- ├── sax 1.4.4
       -- └── xmlbuilder 11.0.1
       hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
-      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "sax@1.4.4")
-      hasEdge (mkDevDep "xml2js@0.6.2") (mkProdDep "xmlbuilder@11.0.1")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "sax@1.4.4")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "xmlbuilder@11.0.1")
+
+pnpmLockV9SharedDepSpec :: Graphing Dependency -> Spec
+pnpmLockV9SharedDepSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with shared deps" $ do
+    it "should mark direct dependencies of project as direct" $ do
+      expectDirect
+        [ mkProdDep "uri-js@4.4.1"
+        , mkDevDep "xml2js@0.6.2"
+        ]
+        graph
+
+    it "should build edges with correct environments" $ do
+      -- sax is reachable from both prod (uri-js) and dev (xml2js) -- gets both
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkBothEnvDep "sax@1.4.4")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkBothEnvDep "sax@1.4.4")
+      -- punycode is prod-only (via uri-js)
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
+      -- xmlbuilder is dev-only (via xml2js)
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "xmlbuilder@11.0.1")
+
+-- Bug 2 regression: transitive deps of a local (file:) package must inherit
+-- the environment from the importer that depends on it, even though the
+-- local package node itself is removed from the final graph.
+pnpmLockV9LocalDepSpec :: Graphing Dependency -> Spec
+pnpmLockV9LocalDepSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with local dep" $ do
+    it "should not include the local package in the final graph" $ do
+      -- local-pkg is UserType and should be removed by withoutLocalPackages
+      expectDirect
+        [ mkProdDep "express@4.18.2"
+        ]
+        graph
+
+    it "should propagate prod environment through local package to transitive deps" $ do
+      -- express is a transitive dep of local-pkg (prod) — must be prod
+      expectDep (mkProdDep "express@4.18.2") graph
+      -- body-parser is a transitive dep of express — must also be prod
+      expectDep (mkProdDep "body-parser@1.20.1") graph
+      hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
+
+-- Bug 3 regression: when two workspace packages depend on different versions
+-- of the same package (one prod, one dev), each version must receive only its
+-- own environment label — not both.
+pnpmLockV9MultiVersionSpec :: Graphing Dependency -> Spec
+pnpmLockV9MultiVersionSpec graph = do
+  describe "buildGraph with multi-version deps" $ do
+    it "should label each version with only its own environment" $ do
+      -- sax@1.2.1 is prod-only (from app-a)
+      expectDep (mkProdDep "sax@1.2.1") graph
+      -- sax@1.4.4 is dev-only (from app-b)
+      expectDep (mkDevDep "sax@1.4.4") graph
