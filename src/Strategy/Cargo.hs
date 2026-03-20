@@ -435,9 +435,10 @@ toDependency emitGitBackedLocators pkg =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of
             UnresolvedPathType -> sourceUrl
-            _ | emitGitBackedLocators
+            _
+              | emitGitBackedLocators
               , Just repoUrl <- parseGitRepoUrl (pkgIdSource pkg) ->
-                repoUrl <> "#" <> pkgIdName pkg
+                  repoUrl <> "#" <> pkgIdName pkg
             _ -> pkgIdName pkg
 
 -- Possible values here are "build", "dev", and null.

@@ -2,11 +2,11 @@
 
 module App.Fossa.Container.AnalyzeNativeSpec (spec) where
 
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators (..))
 import App.Fossa.Container.Scan (
   ContainerImageSource (DockerEngine),
   parseDockerEngineSource,
  )
-import App.Fossa.Config.Analyze (UseGitBackedCargoLocators (..))
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive)
 import Container.Types (ContainerScan (ContainerScan, imageData), ContainerScanImage (ContainerScanImage, imageLayers, imageOs), layerId, observations, srcUnits)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
