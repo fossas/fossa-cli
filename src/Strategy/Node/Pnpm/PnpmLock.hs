@@ -10,6 +10,7 @@ where
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Monad (when)
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.KeyMap (toHashMapText)
@@ -30,16 +31,22 @@ import DepTypes (
   DepType (GitType, NodeJSType, URLType, UserType),
   Dependency (Dependency, dependencyType),
   VerConstraint (CEq),
+  hydrateDepEnvs,
+  insertEnvironment,
  )
-import Effect.Grapher (deep, direct, edge, evalGrapher, run)
+import Effect.Grapher (deep, direct, edge, label, run, withLabeling)
 import Effect.Logger (
   Logger,
   logWarn,
   pretty,
  )
 import Effect.ReadFS (ReadFS, readContentsYaml)
-import Graphing (Graphing, shrink)
+import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, File, Path)
+
+newtype PnpmLabel = PnpmEnv DepEnvironment
+  deriving (Eq, Ord)
 
 -- | Pnpm Lockfile
 --
@@ -300,16 +307,22 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
+-- Build the dependency graph, labeling direct deps with their environment
+-- (prod/dev). hydrateDepEnvs then propagates those environments to all
+-- transitive successors.
 buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile = withoutLocalPackages $
-  run . evalGrapher $ do
+buildGraph lockFile = withoutLocalPackages . hydrateDepEnvs $
+  run . withLabeling applyLabels $ do
     for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
-      let allDirectDependencies =
-            toList (directDependencies projectImporters)
-              <> toList (directDevDependencies projectImporters)
+      for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+        for_ (toResolvedDependency depName depVersion) $ \dep -> do
+          direct dep
+          when isV9 $ label dep (PnpmEnv EnvProduction)
 
-      for_ allDirectDependencies $ \(depName, (ProjectMapDepMetadata depVersion)) ->
-        maybe (pure ()) direct $ toResolvedDependency (isPnpm9Dev depName) depName depVersion
+      for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+        for_ (toResolvedDependency depName depVersion) $ \dep -> do
+          direct dep
+          when isV9 $ label dep (PnpmEnv EnvDevelopment)
 
     -- Add edges and deep dependencies by iterating over all packages.
     --
@@ -338,14 +351,14 @@ buildGraph lockFile = withoutLocalPackages $
       let (depName, depVersion) = case getPkgNameVersion pkgKey of
             Nothing -> (pkgKey, Nothing)
             Just (name, version) -> (name, Just version)
-      let parentDep = toDependency (isPnpm9Dev depName) depName depVersion pkgMeta
+      let parentDep = toDependency depName depVersion pkgMeta
 
       -- It is ok, if this dependency was already graphed as direct
       -- @direct 1 <> deep 1 = direct 1@
       deep parentDep
 
       for_ deepDependencies $ \(deepName, deepVersion) -> do
-        maybe (pure ()) (edge parentDep) (toResolvedDependency (isPnpm9Dev deepName) deepName deepVersion)
+        maybe (pure ()) (edge parentDep) (toResolvedDependency deepName deepVersion)
   where
     getPkgNameVersion :: Text -> Maybe (Text, Text)
     getPkgNameVersion = case lockFileVersion lockFile of
@@ -418,8 +431,8 @@ buildGraph lockFile = withoutLocalPackages $
     --    e.g.
     --      file:../local-package
     --
-    toResolvedDependency :: Bool -> Text -> Text -> Maybe Dependency
-    toResolvedDependency devOverride depName depVersion = do
+    toResolvedDependency :: Text -> Text -> Maybe Dependency
+    toResolvedDependency depName depVersion = do
       -- Some versions of the lockfile remove the peer dep suffix.
       -- Others do not which is why it tries both.
       let strippedVersion = withoutPeerDepSuffix depVersion
@@ -431,25 +444,8 @@ buildGraph lockFile = withoutLocalPackages $
               <|> fmap (depVersion,) (Map.lookup (mkPkgKey depName depVersion) (packages lockFile))
       case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
         (Nothing, Nothing) -> Nothing
-        (Just nonRegistryPkg, _) -> Just $ toDependency devOverride depName Nothing nonRegistryPkg
-        (Nothing, Just (version, registryPkg)) -> Just $ toDependency devOverride depName (Just version) registryPkg
-
-    -- PNPM lockfile 9 doesn't store information about dev deps directly on package data.
-    -- Use a project map to determine if a package should be marked dev.
-    isPnpm9ProjectDev :: Text -> ProjectMap -> Bool
-    isPnpm9ProjectDev name ProjectMap{directDevDependencies} = Map.member name directDevDependencies
-
-    isPnpm9ProjectDep :: Text -> ProjectMap -> Bool
-    isPnpm9ProjectDep name ProjectMap{directDependencies} = Map.member name directDependencies
-
-    -- Returns true if a dependency is either absent or a dev dependency in each workspace. If it is a
-    -- non-dev dependency in any workspace, then this function returns false. Also returns false if the
-    -- lockfile is not PNPM v9
-    isPnpm9Dev :: Text -> Bool
-    isPnpm9Dev depName =
-      (lockFile.lockFileVersion == PnpmLockV9)
-        && (any (isPnpm9ProjectDev depName) lockFile.importers)
-        && not (any (isPnpm9ProjectDep depName) lockFile.importers)
+        (Just nonRegistryPkg, _) -> Just $ toDependency depName Nothing nonRegistryPkg
+        (Nothing, Just (version, registryPkg)) -> Just $ toDependency depName (Just version) registryPkg
 
     -- Makes representative key if the package was
     -- resolved via registry resolver.
@@ -466,17 +462,17 @@ buildGraph lockFile = withoutLocalPackages $
       PnpmLockV678 _ -> "/" <> name <> "@" <> version
       PnpmLockV9 -> name <> "@" <> version
 
-    toDependency :: Bool -> Text -> Maybe Text -> PackageData -> Dependency
-    toDependency devOverride name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
-      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) (isDev || devOverride)
-    toDependency devOverride _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
-      toDep GitType url (Just rev) (isDev || devOverride)
-    toDependency devOverride _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
-      toDep URLType url Nothing (isDev || devOverride)
-    toDependency devOverride _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) =
-      toDep UserType name Nothing (isDev || devOverride)
-    toDependency devOverride name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
-      toDep UserType name Nothing (isDev || devOverride)
+    toDependency :: Text -> Maybe Text -> PackageData -> Dependency
+    toDependency name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
+      toDep NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
+    toDependency _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
+      toDep GitType url (Just rev) isDev
+    toDependency _ _ (PackageData isDev _ (TarballResolve (TarballResolution url)) _ _) =
+      toDep URLType url Nothing isDev
+    toDependency _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) =
+      toDep UserType name Nothing isDev
+    toDependency name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
+      toDep UserType name Nothing isDev
 
     -- Sometimes package versions include symlinked paths
     -- of sibling dependencies used for resolution.
@@ -489,8 +485,23 @@ buildGraph lockFile = withoutLocalPackages $
     toDep :: DepType -> Text -> Maybe Text -> Bool -> Dependency
     toDep depType name version isDev = Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
+    -- For v9, environments start empty and are set later via labels
+    -- during graph construction, then propagated by hydrateDepEnvs.
+    -- For older versions, isDev from PackageData is reliable and
+    -- environments are set inline.
     toEnv :: Bool -> Set.Set DepEnvironment
-    toEnv isNotRequired = Set.singleton $ if isNotRequired then EnvDevelopment else EnvProduction
+    toEnv isNotRequired =
+      if isV9
+        then mempty
+        else Set.singleton (if isNotRequired then EnvDevelopment else EnvProduction)
+
+    isV9 :: Bool
+    isV9 = lockFile.lockFileVersion == PnpmLockV9
+
+    applyLabels :: Dependency -> Set.Set PnpmLabel -> Dependency
+    applyLabels = foldr applyLabel
+      where
+        applyLabel (PnpmEnv env) = insertEnvironment env
 
     withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
     withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
