@@ -1,8 +1,12 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.16.5
 
 - PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies in pnpm v9 projects. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
+
+## 3.16.4
+
+- Bugfix: revert caching changes as they caused a problem with missing libs on macos ([#1675](https://github.com/fossas/fossa-cli/pull/1675))
 
 ## 3.16.3
 
