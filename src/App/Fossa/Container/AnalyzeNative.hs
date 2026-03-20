@@ -197,7 +197,6 @@ buildJsonSummary project locator projectUrl = do
 fetchOrgSupportsGitBackedCargo ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has Logger sig m
   , Has Debug sig m
   ) =>
   ApiOpts ->
