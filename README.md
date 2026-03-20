@@ -1,6 +1,6 @@
 <!-- markdown-link-check-disable-next-line -->
 ![FOSSA](https://raw.githubusercontent.com/fossas/fossa-cli/master/docs/assets/header.png)
-
+ nothing useful
 # FOSSA CLI
 <!-- NOTE: If you change the format of the "FOSSA Downloads" badge, make sure to also update the CI action at `./github/workflows/badges.yml` that updates the download count. -->
 <!-- markdown-link-check-disable-next-line -->
