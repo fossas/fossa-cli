@@ -50,6 +50,7 @@ module Test.Fixtures (
   invalidCreateTeamProjectPermission,
   invalidEditProjectPermission,
   invalidCreateProjectPermission,
+  organizationWithGitBackedCargoLocators,
   organizationWithPreflightChecks,
   createReleaseGroupResponse,
   releaseGroup,
@@ -190,6 +191,29 @@ organizationWithPremiumSubscription =
     , orgSupportsPreflightChecks = True
     , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Premium
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
+    }
+
+organizationWithGitBackedCargoLocators :: API.Organization
+organizationWithGitBackedCargoLocators =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = False
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = False
+    , orgSupportsGitBackedCargoLocators = True
+    , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
 
