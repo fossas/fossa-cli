@@ -193,7 +193,7 @@ buildJsonSummary project locator projectUrl = do
 
 -- | Fetch the org's support for git-backed cargo locators.
 -- Fetches the org's git-backed cargo locator support from the API.
--- Falls back to True if the API call fails, matching the server-side default.
+-- Falls back to False if the API call fails (conservative: assume server doesn't support it).
 fetchOrgSupportsGitBackedCargo ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -203,6 +203,6 @@ fetchOrgSupportsGitBackedCargo ::
   m UseGitBackedCargoLocators
 fetchOrgSupportsGitBackedCargo apiOpts = do
   maybeOrg <-
-    recover . warnOnErr @Text "Could not fetch org info for git-backed cargo locators; defaulting to enabled" $
+    recover . warnOnErr @Text "Could not fetch org info for git-backed cargo locators; defaulting to disabled" $
       runFossaApiClient apiOpts getOrganization
-  pure . UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators maybeOrg
+  pure . UseGitBackedCargoLocators $ maybe False orgSupportsGitBackedCargoLocators maybeOrg

@@ -536,7 +536,7 @@ blankOrganization =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
-    , orgSupportsGitBackedCargoLocators = True
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
@@ -559,7 +559,7 @@ instance FromJSON Organization where
       <*> obj .:? "customLicenseScanConfigs" .!= []
       <*> obj .:? "supportsReachability" .!= False
       <*> obj .:? "supportsPreflightChecks" .!= False
-      <*> obj .:? "supportsGitBackedCargoLocators" .!= True
+      <*> obj .:? "supportsGitBackedCargoLocators" .!= False
       <*> obj .:? "subscription" .!= Free
       <*> obj .:? "snippetScanSourceCodeRetentionDays" .!= Nothing
 
