@@ -31,7 +31,7 @@ import Container.Types (ContainerScan (..))
 import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
-import Control.Effect.Diagnostics (Diagnostics, context, fatal, fromMaybeText)
+import Control.Effect.Diagnostics (Diagnostics, context, fatal, fromMaybeText, recover, warnOnErr)
 import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
@@ -192,8 +192,8 @@ buildJsonSummary project locator projectUrl = do
       ]
 
 -- | Fetch the org's support for git-backed cargo locators.
--- Defaults to True if the org info can't be fetched, since
--- the server-side default is True for this capability.
+-- Fetches the org's git-backed cargo locator support from the API.
+-- Falls back to True if the API call fails, matching the server-side default.
 fetchOrgSupportsGitBackedCargo ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -201,6 +201,8 @@ fetchOrgSupportsGitBackedCargo ::
   ) =>
   ApiOpts ->
   m UseGitBackedCargoLocators
-fetchOrgSupportsGitBackedCargo apiOpts =
-  runFossaApiClient apiOpts $
-    UseGitBackedCargoLocators . orgSupportsGitBackedCargoLocators <$> getOrganization
+fetchOrgSupportsGitBackedCargo apiOpts = do
+  maybeOrg <-
+    recover . warnOnErr @Text "Could not fetch org info for git-backed cargo locators; defaulting to enabled" $
+      runFossaApiClient apiOpts getOrganization
+  pure . UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators maybeOrg

@@ -14,6 +14,8 @@ module Strategy.Cargo (
   getDeps,
   mkProject,
   findProjects,
+
+  -- * for testing
   parseGitRepoUrl,
 ) where
 

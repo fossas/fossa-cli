@@ -142,7 +142,7 @@ organization =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
-    , orgSupportsGitBackedCargoLocators = False
+    , orgSupportsGitBackedCargoLocators = True
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
