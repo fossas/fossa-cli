@@ -17,6 +17,7 @@ module Strategy.Cargo (
 
   -- * for testing
   parseGitRepoUrl,
+  parsePkgId,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (
@@ -528,12 +529,14 @@ newPkgIdParser = eatSpaces (try longSpec <|> simplePkgSpec')
       -- In cases where we can't find a real name, use text after the last slash as a name.
       -- e.g. file:///path/to/my/project/bar#2.0.0 has the name 'bar'
       -- Cases of this are generally path dependencies.
+      -- Strip query parameters (e.g. ?tag=v0.3.6) before splitting, so that
+      -- git+https://github.com/fossas/broker?tag=v0.3.6#0.3.6 yields "broker", not "broker?tag=v0.3.6".
       let fallbackName =
             maybe pkgSource NonEmpty.last
               . NonEmpty.nonEmpty
               . filter (/= "")
               . Text.split (== '/')
-              $ sourceRemaining
+              $ Text.takeWhile (/= '?') sourceRemaining
 
       -- Parse (Optional): #adler@1.0.2
       nameVersion <- optional $ do

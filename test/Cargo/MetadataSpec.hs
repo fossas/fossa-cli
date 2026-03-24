@@ -162,6 +162,31 @@ post1_77MetadataParseSpec =
       dependencyName depA `shouldBe` "github.com/fossas/locator-rs#locator"
       dependencyName depB `shouldBe` "github.com/fossas/locator-rs#locator-codegen"
 
+    Test.it "git dep with tag and no crate name in fragment strips query from name" $ do
+      -- When cargo uses the short form #version (no name in fragment), the parser
+      -- falls back to the last path segment of the source URL.
+      -- This must not include query parameters like ?tag=v0.3.6.
+      let parsed = parsePkgId "git+https://github.com/fossas/broker?tag=v0.3.6#0.3.6" :: Maybe PackageId
+      fmap pkgIdName parsed `shouldBe` Just "broker"
+      fmap pkgIdVersion parsed `shouldBe` Just "0.3.6"
+      -- Also verify the full round-trip through buildGraph produces the correct locator name.
+      let gitId = PackageId "broker" "0.3.6" "git+https://github.com/fossas/broker?tag=v0.3.6"
+          gitNode = ResolveNode gitId []
+          meta = CargoMetadata [] [jfmtId] $ Resolve [jfmtNodeWithGit, gitNode]
+          jfmtNodeWithGit = ResolveNode jfmtId [NodeDependency gitId [nullKind]]
+          expectedDep = mkDep "github.com/fossas/broker#broker" "0.3.6" CargoType [EnvProduction]
+      Graphing.vertexList (buildGraph True meta) `shouldSatisfy` elem expectedDep
+
+    Test.it "git dep with branch and no crate name in fragment strips query from name" $ do
+      let parsed = parsePkgId "git+https://github.com/fossas/broker?branch=main#0.3.6" :: Maybe PackageId
+      fmap pkgIdName parsed `shouldBe` Just "broker"
+      fmap pkgIdVersion parsed `shouldBe` Just "0.3.6"
+
+    Test.it "git dep with rev and no crate name in fragment strips query from name" $ do
+      let parsed = parsePkgId "git+https://github.com/fossas/broker?rev=abc123#0.3.6" :: Maybe PackageId
+      fmap pkgIdName parsed `shouldBe` Just "broker"
+      fmap pkgIdVersion parsed `shouldBe` Just "0.3.6"
+
     Test.it "registry deps remain unchanged" $ do
       let graph = buildGraph True expectedMetadataPost1_77
       Graphing.vertexList graph `shouldSatisfy` elem ansiTermDep
