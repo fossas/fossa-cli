@@ -56,11 +56,11 @@ import App.Fossa.Config.Analyze (
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   DynamicLinkInspect (DynamicLinkInspect),
-  StrategyConfig (..),
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
+  StrategyConfig (..),
   UnpackArchives (UnpackArchives),
   WithoutDefaultFilters (..),
  )
