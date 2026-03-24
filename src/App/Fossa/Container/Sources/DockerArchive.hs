@@ -16,7 +16,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), UseGitBackedCargoLocators (..), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (StrategyConfig (StrategyConfig), UseGitBackedCargoLocators (..), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import App.Types (Mode (..))
@@ -221,9 +221,9 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
   where
     noMavenScopeFilters :: MavenScopeFilters
     noMavenScopeFilters = MavenScopeIncludeFilters mempty
-    noExperimental :: ExperimentalAnalyzeConfig
+    noExperimental :: StrategyConfig
     noExperimental =
-      ExperimentalAnalyzeConfig
+      StrategyConfig
         Nothing
         False -- Discovery has no consequence from path dependency analysis config
         useGitBackedCargo
@@ -260,7 +260,7 @@ runDependencyAnalysis ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has (Output DiscoveredProjectScan) sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
   , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
@@ -377,7 +377,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
     . runReader
-      ( ExperimentalAnalyzeConfig
+      ( StrategyConfig
           Nothing
           False -- Targets are not impacted by path dependencies.
           (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available

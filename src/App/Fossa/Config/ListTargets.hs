@@ -8,7 +8,7 @@ module App.Fossa.Config.ListTargets (
 ) where
 
 import App.Fossa.Config.Analyze (
-  ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig),
+  StrategyConfig (StrategyConfig),
   UseGitBackedCargoLocators (UseGitBackedCargoLocators),
  )
 import App.Fossa.Config.Common (
@@ -107,17 +107,17 @@ mergeOpts ::
   m ListTargetsConfig
 mergeOpts _ cfgfile _envvars ListTargetsCliOpts{..} = do
   let basedir = collectBaseDir cliBaseDir
-      experimentalPrefs = collectExperimental cfgfile
+      strategyPrefs = collectStrategyConfig cfgfile
       outputFmt = fromMaybe Legacy cliListTargetOutputFormat
 
   ListTargetsConfig
     <$> basedir
-    <*> pure experimentalPrefs
+    <*> pure strategyPrefs
     <*> pure outputFmt
 
-collectExperimental :: Maybe ConfigFile -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg =
-  ExperimentalAnalyzeConfig
+collectStrategyConfig :: Maybe ConfigFile -> StrategyConfig
+collectStrategyConfig maybeCfg =
+  StrategyConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
@@ -139,7 +139,7 @@ instance GetCommonOpts ListTargetsCliOpts where
 
 data ListTargetsConfig = ListTargetsConfig
   { baseDir :: BaseDir
-  , experimental :: ExperimentalAnalyzeConfig
+  , strategyConfig :: StrategyConfig
   , listTargetOutputFormat :: ListTargetOutputFormat
   }
   deriving (Show, Generic)

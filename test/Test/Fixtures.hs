@@ -64,7 +64,7 @@ module Test.Fixtures (
 )
 where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), StrategyConfig (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -636,9 +636,9 @@ vsiOptions =
 filterSet :: AllFilters
 filterSet = mempty
 
-experimentalConfig :: ExperimentalAnalyzeConfig
-experimentalConfig =
-  ExperimentalAnalyzeConfig
+fixtureStrategyConfig :: StrategyConfig
+fixtureStrategyConfig =
+  StrategyConfig
     { allowedGradleConfigs = Nothing
     , resolvePathDependencies = False
     , useGitBackedCargoLocators = ANZ.UseGitBackedCargoLocators True
@@ -689,7 +689,7 @@ standardAnalyzeConfig =
     , ANZ.vsiOptions = vsiOptions
     , ANZ.filterSet = filterSet
     , ANZ.mavenScopeFilterSet = mavenScopeFilterSet
-    , ANZ.experimental = experimentalConfig
+    , ANZ.strategyConfig = fixtureStrategyConfig
     , ANZ.vendoredDeps = vendoredDepsOptions
     , ANZ.unpackArchives = toFlag UnpackArchives False
     , ANZ.jsonOutput = toFlag JsonOutput False

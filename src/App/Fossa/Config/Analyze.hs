@@ -4,7 +4,7 @@
 module App.Fossa.Config.Analyze (
   AnalyzeCliOpts (..),
   BinaryDiscovery (..),
-  ExperimentalAnalyzeConfig (..),
+  StrategyConfig (..),
   UseGitBackedCargoLocators (..),
   ForceVendoredDependencyRescans (..),
   ForceFirstPartyScans (..),
@@ -277,7 +277,7 @@ data AnalyzeConfig = AnalyzeConfig
   , vsiOptions :: VSIModeOptions
   , filterSet :: AllFilters
   , mavenScopeFilterSet :: MavenScopeFilters
-  , experimental :: ExperimentalAnalyzeConfig
+  , strategyConfig :: StrategyConfig
   , vendoredDeps :: VendoredDependencyOptions
   , unpackArchives :: Flag UnpackArchives
   , jsonOutput :: Flag JsonOutput
@@ -306,14 +306,14 @@ newtype UseGitBackedCargoLocators = UseGitBackedCargoLocators {unUseGitBackedCar
 instance ToJSON UseGitBackedCargoLocators where
   toEncoding = genericToEncoding defaultOptions
 
-data ExperimentalAnalyzeConfig = ExperimentalAnalyzeConfig
+data StrategyConfig = StrategyConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , resolvePathDependencies :: Bool
   , useGitBackedCargoLocators :: UseGitBackedCargoLocators
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON ExperimentalAnalyzeConfig where
+instance ToJSON StrategyConfig where
   toEncoding = genericToEncoding defaultOptions
 
 mkSubCommand :: (AnalyzeConfig -> EffStack ()) -> SubCommand AnalyzeCliOpts AnalyzeConfig
@@ -561,7 +561,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
       vsiModeOpts = collectVsiModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
       mavenScopeFilters = collectMavenScopeFilters maybeConfig
-      experimentalCfgs = collectExperimental maybeConfig cliOpts
+      strategyCfgs = collectStrategyConfig maybeConfig cliOpts
       vendoredDepsOptions = collectVendoredDeps maybeConfig cliOpts
       dynamicAnalysisOverrides = OverrideDynamicAnalysisBinary $ envCmdOverrides envvars
       grepOptions = collectGrepOptions maybeConfig cliOpts
@@ -611,7 +611,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> vsiModeOpts
     <*> filters
     <*> mavenScopeFilters
-    <*> pure experimentalCfgs
+    <*> pure strategyCfgs
     <*> vendoredDepsOptions
     <*> pure analyzeUnpackArchives
     <*> pure analyzeJsonOutput
@@ -683,9 +683,9 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboInclude analyzeOnlyTargets analyzeOnlyPaths)
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
-collectExperimental :: Maybe ConfigFile -> AnalyzeCliOpts -> ExperimentalAnalyzeConfig
-collectExperimental maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies} =
-  ExperimentalAnalyzeConfig
+collectStrategyConfig :: Maybe ConfigFile -> AnalyzeCliOpts -> StrategyConfig
+collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies} =
+  StrategyConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
