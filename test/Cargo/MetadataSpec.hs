@@ -75,6 +75,10 @@ spec = do
 
   post1_77MetadataParseSpec
 
+  extractGitCommitHashSpec
+
+  gitCommitHashVersionSpec
+
   parseGitRepoUrlSpec
 
 ansiTermIdNoVersion :: PackageId
@@ -196,6 +200,86 @@ post1_77MetadataParseSpec =
       let graph = buildGraph False expectedMetadataPost1_77
       expectDeps [ansiTermDep, clapDep, fooDep, barDepFallback] graph
       dependencyName barDepFallback `shouldBe` "bar"
+
+extractGitCommitHashSpec :: Test.Spec
+extractGitCommitHashSpec =
+  Test.describe "extractGitCommitHash" $ do
+    Test.it "extracts commit hash from git source URL" $
+      extractGitCommitHash "git+https://github.com/fossas/foundation-libs#4bc3762e73f371717566fb075d02e1d25b21146e"
+        `shouldBe` Just "4bc3762e73f371717566fb075d02e1d25b21146e"
+
+    Test.it "extracts commit hash from git source URL with tag" $
+      extractGitCommitHash "git+https://github.com/fossas/broker?tag=v0.3.6#abc123def456"
+        `shouldBe` Just "abc123def456"
+
+    Test.it "returns Nothing for registry source" $
+      extractGitCommitHash "registry+https://github.com/rust-lang/crates.io-index"
+        `shouldBe` Nothing
+
+    Test.it "returns Nothing for path source" $
+      extractGitCommitHash "path+file:///some/path"
+        `shouldBe` Nothing
+
+    Test.it "returns Nothing for empty string" $
+      extractGitCommitHash ""
+        `shouldBe` Nothing
+
+mkPackage :: PackageId -> Maybe Text -> Package
+mkPackage pid src = Package (pkgIdName pid) (pkgIdVersion pid) pid Nothing Nothing [] src
+
+gitCommitHashVersionSpec :: Test.Spec
+gitCommitHashVersionSpec =
+  Test.describe "git commit hash as version" $ do
+    Test.it "uses commit hash for git dep without tag" $ do
+      let gitId = PackageId "srclib" "0.1.0" "git+https://github.com/fossas/foundation-libs"
+          gitPkg = mkPackage gitId (Just "git+https://github.com/fossas/foundation-libs#4bc3762e73f371717566fb075d02e1d25b21146e")
+          gitNode = ResolveNode gitId []
+          meta = CargoMetadata [gitPkg] [jfmtId] $ Resolve [jfmtNodeWith gitId, gitNode]
+          graph = buildGraph True meta
+          vertices = Graphing.vertexList graph
+          dep = find (\d -> dependencyName d == "github.com/fossas/foundation-libs#srclib") vertices
+      fmap dependencyVersion dep `shouldBe` Just (Just $ CEq "4bc3762e73f371717566fb075d02e1d25b21146e")
+
+    Test.it "uses crate version for git dep with tag" $ do
+      let gitId = PackageId "broker" "0.3.6" "git+https://github.com/fossas/broker?tag=v0.3.6"
+          gitPkg = mkPackage gitId (Just "git+https://github.com/fossas/broker?tag=v0.3.6#abc123def456")
+          gitNode = ResolveNode gitId []
+          meta = CargoMetadata [gitPkg] [jfmtId] $ Resolve [jfmtNodeWith gitId, gitNode]
+          graph = buildGraph True meta
+          vertices = Graphing.vertexList graph
+          dep = find (\d -> dependencyName d == "github.com/fossas/broker#broker") vertices
+      fmap dependencyVersion dep `shouldBe` Just (Just $ CEq "0.3.6")
+
+    Test.it "uses commit hash for git dep with branch" $ do
+      let gitId = PackageId "mylib" "1.0.0" "git+https://github.com/owner/mylib?branch=main"
+          gitPkg = mkPackage gitId (Just "git+https://github.com/owner/mylib?branch=main#deadbeef")
+          gitNode = ResolveNode gitId []
+          meta = CargoMetadata [gitPkg] [jfmtId] $ Resolve [jfmtNodeWith gitId, gitNode]
+          graph = buildGraph True meta
+          vertices = Graphing.vertexList graph
+          dep = find (\d -> dependencyName d == "github.com/owner/mylib#mylib") vertices
+      fmap dependencyVersion dep `shouldBe` Just (Just $ CEq "deadbeef")
+
+    Test.it "uses commit hash for git dep with rev" $ do
+      let gitId = PackageId "mylib" "1.0.0" "git+https://github.com/owner/mylib?rev=deadbeef"
+          gitPkg = mkPackage gitId (Just "git+https://github.com/owner/mylib?rev=deadbeef#deadbeef")
+          gitNode = ResolveNode gitId []
+          meta = CargoMetadata [gitPkg] [jfmtId] $ Resolve [jfmtNodeWith gitId, gitNode]
+          graph = buildGraph True meta
+          vertices = Graphing.vertexList graph
+          dep = find (\d -> dependencyName d == "github.com/owner/mylib#mylib") vertices
+      fmap dependencyVersion dep `shouldBe` Just (Just $ CEq "deadbeef")
+
+    Test.it "falls back to crate version when source map has no entry" $ do
+      let gitId = PackageId "srclib" "0.1.0" "git+https://github.com/fossas/foundation-libs"
+          gitNode = ResolveNode gitId []
+          meta = CargoMetadata [] [jfmtId] $ Resolve [jfmtNodeWith gitId, gitNode]
+          graph = buildGraph True meta
+          vertices = Graphing.vertexList graph
+          dep = find (\d -> dependencyName d == "github.com/fossas/foundation-libs#srclib") vertices
+      fmap dependencyVersion dep `shouldBe` Just (Just $ CEq "0.1.0")
+  where
+    jfmtNodeWith depId = ResolveNode jfmtId [NodeDependency depId [nullKind]]
 
 parseGitRepoUrlSpec :: Test.Spec
 parseGitRepoUrlSpec =

@@ -16,6 +16,8 @@ module Strategy.Cargo (
   findProjects,
 
   -- * for testing
+  Package (..),
+  extractGitCommitHash,
   parseGitRepoUrl,
   parsePkgId,
 ) where
@@ -137,6 +139,7 @@ data Package = Package
   , pkgLicense :: Maybe Text.Text
   , pkgLicenseFile :: Maybe Text.Text
   , pkgDependencies :: [PackageDependency]
+  , pkgSourceUrl :: Maybe Text.Text
   }
   deriving (Eq, Ord, Show)
 
@@ -186,6 +189,7 @@ instance FromJSON Package where
       <*> obj .:? "license"
       <*> obj .:? "license_file"
       <*> obj .: "dependencies"
+      <*> obj .:? "source"
 
 instance FromJSON NodeDepKind where
   parseJSON = withObject "NodeDepKind" $ \obj ->
@@ -396,14 +400,36 @@ parseGitRepoUrl src = do
   guard (not (Text.null host) && not (Text.null cleanPath))
   pure (host <> "/" <> cleanPath)
 
-toDependency :: Bool -> PackageId -> Set CargoLabel -> Dependency
-toDependency emitGitBackedLocators pkg =
+-- | Extract the commit hash from a cargo package source URL.
+-- Input:  "git+https://github.com/fossas/foundation-libs#4bc3762e73f371717566fb075d02e1d25b21146e"
+-- Output: Just "4bc3762e73f371717566fb075d02e1d25b21146e"
+extractGitCommitHash :: Text -> Maybe Text
+extractGitCommitHash src = do
+  guard (Text.isPrefixOf "git+" src)
+  let (_, fragment) = breakOn "#" src
+  commit <- Text.stripPrefix "#" fragment
+  guard (not (Text.null commit))
+  pure commit
+
+-- | A map from PackageId to the package's source URL (which contains the commit hash for git deps).
+type PackageSourceMap = Map.Map PackageId Text
+
+-- | Build a lookup from package ID to source URL from the packages list.
+buildPackageSourceMap :: [Package] -> PackageSourceMap
+buildPackageSourceMap = Map.fromList . concatMap toEntry
+  where
+    toEntry pkg = case pkgSourceUrl pkg of
+      Just src -> [(pkgId pkg, src)]
+      Nothing -> []
+
+toDependency :: Bool -> PackageSourceMap -> PackageId -> Set CargoLabel -> Dependency
+toDependency emitGitBackedLocators sourceMap pkg =
   foldr
     applyLabel
     Dependency
       { dependencyType = depType
       , dependencyName = depName
-      , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
+      , dependencyVersion = Just $ CEq depVersion
       , dependencyLocations = []
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
@@ -444,6 +470,18 @@ toDependency emitGitBackedLocators pkg =
                   repoUrl <> "#" <> pkgIdName pkg
             _ -> pkgIdName pkg
 
+    -- For git dependencies with a tag, use the crate version (which matches the tag).
+    -- For git dependencies without a tag, use the commit hash from the package source URL.
+    -- For non-git dependencies, use the crate version.
+    depVersion
+      | emitGitBackedLocators
+      , Text.isPrefixOf "git+" (pkgIdSource pkg)
+      , not (Text.isInfixOf "?tag=" (pkgIdSource pkg))
+      , Just sourceUrl <- Map.lookup pkg sourceMap
+      , Just commitHash <- extractGitCommitHash sourceUrl =
+          commitHash
+      | otherwise = pkgIdVersion pkg
+
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
 -- Cargo does not differentiate test dependencies and dev dependencies,
@@ -469,9 +507,11 @@ buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
 -- Use shrinkRoots to remove them and promote their direct dependencies to the
 -- direct dependencies we report for the project.
 buildGraph emitGitBackedLocators meta = shrinkRoots $
-  run . withLabeling (toDependency emitGitBackedLocators) $ do
+  run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
+  where
+    sourceMap = buildPackageSourceMap $ metadataPackages meta
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
