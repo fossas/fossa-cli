@@ -225,7 +225,7 @@ extractGitCommitHashSpec =
         `shouldBe` Nothing
 
 mkPackage :: PackageId -> Maybe Text -> Package
-mkPackage pid src = Package (pkgIdName pid) (pkgIdVersion pid) pid Nothing Nothing [] src
+mkPackage pid = Package (pkgIdName pid) (pkgIdVersion pid) pid Nothing Nothing []
 
 gitCommitHashVersionSpec :: Test.Spec
 gitCommitHashVersionSpec =
