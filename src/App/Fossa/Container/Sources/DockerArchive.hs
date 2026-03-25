@@ -205,7 +205,7 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
       ( do
           (projectResults, ()) <-
             runTarballReadFSIO layerFs tarball
-              . runReader noExperimental
+              . runReader noStrategyConfig
               . runReader noMavenScopeFilters
               . runReader NonStrict
               . Diag.context "discovery/analysis tasks"
@@ -221,8 +221,8 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
   where
     noMavenScopeFilters :: MavenScopeFilters
     noMavenScopeFilters = MavenScopeIncludeFilters mempty
-    noExperimental :: StrategyConfig
-    noExperimental =
+    noStrategyConfig :: StrategyConfig
+    noStrategyConfig =
       StrategyConfig
         Nothing
         False -- Discovery has no consequence from path dependency analysis config
