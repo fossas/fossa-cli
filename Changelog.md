@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Windows: Fix UTF-8 encoding crash when running `fossa analyze --x-vendetta --debug` on native Windows. The CLI no longer crashes when subprocess output contains Unicode characters. ([#1646](https://github.com/fossas/fossa-cli/pull/1646))
+
 ## 3.16.5
 
 - PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies in pnpm v9 projects. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
