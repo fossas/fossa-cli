@@ -43,6 +43,7 @@ import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -399,6 +400,7 @@ ficusCommand ficusConfig bin = do
           { cmdName = toText $ toPath bin
           , cmdArgs = configArgs endpoint
           , cmdAllowErr = Never
+          , cmdEnvVars = Map.empty
           }
   logDebug $ "Ficus command: " <> pretty (maskApiKeyInCommand $ renderCommand cmd)
   pure cmd

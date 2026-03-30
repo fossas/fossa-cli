@@ -150,6 +150,7 @@ cabalGenPlanCmd =
     { cmdName = "cabal"
     , cmdArgs = ["v2-build", "all", "--dry-run"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 cabalPlanFilePath :: Path Rel File
