@@ -3,17 +3,23 @@
 
 module Ficus.FicusSpec (spec) where
 
-import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
+import App.Fossa.Ficus.Analyze (analyzeWithFicus, vendoredDepsToSourceUnit)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependency (..), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Types (ProjectRevision (..))
 import Control.Effect.Lift (sendIO)
 import Control.Timeout (Duration (Seconds))
+import Data.Aeson qualified as Aeson
+import Data.Aeson.Key qualified as Key
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.String.Conversion (toText)
+import Data.Vector qualified
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Dir, Path, Rel, reldir, (</>))
 import Path.IO qualified as PIO
-import Srclib.Types (SourceUnit (sourceUnitName))
+import Srclib.Types (SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..))
+import System.Directory qualified as Directory
 import System.Environment (lookupEnv)
+import System.FilePath qualified as FP
 import Test.Effect (expectationFailure', it', shouldBe', shouldSatisfy')
 import Test.Hspec
 import Text.URI (mkURI)
@@ -68,3 +74,51 @@ spec = do
               -- No vendetta results returned - this is acceptable for integration testing
               True `shouldBe'` True
         _ -> expectationFailure' "Ficus analysis returned no results unexpectedly."
+
+  describe "vendoredDepsToSourceUnit" $ do
+    it "classifies directories and files correctly in vendored metadata" $ do
+      systemTmpDir <- Directory.getTemporaryDirectory
+      let tmpDir = systemTmpDir FP.</> "ficus-vendored-test"
+      Directory.createDirectoryIfMissing True (tmpDir FP.</> "vendored")
+      writeFile (tmpDir FP.</> "sqlite3.c") ""
+
+      let dep =
+            FicusVendoredDependency
+              { ficusVendoredDependencyName = "github.com/test/dep"
+              , ficusVendoredDependencyEcosystem = "git"
+              , ficusVendoredDependencyVersion = Nothing
+              , ficusVendoredDependencyLocations = ["vendored", "sqlite3.c"]
+              }
+
+      result <- vendoredDepsToSourceUnit tmpDir [dep]
+
+      Directory.removeDirectoryRecursive tmpDir
+
+      sourceUnitName result `shouldBe` "ficus-vendored-dependencies"
+
+      -- Check origin paths contain all locations
+      length (sourceUnitOriginPaths result) `shouldBe` 2
+
+      -- Check the vendored metadata classifies types correctly
+      case sourceUnitBuild result of
+        Nothing -> expectationFailure "Expected SourceUnitBuild"
+        Just build -> case buildDependencies build of
+          [srcDep] -> case sourceDepData srcDep of
+            Aeson.Object obj -> case KeyMap.lookup (Key.fromString "vendored") obj of
+              Just (Aeson.Array entries) -> do
+                length entries `shouldBe` 2
+                -- First entry should be the directory
+                case entries Data.Vector.!? 0 of
+                  Just (Aeson.Object e) -> do
+                    KeyMap.lookup (Key.fromString "type") e `shouldBe` Just (Aeson.String "directory")
+                    KeyMap.lookup (Key.fromString "path") e `shouldBe` Just (Aeson.String "vendored")
+                  _ -> expectationFailure "Expected object in vendored array"
+                -- Second entry should be the file
+                case entries Data.Vector.!? 1 of
+                  Just (Aeson.Object e) -> do
+                    KeyMap.lookup (Key.fromString "type") e `shouldBe` Just (Aeson.String "file")
+                    KeyMap.lookup (Key.fromString "path") e `shouldBe` Just (Aeson.String "sqlite3.c")
+                  _ -> expectationFailure "Expected object in vendored array"
+              _ -> expectationFailure "Expected 'vendored' array in metadata"
+            _ -> expectationFailure "Expected object in sourceDepData"
+          _ -> expectationFailure "Expected exactly one dependency"

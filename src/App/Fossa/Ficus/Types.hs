@@ -44,7 +44,7 @@ data FicusVendoredDependency = FicusVendoredDependency
   { ficusVendoredDependencyName :: Text
   , ficusVendoredDependencyEcosystem :: Text
   , ficusVendoredDependencyVersion :: Maybe Text
-  , ficusVendoredDependencyPath :: Text
+  , ficusVendoredDependencyLocations :: [Text]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -54,7 +54,7 @@ instance FromJSON FicusVendoredDependency where
       <$> obj .: "name"
       <*> obj .: "ecosystem"
       <*> obj .:? "version"
-      <*> obj .: "path"
+      <*> obj .: "locations"
 
 data FicusSnippetScanResults = FicusSnippetScanResults
   { ficusSnippetScanResultsAnalysisId :: Int

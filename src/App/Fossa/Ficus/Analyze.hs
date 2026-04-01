@@ -6,6 +6,7 @@ module App.Fossa.Ficus.Analyze (
   analyzeWithFicusMain,
   -- Exported for testing
   singletonFicusMessage,
+  vendoredDepsToSourceUnit,
 )
 where
 
@@ -57,6 +58,7 @@ import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
+import System.Directory qualified as Directory
 import System.FilePath ((</>))
 import System.IO (Handle, IOMode (WriteMode), hClose, hPutStrLn, hSetEncoding, openFile, stderr, utf8)
 import System.Process.Typed (
@@ -181,32 +183,31 @@ findingToVendoredDependency (FicusFinding (FicusMessageData strategy payload))
       decode (BL.fromStrict $ Text.Encoding.encodeUtf8 payload)
 findingToVendoredDependency _ = Nothing
 
-vendoredDepsToSourceUnit :: [FicusVendoredDependency] -> SourceUnit
-vendoredDepsToSourceUnit deps =
-  SourceUnit
-    { sourceUnitName = "ficus-vendored-dependencies"
-    , sourceUnitType = "ficus-vendored"
-    , sourceUnitManifest = "ficus-vendored-dependencies"
-    , sourceUnitBuild =
-        Just $
-          SourceUnitBuild
-            { buildArtifact = "default"
-            , buildSucceeded = True
-            , buildImports = locators
-            , buildDependencies = dependencies
-            }
-    , sourceUnitGraphBreadth = Complete
-    , sourceUnitNoticeFiles = []
-    , sourceUnitOriginPaths = map (textToOriginPath . ficusVendoredDependencyPath) deps
-    , sourceUnitLabels = Nothing
-    , additionalData = Nothing
-    }
+vendoredDepsToSourceUnit :: FilePath -> [FicusVendoredDependency] -> IO SourceUnit
+vendoredDepsToSourceUnit rootDir deps = do
+  dependencies <- traverse vendoredDepToSourceUnitDependency deps
+  pure
+    SourceUnit
+      { sourceUnitName = "ficus-vendored-dependencies"
+      , sourceUnitType = "ficus-vendored"
+      , sourceUnitManifest = "ficus-vendored-dependencies"
+      , sourceUnitBuild =
+          Just $
+            SourceUnitBuild
+              { buildArtifact = "default"
+              , buildSucceeded = True
+              , buildImports = locators
+              , buildDependencies = dependencies
+              }
+      , sourceUnitGraphBreadth = Complete
+      , sourceUnitNoticeFiles = []
+      , sourceUnitOriginPaths = concatMap (map textToOriginPath . ficusVendoredDependencyLocations) deps
+      , sourceUnitLabels = Nothing
+      , additionalData = Nothing
+      }
   where
     locators :: [Locator]
     locators = map vendoredDepToLocator deps
-
-    dependencies :: [SourceUnitDependency]
-    dependencies = map vendoredDepToSourceUnitDependency deps
 
     vendoredDepToLocator :: FicusVendoredDependency -> Locator
     vendoredDepToLocator dep =
@@ -216,21 +217,29 @@ vendoredDepsToSourceUnit deps =
         , locatorRevision = ficusVendoredDependencyVersion dep
         }
 
-    vendoredDepToSourceUnitDependency :: FicusVendoredDependency -> SourceUnitDependency
-    vendoredDepToSourceUnitDependency dep =
-      SourceUnitDependency
-        { sourceDepLocator = vendoredDepToLocator dep
-        , sourceDepImports = []
-        , sourceDepData =
-            Aeson.object
-              [ "vendored"
-                  Aeson..= [ Aeson.object
-                               [ "type" Aeson..= ("directory" :: Text)
-                               , "path" Aeson..= ficusVendoredDependencyPath dep
-                               ]
-                           ]
-              ]
-        }
+    vendoredDepToSourceUnitDependency :: FicusVendoredDependency -> IO SourceUnitDependency
+    vendoredDepToSourceUnitDependency dep = do
+      vendoredEntries <- traverse classifyLocation (ficusVendoredDependencyLocations dep)
+      pure
+        SourceUnitDependency
+          { sourceDepLocator = vendoredDepToLocator dep
+          , sourceDepImports = []
+          , sourceDepData =
+              Aeson.object
+                [ "vendored" Aeson..= vendoredEntries
+                ]
+          }
+
+    classifyLocation :: Text -> IO Aeson.Value
+    classifyLocation loc = do
+      let fullPath = rootDir </> toString loc
+      isDir <- Directory.doesDirectoryExist fullPath
+      let locType = if isDir then "directory" :: Text else "file"
+      pure $
+        Aeson.object
+          [ "type" Aeson..= locType
+          , "path" Aeson..= loc
+          ]
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -346,9 +355,12 @@ runFicus maybeDebugDir ficusConfig = do
               (Nothing, [])
 
       let (snippetResults, vendoredDeps) = accumulator
-      let vendoredResults = case vendoredDeps of
-            [] -> Nothing
-            deps -> Just $ FicusVendoredDependencyScanResults (Just $ vendoredDepsToSourceUnit deps)
+      let rootDir = toFilePath $ ficusConfigRootDir ficusConfig
+      vendoredResults <- case vendoredDeps of
+        [] -> pure Nothing
+        deps -> do
+          srcUnit <- vendoredDepsToSourceUnit rootDir deps
+          pure . Just $ FicusVendoredDependencyScanResults (Just srcUnit)
 
       pure $
         FicusAnalysisResults
