@@ -3,7 +3,6 @@
 ## 3.16.7
 
 - Cargo: Deal with git-backed cargo locators properly ([#1670](https://github.com/fossas/fossa-cli/pull/1670))
-- Windows: Fix UTF-8 encoding crash when running `fossa analyze --x-vendetta --debug` on native Windows. The CLI no longer crashes when subprocess output contains Unicode characters. ([#1646](https://github.com/fossas/fossa-cli/pull/1646))
 
 ## 3.16.6
 
