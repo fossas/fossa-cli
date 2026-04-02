@@ -20,6 +20,7 @@ import Srclib.Types (SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency
 import System.Directory qualified as Directory
 import System.Environment (lookupEnv)
 import System.FilePath qualified as FP
+import System.Random (randomIO)
 import Test.Effect (expectationFailure', it', shouldBe', shouldSatisfy')
 import Test.Hspec
 import Text.URI (mkURI)
@@ -78,7 +79,8 @@ spec = do
   describe "vendoredDepsToSourceUnit" $ do
     it "classifies directories and files correctly in vendored metadata" $ do
       systemTmpDir <- Directory.getTemporaryDirectory
-      let tmpDir = systemTmpDir FP.</> "ficus-vendored-test"
+      suffix <- show <$> (randomIO :: IO Word)
+      let tmpDir = systemTmpDir FP.</> ("ficus-vendored-test-" <> suffix)
       Directory.createDirectoryIfMissing True (tmpDir FP.</> "vendored")
       writeFile (tmpDir FP.</> "sqlite3.c") ""
 
