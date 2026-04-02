@@ -470,17 +470,21 @@ toDependency emitGitBackedLocators sourceMap pkg =
                   repoUrl <> "#" <> pkgIdName pkg
             _ -> pkgIdName pkg
 
-    -- For git dependencies with a tag, use the crate version (which matches the tag).
     -- For git dependencies without a tag, use the commit hash from the package source URL.
-    -- For non-git dependencies, use the crate version.
+    -- For all other dependencies (including tagged git deps), use the crate version.
     depVersion
       | emitGitBackedLocators
-      , Text.isPrefixOf "git+" (pkgIdSource pkg)
-      , not (Text.isInfixOf "?tag=" (pkgIdSource pkg))
-      , Just sourceUrl <- Map.lookup pkg sourceMap
-      , Just commitHash <- extractGitCommitHash sourceUrl =
+      , Just commitHash <- untaggedGitCommitHash =
           commitHash
       | otherwise = pkgIdVersion pkg
+
+    -- Look up the commit hash for an untagged git dependency.
+    untaggedGitCommitHash :: Maybe Text
+    untaggedGitCommitHash = do
+      guard ("git+" `Text.isPrefixOf` pkgIdSource pkg)
+      guard (not ("?tag=" `Text.isInfixOf` pkgIdSource pkg))
+      sourceUrl <- Map.lookup pkg sourceMap
+      extractGitCommitHash sourceUrl
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies

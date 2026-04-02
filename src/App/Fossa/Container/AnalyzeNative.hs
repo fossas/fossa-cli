@@ -110,8 +110,6 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyze cfg = do
-  -- Fetch org info before scanning to determine if Core supports git-backed cargo locators.
-  -- For output-only mode, default to True.
   useGitBackedCargo <- case scanDestination cfg of
     OutputStdout -> pure $ UseGitBackedCargoLocators True
     UploadScan (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
