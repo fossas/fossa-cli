@@ -22,7 +22,7 @@ import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -113,9 +113,12 @@ analyze project = context "uv" $ do
 
 buildGraph :: UvLock -> Graphing Dependency
 buildGraph lock = processGraph $ run . evalGrapher $ do
-  traverse_ mkEdges $ uvlockPackages lock
+  traverse_ mkEdges packages
   where
-    packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) $ uvlockPackages lock
+    -- Filter out packages without a version. These are editable/workspace packages
+    -- (the user's own project) with dynamic versions — never third-party dependencies.
+    packages = filter (isJust . uvlockPackageVersion) $ uvlockPackages lock
+    packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) packages
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
@@ -166,7 +169,7 @@ buildGraph lock = processGraph $ run . evalGrapher $ do
       Dependency
         { dependencyType = PipType
         , dependencyName = uvlockPackageName
-        , dependencyVersion = Just $ CEq uvlockPackageVersion
+        , dependencyVersion = CEq <$> uvlockPackageVersion
         , dependencyLocations = []
         , dependencyEnvironments = envs
         , dependencyTags = Map.empty
@@ -209,7 +212,7 @@ instance Toml.Schema.FromValue UvLock where
 
 data UvLockPackage = UvLockPackage
   { uvlockPackageName :: Text
-  , uvlockPackageVersion :: Text
+  , uvlockPackageVersion :: Maybe Text
   , uvlockPackageSource :: UvLockPackageSource
   , uvlockPackageDependencies :: [Text]
   , uvlockPackageDevDependencies :: [Text]
@@ -222,7 +225,7 @@ instance Toml.Schema.FromValue UvLockPackage where
     Toml.Schema.parseTableFromValue $
       UvLockPackage
         <$> Toml.Schema.reqKey "name"
-        <*> Toml.Schema.reqKey "version"
+        <*> Toml.Schema.optKey "version"
         <*> Toml.Schema.reqKey "source"
         <*> (maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dependencies")
         <*> (maybe [] uvlockPackageDevDependenciesInt <$> Toml.Schema.optKey "dev-dependencies")

@@ -29,7 +29,7 @@ lock =
     { uvlockPackages =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
-            , uvlockPackageVersion = "0.1.0"
+            , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = ["dep3", "dep4"]
@@ -37,7 +37,7 @@ lock =
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
-            , uvlockPackageVersion = "1.1.0"
+            , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep4"]
             , uvlockPackageDevDependencies = []
@@ -45,7 +45,7 @@ lock =
             }
         , UvLockPackage
             { uvlockPackageName = "dep2"
-            , uvlockPackageVersion = "2.1.2"
+            , uvlockPackageVersion = Just "2.1.2"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
@@ -53,7 +53,7 @@ lock =
             }
         , UvLockPackage
             { uvlockPackageName = "dep3"
-            , uvlockPackageVersion = "0.9.9"
+            , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
@@ -61,7 +61,7 @@ lock =
             }
         , UvLockPackage
             { uvlockPackageName = "dep4"
-            , uvlockPackageVersion = "1.0.0"
+            , uvlockPackageVersion = Just "1.0.0"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep5"]
             , uvlockPackageDevDependencies = []
@@ -69,7 +69,7 @@ lock =
             }
         , UvLockPackage
             { uvlockPackageName = "dep5"
-            , uvlockPackageVersion = "3.0.1"
+            , uvlockPackageVersion = Just "3.0.1"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
@@ -77,7 +77,7 @@ lock =
             }
         , UvLockPackage
             { uvlockPackageName = "dep6"
-            , uvlockPackageVersion = "1.1.1"
+            , uvlockPackageVersion = Just "1.1.1"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
@@ -97,7 +97,7 @@ lockNewStyleDevDeps =
     { uvlockPackages =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
-            , uvlockPackageVersion = "0.1.0"
+            , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = []
@@ -105,7 +105,7 @@ lockNewStyleDevDeps =
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
-            , uvlockPackageVersion = "1.1.0"
+            , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
@@ -113,7 +113,7 @@ lockNewStyleDevDeps =
             }
         , UvLockPackage
             { uvlockPackageName = "dep3"
-            , uvlockPackageVersion = "0.9.9"
+            , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
@@ -121,7 +121,7 @@ lockNewStyleDevDeps =
             }
         , UvLockPackage
             { uvlockPackageName = "dep6"
-            , uvlockPackageVersion = "1.1.1"
+            , uvlockPackageVersion = Just "1.1.1"
             , uvlockPackageSource = UvLockPackageSource Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
@@ -129,6 +129,50 @@ lockNewStyleDevDeps =
             }
         ]
     }
+--     my-project (editable, no version -- dynamic version project)
+--     /    \
+--   dep1  dep3 (dev)
+--           |
+--         dep6
+lockEditableNoVersion :: UvLock
+lockEditableNoVersion =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = ["dep1"]
+            , uvlockPackageDevDependencies = ["dep3"]
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep1"
+            , uvlockPackageVersion = Just "1.1.0"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep3"
+            , uvlockPackageVersion = Just "0.9.9"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = ["dep6"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep6"
+            , uvlockPackageVersion = Just "1.1.1"
+            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
+
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
   Dependency
@@ -199,6 +243,13 @@ spec = do
       expectDeps [dep1, dep3, dep6] result
       expectEdges [(dep3, dep6)] result
 
+    it "should skip editable packages without a version" $ do
+      let result = buildGraph lockEditableNoVersion
+
+      expectDirect [dep1, dep3] result
+      expectDeps [dep1, dep3, dep6] result
+      expectEdges [(dep3, dep6)] result
+
   describe "parse uv.lock" $ do
     it' "correctly parse and interpret uv.lock" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv.lock|]
@@ -219,5 +270,22 @@ spec = do
         , (httpcore, certifi)
         , (httpcore, h11)
         , (starlette, anyio)
+        ]
+        result
+
+    it' "correctly parse uv.lock with editable package missing version" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-editable.lock|]
+      uvlock <- readContentsToml path
+      let result = buildGraph uvlock
+
+      expectDirect' [httpx, sniffio] result
+      expectDeps'
+        [anyio, httpx, idna, sniffio]
+        result
+      expectEdges'
+        [ (httpx, anyio)
+        , (httpx, idna)
+        , (anyio, idna)
+        , (anyio, sniffio)
         ]
         result
