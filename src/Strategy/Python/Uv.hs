@@ -66,12 +66,14 @@ import Types (
 
 discover ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
-  Path Abs Dir -> m [DiscoveredProject UvProject]
+  Path Abs Dir ->
+  m [DiscoveredProject UvProject]
 discover = simpleDiscover findProjects mkProject PipenvProjectType
 
 findProjects ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
-  Path Abs Dir -> m [UvProject]
+  Path Abs Dir ->
+  m [UvProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "uv.lock" files of
     Nothing -> pure ([], WalkContinue)
@@ -99,7 +101,8 @@ analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
-  UvProject -> m DependencyResults
+  UvProject ->
+  m DependencyResults
 analyze project = context "uv" $ do
   lock <- context "Getting dependencies from uv.lock" $ readContentsToml (uvLockfile project)
 
@@ -189,8 +192,8 @@ buildGraph lock = processGraph $ run . evalGrapher $ do
         rootEnvs dep =
           foldMap dependencyEnvironments (getRootsOf gr dep)
             <> ( if dep `elem` directList gr
-                   then dependencyEnvironments dep
-                   else Set.empty
+                  then dependencyEnvironments dep
+                  else Set.empty
                )
 
     -- In order to label environments correctly with only the uv.lock file, we need to build the graph

@@ -129,6 +129,7 @@ lockNewStyleDevDeps =
             }
         ]
     }
+
 --     my-project (editable, no version -- dynamic version project)
 --     /    \
 --   dep1  dep3 (dev)
