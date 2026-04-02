@@ -233,8 +233,8 @@ vendoredDepsToSourceUnit rootDir deps = do
     classifyLocation :: Text -> IO Aeson.Value
     classifyLocation loc = do
       let fullPath = rootDir </> toString loc
-      isDir <- Directory.doesDirectoryExist fullPath
-      let locType = if isDir then "directory" :: Text else "file"
+      isFile <- Directory.doesFileExist fullPath
+      let locType = if isFile then "file" :: Text else "directory"
       pure $
         Aeson.object
           [ "type" Aeson..= locType
