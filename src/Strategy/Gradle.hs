@@ -20,7 +20,7 @@ module Strategy.Gradle (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
+import App.Fossa.Config.Analyze (StrategyConfig (allowedGradleConfigs))
 import App.Support (reportDefectWithDebugBundle)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (
@@ -239,7 +239,7 @@ getDeps ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   ) =>
   FoundTargets ->
   GradleProject ->
@@ -265,7 +265,7 @@ analyze ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   ) =>
   FoundTargets ->
   Path Abs Dir ->

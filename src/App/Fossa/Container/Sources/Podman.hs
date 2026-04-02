@@ -7,7 +7,7 @@ module App.Fossa.Container.Sources.Podman (
   revisionFromPodman,
 ) where
 
-import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
@@ -78,12 +78,13 @@ analyzeFromPodman ::
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
+  UseGitBackedCargoLocators ->
   Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+analyzeFromPodman useGitBackedCargo systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m
