@@ -1,8 +1,14 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.16.7
 
+- Cargo: Deal with git-backed cargo locators properly ([#1670](https://github.com/fossas/fossa-cli/pull/1670))
 - Windows: Fix UTF-8 encoding crash when running `fossa analyze --x-vendetta --debug` on native Windows. The CLI no longer crashes when subprocess output contains Unicode characters. ([#1646](https://github.com/fossas/fossa-cli/pull/1646))
+
+## 3.16.6
+
+- Bump tar crate to 0.4.45 to fix CVE-2026-33055 and CVE-2026-33056 ([#1679](https://github.com/fossas/fossa-cli/pull/1679))
+- Fix UTF-8 encoding for ficus output on Windows  ([#1646](https://github.com/fossas/fossa-cli/pull/1646))
 
 ## 3.16.5
 
