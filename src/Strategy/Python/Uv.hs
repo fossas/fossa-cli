@@ -22,7 +22,7 @@ import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -256,23 +256,31 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
       UvLockPackageDependency
         <$> Toml.Schema.reqKey "name"
 
-data UvLockPackageSource = UvLockPackageSource
-  { uvlockPackageSourceEditable :: Maybe Text
-  , uvlockPackageSourceVirtual :: Maybe Text
-  }
+data UvLockPackageSource
+  = SourceEditable Text
+  | SourceVirtual Text
+  | SourceRegistry Text
+  | SourceGit Text
+  | SourceUrl Text
+  | SourcePath Text
   deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageSource where
   fromValue =
     Toml.Schema.parseTableFromValue $
-      UvLockPackageSource
-        <$> Toml.Schema.optKey "editable"
-        <*> Toml.Schema.optKey "virtual"
+      Toml.Schema.pickKey
+        [ Toml.Schema.Key "editable" (fmap SourceEditable . Toml.Schema.fromValue)
+        , Toml.Schema.Key "virtual" (fmap SourceVirtual . Toml.Schema.fromValue)
+        , Toml.Schema.Key "registry" (fmap SourceRegistry . Toml.Schema.fromValue)
+        , Toml.Schema.Key "git" (fmap SourceGit . Toml.Schema.fromValue)
+        , Toml.Schema.Key "url" (fmap SourceUrl . Toml.Schema.fromValue)
+        , Toml.Schema.Key "path" (fmap SourcePath . Toml.Schema.fromValue)
+        ]
 
--- | Workspace packages (editable or virtual sources) are the user's own code,
--- not third-party dependencies. They should be excluded from the dependency graph.
 isWorkspacePackage :: UvLockPackageSource -> Bool
-isWorkspacePackage src = isJust (uvlockPackageSourceEditable src) || isJust (uvlockPackageSourceVirtual src)
+isWorkspacePackage (SourceEditable _) = True
+isWorkspacePackage (SourceVirtual _) = True
+isWorkspacePackage _ = False
 
 newtype UvLockPackageDevDependencies = UvLockPackageDevDependencies
   {uvlockPackageDevDependenciesInt :: [Text]}
