@@ -26,9 +26,10 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (PipType),
+  DepType (GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -176,14 +177,55 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
 
     toDependency :: UvLockPackage -> Set DepEnvironment -> Dependency
     toDependency UvLockPackage{..} envs =
-      Dependency
-        { dependencyType = PipType
-        , dependencyName = uvlockPackageName
-        , dependencyVersion = CEq <$> uvlockPackageVersion
-        , dependencyLocations = []
-        , dependencyEnvironments = envs
-        , dependencyTags = Map.empty
-        }
+      case uvlockPackageSource of
+        SourceGit url ->
+          Dependency
+            { dependencyType = GitType
+            , dependencyName = gitBaseUrl url
+            , dependencyVersion = CEq <$> gitCommitHash url
+            , dependencyLocations = []
+            , dependencyEnvironments = envs
+            , dependencyTags = Map.empty
+            }
+        SourcePath path ->
+          Dependency
+            { dependencyType = UnresolvedPathType
+            , dependencyName = path
+            , dependencyVersion = CEq <$> uvlockPackageVersion
+            , dependencyLocations = []
+            , dependencyEnvironments = envs
+            , dependencyTags = Map.empty
+            }
+        SourceUrl url ->
+          Dependency
+            { dependencyType = URLType
+            , dependencyName = url
+            , dependencyVersion = CEq <$> uvlockPackageVersion
+            , dependencyLocations = []
+            , dependencyEnvironments = envs
+            , dependencyTags = Map.empty
+            }
+        _ ->
+          Dependency
+            { dependencyType = PipType
+            , dependencyName = uvlockPackageName
+            , dependencyVersion = CEq <$> uvlockPackageVersion
+            , dependencyLocations = []
+            , dependencyEnvironments = envs
+            , dependencyTags = Map.empty
+            }
+
+    -- Git URLs in uv.lock: "https://github.com/owner/repo?tag=v1.0#abc123"
+    -- Base URL is everything before the query/fragment
+    gitBaseUrl :: Text -> Text
+    gitBaseUrl = fst . Text.breakOn "?"
+
+    -- Commit hash is the fragment after '#'
+    gitCommitHash :: Text -> Maybe Text
+    gitCommitHash url =
+      case Text.splitOn "#" url of
+        [_, hash] | not (Text.null hash) -> Just hash
+        _ -> Nothing
 
     -- We've labeled direct dependencies with the correct environment, but we need to
     -- propagate this environment to all the transitive dependencies. This will make it so that if
