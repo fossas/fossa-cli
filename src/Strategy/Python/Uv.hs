@@ -22,7 +22,7 @@ import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -53,6 +53,7 @@ import Graphing (
   gmap,
   hasPredecessors,
   promoteToDirect,
+  shrink,
   shrinkRoots,
  )
 import Path (Abs, Dir, File, Path, parent)
@@ -115,11 +116,18 @@ analyze project = context "uv" $ do
       }
 
 buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = processGraph $ run . evalGrapher $ do
+buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ do
   traverse_ mkEdges packages
   where
     packages = uvlockPackages lock
     packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) packages
+
+    -- Workspace packages (editable/virtual) are the user's own code, not third-party deps.
+    -- We include them during graph construction (for edges and env labeling) but remove them
+    -- from the final output. shrink rewires edges through removed nodes to preserve transitivity.
+    workspaceNames = Set.fromList
+      [uvlockPackageName p | p <- uvlockPackages lock, isWorkspacePackage (uvlockPackageSource p)]
+    removeWorkspacePackages = shrink (\dep -> not $ dependencyName dep `Set.member` workspaceNames)
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
@@ -247,8 +255,11 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
       UvLockPackageDependency
         <$> Toml.Schema.reqKey "name"
 
-newtype UvLockPackageSource = UvLockPackageSource
-  {uvlockPackageDependencyUrl :: Maybe Text}
+data UvLockPackageSource = UvLockPackageSource
+  { uvlockPackageSourceUrl :: Maybe Text
+  , uvlockPackageSourceEditable :: Maybe Text
+  , uvlockPackageSourceVirtual :: Maybe Text
+  }
   deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageSource where
@@ -256,6 +267,13 @@ instance Toml.Schema.FromValue UvLockPackageSource where
     Toml.Schema.parseTableFromValue $
       UvLockPackageSource
         <$> Toml.Schema.optKey "url"
+        <*> Toml.Schema.optKey "editable"
+        <*> Toml.Schema.optKey "virtual"
+
+-- | Workspace packages (editable or virtual sources) are the user's own code,
+-- not third-party dependencies. They should be excluded from the dependency graph.
+isWorkspacePackage :: UvLockPackageSource -> Bool
+isWorkspacePackage src = isJust (uvlockPackageSourceEditable src) || isJust (uvlockPackageSourceVirtual src)
 
 newtype UvLockPackageDevDependencies = UvLockPackageDevDependencies
   {uvlockPackageDevDependenciesInt :: [Text]}
