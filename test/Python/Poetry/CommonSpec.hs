@@ -19,7 +19,6 @@ import Strategy.Python.Poetry.PyProject (
   PoetryDependency (..),
   PyProject (..),
   PyProjectBuildSystem (..),
-  PyProjectMetadata (..),
   PyProjectPoetry (..),
   PyProjectPoetryDetailedVersionDependency (..),
   PyProjectPoetryGitDependency (..),
