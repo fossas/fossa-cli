@@ -278,15 +278,20 @@ spec = do
       path <- makeAbsolute [relfile|test/Python/testdata/uv-editable.lock|]
       uvlock <- readContentsToml path
       let result = buildGraph uvlock
+      -- In the editable lockfile, anyio and idna are only reachable via httpx (prod),
+      -- so they should only have EnvProduction (unlike the main test where starlette
+      -- provides a dev path to anyio).
+      let anyio' = mkDep "anyio" "4.11.0" [EnvProduction]
+      let idna' = mkDep "idna" "3.11" [EnvProduction]
 
       expectDirect' [httpx, sniffio] result
       expectDeps'
-        [anyio, httpx, idna, sniffio]
+        [anyio', httpx, idna', sniffio]
         result
       expectEdges'
-        [ (httpx, anyio)
-        , (httpx, idna)
-        , (anyio, idna)
-        , (anyio, sniffio)
+        [ (httpx, anyio')
+        , (httpx, idna')
+        , (anyio', idna')
+        , (anyio', sniffio)
         ]
         result
