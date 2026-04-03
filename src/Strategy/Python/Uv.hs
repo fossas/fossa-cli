@@ -22,7 +22,7 @@ import Data.Aeson (ToJSON)
 import Data.Foldable (for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -118,9 +118,7 @@ buildGraph :: UvLock -> Graphing Dependency
 buildGraph lock = processGraph $ run . evalGrapher $ do
   traverse_ mkEdges packages
   where
-    -- Filter out packages without a version. These are editable/workspace packages
-    -- (the user's own project) with dynamic versions — never third-party dependencies.
-    packages = filter (isJust . uvlockPackageVersion) $ uvlockPackages lock
+    packages = uvlockPackages lock
     packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) packages
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
@@ -192,8 +190,8 @@ buildGraph lock = processGraph $ run . evalGrapher $ do
         rootEnvs dep =
           foldMap dependencyEnvironments (getRootsOf gr dep)
             <> ( if dep `elem` directList gr
-                    then dependencyEnvironments dep
-                    else Set.empty
+                   then dependencyEnvironments dep
+                   else Set.empty
                )
 
     -- In order to label environments correctly with only the uv.lock file, we need to build the graph
