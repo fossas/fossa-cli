@@ -30,7 +30,7 @@ lock =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing (Just ".")
+            , uvlockPackageSource = UvLockPackageSource Nothing (Just ".")
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = ["dep3", "dep4"]
             , uvlockPackageOptionalDependencies = mempty
@@ -38,7 +38,7 @@ lock =
         , UvLockPackage
             { uvlockPackageName = "dep1"
             , uvlockPackageVersion = Just "1.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = ["dep4"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -46,7 +46,7 @@ lock =
         , UvLockPackage
             { uvlockPackageName = "dep2"
             , uvlockPackageVersion = Just "2.1.2"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -54,7 +54,7 @@ lock =
         , UvLockPackage
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -62,7 +62,7 @@ lock =
         , UvLockPackage
             { uvlockPackageName = "dep4"
             , uvlockPackageVersion = Just "1.0.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = ["dep5"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -70,7 +70,7 @@ lock =
         , UvLockPackage
             { uvlockPackageName = "dep5"
             , uvlockPackageVersion = Just "3.0.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -78,7 +78,7 @@ lock =
         , UvLockPackage
             { uvlockPackageName = "dep6"
             , uvlockPackageVersion = Just "1.1.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -98,7 +98,7 @@ lockNewStyleDevDeps =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing (Just ".")
+            , uvlockPackageSource = UvLockPackageSource Nothing (Just ".")
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = Map.fromList [("dev", ["dep3"])]
@@ -106,7 +106,7 @@ lockNewStyleDevDeps =
         , UvLockPackage
             { uvlockPackageName = "dep1"
             , uvlockPackageVersion = Just "1.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -114,7 +114,7 @@ lockNewStyleDevDeps =
         , UvLockPackage
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -122,7 +122,7 @@ lockNewStyleDevDeps =
         , UvLockPackage
             { uvlockPackageName = "dep6"
             , uvlockPackageVersion = Just "1.1.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -142,7 +142,7 @@ lockEditableNoVersion =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Nothing
-            , uvlockPackageSource = UvLockPackageSource Nothing (Just ".") Nothing
+            , uvlockPackageSource = UvLockPackageSource (Just ".") Nothing
             , uvlockPackageDependencies = ["dep1"]
             , uvlockPackageDevDependencies = ["dep3"]
             , uvlockPackageOptionalDependencies = mempty
@@ -150,7 +150,7 @@ lockEditableNoVersion =
         , UvLockPackage
             { uvlockPackageName = "dep1"
             , uvlockPackageVersion = Just "1.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -158,7 +158,7 @@ lockEditableNoVersion =
         , UvLockPackage
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -166,7 +166,7 @@ lockEditableNoVersion =
         , UvLockPackage
             { uvlockPackageName = "dep6"
             , uvlockPackageVersion = Just "1.1.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing Nothing Nothing
+            , uvlockPackageSource = UvLockPackageSource Nothing Nothing
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty

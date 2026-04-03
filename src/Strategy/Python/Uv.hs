@@ -257,8 +257,7 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
         <$> Toml.Schema.reqKey "name"
 
 data UvLockPackageSource = UvLockPackageSource
-  { uvlockPackageSourceUrl :: Maybe Text
-  , uvlockPackageSourceEditable :: Maybe Text
+  { uvlockPackageSourceEditable :: Maybe Text
   , uvlockPackageSourceVirtual :: Maybe Text
   }
   deriving (Eq, Ord, Show)
@@ -267,8 +266,7 @@ instance Toml.Schema.FromValue UvLockPackageSource where
   fromValue =
     Toml.Schema.parseTableFromValue $
       UvLockPackageSource
-        <$> Toml.Schema.optKey "url"
-        <*> Toml.Schema.optKey "editable"
+        <$> Toml.Schema.optKey "editable"
         <*> Toml.Schema.optKey "virtual"
 
 -- | Workspace packages (editable or virtual sources) are the user's own code,
