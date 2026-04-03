@@ -125,8 +125,9 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
     -- Workspace packages (editable/virtual) are the user's own code, not third-party deps.
     -- We include them during graph construction (for edges and env labeling) but remove them
     -- from the final output. shrink rewires edges through removed nodes to preserve transitivity.
-    workspaceNames = Set.fromList
-      [uvlockPackageName p | p <- uvlockPackages lock, isWorkspacePackage (uvlockPackageSource p)]
+    workspaceNames =
+      Set.fromList
+        [uvlockPackageName p | p <- uvlockPackages lock, isWorkspacePackage (uvlockPackageSource p)]
     removeWorkspacePackages = shrink (\dep -> not $ dependencyName dep `Set.member` workspaceNames)
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
