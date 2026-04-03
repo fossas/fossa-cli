@@ -6,6 +6,7 @@ module Strategy.Python.Util (
   MarkerOp (..),
   Operator (..),
   Req (..),
+  reqName,
   requirementParser,
   reqToDependency,
   toConstraint,
@@ -173,6 +174,10 @@ data Req
   = NameReq Text (Maybe [Text]) (Maybe [Version]) (Maybe Marker) -- name, extras, ...
   | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name, extras, ...
   deriving (Eq, Ord, Show)
+
+reqName :: Req -> Text
+reqName (NameReq name _ _ _) = name
+reqName (UrlReq name _ _ _) = name
 
 instance Toml.Schema.FromValue Req where
   fromValue v = do

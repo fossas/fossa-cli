@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`.
+
 ## 3.16.7
 
 - Cargo: Deal with git-backed cargo locators properly ([#1670](https://github.com/fossas/fossa-cli/pull/1670))
