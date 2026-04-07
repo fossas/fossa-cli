@@ -40,6 +40,7 @@ configNameToLabel :: Text -> GradleLabel
 configNameToLabel conf =
   case conf of
     "compileOnly" -> Env EnvDevelopment
+    x | x `elem` knownDevConfigs -> Env EnvDevelopment
     x | x `elem` knownTestConfigs -> Env EnvTesting
     x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
     x | isDefaultAndroidTestConfig x -> Env EnvTesting
@@ -47,7 +48,11 @@ configNameToLabel conf =
 
 knownTestConfigs :: [Text]
 knownTestConfigs =
-  [ "testImplementation"
+  [ "aggregateCodeCoverageReportResults"
+  , "jacocoAgent"
+  , "jacocoAggregation"
+  , "jacocoAnt"
+  , "testImplementation"
   , "testCompileOnly"
   , "testRuntimeOnly"
   , "testCompileClasspath"
@@ -59,6 +64,13 @@ knownTestConfigs =
   , "testFixturesRuntimeClasspath"
   , "testFixturesCompileClasspath"
   , "testFixturesApiElements"
+  ]
+
+knownDevConfigs :: [Text]
+knownDevConfigs =
+  [ "spotbugs"
+  , "spotbugsPlugins"
+  , "spotbugsSlf4j"
   ]
 
 getDebugMessages :: Text -> [Text]
