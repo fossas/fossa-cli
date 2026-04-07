@@ -39,7 +39,6 @@ getLinesWithPrefix text prefix = prefixLines
 configNameToLabel :: Text -> GradleLabel
 configNameToLabel conf =
   case conf of
-    "compileOnly" -> Env EnvDevelopment
     x | x `elem` knownDevConfigs -> Env EnvDevelopment
     x | x `elem` knownTestConfigs -> Env EnvTesting
     x | isDefaultAndroidDevConfig x -> Env EnvDevelopment
@@ -68,7 +67,8 @@ knownTestConfigs =
 
 knownDevConfigs :: [Text]
 knownDevConfigs =
-  [ "spotbugs"
+  [ "compileOnly"
+  , "spotbugs"
   , "spotbugsPlugins"
   , "spotbugsSlf4j"
   ]
