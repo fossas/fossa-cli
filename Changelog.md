@@ -3,6 +3,7 @@
 ## Unreleased
 
 - UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
+- Gradle: Add additional development and test configurations for common plugins ([#1684](https://github.com/fossas/fossa-cli/pull/1684))
 
 ## 3.16.7
 
