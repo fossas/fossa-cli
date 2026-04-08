@@ -145,7 +145,9 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
     allDeps :: [(Text, Dependency)]
     allDeps = Map.toList prodDeps ++ Map.toList devDeps
       where
-        -- Poetry-style prod deps take precedence; PEP 621 fills in anything missing
+        -- Poetry-style prod deps take precedence; PEP 621 fills in anything missing.
+        -- [tool.poetry.dependencies] can carry richer metadata (explicit source, git refs, etc.)
+        -- that PEP 621's PEP 508 strings can't express, so it's strictly more informative.
         prodDeps = toDependency [EnvProduction] supportedProdDeps `Map.union` pep621ProdDeps
         devDeps = toDependency [EnvDevelopment] supportedDevDeps
 
