@@ -37,15 +37,11 @@ pkgToReq :: PythonPackage -> Req
 pkgToReq p =
   NameReq (pkgName p) Nothing (Just [Version OpEq (pkgVersion p)]) Nothing
 
-depName :: Req -> Text
-depName (NameReq nm _ _ _) = nm
-depName (UrlReq nm _ _ _) = nm
-
 reqToDependency :: Req -> Dependency
 reqToDependency req =
   Dependency
     { dependencyType = PipType
-    , dependencyName = depName req
+    , dependencyName = reqName req
     , dependencyVersion = depVersion req
     , dependencyLocations = []
     , dependencyEnvironments = mempty
@@ -95,7 +91,7 @@ buildGraph maybePackages reqs = do
               Nothing -> pure ()
   where
     findParent :: Text -> Maybe Req
-    findParent packageName = find (\r -> Text.toLower (depName r) == Text.toLower (packageName)) reqs
+    findParent packageName = find (\r -> Text.toLower (reqName r) == Text.toLower (packageName)) reqs
 
 addChildren :: (Has (Grapher Req) sig m) => Req -> PythonPackage -> m ()
 addChildren parent pkg = do
