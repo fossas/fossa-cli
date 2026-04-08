@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.16.8
 
-- Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`.
+- Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
+- UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
 
 ## 3.16.7
 
