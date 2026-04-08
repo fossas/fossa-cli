@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
+
 ## 3.16.7
 
 - Cargo: Deal with git-backed cargo locators properly ([#1670](https://github.com/fossas/fossa-cli/pull/1670))
