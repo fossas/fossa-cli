@@ -12,6 +12,7 @@ data CountedResult
   = NoneDiscovered
   | FilteredAll
   | CountedScanUnits ScanUnits
+  deriving (Eq, Show)
 
 -- Takes a list of all projects analyzed, and the list after filtering.  We assume
 -- that the smaller list is the latter, and return that list.  Starting with user-defined deps,

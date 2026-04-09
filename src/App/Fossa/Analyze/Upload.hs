@@ -79,7 +79,7 @@ data ScanUnits
   = SourceUnitOnly [SourceUnit]
   | LicenseSourceUnitOnly LicenseSourceUnit
   | SourceAndLicenseUnits [SourceUnit] LicenseSourceUnit
-  deriving (Show)
+  deriving (Eq, Show)
 
 -- units come from standard `fossa analyze`.
 -- LicenseSourceUnit comes from running a first-party license scan on the project
