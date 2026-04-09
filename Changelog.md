@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## 3.17.0
+
+- Vendetta: Support single-file library dependencies and multi-location vendored dependencies. Locations are now correctly classified as files or directories in vendored metadata. ([#1680](https://github.com/fossas/fossa-cli/pull/1680))
 - UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
 - Gradle: Add additional development and test configurations for common plugins ([#1684](https://github.com/fossas/fossa-cli/pull/1684))
 

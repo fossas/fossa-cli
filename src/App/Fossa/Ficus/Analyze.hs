@@ -6,6 +6,7 @@ module App.Fossa.Ficus.Analyze (
   analyzeWithFicusMain,
   -- Exported for testing
   singletonFicusMessage,
+  vendoredDepsToSourceUnit,
 )
 where
 
@@ -27,6 +28,8 @@ import App.Fossa.Ficus.Types (
   FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta),
   FicusVendoredDependency (..),
   FicusVendoredDependencyScanResults (..),
+  FicusVendoredLocation (..),
+  ficusVendoredLocationPath,
  )
 import App.Types (ProjectRevision (..))
 import Control.Applicative ((<|>))
@@ -193,20 +196,17 @@ vendoredDepsToSourceUnit deps =
             { buildArtifact = "default"
             , buildSucceeded = True
             , buildImports = locators
-            , buildDependencies = dependencies
+            , buildDependencies = map vendoredDepToSourceUnitDependency deps
             }
     , sourceUnitGraphBreadth = Complete
     , sourceUnitNoticeFiles = []
-    , sourceUnitOriginPaths = map (textToOriginPath . ficusVendoredDependencyPath) deps
+    , sourceUnitOriginPaths = concatMap (map (textToOriginPath . ficusVendoredLocationPath) . ficusVendoredDependencyLocations) deps
     , sourceUnitLabels = Nothing
     , additionalData = Nothing
     }
   where
     locators :: [Locator]
     locators = map vendoredDepToLocator deps
-
-    dependencies :: [SourceUnitDependency]
-    dependencies = map vendoredDepToSourceUnitDependency deps
 
     vendoredDepToLocator :: FicusVendoredDependency -> Locator
     vendoredDepToLocator dep =
@@ -223,14 +223,19 @@ vendoredDepsToSourceUnit deps =
         , sourceDepImports = []
         , sourceDepData =
             Aeson.object
-              [ "vendored"
-                  Aeson..= [ Aeson.object
-                               [ "type" Aeson..= ("directory" :: Text)
-                               , "path" Aeson..= ficusVendoredDependencyPath dep
-                               ]
-                           ]
+              [ "vendored" Aeson..= map locationToVendoredPath (ficusVendoredDependencyLocations dep)
               ]
         }
+
+    locationToVendoredPath :: FicusVendoredLocation -> Aeson.Value
+    locationToVendoredPath loc =
+      let (locType, path) = case loc of
+            FicusVendoredFile p -> ("file" :: Text, p)
+            FicusVendoredDirectory p -> ("directory", p)
+       in Aeson.object
+            [ "type" Aeson..= locType
+            , "path" Aeson..= path
+            ]
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -348,7 +353,7 @@ runFicus maybeDebugDir ficusConfig = do
       let (snippetResults, vendoredDeps) = accumulator
       let vendoredResults = case vendoredDeps of
             [] -> Nothing
-            deps -> Just $ FicusVendoredDependencyScanResults (Just $ vendoredDepsToSourceUnit deps)
+            deps -> Just . FicusVendoredDependencyScanResults . Just $ vendoredDepsToSourceUnit deps
 
       pure $
         FicusAnalysisResults
