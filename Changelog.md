@@ -2,7 +2,15 @@
 
 ## 3.16.8
 
+<<<<<<< fix/poetry-pep621-deps
 - Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
+=======
+- Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
+
+## 3.17.0
+
+- Vendetta: Support single-file library dependencies and multi-location vendored dependencies. Locations are now correctly classified as files or directories in vendored metadata. ([#1680](https://github.com/fossas/fossa-cli/pull/1680))
+>>>>>>> master
 - UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
 - Gradle: Add additional development and test configurations for common plugins ([#1684](https://github.com/fossas/fossa-cli/pull/1684))
 
