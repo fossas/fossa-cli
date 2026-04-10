@@ -332,11 +332,13 @@ summarizeProjectScan (SkippedDueToProvidedFilter dpi) = renderDiscoveredProjectI
 summarizeProjectScan (SkippedDueToDefaultFilter dpi) = renderDiscoveredProjectIdentifier dpi <> skippedDueDefaultFilter
 
 summarizeCryptoScan :: Result (Maybe CryptoScanResults) -> [Doc AnsiStyle]
-summarizeCryptoScan (Success wg (Just (CryptoScanResults findings)))
-  | not (null findings) =
-      [successColorCoded wg $ listSymbol <> "Crypto Scan" <> renderSucceeded wg]
-        <> itemize ("  " <> listSymbol) renderCryptoFinding findings
-  | otherwise = []
+summarizeCryptoScan (Success wg (Just (CryptoScanResults findings))) =
+  let header = successColorCoded wg $ listSymbol <> "Crypto Scan" <> renderSucceeded wg
+   in case findings of
+        [] -> [header <> " (no findings)"]
+        _ ->
+          [header]
+            <> itemize ("  " <> listSymbol) renderCryptoFinding findings
 summarizeCryptoScan (Failure _ _) = [failColorCoded $ annotate bold $ listSymbol <> "Crypto Scan" <> renderFailed]
 summarizeCryptoScan _ = []
 

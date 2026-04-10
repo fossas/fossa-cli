@@ -186,18 +186,23 @@ fn pattern_applies(
     }
 
     // Check file extension match
-    if pattern.file_extensions.contains(&file_ext) {
-        return true;
+    if !pattern.file_extensions.contains(&file_ext) {
+        // For extensionless files (Gemfile, Podfile, Pipfile, etc.), check manifest names
+        if file_ext.is_empty() {
+            return patterns::ecosystem_manifests(pattern.ecosystem)
+                .iter()
+                .any(|m| !m.contains('*') && *m == file_name);
+        }
+        return false;
     }
 
-    // For extensionless files (Gemfile, Podfile, Pipfile, etc.), check manifest names
-    if file_ext.is_empty() {
-        return patterns::ecosystem_manifests(pattern.ecosystem)
-            .iter()
-            .any(|m| !m.contains('*') && *m == file_name);
+    // Extension matched. If the pattern also requires specific file names,
+    // verify the current file name is one of them.
+    if !pattern.file_names.is_empty() {
+        return pattern.file_names.contains(&file_name);
     }
 
-    false
+    true
 }
 
 fn normalize_detected_algorithm(name: &str, matched_text: &str) -> String {

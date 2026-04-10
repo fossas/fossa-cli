@@ -5,7 +5,7 @@ require 'bcrypt'
 module CryptoUtils
   # --- AES-256-GCM encryption (FIPS Approved) ---
   def self.encrypt_aes_gcm(key, plaintext)
-    cipher = OpenSSL::Cipher.new('aes-256-gcm')
+    cipher = OpenSSL::Cipher.new('AES-256-GCM')
     cipher.encrypt
     iv = cipher.random_iv
     cipher.key = key
@@ -16,7 +16,7 @@ module CryptoUtils
 
   # --- AES-128-CBC encryption (FIPS Approved) ---
   def self.encrypt_aes_cbc(key, plaintext)
-    cipher = OpenSSL::Cipher.new('aes-128-cbc')
+    cipher = OpenSSL::Cipher.new('AES-128-CBC')
     cipher.encrypt
     cipher.key = key
     iv = cipher.random_iv
@@ -25,7 +25,7 @@ module CryptoUtils
 
   # --- ChaCha20-Poly1305 (NOT FIPS Approved) ---
   def self.encrypt_chacha(key, plaintext)
-    cipher = OpenSSL::Cipher.new('chacha20-poly1305')
+    cipher = OpenSSL::Cipher.new('ChaCha20')
     cipher.encrypt
     cipher.key = key
     iv = cipher.random_iv
@@ -34,7 +34,7 @@ module CryptoUtils
 
   # --- 3DES (FIPS Deprecated) ---
   def self.encrypt_3des(key, plaintext)
-    cipher = OpenSSL::Cipher.new('des-ede3-cbc')
+    cipher = OpenSSL::Cipher.new('DES-EDE3-CBC')
     cipher.encrypt
     cipher.key = key
     cipher.update(plaintext) + cipher.final

@@ -10,6 +10,9 @@ pub struct CryptoPattern {
     pub detection_method: DetectionMethod,
     pub ecosystem: &'static str,
     pub file_extensions: Vec<&'static str>,
+    /// When non-empty, the pattern only applies to files whose name matches one of these entries.
+    /// An empty slice means "any file with a matching extension".
+    pub file_names: &'static [&'static str],
     pub providing_library: Option<String>,
     pub confidence: Confidence,
 }
@@ -68,6 +71,8 @@ pub fn ecosystem_manifests(ecosystem: &str) -> Vec<&'static str> {
 fn python_patterns() -> Vec<CryptoPattern> {
     vec![
         // -- Imports --
+        // Generic namespace imports: the ciphers namespace could mean any cipher,
+        // not specifically AES, so use Medium confidence.
         pat(
             r"from\s+cryptography\.hazmat\.primitives\.ciphers\s+import",
             "AES",
@@ -75,7 +80,7 @@ fn python_patterns() -> Vec<CryptoPattern> {
             "python",
             &["py"],
             Some("cryptography"),
-            Confidence::High,
+            Confidence::Medium,
         ),
         pat(
             r"from\s+cryptography\.hazmat\.primitives\.ciphers\.algorithms\s+import\s+(\w+)",
@@ -84,7 +89,7 @@ fn python_patterns() -> Vec<CryptoPattern> {
             "python",
             &["py"],
             Some("cryptography"),
-            Confidence::High,
+            Confidence::Medium,
         ),
         pat(
             r"from\s+cryptography\.hazmat\.primitives\.hashes\s+import",
@@ -95,6 +100,8 @@ fn python_patterns() -> Vec<CryptoPattern> {
             Some("cryptography"),
             Confidence::Medium,
         ),
+        // The asymmetric namespace import captures multiple modules (rsa, ec, dh, etc.)
+        // but reports only "RSA", so confidence should be Medium.
         pat(
             r"from\s+cryptography\.hazmat\.primitives\.asymmetric\s+import\s+(rsa|ec|ed25519|ed448|dsa|dh|x25519|x448|padding)",
             "RSA",
@@ -102,8 +109,10 @@ fn python_patterns() -> Vec<CryptoPattern> {
             "python",
             &["py"],
             Some("cryptography"),
-            Confidence::High,
+            Confidence::Medium,
         ),
+        // The KDF namespace import captures multiple KDFs (hkdf, pbkdf2, scrypt, etc.)
+        // but reports only "HKDF", so confidence should be Medium.
         pat(
             r"from\s+cryptography\.hazmat\.primitives\.kdf\s+import\s+(hkdf|pbkdf2|scrypt|concatkdf|x963kdf)",
             "HKDF",
@@ -111,7 +120,7 @@ fn python_patterns() -> Vec<CryptoPattern> {
             "python",
             &["py"],
             Some("cryptography"),
-            Confidence::High,
+            Confidence::Medium,
         ),
         // -- API calls --
         pat(
@@ -550,48 +559,53 @@ fn python_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- Dependency manifests --
-        pat(
+        manifest_pat(
             r"(?m)^cryptography[>=<!\s]",
             "cryptography-lib",
             DetectionMethod::DependencyManifest,
             "python",
             &["txt", "cfg", "toml"],
+            &["requirements.txt", "setup.cfg", "pyproject.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r"(?m)^pycryptodome[>=<!\s]",
             "pycryptodome-lib",
             DetectionMethod::DependencyManifest,
             "python",
             &["txt", "cfg", "toml"],
+            &["requirements.txt", "setup.cfg", "pyproject.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r"(?m)^bcrypt[>=<!\s]",
             "bcrypt-lib",
             DetectionMethod::DependencyManifest,
             "python",
             &["txt", "cfg", "toml"],
+            &["requirements.txt", "setup.cfg", "pyproject.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r"(?m)^argon2-cffi[>=<!\s]",
             "argon2-lib",
             DetectionMethod::DependencyManifest,
             "python",
             &["txt", "cfg", "toml"],
+            &["requirements.txt", "setup.cfg", "pyproject.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r"(?m)^PyNaCl[>=<!\s]",
             "nacl-lib",
             DetectionMethod::DependencyManifest,
             "python",
             &["txt", "cfg", "toml"],
+            &["requirements.txt", "setup.cfg", "pyproject.toml"],
             None,
             Confidence::Medium,
         ),
@@ -866,21 +880,23 @@ fn java_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- Dependency manifests --
-        pat(
+        manifest_pat(
             r"org\.bouncycastle",
             "BouncyCastle",
             DetectionMethod::DependencyManifest,
             "java",
             &["xml", "gradle", "kts"],
+            &["pom.xml", "build.gradle", "build.gradle.kts"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r"com\.google\.crypto\.tink",
             "Tink",
             DetectionMethod::DependencyManifest,
             "java",
             &["xml", "gradle", "kts"],
+            &["pom.xml", "build.gradle", "build.gradle.kts"],
             None,
             Confidence::High,
         ),
@@ -1291,12 +1307,13 @@ fn go_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- go.mod dependencies --
-        pat(
+        manifest_pat(
             r"golang\.org/x/crypto",
             "x/crypto",
             DetectionMethod::DependencyManifest,
             "go",
             &["mod", "sum"],
+            &["go.mod", "go.sum"],
             None,
             Confidence::Medium,
         ),
@@ -1598,48 +1615,53 @@ fn node_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- package.json --
-        pat(
+        manifest_pat(
             r#""crypto-js""#,
             "crypto-js",
             DetectionMethod::DependencyManifest,
             "node",
             &["json"],
+            &["package.json"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#""bcrypt""#,
             "bcrypt",
             DetectionMethod::DependencyManifest,
             "node",
             &["json"],
+            &["package.json"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#""argon2""#,
             "Argon2",
             DetectionMethod::DependencyManifest,
             "node",
             &["json"],
+            &["package.json"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#""node-forge""#,
             "node-forge",
             DetectionMethod::DependencyManifest,
             "node",
             &["json"],
+            &["package.json"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#""jose""#,
             "JOSE",
             DetectionMethod::DependencyManifest,
             "node",
             &["json"],
+            &["package.json"],
             None,
             Confidence::Medium,
         ),
@@ -1941,102 +1963,113 @@ fn rust_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- Cargo.toml dependencies --
-        pat(
+        manifest_pat(
             r#"(?m)^ring\s*="#,
             "ring",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^aes-gcm\s*="#,
             "AES-GCM",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^chacha20poly1305\s*="#,
             "ChaCha20-Poly1305",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^sha2\s*="#,
             "SHA-256",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^blake2\s*="#,
             "BLAKE2",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^blake3\s*="#,
             "BLAKE3",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^argon2\s*="#,
             "Argon2",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^rustls\s*="#,
             "TLS",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^openssl\s*="#,
             "OpenSSL",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^ed25519-dalek\s*="#,
             "Ed25519",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"(?m)^x25519-dalek\s*="#,
             "X25519",
             DetectionMethod::DependencyManifest,
             "rust",
             &["toml"],
+            &["Cargo.toml"],
             None,
             Confidence::Medium,
         ),
@@ -2452,39 +2485,43 @@ fn ruby_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- Dependency manifests (Gemfile) --
-        pat(
+        manifest_pat(
             r#"gem\s+['"]rbnacl['"]\b"#,
             "rbnacl",
             DetectionMethod::DependencyManifest,
             "ruby",
-            &["rb"],
+            &["rb", "gemspec"],
+            &["Gemfile"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"gem\s+['"]bcrypt['"]\b"#,
             "bcrypt",
             DetectionMethod::DependencyManifest,
             "ruby",
-            &["rb"],
+            &["rb", "gemspec"],
+            &["Gemfile"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"gem\s+['"]ed25519['"]\b"#,
             "Ed25519",
             DetectionMethod::DependencyManifest,
             "ruby",
-            &["rb"],
+            &["rb", "gemspec"],
+            &["Gemfile"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"gem\s+['"]rsa['"]\b"#,
             "RSA",
             DetectionMethod::DependencyManifest,
             "ruby",
-            &["rb"],
+            &["rb", "gemspec"],
+            &["Gemfile"],
             None,
             Confidence::Medium,
         ),
@@ -2863,7 +2900,8 @@ fn csharp_patterns() -> Vec<CryptoPattern> {
             Some("BouncyCastle"),
             Confidence::High,
         ),
-        // -- Dependency manifests (.csproj) --
+        // -- Dependency manifests (.csproj / .fsproj / packages.config / Directory.Packages.props) --
+        // These extensions are specific enough to .NET that filename scoping is not needed.
         pat(
             r"BouncyCastle\.Cryptography",
             "BouncyCastle",
@@ -3363,39 +3401,43 @@ fn php_patterns() -> Vec<CryptoPattern> {
             Confidence::Medium,
         ),
         // -- Dependency manifests (composer.json) --
-        pat(
+        manifest_pat(
             r#""phpseclib/phpseclib""#,
             "phpseclib",
             DetectionMethod::DependencyManifest,
             "php",
             &["json"],
+            &["composer.json"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#""defuse/php-encryption""#,
             "AES",
             DetectionMethod::DependencyManifest,
             "php",
             &["json"],
+            &["composer.json"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#""paragonie/halite""#,
             "XSalsa20-Poly1305",
             DetectionMethod::DependencyManifest,
             "php",
             &["json"],
+            &["composer.json"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#""paragonie/sodium_compat""#,
             "X25519",
             DetectionMethod::DependencyManifest,
             "php",
             &["json"],
+            &["composer.json"],
             None,
             Confidence::Medium,
         ),
@@ -3787,48 +3829,53 @@ fn swift_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- Dependency manifests --
-        pat(
+        manifest_pat(
             r#"\.package\s*\(\s*url:.*CryptoSwift"#,
             "CryptoSwift",
             DetectionMethod::DependencyManifest,
             "swift",
             &["swift"],
+            &["Package.swift"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"\.package\s*\(\s*url:.*swift-crypto"#,
             "swift-crypto",
             DetectionMethod::DependencyManifest,
             "swift",
             &["swift"],
+            &["Package.swift"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"pod\s+['"]CryptoSwift['"]\b"#,
             "CryptoSwift",
             DetectionMethod::DependencyManifest,
             "swift",
             &["rb"],
+            &["Podfile"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"pod\s+['"]OpenSSL['"]\b"#,
             "OpenSSL",
             DetectionMethod::DependencyManifest,
             "swift",
             &["rb"],
+            &["Podfile"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"pod\s+['"]RNCryptor['"]\b"#,
             "AES",
             DetectionMethod::DependencyManifest,
             "swift",
             &["rb"],
+            &["Podfile"],
             None,
             Confidence::Medium,
         ),
@@ -4252,66 +4299,73 @@ fn elixir_patterns() -> Vec<CryptoPattern> {
             Confidence::High,
         ),
         // -- Dependency manifests (mix.exs) --
-        pat(
+        manifest_pat(
             r#"\{:bcrypt_elixir\b"#,
             "bcrypt",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"\{:argon2_elixir\b"#,
             "Argon2",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"\{:pbkdf2_elixir\b"#,
             "PBKDF2",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::High,
         ),
-        pat(
+        manifest_pat(
             r#"\{:comeonin\b"#,
             "bcrypt",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"\{:jose\b"#,
             "JOSE",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"\{:plug_crypto\b"#,
             "AES",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::Medium,
         ),
-        pat(
+        manifest_pat(
             r#"\{:ex_crypto\b"#,
             "AES",
             DetectionMethod::DependencyManifest,
             "elixir",
             &["exs"],
+            &["mix.exs"],
             None,
             Confidence::Medium,
         ),
@@ -4429,6 +4483,33 @@ fn pat(
         detection_method: method,
         ecosystem,
         file_extensions: extensions.to_vec(),
+        file_names: &[],
+        providing_library: library.map(|s| s.to_string()),
+        confidence,
+    }
+}
+
+/// Like [`pat`] but also restricts matching to specific file names (e.g.
+/// `&["package.json"]`). Use for dependency-manifest rules whose extension
+/// alone is too broad.
+#[allow(clippy::too_many_arguments)]
+fn manifest_pat(
+    regex: &str,
+    name: &str,
+    method: DetectionMethod,
+    ecosystem: &'static str,
+    extensions: &[&'static str],
+    file_names: &'static [&'static str],
+    library: Option<&str>,
+    confidence: Confidence,
+) -> CryptoPattern {
+    CryptoPattern {
+        regex: Regex::new(regex).unwrap_or_else(|e| panic!("Invalid regex '{regex}': {e}")),
+        algorithm_name: name.to_string(),
+        detection_method: method,
+        ecosystem,
+        file_extensions: extensions.to_vec(),
+        file_names,
         providing_library: library.map(|s| s.to_string()),
         confidence,
     }
