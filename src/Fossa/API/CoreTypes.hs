@@ -27,13 +27,13 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
-  Value (Null),
+  Value (Null, Object),
   object,
   withObject,
   withText,
   (.:),
+  (.?=),
  )
-import Data.Maybe (catMaybes)
 import Data.Text (Text)
 
 --- | Data types of Core's main endpoints
@@ -247,13 +247,13 @@ data UpdateProjectRequest = UpdateProjectRequest
 
 instance ToJSON UpdateProjectRequest where
   toJSON UpdateProjectRequest{..} =
-    object . catMaybes $
-      [ ("title" .=) <$> updateProjectTitle
-      , ("url" .=) <$> updateProjectUrl
-      , ("issueTrackerProjectIds" .=) <$> updateProjectIssueTrackerIds
-      , ("labels" .=) <$> updateProjectLabelIds
-      , ("policyId" .=) <$> updateProjectPolicyId
-      , ("default_branch" .=) <$> updateProjectDefaultBranch
+    Object . mconcat $
+      [ "title" .?= updateProjectTitle
+      , "url" .?= updateProjectUrl
+      , "issueTrackerProjectIds" .?= updateProjectIssueTrackerIds
+      , "labels" .?= updateProjectLabelIds
+      , "policyId" .?= updateProjectPolicyId
+      , "default_branch" .?= updateProjectDefaultBranch
       ]
 
 -- Revision
