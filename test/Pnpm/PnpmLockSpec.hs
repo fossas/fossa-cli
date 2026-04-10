@@ -89,10 +89,13 @@ lodash =
     mempty
 
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
-checkGraph pathToFixture buildGraphSpec = do
+checkGraph = checkGraphWithFilter Nothing
+
+checkGraphWithFilter :: Maybe (Set.Set Text) -> Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkGraphWithFilter importerFilter pathToFixture buildGraphSpec = do
   eitherDecodedLockFile <- runIO $ decodeFileEither (toString pathToFixture)
   case eitherDecodedLockFile of
-    Right pnpmLock -> buildGraphSpec (buildGraph pnpmLock)
+    Right pnpmLock -> buildGraphSpec (buildGraph importerFilter pnpmLock)
     Left err ->
       describe "pnpm-lock" $
         it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
@@ -105,6 +108,11 @@ spec = do
 
   checkGraph pnpmLockPath pnpmLockGraphSpec
   checkGraph pnpmLockWithoutWorkspacePath pnpmLockGraphWithoutWorkspaceSpec
+
+  -- v5 workspace target filtering
+  describe "workspace target filtering" $ do
+    checkGraphWithFilter (Just (Set.singleton ".")) pnpmLockPath pnpmLockFilteredRootOnlySpec
+    checkGraphWithFilter (Just (Set.singleton "packages/a")) pnpmLockPath pnpmLockFilteredWorkspaceOnlySpec
 
   -- v6 format
   let pnpmLockV6 = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6.yaml")
@@ -487,3 +495,31 @@ pnpmLockV9MultiVersionSpec graph = do
       expectDep (mkProdDep "sax@1.2.1") graph
       -- sax@1.4.4 is dev-only (from app-b)
       expectDep (mkDevDep "sax@1.4.4") graph
+
+-- | When filtered to root importer only ("."), workspace package deps
+-- (aws-sdk@1.0.0, commander@9.2.0) should not appear as direct.
+pnpmLockFilteredRootOnlySpec :: Graphing Dependency -> Spec
+pnpmLockFilteredRootOnlySpec graph = do
+  describe "filtered to root importer only" $ do
+    it "should only include root direct deps" $ do
+      expectDirect
+        [ mkProdDep "aws-sdk@2.1148.0"
+        , colors
+        , lodash
+        , mkDevDep "react@18.1.0"
+        , mkProdDep "glob@8.0.3"
+        , mkProdDep "chokidar@1.0.0"
+        ]
+        graph
+
+-- | When filtered to workspace importer only ("packages/a"), root deps
+-- (aws-sdk@2.1148.0, colors, lodash, react) should not appear as direct.
+pnpmLockFilteredWorkspaceOnlySpec :: Graphing Dependency -> Spec
+pnpmLockFilteredWorkspaceOnlySpec graph = do
+  describe "filtered to workspace importer only" $ do
+    it "should only include workspace-a direct deps" $ do
+      expectDirect
+        [ mkProdDep "aws-sdk@1.0.0"
+        , mkProdDep "commander@9.2.0"
+        ]
+        graph
