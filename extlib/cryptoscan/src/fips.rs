@@ -169,12 +169,34 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
                     Some("RSA key size below 2048 bits; use RSA-2048 or higher".into()),
                 );
             }
+            return (FipsStatus::Approved, None);
         }
-        return (FipsStatus::Approved, None);
+        return (
+            FipsStatus::Deprecated,
+            Some(
+                "RSA key size not detected; manual verification needed for FIPS compliance".into(),
+            ),
+        );
     }
 
     if lower.contains("ecdsa") {
-        return (FipsStatus::Approved, None);
+        // If a specific curve is mentioned in the name, we can approve
+        if lower.contains("p-256")
+            || lower.contains("p-384")
+            || lower.contains("p-521")
+            || lower.contains("p256")
+            || lower.contains("p384")
+            || lower.contains("p521")
+            || lower.contains("secp256r1")
+            || lower.contains("secp384r1")
+            || lower.contains("secp521r1")
+        {
+            return (FipsStatus::Approved, None);
+        }
+        return (
+            FipsStatus::Deprecated,
+            Some("ECDSA curve not detected; manual verification needed for FIPS compliance".into()),
+        );
     }
 
     if lower.contains("ed25519") || lower.contains("ed448") || lower.contains("eddsa") {
@@ -205,7 +227,23 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
                 Some("X25519 is not FIPS-approved for key exchange; use ECDH P-256/P-384".into()),
             );
         }
-        return (FipsStatus::Approved, None);
+        // If a specific NIST curve is mentioned, we can approve
+        if lower.contains("p-256")
+            || lower.contains("p-384")
+            || lower.contains("p-521")
+            || lower.contains("p256")
+            || lower.contains("p384")
+            || lower.contains("p521")
+            || lower.contains("secp256r1")
+            || lower.contains("secp384r1")
+            || lower.contains("secp521r1")
+        {
+            return (FipsStatus::Approved, None);
+        }
+        return (
+            FipsStatus::Deprecated,
+            Some("ECDH curve not detected; manual verification needed for FIPS compliance".into()),
+        );
     }
 
     if lower.contains("x25519") || lower.contains("curve25519") {
@@ -223,7 +261,24 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
     }
 
     if lower.contains("diffie") || lower == "dh" {
-        return (FipsStatus::Approved, None); // Assuming >= 2048-bit
+        // Extract key size from algorithm name (e.g., "dh-2048")
+        let key_size = lower
+            .split(|c: char| !c.is_ascii_digit())
+            .find_map(|tok| tok.parse::<u32>().ok());
+
+        if let Some(bits) = key_size {
+            if bits >= 2048 {
+                return (FipsStatus::Approved, None);
+            }
+            return (
+                FipsStatus::NotApproved,
+                Some("DH key size below 2048 bits; use DH-2048 or higher".into()),
+            );
+        }
+        return (
+            FipsStatus::Deprecated,
+            Some("DH key size not detected; manual verification needed for FIPS compliance".into()),
+        );
     }
 
     // --- Post-Quantum ---

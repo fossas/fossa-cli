@@ -10,7 +10,7 @@ _Important: For support and other general information, refer to the [experimenta
 
 Crypto Scanning automatically detects which language ecosystems are present in your project by examining manifest files (e.g., `requirements.txt`, `pom.xml`, `go.mod`, `Cargo.toml`, `package.json`, `Gemfile`, `*.csproj`, `composer.json`, `Package.swift`, `mix.exs`).
 
-Ten ecosystems are supported: Python, Java, Go, Rust, Node.js, Ruby, C#/.NET, PHP, Swift, and Elixir.
+Multiple ecosystems are supported: Python, Java, Go, Rust, Node.js, Ruby, C#/.NET, PHP, Swift, and Elixir.
 
 ## Analysis
 

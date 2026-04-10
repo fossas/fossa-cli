@@ -402,7 +402,8 @@ fn days_to_date(days_since_epoch: u64) -> (u64, u64, u64) {
         }
         days -= md;
     }
-    // month is always set by the loop since days < days_in_year after year calculation
+    // Invariant: month is always set by the loop because days < days_in_year
+    // after the year calculation, so at least one iteration will satisfy days < md.
     debug_assert!(month > 0, "days_to_date: month calculation failed");
 
     (year as u64, month as u64, (days + 1) as u64)

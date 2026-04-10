@@ -271,16 +271,18 @@ keySizeWarning finding =
   let algo = cryptoFindingAlgorithm finding
       algoName = Text.toLower $ cryptoAlgorithmName algo
       paramSet = cryptoAlgorithmParameterSet algo
-   in catWarnings algoName paramSet
+      prim = cryptoAlgorithmPrimitive algo
+      isHash = prim == PrimitiveHash || prim == PrimitiveXof
+   in catWarnings algoName paramSet isHash
   where
-    catWarnings :: Text -> Maybe Text -> [Doc AnsiStyle]
-    catWarnings n ps
+    catWarnings :: Text -> Maybe Text -> Bool -> [Doc AnsiStyle]
+    catWarnings n ps isHashPrim
       | "rsa" `Text.isInfixOf` n = rsaWarning ps
-      | "sha-1" `Text.isInfixOf` n || "sha1" `Text.isInfixOf` n =
+      | isHashPrim && ("sha-1" `Text.isInfixOf` n || "sha1" `Text.isInfixOf` n) =
           [annotate (color Yellow) "- SHA-1: Deprecated, fully disallowed after 2030-12-31"]
       | "aes-128" `Text.isInfixOf` n || (n == "aes" && ps == Just "128") =
           [annotate (color Yellow) "- AES-128: Approved but AES-256 recommended for higher security margin"]
-      | "sha-224" `Text.isInfixOf` n =
+      | isHashPrim && "sha-224" `Text.isInfixOf` n =
           [annotate (color Yellow) "- SHA-224: Deprecated by 2030"]
       | "3des" `Text.isInfixOf` n || "triple-des" `Text.isInfixOf` n =
           [annotate (color Yellow) "- 3DES: Legacy decryption only since Jan 2024"]

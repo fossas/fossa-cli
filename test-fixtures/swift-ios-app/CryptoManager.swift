@@ -78,6 +78,8 @@ struct CryptoManager {
     }
 
     // --- PBKDF2 via CommonCrypto (FIPS Approved) ---
+    // CCKeyDerivationPBKDF returns a status code but does not throw;
+    // error handling is omitted here since this is a test fixture.
     static func deriveKeyPbkdf2(password: String, salt: Data) -> Data {
         var derivedKey = Data(count: 32)
         derivedKey.withUnsafeMutableBytes { derivedBytes in

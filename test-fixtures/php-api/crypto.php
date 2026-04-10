@@ -1,5 +1,6 @@
 <?php
 
+// Import-pattern detection test — these imports are intentionally unused
 use phpseclib3\Crypt\AES;
 use phpseclib3\Crypt\RSA;
 

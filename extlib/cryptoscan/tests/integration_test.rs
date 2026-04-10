@@ -97,7 +97,10 @@ fn python_detects_chacha20() {
 #[test]
 fn python_detects_rsa() {
     let findings = run_scan("python-web-app", "python");
-    assert!(has_algorithm_with_status(&findings, "RSA", "approved"));
+    assert!(
+        has_algorithm_with_status(&findings, "RSA", "deprecated"),
+        "RSA without key size should be deprecated (manual review needed)"
+    );
 }
 
 #[test]
@@ -206,8 +209,14 @@ fn java_detects_3des_deprecated() {
 #[test]
 fn java_detects_signatures() {
     let findings = run_scan("java-microservice", "java");
-    assert!(has_algorithm_with_status(&findings, "RSA", "approved"));
-    assert!(has_algorithm_with_status(&findings, "ECDSA", "approved"));
+    assert!(
+        has_algorithm_with_status(&findings, "RSA", "deprecated"),
+        "RSA without key size should be deprecated (manual review needed)"
+    );
+    assert!(
+        has_algorithm_with_status(&findings, "ECDSA", "deprecated"),
+        "ECDSA without curve should be deprecated (manual review needed)"
+    );
     assert!(has_algorithm_with_status(&findings, "Ed25519", "approved"));
 }
 
@@ -215,8 +224,8 @@ fn java_detects_signatures() {
 fn java_detects_key_exchange() {
     let findings = run_scan("java-microservice", "java");
     assert!(
-        has_algorithm_with_status(&findings, "DH", "approved"),
-        "should detect DH key exchange"
+        has_algorithm_with_status(&findings, "DH", "deprecated"),
+        "DH without key size should be deprecated (manual review needed)"
     );
     assert!(
         has_algorithm_with_status(&findings, "X25519", "not-approved"),
@@ -432,7 +441,10 @@ fn node_detects_hmac_variants() {
 #[test]
 fn node_detects_key_generation() {
     let findings = run_scan("node-auth-service", "node");
-    assert!(has_algorithm_with_status(&findings, "RSA", "approved"));
+    assert!(
+        has_algorithm_with_status(&findings, "RSA", "deprecated"),
+        "RSA without key size should be deprecated (manual review needed)"
+    );
     assert!(has_algorithm_with_status(&findings, "Ed25519", "approved"));
     assert!(has_algorithm_with_status(
         &findings,

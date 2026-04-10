@@ -60,7 +60,8 @@ fn generate_ed25519_key() -> SigningKey {
 
 // ─── X25519 key exchange (NOT FIPS Approved) ─────────────────────────
 fn x25519_key_exchange() -> PublicKey {
-    let secret = EphemeralSecret::random();
+    let mut csprng = rand::rngs::OsRng;
+    let secret = EphemeralSecret::random_from_rng(&mut csprng);
     PublicKey::from(&secret)
 }
 

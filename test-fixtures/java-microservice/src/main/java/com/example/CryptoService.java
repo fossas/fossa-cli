@@ -12,7 +12,9 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 
 /**
- * Example Java microservice demonstrating various crypto patterns.
+ * Test fixture for crypto scanning detection.
+ * Intentionally includes insecure and deprecated cryptographic patterns.
+ * NOT production code — do not copy these patterns.
  */
 public class CryptoService {
 
@@ -99,6 +101,10 @@ public class CryptoService {
     public byte[] deriveKeyPbkdf2(char[] password, byte[] salt) throws Exception {
         SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
         PBEKeySpec spec = new PBEKeySpec(password, salt, 600000, 256);
-        return factory.generateSecret(spec).getEncoded();
+        try {
+            return factory.generateSecret(spec).getEncoded();
+        } finally {
+            spec.clearPassword();
+        }
     }
 }
