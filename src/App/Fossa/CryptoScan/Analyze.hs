@@ -62,4 +62,5 @@ mkCryptoScanCommand format bin rootDir =
     { cmdName = toText $ toPath bin
     , cmdArgs = ["--path", toText rootDir, "--ecosystem", "auto", "--format", format]
     , cmdAllowErr = Never
+    , cmdEnvVars = mempty
     }
