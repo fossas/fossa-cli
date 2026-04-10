@@ -213,7 +213,6 @@ library
     App.Fossa.Config.Container.Common
     App.Fossa.Config.Container.ListTargets
     App.Fossa.Config.Container.Test
-    App.Fossa.Config.Crypto
     App.Fossa.Config.DumpBinaries
     App.Fossa.Config.EnvironmentVars
     App.Fossa.Config.LicenseScan
@@ -246,7 +245,6 @@ library
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
     App.Fossa.Container.Test
-    App.Fossa.Crypto
     App.Fossa.CryptoScan.Analyze
     App.Fossa.CryptoScan.FipsReport
     App.Fossa.CryptoScan.Types
