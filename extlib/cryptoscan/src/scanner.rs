@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
@@ -19,7 +19,6 @@ pub fn detect_ecosystems(project_path: &Path) -> Vec<String> {
     };
 
     for entry in WalkDir::new(project_path)
-        .max_depth(3)
         .into_iter()
         .filter_entry(|e| !should_skip_path(e.path()))
         .filter_map(|e| e.ok())
@@ -619,14 +618,25 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
                 Primitive::Pke,
                 "RSA",
                 None,
-                Some("2048"),
                 None,
-                Some(112),
+                None,
+                None,
                 0,
                 Some("1.2.840.113549.1.1.1"),
                 vec!["keygen", "encrypt", "decrypt", "sign", "verify"],
             ),
-            "ECDSA" | "ECDSA-P256" => (
+            "ECDSA" => (
+                Primitive::Signature,
+                "ECDSA",
+                None,
+                None,
+                None,
+                None,
+                0,
+                Some("1.2.840.10045.2.1"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "ECDSA-P256" => (
                 Primitive::Signature,
                 "ECDSA",
                 None,
@@ -685,9 +695,9 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
                 Primitive::Signature,
                 "DSA",
                 None,
-                Some("2048"),
                 None,
-                Some(112),
+                None,
+                None,
                 0,
                 Some("1.2.840.10040.4.1"),
                 vec!["sign", "verify"],
@@ -699,8 +709,8 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
                 "ECDH",
                 None,
                 None,
-                Some("nist/P-256"),
-                Some(128),
+                None,
+                None,
                 0,
                 None,
                 vec!["keygen", "keyderive"],
@@ -720,9 +730,9 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
                 Primitive::KeyAgree,
                 "DH",
                 None,
-                Some("2048"),
                 None,
-                Some(112),
+                None,
+                None,
                 0,
                 None,
                 vec!["keygen", "keyderive"],
@@ -907,7 +917,7 @@ fn confidence_rank(c: &Confidence) -> u8 {
 }
 
 fn deduplicate_findings(findings: Vec<CryptoFinding>) -> Vec<CryptoFinding> {
-    let mut best: HashMap<String, CryptoFinding> = HashMap::new();
+    let mut best: BTreeMap<String, CryptoFinding> = BTreeMap::new();
 
     for finding in findings {
         let key = format!(

@@ -179,7 +179,7 @@ scanning, or what information is sent to FOSSA's servers, see
 
 ### Cryptographic Algorithm Scanning
 
-Crypto Scanning detects cryptographic algorithm usage across 10 language ecosystems
+Crypto Scanning detects cryptographic algorithm usage across multiple language ecosystems
 and classifies findings against FIPS 140-3 compliance requirements. Results can be
 uploaded to FOSSA, exported as a CycloneDX 1.7 CBOM, or printed as a FIPS
 compliance report.
@@ -188,7 +188,7 @@ compliance report.
 
 | Name                           | Description                                                                                                                                                                                            |
 |--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--x-crypto-scan`              | Enable cryptographic algorithm detection during analysis. This experimental feature scans source files, imports, API calls, and config files for crypto usage across 10 ecosystems.                     |
+| `--x-crypto-scan`              | Enable cryptographic algorithm detection during analysis. This experimental feature scans source files, imports, API calls, and config files for crypto usage across multiple ecosystems.                     |
 | `--crypto-cbom-output FILE`    | Write a CycloneDX 1.7 CBOM (Cryptography Bill of Materials) JSON file to the specified path. Implies `--x-crypto-scan`.                                                                               |
 | `--crypto-fips-report`         | Print a FIPS 140-3 compliance summary to stdout with per-algorithm status and remediation suggestions. Implies `--x-crypto-scan`.                                                                      |
 

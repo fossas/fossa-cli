@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 use crate::crypto_algorithm::CryptoFinding;
@@ -159,32 +159,33 @@ pub fn to_cyclonedx_bom(findings: &[CryptoFinding]) -> CycloneDxBom {
         }];
 
         // Collect unique detection locations, methods, and ecosystems
-        let mut seen_locations: HashSet<String> = HashSet::new();
-        let mut seen_methods: HashSet<String> = HashSet::new();
-        let mut seen_ecosystems: HashSet<String> = HashSet::new();
+        let mut seen_locations: BTreeSet<String> = BTreeSet::new();
+        let mut seen_methods: BTreeSet<String> = BTreeSet::new();
+        let mut seen_ecosystems: BTreeSet<String> = BTreeSet::new();
 
         for finding in group {
-            if seen_locations.insert(finding.file_path.clone()) {
-                properties.push(BomProperty {
-                    name: "fossa:detected-in".to_string(),
-                    value: finding.file_path.clone(),
-                });
-            }
+            seen_locations.insert(finding.file_path.clone());
+            seen_methods.insert(finding.detection_method.as_str().to_string());
+            seen_ecosystems.insert(finding.ecosystem.clone());
+        }
 
-            let method_str = finding.detection_method.as_str().to_string();
-            if seen_methods.insert(method_str.clone()) {
-                properties.push(BomProperty {
-                    name: "fossa:detection-method".to_string(),
-                    value: method_str,
-                });
-            }
-
-            if seen_ecosystems.insert(finding.ecosystem.clone()) {
-                properties.push(BomProperty {
-                    name: "fossa:ecosystem".to_string(),
-                    value: finding.ecosystem.clone(),
-                });
-            }
+        for location in &seen_locations {
+            properties.push(BomProperty {
+                name: "fossa:detected-in".to_string(),
+                value: location.clone(),
+            });
+        }
+        for method in &seen_methods {
+            properties.push(BomProperty {
+                name: "fossa:detection-method".to_string(),
+                value: method.clone(),
+            });
+        }
+        for ecosystem in &seen_ecosystems {
+            properties.push(BomProperty {
+                name: "fossa:ecosystem".to_string(),
+                value: ecosystem.clone(),
+            });
         }
 
         let component = BomComponent {

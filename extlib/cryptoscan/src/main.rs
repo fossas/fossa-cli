@@ -72,6 +72,11 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
 
+    if !cli.path.is_dir() {
+        eprintln!("Error: '{}' is not a directory", cli.path.display());
+        std::process::exit(1);
+    }
+
     let ecosystems = if matches!(cli.ecosystem, Ecosystem::Auto) {
         scanner::detect_ecosystems(&cli.path)
     } else {

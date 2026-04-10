@@ -149,6 +149,7 @@ classifyPrimitive PrimitiveSignature = CatAsymmetricSignatures
 classifyPrimitive PrimitivePke = CatAsymmetricSignatures
 classifyPrimitive PrimitiveKem = CatKeyExchange
 classifyPrimitive PrimitiveKeyAgree = CatKeyExchange
+classifyPrimitive PrimitiveKeyWrap = CatSymmetricEncryption
 classifyPrimitive PrimitiveKdf = CatKdfs
 classifyPrimitive PrimitiveDrbg = CatOther
 classifyPrimitive PrimitiveCombiner = CatOther
@@ -226,7 +227,7 @@ suggestAlternative name =
               if check ["md5"] || check ["md4"]
                 then "SHA-256"
                 else
-                  if check ["rc4", "rc2", "blowfish", "des", "3des-encrypt"]
+                  if check ["rc4", "rc2", "blowfish", "des", "3des", "3des-encrypt"]
                     then "AES-256"
                     else
                       if check ["bcrypt", "argon2", "argon2i", "argon2id", "scrypt"]

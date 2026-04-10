@@ -26,16 +26,6 @@ impl FipsStatus {
     }
 }
 
-/// FIPS remediation suggestion.
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct FipsRemediation {
-    pub algorithm: String,
-    pub status: FipsStatus,
-    pub reason: String,
-    pub recommended_alternative: Option<String>,
-}
-
 /// Classify an algorithm name to its FIPS status using our comprehensive database.
 pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
     let lower = name.to_lowercase();
@@ -191,11 +181,16 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
         return (FipsStatus::Approved, None); // Approved for signatures per FIPS 186-5
     }
 
-    if lower.contains("dsa")
-        && !lower.contains("ecdsa")
-        && !lower.contains("eddsa")
-        && !lower.contains("ml-dsa")
-    {
+    // Post-quantum DSA variants (must be checked before generic DSA)
+    if lower.contains("slh-dsa") || lower.contains("slhdsa") || lower.contains("sphincs") {
+        return (FipsStatus::Approved, None);
+    }
+
+    if lower.contains("ml-dsa") || lower.contains("mldsa") || lower.contains("dilithium") {
+        return (FipsStatus::Approved, None);
+    }
+
+    if lower.contains("dsa") && !lower.contains("ecdsa") && !lower.contains("eddsa") {
         return (
             FipsStatus::Deprecated,
             Some("DSA is deprecated; only verification allowed. Use ECDSA or EdDSA".into()),
@@ -233,14 +228,6 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
 
     // --- Post-Quantum ---
     if lower.contains("ml-kem") || lower.contains("mlkem") || lower.contains("kyber") {
-        return (FipsStatus::Approved, None);
-    }
-
-    if lower.contains("ml-dsa") || lower.contains("mldsa") || lower.contains("dilithium") {
-        return (FipsStatus::Approved, None);
-    }
-
-    if lower.contains("slh-dsa") || lower.contains("slhdsa") || lower.contains("sphincs") {
         return (FipsStatus::Approved, None);
     }
 

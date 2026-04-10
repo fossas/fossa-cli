@@ -110,7 +110,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (recover)
+import Control.Effect.Diagnostics (fatalOnIOException, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
@@ -427,7 +427,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       traverse_ (Diag.flushLogs SevError SevDebug) [maybeCbomBytes]
       case maybeCbomBytes of
         Success _ (Just bytes) -> do
-          sendIO $ BL.writeFile cbomPath bytes
+          fatalOnIOException "Failed to write crypto CBOM file" . sendIO $ BL.writeFile cbomPath bytes
           logInfo $ "CycloneDX 1.7 CBOM written to: " <> pretty cbomPath
         Success _ Nothing -> logInfo "No crypto findings to write to CBOM file"
         Failure _ _ -> logWarn "Crypto CBOM generation failed; see diagnostics above"

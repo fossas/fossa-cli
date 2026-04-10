@@ -14,13 +14,11 @@ import Data.Aeson (
   FromJSON (parseJSON),
   ToJSON (toJSON),
   Value (String),
-  object,
-  withObject,
-  withText,
   (.:),
   (.:?),
   (.=),
  )
+import Data.Aeson qualified as Aeson
 import Data.Text (Text)
 
 -- | Wrapper for the list of crypto findings returned by the cryptoscan binary.
@@ -49,7 +47,7 @@ data CryptoFinding = CryptoFinding
   deriving (Show, Eq, Ord)
 
 instance FromJSON CryptoFinding where
-  parseJSON = withObject "CryptoFinding" $ \o ->
+  parseJSON = Aeson.withObject "CryptoFinding" $ \o ->
     CryptoFinding
       <$> o .: "algorithm"
       <*> o .: "file_path"
@@ -62,7 +60,7 @@ instance FromJSON CryptoFinding where
 
 instance ToJSON CryptoFinding where
   toJSON CryptoFinding{..} =
-    object
+    Aeson.object
       [ "algorithm" .= cryptoFindingAlgorithm
       , "file_path" .= cryptoFindingFilePath
       , "line_number" .= cryptoFindingLineNumber
@@ -90,7 +88,7 @@ data CryptoAlgorithm = CryptoAlgorithm
   deriving (Show, Eq, Ord)
 
 instance FromJSON CryptoAlgorithm where
-  parseJSON = withObject "CryptoAlgorithm" $ \o ->
+  parseJSON = Aeson.withObject "CryptoAlgorithm" $ \o ->
     CryptoAlgorithm
       <$> o .: "name"
       <*> o .: "algorithm_family"
@@ -106,7 +104,7 @@ instance FromJSON CryptoAlgorithm where
 
 instance ToJSON CryptoAlgorithm where
   toJSON CryptoAlgorithm{..} =
-    object
+    Aeson.object
       [ "name" .= cryptoAlgorithmName
       , "algorithm_family" .= cryptoAlgorithmFamily
       , "primitive" .= cryptoAlgorithmPrimitive
@@ -129,7 +127,7 @@ data FipsStatus
   deriving (Show, Eq, Ord)
 
 instance FromJSON FipsStatus where
-  parseJSON = withText "FipsStatus" $ \case
+  parseJSON = Aeson.withText "FipsStatus" $ \case
     "approved" -> pure FipsApproved
     "deprecated" -> pure FipsDeprecated
     "not-approved" -> pure FipsNotApproved
@@ -150,7 +148,7 @@ data DetectionMethod
   deriving (Show, Eq, Ord)
 
 instance FromJSON DetectionMethod where
-  parseJSON = withText "DetectionMethod" $ \case
+  parseJSON = Aeson.withText "DetectionMethod" $ \case
     "dependency-manifest" -> pure DependencyManifest
     "import-statement" -> pure ImportStatement
     "api-call" -> pure ApiCall
@@ -173,7 +171,7 @@ data Confidence
   deriving (Show, Eq, Ord)
 
 instance FromJSON Confidence where
-  parseJSON = withText "Confidence" $ \case
+  parseJSON = Aeson.withText "Confidence" $ \case
     "high" -> pure ConfidenceHigh
     "medium" -> pure ConfidenceMedium
     "low" -> pure ConfidenceLow
@@ -195,6 +193,7 @@ data CryptoPrimitive
   | PrimitivePke
   | PrimitiveKem
   | PrimitiveKeyAgree
+  | PrimitiveKeyWrap
   | PrimitiveKdf
   | PrimitiveXof
   | PrimitiveDrbg
@@ -204,7 +203,7 @@ data CryptoPrimitive
   deriving (Show, Eq, Ord)
 
 instance FromJSON CryptoPrimitive where
-  parseJSON = withText "CryptoPrimitive" $ \case
+  parseJSON = Aeson.withText "CryptoPrimitive" $ \case
     "ae" -> pure PrimitiveAe
     "block-cipher" -> pure PrimitiveBlockCipher
     "stream-cipher" -> pure PrimitiveStreamCipher
@@ -214,6 +213,7 @@ instance FromJSON CryptoPrimitive where
     "pke" -> pure PrimitivePke
     "kem" -> pure PrimitiveKem
     "key-agree" -> pure PrimitiveKeyAgree
+    "key-wrap" -> pure PrimitiveKeyWrap
     "kdf" -> pure PrimitiveKdf
     "xof" -> pure PrimitiveXof
     "drbg" -> pure PrimitiveDrbg
@@ -232,6 +232,7 @@ instance ToJSON CryptoPrimitive where
   toJSON PrimitivePke = String "pke"
   toJSON PrimitiveKem = String "kem"
   toJSON PrimitiveKeyAgree = String "key-agree"
+  toJSON PrimitiveKeyWrap = String "key-wrap"
   toJSON PrimitiveKdf = String "kdf"
   toJSON PrimitiveXof = String "xof"
   toJSON PrimitiveDrbg = String "drbg"

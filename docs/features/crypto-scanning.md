@@ -61,8 +61,9 @@ the following data is sent:
 - FIPS compliance status per algorithm
 - Providing library names (e.g., "openssl", "ring")
 
-No source code content is sent to FOSSA. Only metadata about detected
-cryptographic algorithm usage is transmitted.
+Only algorithm names and file locations are sent to FOSSA; no complete source
+files are transmitted. Matched code snippets (e.g., an API call or import
+statement) may be included to provide detection context.
 
 ## CycloneDX 1.7 CBOM Output
 
