@@ -4,8 +4,43 @@
 
 - Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 
+## 3.17.0
+
+- Vendetta: Support single-file library dependencies and multi-location vendored dependencies. Locations are now correctly classified as files or directories in vendored metadata. ([#1680](https://github.com/fossas/fossa-cli/pull/1680))
+- UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
+- Gradle: Add additional development and test configurations for common plugins ([#1684](https://github.com/fossas/fossa-cli/pull/1684))
+
+## 3.16.7
+
+- Cargo: Deal with git-backed cargo locators properly ([#1670](https://github.com/fossas/fossa-cli/pull/1670))
+
+## 3.16.6
+
+- Bump tar crate to 0.4.45 to fix CVE-2026-33055 and CVE-2026-33056 ([#1679](https://github.com/fossas/fossa-cli/pull/1679))
+- Fix UTF-8 encoding for ficus output on Windows  ([#1646](https://github.com/fossas/fossa-cli/pull/1646))
+
+## 3.16.5
+
+- PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies in pnpm v9 projects. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
+
+## 3.16.4
+
+- Bugfix: revert caching changes as they caused a problem with missing libs on macos ([#1675](https://github.com/fossas/fossa-cli/pull/1675))
+
+## 3.16.3
+
+- Elixir: Use `MIX_ENV=prod` for accurate production dependency resolution, with fallback to `--only prod` for projects lacking `config/prod.exs` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
+- Infrastructure: Add `cmdEnvVars` field to `Command` type for setting environment variables on subprocesses via `typed-process` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
+
+## 3.16.2
+
+- Conda: Make conda analysis work on versions of conda where the `--force` flag is deprecated for `conda env create` ([#1661](https://github.com/fossas/fossa-cli/pull/1661))
+- Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
+- Hide deprecated `--experimental-use-v3-go-resolver`, `--experimental-skip-vsi-graph` and `--experimental-link-project-binary` flags, and deprecate the `experimental-link-user-defined-dependency-binary` subcommand. The flags and subcommand still work, but are no longer documented or shown in the help text ([#1633](https://github.com/fossas/fossa-cli/pull/1633))
+
 ## 3.16.1
 
+- Licensing: Add standalone detection for Solace proprietary licenses (solace-software-2021, solace-non-production-1.0, solace-api-1.1) ([#1660](https://github.com/fossas/fossa-cli/pull/1660))
 - Licensing: Add support for SPDX tag-value format license declarations
 
 ## 3.16.0

@@ -41,7 +41,7 @@ spec = do
 
   describe "IO-based handler" $ do
     it "should return Left, and not throw an exception, when a command is not found" $ do
-      res <- runExecIO $ exec dir (Command "lkajsdflkjasdlfkjas" [] Always)
+      res <- runExecIO $ exec dir (Command "lkajsdflkjasdlfkjas" [] Always Map.empty)
       res `shouldSatisfy` isLeft
 
   describe "Command selection" $ do

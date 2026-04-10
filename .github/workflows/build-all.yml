@@ -54,7 +54,7 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         lfs: true
         fetch-depth: 2
@@ -212,6 +212,8 @@ jobs:
       run: |
         strip release/*
 
+      # Documentation for what to do if this breaks: https://docs.google.com/document/d/1-TmYi9XKcJZWPRQIiOKEZEGBjrNgqqHB8AgLc5cuKMQ/edit?tab=t.0#heading=h.4jnaw7ic688f
+      # Read that if we need to create a new certificate or sign updates to the ToS.
     - name: Sign and Notarize Binaries (Mac OS)
       if: ${{ contains(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/v') }}
       env:

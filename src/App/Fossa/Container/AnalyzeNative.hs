@@ -9,6 +9,7 @@ module App.Fossa.Container.AnalyzeNative (
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
 import App.Fossa.Analyze.Debug (collectDebugBundle)
 import App.Fossa.Analyze.Upload (emitBuildWarnings)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators (..))
 import App.Fossa.Config.Common (
   DestinationMeta (..),
   ScanDestination (..),
@@ -31,7 +32,7 @@ import Control.Carrier.Debug (Debug, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal, fromMaybeText)
-import Control.Effect.FossaApiClient (FossaApiClient, uploadNativeContainerScan)
+import Control.Effect.FossaApiClient (FossaApiClient, getOrganization, uploadNativeContainerScan)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void, when)
@@ -58,7 +59,7 @@ import Effect.Logger (
   viaShow,
  )
 import Effect.ReadFS (ReadFS)
-import Fossa.API.Types (Organization (orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
+import Fossa.API.Types (ApiOpts, Organization (orgSupportsGitBackedCargoLocators, orgSupportsNativeContainerScan), UploadResponse (uploadError), uploadLocator)
 import Path (Abs, File, Path)
 import Srclib.Types (Locator (locatorRevision), locatorProject, renderLocator)
 import System.FilePath ((</>))
@@ -109,7 +110,12 @@ analyze ::
   ContainerAnalyzeConfig ->
   m ContainerScan
 analyze cfg = do
-  scannedImage <- scanImage (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
+  useGitBackedCargo <- case scanDestination cfg of
+    OutputStdout -> pure $ UseGitBackedCargoLocators True
+    UploadScan (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
+    OutputAndUpload (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
+
+  scannedImage <- scanImage useGitBackedCargo (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
       logProjectInfo :: Has Logger sig m => m ()
       logProjectInfo = do
@@ -182,3 +188,14 @@ buildJsonSummary project locator projectUrl = do
       , "url" .= projectUrl
       , "id" .= renderLocator locator
       ]
+
+fetchOrgSupportsGitBackedCargo ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Debug sig m
+  ) =>
+  ApiOpts ->
+  m UseGitBackedCargoLocators
+fetchOrgSupportsGitBackedCargo apiOpts = do
+  org <- runFossaApiClient apiOpts getOrganization
+  pure . UseGitBackedCargoLocators $ orgSupportsGitBackedCargoLocators org

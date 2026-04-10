@@ -9,11 +9,14 @@ import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
+  ToDiagnostic (..),
   fatalText,
-  (<||>),
+  recover,
+  warnOnErr,
  )
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
+import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -22,7 +25,9 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs)
+import Effect.Logger (Logger, logDebug, pretty)
 import Effect.ReadFS (ReadFS)
+import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
 import Strategy.Conda.CondaEnvCreate qualified as CondaEnvCreate
@@ -33,6 +38,12 @@ import Types (
   DiscoveredProjectType (CondaProjectType),
   GraphBreadth (Complete),
  )
+
+data DynamicAnalysisFailed = DynamicAnalysisFailed
+
+instance ToDiagnostic DynamicAnalysisFailed where
+  renderDiagnostic DynamicAnalysisFailed =
+    Errata (Just "Dynamic analysis via 'conda env create' failed") [] Nothing
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
 discover = simpleDiscover findProjects mkProject CondaProjectType
@@ -74,10 +85,15 @@ mkProject project =
 -- There might be a dep with a version spec in an environment.yml file: i.e. conda+foo$1.2.*, and perhaps
 -- the same dep resolved to a known version in the users virtual environment: i.e. conda+'conda-forge':foo$1.2.4 (we get that from conda env create).
 -- If we combined the results then we would include both of those deps in the result, which is not correct behavior.
-getDeps :: (GetDepsEffs sig m) => CondaProject -> m DependencyResults
+getDeps :: (GetDepsEffs sig m, Has Logger sig m) => CondaProject -> m DependencyResults
 getDeps project = do
   mode <- ask
-  analyzeCondaEnvCreate project <||> guardStrictMode mode (analyzeEnvironmentYml project)
+  dynamicResult <- recover . warnOnErr DynamicAnalysisFailed $ analyzeCondaEnvCreate project
+  case dynamicResult of
+    Just result -> pure result
+    Nothing -> do
+      logDebug $ pretty $ "Dynamic analysis via 'conda env create' failed for project at " <> toText (condaDir project) <> ". Falling back to static analysis of environment.yml."
+      guardStrictMode mode (analyzeEnvironmentYml project)
 
 analyzeCondaEnvCreate :: (Has Exec sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
 analyzeCondaEnvCreate CondaProject{..} = do
