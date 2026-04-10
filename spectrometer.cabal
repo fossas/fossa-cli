@@ -661,6 +661,7 @@ test-suite unit-tests
     Extra.TextSpec
     Ficus.FicusSpec
     Fortran.FpmTomlSpec
+    Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListPackagesSpec
