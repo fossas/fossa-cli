@@ -33,6 +33,7 @@ import Data.Aeson (
   withText,
   (.:),
  )
+import Data.Maybe (catMaybes)
 import Data.Text (Text)
 
 --- | Data types of Core's main endpoints
@@ -246,13 +247,13 @@ data UpdateProjectRequest = UpdateProjectRequest
 
 instance ToJSON UpdateProjectRequest where
   toJSON UpdateProjectRequest{..} =
-    object
-      [ "title" .= maybe Null toJSON updateProjectTitle
-      , "url" .= maybe Null toJSON updateProjectUrl
-      , "issueTrackerProjectIds" .= maybe Null toJSON updateProjectIssueTrackerIds
-      , "labels" .= maybe Null toJSON updateProjectLabelIds
-      , "policyId" .= maybe Null toJSON updateProjectPolicyId
-      , "default_branch" .= maybe Null toJSON updateProjectDefaultBranch
+    object . catMaybes $
+      [ ("title" .=) <$> updateProjectTitle
+      , ("url" .=) <$> updateProjectUrl
+      , ("issueTrackerProjectIds" .=) <$> updateProjectIssueTrackerIds
+      , ("labels" .=) <$> updateProjectLabelIds
+      , ("policyId" .=) <$> updateProjectPolicyId
+      , ("default_branch" .=) <$> updateProjectDefaultBranch
       ]
 
 -- Revision
