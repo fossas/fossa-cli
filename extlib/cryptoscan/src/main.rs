@@ -47,7 +47,10 @@ impl Ecosystem {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "cryptoscan", about = "Detect cryptographic algorithm usage in source code")]
+#[command(
+    name = "cryptoscan",
+    about = "Detect cryptographic algorithm usage in source code"
+)]
 struct Cli {
     /// Path to the project directory to scan
     #[arg(short, long)]
@@ -87,7 +90,9 @@ fn main() {
     };
 
     let output = match cli.format {
-        OutputFormat::Json => serde_json::to_string_pretty(&findings).expect("Failed to serialize findings"),
+        OutputFormat::Json => {
+            serde_json::to_string_pretty(&findings).expect("Failed to serialize findings")
+        }
         OutputFormat::Cyclonedx => {
             let bom = cyclonedx::to_cyclonedx_bom(&findings);
             serde_json::to_string_pretty(&bom).expect("Failed to serialize CBOM")

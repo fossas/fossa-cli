@@ -213,6 +213,7 @@ library
     App.Fossa.Config.Container.Common
     App.Fossa.Config.Container.ListTargets
     App.Fossa.Config.Container.Test
+    App.Fossa.Config.Crypto
     App.Fossa.Config.DumpBinaries
     App.Fossa.Config.EnvironmentVars
     App.Fossa.Config.LicenseScan
@@ -249,7 +250,6 @@ library
     App.Fossa.CryptoScan.Analyze
     App.Fossa.CryptoScan.FipsReport
     App.Fossa.CryptoScan.Types
-    App.Fossa.Config.Crypto
     App.Fossa.DebugDir
     App.Fossa.DependencyMetadata
     App.Fossa.DumpBinaries
@@ -582,7 +582,6 @@ test-suite unit-tests
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
     App.Fossa.CirceSpec
-    App.Fossa.CryptoScan.FipsReportSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.ReleaseGroup.CreateSpec
     App.Fossa.Config.TestSpec
@@ -591,6 +590,7 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.CryptoScan.FipsReportSpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec

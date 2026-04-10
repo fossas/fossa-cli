@@ -96,7 +96,7 @@ import Control.Monad (void, when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -637,7 +637,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> pure snippetScanEnabled
     <*> pure maybeDebugDir
     <*> pure analyzeVendetta
-    <*> pure (analyzeCryptoScan || analyzeCryptoFipsReport || maybe False (const True) analyzeCryptoCbomOutput)
+    <*> pure (analyzeCryptoScan || analyzeCryptoFipsReport || isJust analyzeCryptoCbomOutput)
     <*> pure analyzeCryptoCbomOutput
     <*> pure analyzeCryptoFipsReport
 

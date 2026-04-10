@@ -13,8 +13,10 @@ import App.Fossa.CryptoScan.Types (
   CryptoScanResults (..),
   FipsStatus (..),
  )
+import Data.List (foldl')
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Prettyprinter (
@@ -57,7 +59,7 @@ dedupeKey finding =
 -- | Deduplicate findings by (name, parameterSet), keeping the first occurrence.
 -- Uses a Map for O(n log n) rather than nubBy's O(n^2).
 deduplicateFindings :: [CryptoFinding] -> [CryptoFinding]
-deduplicateFindings = Map.elems . foldl insertFirst Map.empty
+deduplicateFindings = Map.elems . foldl' insertFirst Map.empty
   where
     insertFirst acc finding =
       let key = dedupeKey finding
@@ -111,13 +113,10 @@ renderSummary stats@FipsReportStats{..} =
     ]
 
 coloredPercentage :: Int -> Doc AnsiStyle
-coloredPercentage pct =
-  if pct >= 100
-    then annotate (color Green) $ pretty pct <> "%"
-    else
-      if pct >= 80
-        then annotate (color Yellow) $ pretty pct <> "%"
-        else annotate (color Red) $ pretty pct <> "%"
+coloredPercentage pct
+  | pct >= 100 = annotate (color Green) $ pretty pct <> "%"
+  | pct >= 80 = annotate (color Yellow) $ pretty pct <> "%"
+  | otherwise = annotate (color Red) $ pretty pct <> "%"
 
 -- Category types for grouping
 data CryptoCategory
@@ -183,7 +182,11 @@ renderAlgoStatus finding =
         FipsApproved -> annotate (color Green) "Approved"
         FipsDeprecated -> annotate (color Yellow) "Deprecated"
         FipsNotApproved -> annotate (color Red) "Not Approved"
-   in "- " <> pretty (cryptoAlgorithmName algo) <> " [" <> statusDoc <> "]"
+   in "- "
+        <> pretty (cryptoAlgorithmName algo)
+        <> " ["
+        <> statusDoc
+        <> "]"
         <> maybe mempty (\ps -> " (" <> pretty ps <> "-bit)") (cryptoAlgorithmParameterSet algo)
 
 renderRemediationTable :: [CryptoFinding] -> Doc AnsiStyle
@@ -213,21 +216,41 @@ padRight n t = pretty t <> pretty (Text.replicate (max 0 (n - Text.length t)) " 
 suggestAlternative :: Text -> Text
 suggestAlternative name =
   let lower = Text.toLower name
-      check patterns = any (\p -> Text.toLower p == lower) patterns
-   in if check ["chacha20", "chacha20-poly1305", "xchacha20"] then "AES-256-GCM"
-      else if check ["blake2", "blake2b", "blake2s", "blake3"] then "SHA-256 / SHA-3"
-      else if check ["md5"] then "SHA-256"
-      else if check ["md4"] then "SHA-256"
-      else if check ["rc4", "rc2", "blowfish", "des", "3des-encrypt"] then "AES-256"
-      else if check ["bcrypt", "argon2", "argon2i", "argon2id", "scrypt"] then "PBKDF2"
-      else if check ["x25519", "x448"] then "ECDH P-256 / P-384"
-      else if check ["curve25519"] then "ECDH NIST curves"
-      else if check ["poly1305"] then "HMAC / CMAC"
-      else if check ["siphash"] then "HMAC"
-      else if check ["whirlpool", "ripemd", "ripemd-160"] then "SHA-256"
-      else if check ["cast5", "idea", "camellia", "seed", "aria"] then "AES-256"
-      else if check ["twofish", "serpent", "threefish"] then "AES-256"
-      else "Review FIPS 140-3 approved algorithm list"
+      check = any (\p -> Text.toLower p == lower)
+   in if check ["chacha20", "chacha20-poly1305", "xchacha20"]
+        then "AES-256-GCM"
+        else
+          if check ["blake2", "blake2b", "blake2s", "blake3"]
+            then "SHA-256 / SHA-3"
+            else
+              if check ["md5"] || check ["md4"]
+                then "SHA-256"
+                else
+                  if check ["rc4", "rc2", "blowfish", "des", "3des-encrypt"]
+                    then "AES-256"
+                    else
+                      if check ["bcrypt", "argon2", "argon2i", "argon2id", "scrypt"]
+                        then "PBKDF2"
+                        else
+                          if check ["x25519", "x448"]
+                            then "ECDH P-256 / P-384"
+                            else
+                              if check ["curve25519"]
+                                then "ECDH NIST curves"
+                                else
+                                  if check ["poly1305"]
+                                    then "HMAC / CMAC"
+                                    else
+                                      if check ["siphash"]
+                                        then "HMAC"
+                                        else
+                                          if check ["whirlpool", "ripemd", "ripemd-160"]
+                                            then "SHA-256"
+                                            else
+                                              if check ["cast5", "idea", "camellia", "seed", "aria"]
+                                                || check ["twofish", "serpent", "threefish"]
+                                                then "AES-256"
+                                                else "Review FIPS 140-3 approved algorithm list"
 
 renderKeySizeWarnings :: [CryptoFinding] -> Doc AnsiStyle
 renderKeySizeWarnings fs =
@@ -250,22 +273,22 @@ keySizeWarning finding =
    in catWarnings algoName paramSet
   where
     catWarnings :: Text -> Maybe Text -> [Doc AnsiStyle]
-    catWarnings n ps =
-      if "rsa" `Text.isInfixOf` n then rsaWarning ps
-      else if "sha-1" `Text.isInfixOf` n || "sha1" `Text.isInfixOf` n then
-        [annotate (color Yellow) "- SHA-1: Deprecated, fully disallowed after 2030-12-31"]
-      else if "aes-128" `Text.isInfixOf` n || (n == "aes" && ps == Just "128") then
-        [annotate (color Yellow) "- AES-128: Approved but AES-256 recommended for higher security margin"]
-      else if "sha-224" `Text.isInfixOf` n then
-        [annotate (color Yellow) "- SHA-224: Deprecated by 2030"]
-      else if "3des" `Text.isInfixOf` n || "triple-des" `Text.isInfixOf` n then
-        [annotate (color Yellow) "- 3DES: Legacy decryption only since Jan 2024"]
-      else []
+    catWarnings n ps
+      | "rsa" `Text.isInfixOf` n = rsaWarning ps
+      | "sha-1" `Text.isInfixOf` n || "sha1" `Text.isInfixOf` n =
+          [annotate (color Yellow) "- SHA-1: Deprecated, fully disallowed after 2030-12-31"]
+      | "aes-128" `Text.isInfixOf` n || (n == "aes" && ps == Just "128") =
+          [annotate (color Yellow) "- AES-128: Approved but AES-256 recommended for higher security margin"]
+      | "sha-224" `Text.isInfixOf` n =
+          [annotate (color Yellow) "- SHA-224: Deprecated by 2030"]
+      | "3des" `Text.isInfixOf` n || "triple-des" `Text.isInfixOf` n =
+          [annotate (color Yellow) "- 3DES: Legacy decryption only since Jan 2024"]
+      | otherwise = []
 
     rsaWarning :: Maybe Text -> [Doc AnsiStyle]
     rsaWarning Nothing = [annotate (color Yellow) "- RSA: Key size not detected, ensure >= 2048-bit"]
     rsaWarning (Just ps) =
-      case reads (Text.unpack ps) :: [(Int, String)] of
+      case reads (toString ps) :: [(Int, String)] of
         [(n, "")] ->
           if n < 2048
             then [annotate (color Red) $ "- RSA-" <> pretty ps <> ": Below FIPS minimum (2048-bit required)"]

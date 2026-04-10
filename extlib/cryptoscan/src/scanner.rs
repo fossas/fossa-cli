@@ -25,7 +25,11 @@ pub fn detect_ecosystems(project_path: &Path) -> Vec<String> {
         .filter_map(|e| e.ok())
     {
         let name = entry.file_name().to_string_lossy();
-        let ext = entry.path().extension().and_then(|e| e.to_str()).unwrap_or("");
+        let ext = entry
+            .path()
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or("");
 
         // Detect from manifest files
         match name.as_ref() {
@@ -91,15 +95,9 @@ pub fn scan_project(project_path: &Path, ecosystems: &[String]) -> Vec<CryptoFin
     {
         let path = entry.path();
 
-        let extension = path
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("");
+        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-        let file_name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
+        let file_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
         // Read file content
         let content = match fs::read_to_string(path) {
@@ -170,12 +168,18 @@ fn should_skip_path(path: &Path) -> bool {
         .is_some_and(|name| SKIP_DIRS.contains(&name))
 }
 
-fn pattern_applies(pattern: &CryptoPattern, ecosystems: &[String], file_ext: &str, file_name: &str) -> bool {
+fn pattern_applies(
+    pattern: &CryptoPattern,
+    ecosystems: &[String],
+    file_ext: &str,
+    file_name: &str,
+) -> bool {
     // Check ecosystem match
     let ecosystem_match = pattern.ecosystem == "any"
         || ecosystems.iter().any(|e| {
             e == pattern.ecosystem
-                || (e == "node" && (pattern.ecosystem == "javascript" || pattern.ecosystem == "typescript"))
+                || (e == "node"
+                    && (pattern.ecosystem == "javascript" || pattern.ecosystem == "typescript"))
         });
 
     if !ecosystem_match {
@@ -245,19 +249,26 @@ fn normalize_detected_algorithm(name: &str, matched_text: &str) -> String {
     }
 
     // For generic "SHA" or hash patterns, extract specific variant
-    if name == "SHA-256" || name == "SHA-384" || name == "SHA-512" || name == "SHA-1" || name == "SHA-3" {
+    if name == "SHA-256"
+        || name == "SHA-384"
+        || name == "SHA-512"
+        || name == "SHA-1"
+        || name == "SHA-3"
+    {
         // Already specific, keep as-is
         return name.to_string();
     }
 
     // For generic "RSA" pattern, try to extract key size
     if name == "RSA" {
-        let key_size: Option<u32> = lower
-            .split(|c: char| !c.is_ascii_digit())
-            .find_map(|tok| {
-                let n = tok.parse::<u32>().ok()?;
-                if (512..=16384).contains(&n) { Some(n) } else { None }
-            });
+        let key_size: Option<u32> = lower.split(|c: char| !c.is_ascii_digit()).find_map(|tok| {
+            let n = tok.parse::<u32>().ok()?;
+            if (512..=16384).contains(&n) {
+                Some(n)
+            } else {
+                None
+            }
+        });
         if let Some(bits) = key_size {
             return format!("RSA-{}", bits);
         }
@@ -271,7 +282,11 @@ fn normalize_detected_algorithm(name: &str, matched_text: &str) -> String {
         if lower.contains("p521") || lower.contains("p-521") || lower.contains("secp521") {
             return "ECDSA-P521".to_string();
         }
-        if lower.contains("p256") || lower.contains("p-256") || lower.contains("prime256") || lower.contains("secp256r1") {
+        if lower.contains("p256")
+            || lower.contains("p-256")
+            || lower.contains("prime256")
+            || lower.contains("secp256r1")
+        {
             return "ECDSA-P256".to_string();
         }
     }
@@ -283,85 +298,590 @@ fn resolve_algorithm(name: &str, matched_text: &str) -> CryptoAlgorithm {
     let normalized = normalize_detected_algorithm(name, matched_text);
     let (fips_status, _remediation) = fips::classify_algorithm(&normalized);
 
-    let (primitive, family, mode, param_set, curve, security, quantum, oid, functions) = match normalized.as_str() {
-        // Symmetric - AES
-        "AES" => (Primitive::BlockCipher, "AES", None, None, None, None, 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
-        "AES-128" => (Primitive::BlockCipher, "AES", None, Some("128"), None, Some(128), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
-        "AES-192" => (Primitive::BlockCipher, "AES", None, Some("192"), None, Some(192), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
-        "AES-256" => (Primitive::BlockCipher, "AES", None, Some("256"), None, Some(256), 1, Some("2.16.840.1.101.3.4.1"), vec!["keygen", "encrypt", "decrypt"]),
-        "AES-GCM" => (Primitive::Ae, "AES", Some("gcm"), None, None, None, 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
-        "AES-256-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("256"), None, Some(256), 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
-        "AES-192-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("192"), None, Some(192), 1, Some("2.16.840.1.101.3.4.1.46"), vec!["keygen", "encrypt", "decrypt", "tag"]),
-        "AES-128-GCM" => (Primitive::Ae, "AES", Some("gcm"), Some("128"), None, Some(128), 1, Some("2.16.840.1.101.3.4.1.6"), vec!["keygen", "encrypt", "decrypt", "tag"]),
-        "AES-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), None, None, None, 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-256-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("256"), None, Some(256), 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-192-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("192"), None, Some(192), 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-128-CBC" => (Primitive::BlockCipher, "AES", Some("cbc"), Some("128"), None, Some(128), 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-CTR" => (Primitive::BlockCipher, "AES", Some("ctr"), None, None, None, 1, None, vec!["keygen", "encrypt", "decrypt"]),
-        "AES-ECB" => (Primitive::BlockCipher, "AES", Some("ecb"), None, None, None, 1, None, vec!["keygen", "encrypt", "decrypt"]),
+    let (primitive, family, mode, param_set, curve, security, quantum, oid, functions) =
+        match normalized.as_str() {
+            // Symmetric - AES
+            "AES" => (
+                Primitive::BlockCipher,
+                "AES",
+                None,
+                None,
+                None,
+                None,
+                1,
+                Some("2.16.840.1.101.3.4.1"),
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-128" => (
+                Primitive::BlockCipher,
+                "AES",
+                None,
+                Some("128"),
+                None,
+                Some(128),
+                1,
+                Some("2.16.840.1.101.3.4.1"),
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-192" => (
+                Primitive::BlockCipher,
+                "AES",
+                None,
+                Some("192"),
+                None,
+                Some(192),
+                1,
+                Some("2.16.840.1.101.3.4.1"),
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-256" => (
+                Primitive::BlockCipher,
+                "AES",
+                None,
+                Some("256"),
+                None,
+                Some(256),
+                1,
+                Some("2.16.840.1.101.3.4.1"),
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-GCM" => (
+                Primitive::Ae,
+                "AES",
+                Some("gcm"),
+                None,
+                None,
+                None,
+                1,
+                Some("2.16.840.1.101.3.4.1.46"),
+                vec!["keygen", "encrypt", "decrypt", "tag"],
+            ),
+            "AES-256-GCM" => (
+                Primitive::Ae,
+                "AES",
+                Some("gcm"),
+                Some("256"),
+                None,
+                Some(256),
+                1,
+                Some("2.16.840.1.101.3.4.1.46"),
+                vec!["keygen", "encrypt", "decrypt", "tag"],
+            ),
+            "AES-192-GCM" => (
+                Primitive::Ae,
+                "AES",
+                Some("gcm"),
+                Some("192"),
+                None,
+                Some(192),
+                1,
+                Some("2.16.840.1.101.3.4.1.46"),
+                vec!["keygen", "encrypt", "decrypt", "tag"],
+            ),
+            "AES-128-GCM" => (
+                Primitive::Ae,
+                "AES",
+                Some("gcm"),
+                Some("128"),
+                None,
+                Some(128),
+                1,
+                Some("2.16.840.1.101.3.4.1.6"),
+                vec!["keygen", "encrypt", "decrypt", "tag"],
+            ),
+            "AES-CBC" => (
+                Primitive::BlockCipher,
+                "AES",
+                Some("cbc"),
+                None,
+                None,
+                None,
+                1,
+                None,
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-256-CBC" => (
+                Primitive::BlockCipher,
+                "AES",
+                Some("cbc"),
+                Some("256"),
+                None,
+                Some(256),
+                1,
+                None,
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-192-CBC" => (
+                Primitive::BlockCipher,
+                "AES",
+                Some("cbc"),
+                Some("192"),
+                None,
+                Some(192),
+                1,
+                None,
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-128-CBC" => (
+                Primitive::BlockCipher,
+                "AES",
+                Some("cbc"),
+                Some("128"),
+                None,
+                Some(128),
+                1,
+                None,
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-CTR" => (
+                Primitive::BlockCipher,
+                "AES",
+                Some("ctr"),
+                None,
+                None,
+                None,
+                1,
+                None,
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
+            "AES-ECB" => (
+                Primitive::BlockCipher,
+                "AES",
+                Some("ecb"),
+                None,
+                None,
+                None,
+                1,
+                None,
+                vec!["keygen", "encrypt", "decrypt"],
+            ),
 
-        // Symmetric - non-AES
-        "ChaCha20-Poly1305" | "ChaCha20" => (Primitive::Ae, "ChaCha20-Poly1305", None, Some("256"), None, Some(256), 0, None, vec!["keygen", "encrypt", "decrypt", "tag"]),
-        "3DES" => (Primitive::BlockCipher, "3DES", Some("cbc"), Some("168"), None, Some(112), 0, Some("1.2.840.113549.3.7"), vec!["encrypt", "decrypt"]),
-        "DES" => (Primitive::BlockCipher, "DES", Some("cbc"), Some("56"), None, Some(56), 0, Some("1.3.14.3.2.7"), vec!["encrypt", "decrypt"]),
-        "Blowfish" => (Primitive::BlockCipher, "Blowfish", None, None, None, None, 0, None, vec!["encrypt", "decrypt"]),
-        "RC4" => (Primitive::StreamCipher, "RC4", None, None, None, None, 0, None, vec!["encrypt", "decrypt"]),
-        "Salsa20" => (Primitive::StreamCipher, "Salsa20", None, Some("256"), None, Some(256), 0, None, vec!["encrypt", "decrypt"]),
+            // Symmetric - non-AES
+            "ChaCha20-Poly1305" | "ChaCha20" => (
+                Primitive::Ae,
+                "ChaCha20-Poly1305",
+                None,
+                Some("256"),
+                None,
+                Some(256),
+                0,
+                None,
+                vec!["keygen", "encrypt", "decrypt", "tag"],
+            ),
+            "3DES" => (
+                Primitive::BlockCipher,
+                "3DES",
+                Some("cbc"),
+                Some("168"),
+                None,
+                Some(112),
+                0,
+                Some("1.2.840.113549.3.7"),
+                vec!["encrypt", "decrypt"],
+            ),
+            "DES" => (
+                Primitive::BlockCipher,
+                "DES",
+                Some("cbc"),
+                Some("56"),
+                None,
+                Some(56),
+                0,
+                Some("1.3.14.3.2.7"),
+                vec!["encrypt", "decrypt"],
+            ),
+            "Blowfish" => (
+                Primitive::BlockCipher,
+                "Blowfish",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["encrypt", "decrypt"],
+            ),
+            "RC4" => (
+                Primitive::StreamCipher,
+                "RC4",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["encrypt", "decrypt"],
+            ),
+            "Salsa20" => (
+                Primitive::StreamCipher,
+                "Salsa20",
+                None,
+                Some("256"),
+                None,
+                Some(256),
+                0,
+                None,
+                vec!["encrypt", "decrypt"],
+            ),
 
-        // Hash functions
-        "SHA-256" => (Primitive::Hash, "SHA-2", None, Some("256"), None, Some(128), 0, Some("2.16.840.1.101.3.4.2.1"), vec!["digest"]),
-        "SHA-384" => (Primitive::Hash, "SHA-2", None, Some("384"), None, Some(192), 0, Some("2.16.840.1.101.3.4.2.2"), vec!["digest"]),
-        "SHA-512" => (Primitive::Hash, "SHA-2", None, Some("512"), None, Some(256), 0, Some("2.16.840.1.101.3.4.2.3"), vec!["digest"]),
-        "SHA-1" => (Primitive::Hash, "SHA-1", None, Some("160"), None, Some(80), 0, Some("1.3.14.3.2.26"), vec!["digest"]),
-        "SHA-3" => (Primitive::Hash, "SHA-3", None, None, None, Some(128), 0, Some("2.16.840.1.101.3.4.2.8"), vec!["digest"]),
-        "MD5" => (Primitive::Hash, "MD5", None, Some("128"), None, Some(64), 0, Some("1.2.840.113549.2.5"), vec!["digest"]),
-        "BLAKE2" | "BLAKE2b" | "BLAKE2s" => (Primitive::Hash, "BLAKE2", None, None, None, Some(128), 0, None, vec!["digest"]),
-        "BLAKE3" => (Primitive::Hash, "BLAKE3", None, None, None, Some(128), 0, None, vec!["digest"]),
+            // Hash functions
+            "SHA-256" => (
+                Primitive::Hash,
+                "SHA-2",
+                None,
+                Some("256"),
+                None,
+                Some(128),
+                0,
+                Some("2.16.840.1.101.3.4.2.1"),
+                vec!["digest"],
+            ),
+            "SHA-384" => (
+                Primitive::Hash,
+                "SHA-2",
+                None,
+                Some("384"),
+                None,
+                Some(192),
+                0,
+                Some("2.16.840.1.101.3.4.2.2"),
+                vec!["digest"],
+            ),
+            "SHA-512" => (
+                Primitive::Hash,
+                "SHA-2",
+                None,
+                Some("512"),
+                None,
+                Some(256),
+                0,
+                Some("2.16.840.1.101.3.4.2.3"),
+                vec!["digest"],
+            ),
+            "SHA-1" => (
+                Primitive::Hash,
+                "SHA-1",
+                None,
+                Some("160"),
+                None,
+                Some(80),
+                0,
+                Some("1.3.14.3.2.26"),
+                vec!["digest"],
+            ),
+            "SHA-3" => (
+                Primitive::Hash,
+                "SHA-3",
+                None,
+                None,
+                None,
+                Some(128),
+                0,
+                Some("2.16.840.1.101.3.4.2.8"),
+                vec!["digest"],
+            ),
+            "MD5" => (
+                Primitive::Hash,
+                "MD5",
+                None,
+                Some("128"),
+                None,
+                Some(64),
+                0,
+                Some("1.2.840.113549.2.5"),
+                vec!["digest"],
+            ),
+            "BLAKE2" | "BLAKE2b" | "BLAKE2s" => (
+                Primitive::Hash,
+                "BLAKE2",
+                None,
+                None,
+                None,
+                Some(128),
+                0,
+                None,
+                vec!["digest"],
+            ),
+            "BLAKE3" => (
+                Primitive::Hash,
+                "BLAKE3",
+                None,
+                None,
+                None,
+                Some(128),
+                0,
+                None,
+                vec!["digest"],
+            ),
 
-        // Asymmetric / Signatures
-        "RSA" => (Primitive::Pke, "RSA", None, Some("2048"), None, Some(112), 0, Some("1.2.840.113549.1.1.1"), vec!["keygen", "encrypt", "decrypt", "sign", "verify"]),
-        "ECDSA" | "ECDSA-P256" => (Primitive::Signature, "ECDSA", None, Some("256"), Some("nist/P-256"), Some(128), 0, Some("1.2.840.10045.2.1"), vec!["keygen", "sign", "verify"]),
-        "ECDSA-P384" => (Primitive::Signature, "ECDSA", None, Some("384"), Some("nist/P-384"), Some(192), 0, Some("1.2.840.10045.2.1"), vec!["keygen", "sign", "verify"]),
-        "ECDSA-P521" => (Primitive::Signature, "ECDSA", None, Some("521"), Some("nist/P-521"), Some(256), 0, Some("1.2.840.10045.2.1"), vec!["keygen", "sign", "verify"]),
-        "Ed25519" => (Primitive::Signature, "EdDSA", None, None, Some("edwards/Ed25519"), Some(128), 0, Some("1.3.101.112"), vec!["keygen", "sign", "verify"]),
-        "Ed448" => (Primitive::Signature, "EdDSA", None, None, Some("edwards/Ed448"), Some(224), 0, Some("1.3.101.113"), vec!["keygen", "sign", "verify"]),
-        "DSA" => (Primitive::Signature, "DSA", None, Some("2048"), None, Some(112), 0, Some("1.2.840.10040.4.1"), vec!["sign", "verify"]),
+            // Asymmetric / Signatures
+            "RSA" => (
+                Primitive::Pke,
+                "RSA",
+                None,
+                Some("2048"),
+                None,
+                Some(112),
+                0,
+                Some("1.2.840.113549.1.1.1"),
+                vec!["keygen", "encrypt", "decrypt", "sign", "verify"],
+            ),
+            "ECDSA" | "ECDSA-P256" => (
+                Primitive::Signature,
+                "ECDSA",
+                None,
+                Some("256"),
+                Some("nist/P-256"),
+                Some(128),
+                0,
+                Some("1.2.840.10045.2.1"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "ECDSA-P384" => (
+                Primitive::Signature,
+                "ECDSA",
+                None,
+                Some("384"),
+                Some("nist/P-384"),
+                Some(192),
+                0,
+                Some("1.2.840.10045.2.1"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "ECDSA-P521" => (
+                Primitive::Signature,
+                "ECDSA",
+                None,
+                Some("521"),
+                Some("nist/P-521"),
+                Some(256),
+                0,
+                Some("1.2.840.10045.2.1"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "Ed25519" => (
+                Primitive::Signature,
+                "EdDSA",
+                None,
+                None,
+                Some("edwards/Ed25519"),
+                Some(128),
+                0,
+                Some("1.3.101.112"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "Ed448" => (
+                Primitive::Signature,
+                "EdDSA",
+                None,
+                None,
+                Some("edwards/Ed448"),
+                Some(224),
+                0,
+                Some("1.3.101.113"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "DSA" => (
+                Primitive::Signature,
+                "DSA",
+                None,
+                Some("2048"),
+                None,
+                Some(112),
+                0,
+                Some("1.2.840.10040.4.1"),
+                vec!["sign", "verify"],
+            ),
 
-        // Key exchange
-        "ECDH" => (Primitive::KeyAgree, "ECDH", None, None, Some("nist/P-256"), Some(128), 0, None, vec!["keygen", "keyderive"]),
-        "X25519" => (Primitive::KeyAgree, "X25519", None, None, Some("montgomery/Curve25519"), Some(128), 0, Some("1.3.101.110"), vec!["keygen", "keyderive"]),
-        "DH" => (Primitive::KeyAgree, "DH", None, Some("2048"), None, Some(112), 0, None, vec!["keygen", "keyderive"]),
+            // Key exchange
+            "ECDH" => (
+                Primitive::KeyAgree,
+                "ECDH",
+                None,
+                None,
+                Some("nist/P-256"),
+                Some(128),
+                0,
+                None,
+                vec!["keygen", "keyderive"],
+            ),
+            "X25519" => (
+                Primitive::KeyAgree,
+                "X25519",
+                None,
+                None,
+                Some("montgomery/Curve25519"),
+                Some(128),
+                0,
+                Some("1.3.101.110"),
+                vec!["keygen", "keyderive"],
+            ),
+            "DH" => (
+                Primitive::KeyAgree,
+                "DH",
+                None,
+                Some("2048"),
+                None,
+                Some(112),
+                0,
+                None,
+                vec!["keygen", "keyderive"],
+            ),
 
-        // MACs
-        "HMAC" | "HMAC-SHA256" | "HMAC-SHA512" => (Primitive::Mac, "HMAC", None, None, None, Some(128), 0, Some("1.2.840.113549.2.9"), vec!["keygen", "sign", "verify"]),
-        "HMAC-SHA1" => (Primitive::Mac, "HMAC", None, None, None, Some(80), 0, None, vec!["keygen", "sign", "verify"]),
+            // MACs
+            "HMAC" | "HMAC-SHA256" | "HMAC-SHA512" => (
+                Primitive::Mac,
+                "HMAC",
+                None,
+                None,
+                None,
+                Some(128),
+                0,
+                Some("1.2.840.113549.2.9"),
+                vec!["keygen", "sign", "verify"],
+            ),
+            "HMAC-SHA1" => (
+                Primitive::Mac,
+                "HMAC",
+                None,
+                None,
+                None,
+                Some(80),
+                0,
+                None,
+                vec!["keygen", "sign", "verify"],
+            ),
 
-        // KDFs
-        "HKDF" => (Primitive::Kdf, "HKDF", None, None, None, None, 0, None, vec!["keyderive"]),
-        "PBKDF2" => (Primitive::Kdf, "PBKDF2", None, None, None, None, 0, None, vec!["keyderive"]),
-        "scrypt" => (Primitive::Kdf, "scrypt", None, None, None, None, 0, None, vec!["keyderive"]),
-        "bcrypt" => (Primitive::Kdf, "bcrypt", None, None, None, None, 0, None, vec!["keyderive"]),
-        "Argon2" => (Primitive::Kdf, "Argon2", None, None, None, None, 0, None, vec!["keyderive"]),
+            // KDFs
+            "HKDF" => (
+                Primitive::Kdf,
+                "HKDF",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["keyderive"],
+            ),
+            "PBKDF2" => (
+                Primitive::Kdf,
+                "PBKDF2",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["keyderive"],
+            ),
+            "scrypt" => (
+                Primitive::Kdf,
+                "scrypt",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["keyderive"],
+            ),
+            "bcrypt" => (
+                Primitive::Kdf,
+                "bcrypt",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["keyderive"],
+            ),
+            "Argon2" => (
+                Primitive::Kdf,
+                "Argon2",
+                None,
+                None,
+                None,
+                None,
+                0,
+                None,
+                vec!["keyderive"],
+            ),
 
-        // Post-quantum
-        "ML-KEM" => (Primitive::Kem, "ML-KEM", None, None, None, Some(256), 5, Some("2.16.840.1.101.3.4.4"), vec!["keygen", "encapsulate", "decapsulate"]),
-        "ML-DSA" => (Primitive::Signature, "ML-DSA", None, None, None, Some(256), 5, None, vec!["keygen", "sign", "verify"]),
+            // Post-quantum
+            "ML-KEM" => (
+                Primitive::Kem,
+                "ML-KEM",
+                None,
+                None,
+                None,
+                Some(256),
+                5,
+                Some("2.16.840.1.101.3.4.4"),
+                vec!["keygen", "encapsulate", "decapsulate"],
+            ),
+            "ML-DSA" => (
+                Primitive::Signature,
+                "ML-DSA",
+                None,
+                None,
+                None,
+                Some(256),
+                5,
+                None,
+                vec!["keygen", "sign", "verify"],
+            ),
 
-        // Generic / library-level detections
-        other => {
-            // Handle RSA-<bits> variants (e.g., RSA-4096, RSA-3072, RSA-1024)
-            if let Some(bits_str) = other.strip_prefix("RSA-") {
-                if let Ok(bits) = bits_str.parse::<u32>() {
-                    let security = if bits >= 3072 { Some(128u32) } else { Some(112) };
-                    (Primitive::Pke, "RSA", None, Some(bits_str), None, security, 0, Some("1.2.840.113549.1.1.1"), vec!["keygen", "encrypt", "decrypt", "sign", "verify"])
+            // Generic / library-level detections
+            other => {
+                // Handle RSA-<bits> variants (e.g., RSA-4096, RSA-3072, RSA-1024)
+                if let Some(bits_str) = other.strip_prefix("RSA-") {
+                    if let Ok(bits) = bits_str.parse::<u32>() {
+                        let security = if bits >= 3072 {
+                            Some(128u32)
+                        } else {
+                            Some(112)
+                        };
+                        (
+                            Primitive::Pke,
+                            "RSA",
+                            None,
+                            Some(bits_str),
+                            None,
+                            security,
+                            0,
+                            Some("1.2.840.113549.1.1.1"),
+                            vec!["keygen", "encrypt", "decrypt", "sign", "verify"],
+                        )
+                    } else {
+                        (
+                            Primitive::Unknown,
+                            other,
+                            None,
+                            None,
+                            None,
+                            None,
+                            0,
+                            None,
+                            vec![],
+                        )
+                    }
                 } else {
-                    (Primitive::Unknown, other, None, None, None, None, 0, None, vec![])
+                    (
+                        Primitive::Unknown,
+                        other,
+                        None,
+                        None,
+                        None,
+                        None,
+                        0,
+                        None,
+                        vec![],
+                    )
                 }
-            } else {
-                (Primitive::Unknown, other, None, None, None, None, 0, None, vec![])
             }
-        }
-    };
+        };
 
     CryptoAlgorithm {
         name: normalized.clone(),

@@ -58,7 +58,11 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
         );
     }
 
-    if lower.contains("3des") || lower.contains("triple") && lower.contains("des") || lower.contains("desede") || lower.contains("tdea") {
+    if lower.contains("3des")
+        || lower.contains("triple") && lower.contains("des")
+        || lower.contains("desede")
+        || lower.contains("tdea")
+    {
         return (
             FipsStatus::Deprecated,
             Some("3DES is legacy-only since Jan 2024; migrate to AES".into()),
@@ -66,17 +70,11 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
     }
 
     if lower.contains("blowfish") || lower == "bf" || lower.contains("bf-cbc") {
-        return (
-            FipsStatus::NotApproved,
-            Some("Replace with AES".into()),
-        );
+        return (FipsStatus::NotApproved, Some("Replace with AES".into()));
     }
 
     if lower.contains("rc4") || lower.contains("arcfour") || lower.contains("arc4") {
-        return (
-            FipsStatus::NotApproved,
-            Some("Replace with AES-GCM".into()),
-        );
+        return (FipsStatus::NotApproved, Some("Replace with AES-GCM".into()));
     }
 
     if lower == "des" || lower == "des-cbc" || lower == "des-ede" {
@@ -93,8 +91,12 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
         );
     }
 
-    if lower.contains("camellia") || lower.contains("twofish") || lower.contains("cast5")
-        || lower.contains("seed") || lower.contains("aria") || lower.contains("sm4")
+    if lower.contains("camellia")
+        || lower.contains("twofish")
+        || lower.contains("cast5")
+        || lower.contains("seed")
+        || lower.contains("aria")
+        || lower.contains("sm4")
         || lower.contains("idea")
     {
         return (FipsStatus::NotApproved, Some("Replace with AES".into()));
@@ -189,7 +191,11 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
         return (FipsStatus::Approved, None); // Approved for signatures per FIPS 186-5
     }
 
-    if lower.contains("dsa") && !lower.contains("ecdsa") && !lower.contains("eddsa") && !lower.contains("ml-dsa") {
+    if lower.contains("dsa")
+        && !lower.contains("ecdsa")
+        && !lower.contains("eddsa")
+        && !lower.contains("ml-dsa")
+    {
         return (
             FipsStatus::Deprecated,
             Some("DSA is deprecated; only verification allowed. Use ECDSA or EdDSA".into()),
@@ -299,5 +305,8 @@ pub fn classify_algorithm(name: &str) -> (FipsStatus, Option<String>) {
     }
 
     // Default: unknown algorithms are flagged for review
-    (FipsStatus::NotApproved, Some("Unknown algorithm; verify FIPS status manually".into()))
+    (
+        FipsStatus::NotApproved,
+        Some("Unknown algorithm; verify FIPS status manually".into()),
+    )
 }

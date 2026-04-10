@@ -422,7 +422,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (True, Just cbomPath) -> do
       maybeCbomBytes <-
         Diag.errorBoundaryIO . diagToDebug $
-          Diag.context "crypto-cbom-output" . runStickyLogger SevInfo $ analyzeCryptoScanCBOM basedir
+          Diag.context "crypto-cbom-output" . runStickyLogger SevInfo $
+            analyzeCryptoScanCBOM basedir
       traverse_ (Diag.flushLogs SevError SevDebug) [maybeCbomBytes]
       case maybeCbomBytes of
         Success _ (Just bytes) -> do

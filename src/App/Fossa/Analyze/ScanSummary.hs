@@ -18,7 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (AnalysisTacticTypes (StaticOnly))
 import App.Fossa.Config.Analyze qualified as Config
-import App.Fossa.CryptoScan.Types (CryptoFinding (..), CryptoScanResults (..), FipsStatus (..), CryptoAlgorithm (..))
+import App.Fossa.CryptoScan.Types (CryptoAlgorithm (..), CryptoFinding (..), CryptoScanResults (..), FipsStatus (..))
 import App.Fossa.Lernie.Types (LernieMatch (..), LernieMatchData (..), LernieResults (..))
 import App.Version (fullVersionDescription)
 import Control.Carrier.Lift

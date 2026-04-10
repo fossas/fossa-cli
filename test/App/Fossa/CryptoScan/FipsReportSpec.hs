@@ -12,7 +12,7 @@ import App.Fossa.CryptoScan.Types (
  )
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Prettyprinter (layoutPretty, defaultLayoutOptions)
+import Prettyprinter (defaultLayoutOptions, layoutPretty)
 import Prettyprinter.Render.Terminal (renderStrict)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 
