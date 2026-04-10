@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
+- Node.js: Yarn, npm, pnpm, and bun workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`, `pnpm@./:my-package`, `bun@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 - Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
 
 ## 3.17.0

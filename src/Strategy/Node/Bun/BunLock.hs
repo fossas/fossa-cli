@@ -29,6 +29,7 @@ import Data.Aeson (
 import Data.Foldable (for_)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -187,13 +188,17 @@ parseResolution res
        in (name, Text.drop 1 rest)
 
 -- | Analyze a bun.lock file and produce a dependency graph.
+-- When @selectedWorkspacePaths@ is 'Nothing', all workspaces are included.
+-- When @Just paths@, only workspaces whose key is in @paths@ contribute
+-- direct dependencies.
 analyze ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
+  Maybe (Set Text) ->
   Path Abs File ->
   m (Graphing Dependency)
-analyze file = do
+analyze selectedWorkspacePaths file = do
   lockfile <- context "Parsing bun.lock" $ readContentsJsonc file
-  context "Building dependency graph" $ pure $ buildGraph lockfile
+  context "Building dependency graph" $ pure $ buildGraph selectedWorkspacePaths lockfile
 
 -- | Build a dependency graph from a parsed bun lockfile.
 --
@@ -209,9 +214,9 @@ analyze file = do
 -- Uses 'LabeledGrapher' so that vertices are environment-agnostic and
 -- environments accumulate as labels, avoiding duplicate vertices when
 -- the same package appears in both prod and dev across workspaces.
-buildGraph :: BunLockfile -> Graphing Dependency
-buildGraph lockfile = run . withLabeling vertexToDependency $ do
-  for_ allWorkspaces $ \workspace -> do
+buildGraph :: Maybe (Set Text) -> BunLockfile -> Graphing Dependency
+buildGraph selectedWorkspacePaths lockfile = run . withLabeling vertexToDependency $ do
+  for_ filteredWorkspaces $ \workspace -> do
     markDirectDeps EnvProduction workspace.wsDependencies
     markDirectDeps EnvDevelopment workspace.wsDevDependencies
     markDirectDeps EnvProduction workspace.wsOptionalDependencies
@@ -231,6 +236,11 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
   where
     allWorkspaces :: [BunWorkspace]
     allWorkspaces = Map.elems $ workspaces lockfile
+
+    filteredWorkspaces :: [BunWorkspace]
+    filteredWorkspaces = case selectedWorkspacePaths of
+      Nothing -> allWorkspaces
+      Just paths -> Map.elems $ Map.filterWithKey (\k _ -> k `Set.member` paths) (workspaces lockfile)
 
     devDepNames :: Set.Set PackageName
     devDepNames = Set.fromList $ concatMap (Map.keys . wsDevDependencies) allWorkspaces
