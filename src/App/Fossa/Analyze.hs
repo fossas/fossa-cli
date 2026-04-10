@@ -535,7 +535,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     case maybeCryptoScanResults of
       Success _ (Just cryptoResults) -> do
         logInfo ""
-        logInfo . renderIt $ renderFipsReport cryptoResults
+        logInfo $ renderFipsReport cryptoResults
       Success _ Nothing -> logInfo "No crypto findings for FIPS report"
       Failure _ _ -> logWarn "Crypto scan failed; skipping FIPS report"
 
