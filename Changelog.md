@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
+
 ## 3.17.0
 
 - Vendetta: Support single-file library dependencies and multi-location vendored dependencies. Locations are now correctly classified as files or directories in vendored metadata. ([#1680](https://github.com/fossas/fossa-cli/pull/1680))
