@@ -196,6 +196,15 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
             , dependencyEnvironments = envs
             , dependencyTags = Map.empty
             }
+        SourceDirectory path ->
+          Dependency
+            { dependencyType = UnresolvedPathType
+            , dependencyName = path
+            , dependencyVersion = CEq <$> uvlockPackageVersion
+            , dependencyLocations = []
+            , dependencyEnvironments = envs
+            , dependencyTags = Map.empty
+            }
         SourceUrl url ->
           Dependency
             { dependencyType = URLType
@@ -305,6 +314,7 @@ data UvLockPackageSource
   | SourceGit Text
   | SourceUrl Text
   | SourcePath Text
+  | SourceDirectory Text
   deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageSource where
@@ -317,6 +327,7 @@ instance Toml.Schema.FromValue UvLockPackageSource where
         , Toml.Schema.Key "git" (fmap SourceGit . Toml.Schema.fromValue)
         , Toml.Schema.Key "url" (fmap SourceUrl . Toml.Schema.fromValue)
         , Toml.Schema.Key "path" (fmap SourcePath . Toml.Schema.fromValue)
+        , Toml.Schema.Key "directory" (fmap SourceDirectory . Toml.Schema.fromValue)
         ]
 
 isWorkspacePackage :: UvLockPackageSource -> Bool
