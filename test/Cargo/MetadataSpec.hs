@@ -292,6 +292,53 @@ devDepTransitiveLabelingSpec =
       expectDeps [dualDep, transDep] graph
       expectDirect [dualDep] graph
 
+    Test.it "build-deps of prod-deps and their transitives are Development" $ do
+      -- Regression guard: build-script utilities (autocfg, cc, version_check,
+      -- etc.) are declared as [build-dependencies] of normal deps. They are
+      -- compiled during the build but never linked into the release artifact,
+      -- so they should be labeled Development, not Production — even though
+      -- their parent is a production dep.
+      let wsId = PackageId "myapp" "0.1.0" "path+file:///path/to/myapp"
+          serdeId = mkPkgId "serde" "1.0.0"
+          autocfgId = mkPkgId "autocfg" "1.0.0"
+          autocfgChildId = mkPkgId "autocfg-child" "1.0.0"
+
+          wsNode = ResolveNode wsId [NodeDependency serdeId [nullKind]]
+          serdeNode = ResolveNode serdeId [NodeDependency autocfgId [devKind "build"]]
+          autocfgNode = ResolveNode autocfgId [NodeDependency autocfgChildId [nullKind]]
+          childNode = ResolveNode autocfgChildId []
+
+          meta = CargoMetadata [] [wsId] $ Resolve [wsNode, serdeNode, autocfgNode, childNode]
+          graph = buildGraph False meta
+
+          serdeDep = mkDep "serde" "1.0.0" CargoType [EnvProduction]
+          autocfgDep = mkDep "autocfg" "1.0.0" CargoType [EnvDevelopment]
+          childDep = mkDep "autocfg-child" "1.0.0" CargoType [EnvDevelopment]
+
+      expectDeps [serdeDep, autocfgDep, childDep] graph
+      expectDirect [serdeDep] graph
+
+    Test.it "dep reachable via a normal prod path and a build-edge gets both labels" $ do
+      -- X is a direct normal dep of the workspace (Production) AND a build-dep
+      -- of a prod dep (Development via the build-edge split). Both labels
+      -- should be applied.
+      let wsId = PackageId "myapp" "0.1.0" "path+file:///path/to/myapp"
+          aId = mkPkgId "A" "1.0.0"
+          xId = mkPkgId "X" "1.0.0"
+
+          wsNode = ResolveNode wsId [NodeDependency aId [nullKind], NodeDependency xId [nullKind]]
+          aNode = ResolveNode aId [NodeDependency xId [devKind "build"]]
+          xNode = ResolveNode xId []
+
+          meta = CargoMetadata [] [wsId] $ Resolve [wsNode, aNode, xNode]
+          graph = buildGraph False meta
+
+          aDep = mkDep "A" "1.0.0" CargoType [EnvProduction]
+          xDep = mkDep "X" "1.0.0" CargoType [EnvProduction, EnvDevelopment]
+
+      expectDeps [aDep, xDep] graph
+      expectDirect [aDep, xDep] graph
+
 extractGitCommitHashSpec :: Test.Spec
 extractGitCommitHashSpec =
   Test.describe "extractGitCommitHash" $ do
