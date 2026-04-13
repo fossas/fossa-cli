@@ -174,6 +174,40 @@ lockEditableNoVersion =
         ]
     }
 
+--     my-project
+--     /    \
+--   dep1  local-lib (directory dep)
+lockWithDirectory :: UvLock
+lockWithDirectory =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = Just "0.1.0"
+            , uvlockPackageSource = SourceVirtual "."
+            , uvlockPackageDependencies = ["dep1", "local-lib"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep1"
+            , uvlockPackageVersion = Just "1.1.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "local-lib"
+            , uvlockPackageVersion = Just "0.2.0"
+            , uvlockPackageSource = SourceDirectory "../local-lib"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
+
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
   Dependency
@@ -202,6 +236,17 @@ dep5 = mkDep "dep5" "3.0.1" [EnvProduction, EnvDevelopment]
 
 dep6 :: Dependency
 dep6 = mkDep "dep6" "1.1.1" [EnvDevelopment]
+
+localLib :: Dependency
+localLib =
+  Dependency
+    { dependencyType = UnresolvedPathType
+    , dependencyName = "../local-lib"
+    , dependencyVersion = Just (CEq "0.2.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.fromList [EnvProduction]
+    , dependencyTags = mempty
+    }
 
 anyio :: Dependency
 anyio = mkDep "anyio" "4.11.0" [EnvProduction, EnvDevelopment]
@@ -251,6 +296,13 @@ spec = do
       expectDeps [dep1, dep3, dep6] result
       expectEdges [(dep3, dep6)] result
 
+    it "should handle directory source dependencies" $ do
+      let result = buildGraph lockWithDirectory
+
+      expectDirect [dep1, localLib] result
+      expectDeps [dep1, localLib] result
+      expectEdges [] result
+
   describe "parse uv.lock" $ do
     it' "correctly parse and interpret uv.lock" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv.lock|]
@@ -293,5 +345,23 @@ spec = do
         , (httpx, idna')
         , (anyio', idna')
         , (anyio', sniffio)
+        ]
+        result
+
+    it' "correctly parse uv.lock with directory source dependency" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-directory.lock|]
+      uvlock <- readContentsToml path
+      let result = buildGraph uvlock
+      let anyio' = mkDep "anyio" "4.11.0" [EnvProduction]
+      let idna' = mkDep "idna" "3.11" [EnvProduction]
+      let sniffio' = mkDep "sniffio" "1.3.1" [EnvProduction]
+
+      expectDirect' [anyio', localLib] result
+      expectDeps'
+        [anyio', idna', localLib, sniffio']
+        result
+      expectEdges'
+        [ (anyio', idna')
+        , (anyio', sniffio')
         ]
         result
