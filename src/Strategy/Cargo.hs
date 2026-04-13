@@ -39,7 +39,7 @@ import Control.Effect.Diagnostics (
   warn,
  )
 import Control.Effect.Reader (Reader, ask)
-import Control.Monad (guard, unless)
+import Control.Monad (guard, unless, when)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -52,13 +52,13 @@ import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
+import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
+import DepTypes (hydrateDepEnvs)
 import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -485,66 +485,28 @@ toDependency emitGitBackedLocators sourceMap pkg =
         extractGitCommitHash sourceUrl
       _ -> Nothing
 
+-- An edge's kind reflects the parent's manifest declaration, not the path taken
+-- to reach the parent — so we can only trust kinds on the workspace members'
+-- direct edges. Label those, then let 'hydrateDepEnvs' propagate environments
+-- to every transitive descendant.
+kindToLabel :: Maybe Text.Text -> CargoLabel
+kindToLabel (Just _) = CargoDepKind EnvDevelopment
+kindToLabel Nothing = CargoDepKind EnvProduction
+
 buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
-buildGraph emitGitBackedLocators meta = shrinkRoots $
+buildGraph emitGitBackedLocators meta = shrinkRoots . hydrateDepEnvs $
   run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
-    traverse_ direct $ metadataWorkspaceMembers meta
-    for_ (resolvedNodes (metadataResolve meta)) $ \node ->
-      for_ (resolveNodeDeps node) $ \dep ->
-        edge (resolveNodeId node) (nodePkg dep)
-    let (prodRoots, devRoots) = classifyRoots meta
-        adj = buildAdjacency meta
-        prodReachable = reachable adj prodRoots
-        devReachable = reachable adj devRoots
-    for_ (Set.toList prodReachable) $ \pkg ->
-      label pkg (CargoDepKind EnvProduction)
-    for_ (Set.toList devReachable) $ \pkg ->
-      label pkg (CargoDepKind EnvDevelopment)
+    traverse_ direct workspaceMembers
+    for_ (resolvedNodes (metadataResolve meta)) $ \node -> do
+      let parentId = resolveNodeId node
+          fromWorkspace = parentId `elem` workspaceMembers
+      for_ (resolveNodeDeps node) $ \dep -> do
+        edge parentId (nodePkg dep)
+        when fromWorkspace $
+          traverse_ (label (nodePkg dep) . kindToLabel . nodeDepKind) (nodeDepKinds dep)
   where
     sourceMap = buildPackageSourceMap $ metadataPackages meta
-
-classifyRoots :: CargoMetadata -> (Set PackageId, Set PackageId)
-classifyRoots meta = foldMap classifyMember (metadataWorkspaceMembers meta)
-  where
-    nodeMap :: Map.Map PackageId [NodeDependency]
-    nodeMap =
-      Map.fromList
-        [ (resolveNodeId node, resolveNodeDeps node)
-        | node <- resolvedNodes (metadataResolve meta)
-        ]
-
-    classifyMember :: PackageId -> (Set PackageId, Set PackageId)
-    classifyMember wm =
-      let deps = fromMaybe [] (Map.lookup wm nodeMap)
-       in foldMap classifyDep deps
-
-    classifyDep :: NodeDependency -> (Set PackageId, Set PackageId)
-    classifyDep dep =
-      let pkg = nodePkg dep
-          kinds = nodeDepKinds dep
-          hasNormal = any (isNothing . nodeDepKind) kinds
-          allDev = all (isJust . nodeDepKind) kinds
-       in case (hasNormal, allDev) of
-            (True, _) -> (Set.singleton pkg, mempty)
-            (_, True) -> (mempty, Set.singleton pkg)
-            _ -> mempty
-
-buildAdjacency :: CargoMetadata -> Map.Map PackageId [PackageId]
-buildAdjacency meta =
-  Map.fromList
-    [ (resolveNodeId node, map nodePkg (resolveNodeDeps node))
-    | node <- resolvedNodes (metadataResolve meta)
-    ]
-
-reachable :: Map.Map PackageId [PackageId] -> Set PackageId -> Set PackageId
-reachable adj = go Set.empty . Set.toList
-  where
-    go visited [] = visited
-    go visited (x : xs)
-      | Set.member x visited = go visited xs
-      | otherwise =
-          let children = fromMaybe [] (Map.lookup x adj)
-           in go (Set.insert x visited) (children ++ xs)
+    workspaceMembers = metadataWorkspaceMembers meta
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
