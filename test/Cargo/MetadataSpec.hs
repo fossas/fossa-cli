@@ -216,16 +216,22 @@ devDepTransitiveLabelingSpec =
           numTraitsId = mkPkgId "num-traits" "0.2.19"
           autocfgId = mkPkgId "autocfg" "1.4.0"
 
-          wsNode = ResolveNode wsId
-            [ NodeDependency itoaId [nullKind]
-            , NodeDependency approxId [devKind "dev"]
-            ]
-          approxNode = ResolveNode approxId
-            [ NodeDependency numTraitsId [nullKind]
-            ]
-          numTraitsNode = ResolveNode numTraitsId
-            [ NodeDependency autocfgId [devKind "build"]
-            ]
+          wsNode =
+            ResolveNode
+              wsId
+              [ NodeDependency itoaId [nullKind]
+              , NodeDependency approxId [devKind "dev"]
+              ]
+          approxNode =
+            ResolveNode
+              approxId
+              [ NodeDependency numTraitsId [nullKind]
+              ]
+          numTraitsNode =
+            ResolveNode
+              numTraitsId
+              [ NodeDependency autocfgId [devKind "build"]
+              ]
           itoaNode = ResolveNode itoaId []
           autocfgNode = ResolveNode autocfgId []
 
@@ -246,10 +252,12 @@ devDepTransitiveLabelingSpec =
           bId = mkPkgId "B" "1.0.0"
           cId = mkPkgId "C" "1.0.0"
 
-          wsNode = ResolveNode wsId
-            [ NodeDependency aId [nullKind]
-            , NodeDependency bId [devKind "dev"]
-            ]
+          wsNode =
+            ResolveNode
+              wsId
+              [ NodeDependency aId [nullKind]
+              , NodeDependency bId [devKind "dev"]
+              ]
           aNode = ResolveNode aId [NodeDependency cId [nullKind]]
           bNode = ResolveNode bId [NodeDependency cId [nullKind]]
           cNode = ResolveNode cId []
@@ -263,6 +271,26 @@ devDepTransitiveLabelingSpec =
 
       expectDeps [aDep, bDep, cDep] graph
       expectDirect [aDep, bDep] graph
+
+    Test.it "direct dep declared as both normal and dev gets both labels" $ do
+      -- Cargo emits multiple NodeDepKinds when a dep is declared in both
+      -- [dependencies] and [dev-dependencies] on the same package.
+      let wsId = PackageId "myapp" "0.1.0" "path+file:///path/to/myapp"
+          dualId = mkPkgId "dual" "1.0.0"
+          transId = mkPkgId "trans" "1.0.0"
+
+          wsNode = ResolveNode wsId [NodeDependency dualId [nullKind, devKind "dev"]]
+          dualNode = ResolveNode dualId [NodeDependency transId [nullKind]]
+          transNode = ResolveNode transId []
+
+          meta = CargoMetadata [] [wsId] $ Resolve [wsNode, dualNode, transNode]
+          graph = buildGraph False meta
+
+          dualDep = mkDep "dual" "1.0.0" CargoType [EnvProduction, EnvDevelopment]
+          transDep = mkDep "trans" "1.0.0" CargoType [EnvProduction, EnvDevelopment]
+
+      expectDeps [dualDep, transDep] graph
+      expectDirect [dualDep] graph
 
 extractGitCommitHashSpec :: Test.Spec
 extractGitCommitHashSpec =
