@@ -75,6 +75,8 @@ spec = do
 
   post1_77MetadataParseSpec
 
+  devDepTransitiveLabelingSpec
+
   extractGitCommitHashSpec
 
   gitCommitHashVersionSpec
@@ -200,6 +202,67 @@ post1_77MetadataParseSpec =
       let graph = buildGraph False expectedMetadataPost1_77
       expectDeps [ansiTermDep, clapDep, fooDep, barDepFallback] graph
       dependencyName barDepFallback `shouldBe` "bar"
+
+devKind :: Text -> NodeDepKind
+devKind k = NodeDepKind (Just k) Nothing
+
+devDepTransitiveLabelingSpec :: Test.Spec
+devDepTransitiveLabelingSpec =
+  Test.describe "dev-dep transitive labeling" $ do
+    Test.it "transitive deps of dev-deps are labeled Development" $ do
+      let wsId = PackageId "myapp" "0.1.0" "path+file:///path/to/myapp"
+          itoaId = mkPkgId "itoa" "1.0.18"
+          approxId = mkPkgId "approx" "0.5.1"
+          numTraitsId = mkPkgId "num-traits" "0.2.19"
+          autocfgId = mkPkgId "autocfg" "1.4.0"
+
+          wsNode = ResolveNode wsId
+            [ NodeDependency itoaId [nullKind]
+            , NodeDependency approxId [devKind "dev"]
+            ]
+          approxNode = ResolveNode approxId
+            [ NodeDependency numTraitsId [nullKind]
+            ]
+          numTraitsNode = ResolveNode numTraitsId
+            [ NodeDependency autocfgId [devKind "build"]
+            ]
+          itoaNode = ResolveNode itoaId []
+          autocfgNode = ResolveNode autocfgId []
+
+          meta = CargoMetadata [] [wsId] $ Resolve [wsNode, approxNode, numTraitsNode, itoaNode, autocfgNode]
+          graph = buildGraph False meta
+
+          itoaDep = mkDep "itoa" "1.0.18" CargoType [EnvProduction]
+          approxDep = mkDep "approx" "0.5.1" CargoType [EnvDevelopment]
+          numTraitsDep = mkDep "num-traits" "0.2.19" CargoType [EnvDevelopment]
+          autocfgDep = mkDep "autocfg" "1.4.0" CargoType [EnvDevelopment]
+
+      expectDeps [itoaDep, approxDep, numTraitsDep, autocfgDep] graph
+      expectDirect [itoaDep, approxDep] graph
+
+    Test.it "dep reachable from both prod and dev roots gets both labels" $ do
+      let wsId = PackageId "myapp" "0.1.0" "path+file:///path/to/myapp"
+          aId = mkPkgId "A" "1.0.0"
+          bId = mkPkgId "B" "1.0.0"
+          cId = mkPkgId "C" "1.0.0"
+
+          wsNode = ResolveNode wsId
+            [ NodeDependency aId [nullKind]
+            , NodeDependency bId [devKind "dev"]
+            ]
+          aNode = ResolveNode aId [NodeDependency cId [nullKind]]
+          bNode = ResolveNode bId [NodeDependency cId [nullKind]]
+          cNode = ResolveNode cId []
+
+          meta = CargoMetadata [] [wsId] $ Resolve [wsNode, aNode, bNode, cNode]
+          graph = buildGraph False meta
+
+          aDep = mkDep "A" "1.0.0" CargoType [EnvProduction]
+          bDep = mkDep "B" "1.0.0" CargoType [EnvDevelopment]
+          cDep = mkDep "C" "1.0.0" CargoType [EnvProduction, EnvDevelopment]
+
+      expectDeps [aDep, bDep, cDep] graph
+      expectDirect [aDep, bDep] graph
 
 extractGitCommitHashSpec :: Test.Spec
 extractGitCommitHashSpec =
