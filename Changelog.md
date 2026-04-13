@@ -7,7 +7,9 @@
 ## 3.17.1
 
 - Cargo: Fix transitive dev-dependency classification. Dependencies reachable only through dev-dep or build-dep roots are now correctly labeled as Development instead of Production. Projects with non-trivial dev-dep trees may see their Production dependency set shrink and their Development set grow ([#1692](https://github.com/fossas/fossa-cli/pull/1692)).
-- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
+
+## 3.17.1
+- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`. ([#1643](https://github.com/fossas/fossa-cli/pull/1643))
 - Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
 - UV: Add `directory` source type to uv.lock parser, fixing parse failures on projects with local directory dependencies ([#1690](https://github.com/fossas/fossa-cli/pull/1690))
 
