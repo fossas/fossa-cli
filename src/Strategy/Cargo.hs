@@ -54,6 +54,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
@@ -503,14 +504,14 @@ buildGraph emitGitBackedLocators meta = shrinkRoots . hydrateDepEnvs $
     traverse_ direct workspaceMembers
     for_ (resolvedNodes (metadataResolve meta)) $ \node -> do
       let parentId = resolveNodeId node
-          fromWorkspace = parentId `elem` workspaceMembers
+          fromWorkspace = Set.member parentId workspaceMembers
       for_ (resolveNodeDeps node) $ \dep -> do
         edge parentId (nodePkg dep)
         when fromWorkspace $
           traverse_ (label (nodePkg dep) . kindToLabel . nodeDepKind) (nodeDepKinds dep)
   where
     sourceMap = buildPackageSourceMap $ metadataPackages meta
-    workspaceMembers = metadataWorkspaceMembers meta
+    workspaceMembers = Set.fromList (metadataWorkspaceMembers meta)
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
