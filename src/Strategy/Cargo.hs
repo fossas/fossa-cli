@@ -39,7 +39,7 @@ import Control.Effect.Diagnostics (
   warn,
  )
 import Control.Effect.Reader (Reader, ask)
-import Control.Monad (guard, unless, when)
+import Control.Monad (guard, unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -52,14 +52,13 @@ import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
-import DepTypes (hydrateDepEnvs)
 import Diag.Diagnostic (renderDiagnostic)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -486,32 +485,84 @@ toDependency emitGitBackedLocators sourceMap pkg =
         extractGitCommitHash sourceUrl
       _ -> Nothing
 
--- An edge's kind reflects the parent's manifest declaration, not the path taken
--- to reach the parent — so we can only trust kinds on the workspace members'
--- direct edges. Label those, then let 'hydrateDepEnvs' propagate environments
--- to every transitive descendant.
+-- A Cargo edge's kind ("build", "dev", or null) reflects the parent's manifest
+-- declaration, not the path taken to reach the parent. We classify each package
+-- by which workspace-rooted paths can reach it:
 --
--- Possible values are "build", "dev", and null. Null means production; both
--- "build" and "dev" map to Development (Cargo does not differentiate test
--- dependencies from dev dependencies).
-kindToLabel :: Maybe Text.Text -> CargoLabel
-kindToLabel (Just _) = CargoDepKind EnvDevelopment
-kindToLabel Nothing = CargoDepKind EnvProduction
-
+--   * Production: reachable from a workspace member via a path of null-kind
+--     edges only. These packages are linked into the release artifact.
+--
+--   * Development: any package reachable (via any edge) from the target of a
+--     non-null-kind edge. A "build" or "dev" edge marks the start of a subtree
+--     that never ships in the release binary, and every descendant of that
+--     subtree inherits Development.
+--
+-- A package can carry both labels when it's reachable by both kinds of paths.
+--
+-- We do not need a separate "dev-deps of prod-deps" case: Cargo only resolves
+-- dev-dependencies for workspace members, so non-workspace edges with kind
+-- "dev" do not appear in 'cargo metadata' output. The only non-null kind we
+-- see on a non-workspace edge is "build".
 buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
-buildGraph emitGitBackedLocators meta = shrinkRoots . hydrateDepEnvs $
+buildGraph emitGitBackedLocators meta = shrinkRoots $
   run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
-    traverse_ direct workspaceMembers
-    for_ (resolvedNodes (metadataResolve meta)) $ \node -> do
-      let parentId = resolveNodeId node
-          fromWorkspace = Set.member parentId workspaceMembers
-      for_ (resolveNodeDeps node) $ \dep -> do
-        edge parentId (nodePkg dep)
-        when fromWorkspace $
-          traverse_ (label (nodePkg dep) . kindToLabel . nodeDepKind) (nodeDepKinds dep)
+    traverse_ direct (metadataWorkspaceMembers meta)
+    for_ nodes $ \node ->
+      for_ (resolveNodeDeps node) $ \dep ->
+        edge (resolveNodeId node) (nodePkg dep)
+    for_ (Set.toList prodReachable) $ \pkg ->
+      label pkg (CargoDepKind EnvProduction)
+    for_ (Set.toList devReachable) $ \pkg ->
+      label pkg (CargoDepKind EnvDevelopment)
   where
     sourceMap = buildPackageSourceMap $ metadataPackages meta
+    nodes = resolvedNodes (metadataResolve meta)
     workspaceMembers = Set.fromList (metadataWorkspaceMembers meta)
+
+    -- Adjacency containing only edges whose parent declares the child as a
+    -- normal dependency (at least one kind is null). Production reachability
+    -- must only traverse these — a build or dev edge breaks the release chain.
+    prodAdj =
+      Map.fromList
+        [ ( resolveNodeId node
+          , [ nodePkg dep
+            | dep <- resolveNodeDeps node
+            , any (isNothing . nodeDepKind) (nodeDepKinds dep)
+            ]
+          )
+        | node <- nodes
+        ]
+
+    -- Every edge in the metadata graph, for Development reachability.
+    allAdj =
+      Map.fromList
+        [ (resolveNodeId node, map nodePkg (resolveNodeDeps node))
+        | node <- nodes
+        ]
+
+    -- Targets of any non-null-kind edge. Each seeds a Development subtree:
+    -- the target and all its transitive descendants are never linked into
+    -- a release build.
+    devSeeds =
+      Set.fromList
+        [ nodePkg dep
+        | node <- nodes
+        , dep <- resolveNodeDeps node
+        , any (isJust . nodeDepKind) (nodeDepKinds dep)
+        ]
+
+    prodReachable = reachable prodAdj workspaceMembers
+    devReachable = reachable allAdj devSeeds
+
+reachable :: Map.Map PackageId [PackageId] -> Set PackageId -> Set PackageId
+reachable adj = go Set.empty . Set.toList
+  where
+    go visited [] = visited
+    go visited (x : xs)
+      | Set.member x visited = go visited xs
+      | otherwise =
+          let children = fromMaybe [] (Map.lookup x adj)
+           in go (Set.insert x visited) (children ++ xs)
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
