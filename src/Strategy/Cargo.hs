@@ -489,6 +489,10 @@ toDependency emitGitBackedLocators sourceMap pkg =
 -- to reach the parent — so we can only trust kinds on the workspace members'
 -- direct edges. Label those, then let 'hydrateDepEnvs' propagate environments
 -- to every transitive descendant.
+--
+-- Possible values are "build", "dev", and null. Null means production; both
+-- "build" and "dev" map to Development (Cargo does not differentiate test
+-- dependencies from dev dependencies).
 kindToLabel :: Maybe Text.Text -> CargoLabel
 kindToLabel (Just _) = CargoDepKind EnvDevelopment
 kindToLabel Nothing = CargoDepKind EnvProduction
