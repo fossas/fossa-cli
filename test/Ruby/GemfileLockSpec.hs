@@ -14,8 +14,8 @@ dependencyOne :: Dependency
 dependencyOne =
   Dependency
     { dependencyType = GitType
-    , dependencyName = "url-for-dep-one"
-    , dependencyVersion = Just (CEq "12345")
+    , dependencyName = "dep-one"
+    , dependencyVersion = Just (CEq "1.0.0")
     , dependencyLocations = ["url-for-dep-one@12345"]
     , dependencyEnvironments = mempty
     , dependencyTags = Map.empty
