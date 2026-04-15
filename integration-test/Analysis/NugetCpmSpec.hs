@@ -22,7 +22,7 @@ runCpmAnalysis = do
   where
     doAnalysis targetDir = do
       projects <- NuGet.discover targetDir
-      mapM
+      traverse
         ( \dp -> do
             dr <- NuGet.getDeps (projectData dp)
             pure (dp, dr)

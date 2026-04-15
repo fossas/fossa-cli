@@ -31,7 +31,7 @@ import Types (
  )
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
-analyze' file = analyzeWithCPM Map.empty file
+analyze' = analyzeWithCPM Map.empty
 
 -- | Analyze a project file, resolving missing PackageReference versions from
 -- a CPM (Central Package Management) version map built from Directory.Packages.props.
