@@ -25,6 +25,7 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
   PyProjectTool (..),
+  allPoetryProductionDeps,
  )
 import Test.Hspec (
   Spec,
@@ -159,6 +160,8 @@ spec :: Spec
 spec = do
   nominalContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject1.toml")
   emptyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject2.toml")
+  pep621Contents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621/pyproject.toml")
+  pep621MixedContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621-mixed/pyproject.toml")
 
   describe "toCanonicalName" $ do
     it "should convert text to lowercase" $
@@ -166,9 +169,50 @@ spec = do
     it "should replace underscore (_) to hyphens (-)" $
       toCanonicalName "my_oh_so_great_pkg" `shouldBe` "my-oh-so-great-pkg"
 
-  describe "getDependencies" $
+  describe "getDependencies" $ do
     it "should get all dependencies" $
       pyProjectDeps expectedPyProject `shouldMatchList` expectedDeps
+
+    it "should get PEP 621 [project].dependencies as production deps" $ do
+      case decodeEither pep621Contents of
+        Left e -> fail $ "Failed to parse pyproject.toml: " <> show e
+        Right pyProject -> do
+          let deps = pyProjectDeps pyProject
+          let prodDeps = filter (\d -> Set.singleton EnvProduction == dependencyEnvironments d) deps
+          let devDeps = filter (\d -> Set.singleton EnvDevelopment == dependencyEnvironments d) deps
+          map dependencyName prodDeps `shouldMatchList` ["requests", "flask"]
+          map dependencyName devDeps `shouldMatchList` ["pytest"]
+
+    it "should prefer [tool.poetry.dependencies] over [project].dependencies for same package" $ do
+      case decodeEither pep621MixedContents of
+        Left e -> fail $ "Failed to parse pyproject.toml: " <> show e
+        Right pyProject -> do
+          let deps = pyProjectDeps pyProject
+          let prodDeps = filter (\d -> Set.singleton EnvProduction == dependencyEnvironments d) deps
+          -- Both requests and flask should be production deps
+          map dependencyName prodDeps `shouldMatchList` ["requests", "flask"]
+
+  describe "allPoetryProductionDeps" $ do
+    it "should include PEP 621 [project].dependencies" $ do
+      case decodeEither pep621Contents of
+        Left e -> fail $ "Failed to parse pyproject.toml: " <> show e
+        Right pyProject -> do
+          let prodDeps = allPoetryProductionDeps pyProject
+          Map.member "requests" prodDeps `shouldBe` True
+          Map.member "flask" prodDeps `shouldBe` True
+
+    it "should prefer [tool.poetry.dependencies] entries over PEP 621 entries" $ do
+      case decodeEither pep621MixedContents of
+        Left e -> fail $ "Failed to parse pyproject.toml: " <> show e
+        Right pyProject -> do
+          let prodDeps = allPoetryProductionDeps pyProject
+          -- requests is in both sections; poetry entry (DetailedVersion) should win
+          case Map.lookup "requests" prodDeps of
+            Just (PyProjectPoetryDetailedVersionDependencySpec _) -> pure ()
+            Just other -> fail $ "Expected DetailedVersionDependencySpec for requests, got: " <> show other
+            Nothing -> fail "requests not found in production deps"
+          -- flask is only in [project].dependencies
+          Map.member "flask" prodDeps `shouldBe` True
 
   describe "supportedPyProjectDep" $
     it "should return false when dependency is sourced from local path" $
