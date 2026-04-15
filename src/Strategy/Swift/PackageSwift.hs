@@ -16,7 +16,6 @@ import Control.Applicative (Alternative ((<|>)), optional)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
 import Control.Monad (void)
 import Data.Foldable (asum)
-import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
 import Data.Set (Set, fromList, member)
 import Data.Text (Text)
@@ -28,7 +27,17 @@ import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
 import Path
 import Strategy.Swift.Errors (MissingPackageResolvedFile (..), MissingPackageResolvedFileHelp (..), swiftFossaDocUrl, swiftPackageResolvedRef, xcodeCoordinatePkgVersion)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
-import Text.Megaparsec (MonadParsec (takeWhile1P, try), Parsec, anySingle, anySingleBut, between, empty, many, manyTill, noneOf, sepEndBy, skipManyTill)
+import Text.Megaparsec (
+  MonadParsec (takeWhile1P, try),
+  Parsec,
+  anySingle,
+  between,
+  empty,
+  many,
+  noneOf,
+  sepEndBy,
+  skipManyTill,
+ )
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
@@ -196,13 +205,11 @@ parsePackageDependencies = do
   -- What's left should now be the actual project dependencies.
   _ <- try $ parseNonDepSection "products"
   _ <- try $ parseNonDepSection "targets"
-  parseDeps
+  try parseDeps <|> pure []
   where
     parseNonDepSection name = skipManyTill anySingle (symbol (name <> ":")) *> nestedBrackets
     parseDeps = skipManyTill anySingle (symbol "dependencies:") *> betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
     nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: [Char])))
-
--- nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (anySingleBut '['))
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =
