@@ -526,6 +526,9 @@ buildGraph emitGitBackedLocators meta = shrinkRoots $
     nodes = resolvedNodes (metadataResolve meta)
     workspaceMembers = Set.fromList (metadataWorkspaceMembers meta)
 
+    -- These predicates are not mutually exclusive: a dep declared in both
+    -- [dependencies] and [dev-dependencies] on the same parent carries both
+    -- a null and a non-null kind, so the edge feeds prodAdj *and* devSeeds.
     isProdEdge dep = any (isNothing . nodeDepKind) (nodeDepKinds dep)
     isDevEdge dep = any (isJust . nodeDepKind) (nodeDepKinds dep)
 
