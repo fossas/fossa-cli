@@ -29,6 +29,7 @@ import Discovery.Walk (
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, parent)
+import Strategy.NuGet.DirectoryPackagesProps qualified as DirectoryPackagesProps
 import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
 import Types (
@@ -91,4 +92,7 @@ getAssetsJsonDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuGetProject -
 getAssetsJsonDeps = context "ProjectAssetsJson" . context "Static analysis" . ProjectAssetsJson.analyze' . nugetProjectFile
 
 getPackageReferenceDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => NuGetProject -> m DependencyResults
-getPackageReferenceDeps = context "PackageReference" . context "Static analysis" . PackageReference.analyze' . nugetProjectFile
+getPackageReferenceDeps project = context "PackageReference" . context "Static analysis" $ do
+  let file = nugetProjectFile project
+  versionMap <- context "Directory.Packages.props" $ DirectoryPackagesProps.findAndParse (parent file)
+  PackageReference.analyzeWithCPM versionMap file
