@@ -519,37 +519,31 @@ buildGraph emitGitBackedLocators meta = shrinkRoots $
     nodes = resolvedNodes (metadataResolve meta)
     workspaceMembers = Set.fromList (metadataWorkspaceMembers meta)
 
+    isProdEdge dep = any (isNothing . nodeDepKind) (nodeDepKinds dep)
+    isDevEdge dep = any (isJust . nodeDepKind) (nodeDepKinds dep)
+
     -- Adjacency containing only edges whose parent declares the child as a
     -- normal dependency (at least one kind is null). Production reachability
     -- must only traverse these — a build or dev edge breaks the release chain.
     prodAdj =
-      Map.fromList
-        [ ( resolveNodeId node
-          , [ nodePkg dep
-            | dep <- resolveNodeDeps node
-            , any (isNothing . nodeDepKind) (nodeDepKinds dep)
-            ]
-          )
-        | node <- nodes
-        ]
+      Map.fromList $
+        map
+          (\node -> (resolveNodeId node, map nodePkg (filter isProdEdge (resolveNodeDeps node))))
+          nodes
 
     -- Every edge in the metadata graph, for Development reachability.
     allAdj =
-      Map.fromList
-        [ (resolveNodeId node, map nodePkg (resolveNodeDeps node))
-        | node <- nodes
-        ]
+      Map.fromList $
+        map (\node -> (resolveNodeId node, map nodePkg (resolveNodeDeps node))) nodes
 
     -- Targets of any non-null-kind edge. Each seeds a Development subtree:
     -- the target and all its transitive descendants are never linked into
     -- a release build.
     devSeeds =
-      Set.fromList
-        [ nodePkg dep
-        | node <- nodes
-        , dep <- resolveNodeDeps node
-        , any (isJust . nodeDepKind) (nodeDepKinds dep)
-        ]
+      Set.fromList $
+        map nodePkg $
+          filter isDevEdge $
+            concatMap resolveNodeDeps nodes
 
     prodReachable = reachable prodAdj workspaceMembers
     devReachable = reachable allAdj devSeeds
