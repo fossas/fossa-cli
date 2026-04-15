@@ -504,9 +504,12 @@ toDependency emitGitBackedLocators sourceMap pkg =
 -- "dev" do not appear in 'cargo metadata' output. The only non-null kind we
 -- see on a non-workspace edge is "build".
 --
--- Note: pnpm and yarn use 'hydrateDepEnvs' for this, but it has no notion of
--- edge kinds and would tag packages reached only through a "dev"/"build" edge
--- as Production. The edge-kind-filtered reachability below is why we diverge.
+-- Cargo is the only strategy with per-edge kinds; others (pnpm, yarn, poetry)
+-- label nodes and propagate with 'hydrateDepEnvs'. That helper walks from a
+-- labeled node to every dependency it declares, regardless of edge kind, so
+-- a Production label on a workspace member would flow through a "dev" or
+-- "build" edge and mislabel the dev/build subtree as Production. We roll our
+-- own edge-filtered reachability here rather than generalize the shared helper.
 buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
 buildGraph emitGitBackedLocators meta = shrinkRoots $
   run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
