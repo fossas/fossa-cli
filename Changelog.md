@@ -2,11 +2,8 @@
 
 ## 3.17.2
 
+- Cargo: Fix transitive dev-dependency classification. Dependencies reachable only through dev-dep or build-dep roots are now correctly labeled as Development instead of Production ([#1692](https://github.com/fossas/fossa-cli/pull/1692)).
 - Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
-
-## 3.17.1
-
-- Cargo: Fix transitive dev-dependency classification. Dependencies reachable only through dev-dep or build-dep roots are now correctly labeled as Development instead of Production. Projects with non-trivial dev-dep trees may see their Production dependency set shrink and their Development set grow ([#1692](https://github.com/fossas/fossa-cli/pull/1692)).
 
 ## 3.17.1
 - Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`. ([#1643](https://github.com/fossas/fossa-cli/pull/1643))
