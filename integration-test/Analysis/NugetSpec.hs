@@ -65,8 +65,31 @@ testDotnetCoreTwoExampleForProjectAssetsJson =
         doesProjectAssetsJsonTargetExist `shouldBe` True
         doesCsprojTargetExist `shouldBe` True
 
+-- | DapperAOT uses NuGet Central Package Management (CPM).
+-- PackageReference entries in .csproj files omit Version attributes;
+-- versions are defined centrally in Directory.Packages.props.
+dapperAOT :: AnalysisTestFixture NuGet.NuGetProject
+dapperAOT =
+  AnalysisTestFixture
+    "DapperAOT-CPM"
+    NuGet.discover
+    LocalEnvironment
+    Nothing
+    $ FixtureArtifact
+      "https://github.com/DapperLib/DapperAOT/archive/refs/tags/1.0.48.tar.gz"
+      [reldir|nuget/DapperAOT/|]
+      [reldir|DapperAOT-1.0.48//|]
+
+testDapperAOTForCPM :: Spec
+testDapperAOTForCPM =
+  aroundAll (withAnalysisOf NonStrict dapperAOT) $ do
+    describe "DapperAOT-CPM" $ do
+      it "should find targets" $ \(result, _) -> do
+        length result `shouldBe` 11
+
 spec :: Spec
 spec = do
   testServiceStackForPkgReferences
   testServiceStackForPkgConfig
   testDotnetCoreTwoExampleForProjectAssetsJson
+  testDapperAOTForCPM
