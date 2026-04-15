@@ -105,3 +105,5 @@ spec = do
             dependencyFour{dependencyVersion = Just (CEq "4.0.0")}
       -- "one" keeps its inline version 1.0.0, not the CPM version 9.9.9
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
+      expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
+      expectEdges [] graph

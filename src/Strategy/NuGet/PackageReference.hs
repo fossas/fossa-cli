@@ -15,6 +15,7 @@ import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepType (NuGetType),
   Dependency (..),
@@ -92,7 +93,7 @@ buildGraphWithCPM versionMap project = Graphing.fromList (map toDependency direc
       Dependency
         { dependencyType = NuGetType
         , dependencyName = depID
-        , dependencyVersion = fmap CEq (depVersion <|> Map.lookup depID versionMap)
+        , dependencyVersion = fmap CEq (depVersion <|> Map.lookup (Text.toCaseFold depID) versionMap)
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty

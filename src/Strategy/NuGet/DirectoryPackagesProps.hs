@@ -10,6 +10,7 @@ import Control.Effect.Diagnostics (Diagnostics, Has, warnOnErr)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsXML, resolveFile')
 import Parse.XML (FromXML (..), attr, children)
@@ -49,7 +50,7 @@ instance FromXML PackageVersionEntry where
 buildVersionMap :: DirectoryPackagesProps -> Map Text Text
 buildVersionMap props =
   Map.fromList
-    . map (\pv -> (pvName pv, pvVersion pv))
+    . map (\pv -> (Text.toCaseFold (pvName pv), pvVersion pv))
     . concatMap packageVersions
     $ packageVersionGroups props
 
