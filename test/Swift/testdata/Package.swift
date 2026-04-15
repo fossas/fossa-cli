@@ -14,6 +14,18 @@ let package = Package(
         .library(name: "PaperStatic", type: .static, targets: ["Paper"]),
         .library(name: "PaperDynamic", type: .dynamic, targets: ["Paper"]),
     ],
+    targets: [
+        .target(
+            name: "DeckOfPlayingCards",
+            dependencies: [
+                .byName(name: "PlayingCard")
+            ]),
+        .testTarget(
+            name: "DeckOfPlayingCardsTests",
+            dependencies: [
+                .target(name: "DeckOfPlayingCards")
+            ]),
+    ],
     dependencies: [
 
         // without any contsraint
@@ -52,17 +64,5 @@ let package = Package(
         // path
         .package(path: "../.."),
         .package(name: "package-with-name", path: "../.."),
-    ],
-    targets: [
-        .target(
-            name: "DeckOfPlayingCards",
-            dependencies: [
-                .byName(name: "PlayingCard")
-            ]),
-        .testTarget(
-            name: "DeckOfPlayingCardsTests",
-            dependencies: [
-                .target(name: "DeckOfPlayingCards")
-            ]),
     ]
 )
