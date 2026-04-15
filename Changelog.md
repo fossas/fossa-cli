@@ -6,7 +6,7 @@
 
 ## 3.17.1
 
-- NuGet: Add Central Package Management (CPM) support — versions defined in `Directory.Packages.props` are now resolved for `PackageReference` entries that omit a `Version` attribute.
+- NuGet: Add Central Package Management (CPM) support — versions defined in `Directory.Packages.props` are now resolved for `PackageReference` entries that omit a `Version` attribute. ([#1694](https://github.com/fossas/fossa-cli/pull/1694))
 - Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
 - Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
 - UV: Add `directory` source type to uv.lock parser, fixing parse failures on projects with local directory dependencies ([#1690](https://github.com/fossas/fossa-cli/pull/1690))
