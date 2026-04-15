@@ -503,6 +503,10 @@ toDependency emitGitBackedLocators sourceMap pkg =
 -- dev-dependencies for workspace members, so non-workspace edges with kind
 -- "dev" do not appear in 'cargo metadata' output. The only non-null kind we
 -- see on a non-workspace edge is "build".
+--
+-- Note: pnpm and yarn use 'hydrateDepEnvs' for this, but it has no notion of
+-- edge kinds and would tag packages reached only through a "dev"/"build" edge
+-- as Production. The edge-kind-filtered reachability below is why we diverge.
 buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
 buildGraph emitGitBackedLocators meta = shrinkRoots $
   run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
