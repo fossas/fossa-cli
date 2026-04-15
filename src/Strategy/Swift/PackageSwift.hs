@@ -16,6 +16,7 @@ import Control.Applicative (Alternative ((<|>)), optional)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
 import Control.Monad (void)
 import Data.Foldable (asum)
+import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
 import Data.Set (Set, fromList, member)
 import Data.Text (Text)
@@ -27,15 +28,7 @@ import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
 import Path
 import Strategy.Swift.Errors (MissingPackageResolvedFile (..), MissingPackageResolvedFileHelp (..), swiftFossaDocUrl, swiftPackageResolvedRef, xcodeCoordinatePkgVersion)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
-import Text.Megaparsec (
-  MonadParsec (takeWhile1P, try),
-  Parsec,
-  anySingle,
-  between,
-  empty,
-  sepEndBy,
-  skipManyTill,
- )
+import Text.Megaparsec (MonadParsec (takeWhile1P, try), Parsec, anySingle, anySingleBut, between, empty, many, manyTill, noneOf, sepEndBy, skipManyTill)
 import Text.Megaparsec.Char (space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
@@ -197,7 +190,19 @@ parsePackageDep = try parsePathDep <|> parseGitDep
 parsePackageDependencies :: Parser [SwiftPackageDep]
 parsePackageDependencies = do
   _ <- lexeme $ skipManyTill anySingle $ symbol "let package = Package("
-  skipManyTill anySingle (symbol "dependencies:") *> betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
+
+  -- This order is important. We consume `products` first, because it can contain `targets` fields which we want to ignore.
+  -- Next we consume `targets` because it can contain `dependencies` fields we want to ignore.
+  -- What's left should now be the actual project dependencies.
+  _ <- try $ parseNonDepSection "products"
+  _ <- try $ parseNonDepSection "targets"
+  parseDeps
+  where
+    parseNonDepSection name = skipManyTill anySingle (symbol (name <> ":")) *> nestedBrackets
+    parseDeps = skipManyTill anySingle (symbol "dependencies:") *> betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
+    nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: [Char])))
+
+-- nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (anySingleBut '['))
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =
