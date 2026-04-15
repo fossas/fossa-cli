@@ -552,8 +552,7 @@ buildGraph emitGitBackedLocators meta = shrinkRoots $
     devSeeds =
       Set.fromList $
         map nodePkg $
-          filter isDevEdge $
-            concatMap resolveNodeDeps nodes
+          concatMap (filter isDevEdge . resolveNodeDeps) nodes
 
     prodReachable = reachable prodAdj workspaceMembers
     devReachable = reachable allAdj devSeeds
