@@ -205,14 +205,13 @@ parsePackageDependencies = do
     <$> sepEndBy
       ( do
           key <- parseKey
-          _ <- symbol ":"
           case key of
             "dependencies" -> parseDeps
             _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
       )
       (symbol ",")
   where
-    parseKey = try (lexeme $ takeWhile1P (Just "package key") (/= ':'))
+    parseKey = try (lexeme $ takeWhile1P (Just "package key") (/= ':')) <* symbol ":"
     parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
     parseIdentifier = takeWhile1P (Just "parse identifier") (/= ',') $> []
     nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: [Char])))
