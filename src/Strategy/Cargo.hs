@@ -561,9 +561,10 @@ reachable :: Map.Map PackageId [PackageId] -> Set PackageId -> Set PackageId
 reachable adj = go Set.empty . Set.toList
   where
     go visited [] = visited
-    go visited (x : xs)
-      | Set.member x visited = go visited xs
-      | otherwise =
+    go visited (x : xs) =
+      if Set.member x visited
+        then go visited xs
+        else
           let children = fromMaybe [] (Map.lookup x adj)
            in go (Set.insert x visited) (children ++ xs)
 
