@@ -16,6 +16,7 @@ import Control.Applicative (Alternative ((<|>)), optional)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
 import Control.Monad (void)
 import Data.Foldable (asum)
+import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
 import Data.Set (Set, fromList, member)
 import Data.Text (Text)
@@ -200,16 +201,22 @@ parsePackageDependencies :: Parser [SwiftPackageDep]
 parsePackageDependencies = do
   _ <- lexeme $ skipManyTill anySingle $ symbol "let package = Package("
 
-  -- This order is important. We consume `products` first, because it can contain `targets` fields which we want to ignore.
-  -- Next we consume `targets` because it can contain `dependencies` fields we want to ignore.
-  -- What's left should now be the actual project dependencies.
-  _ <- try $ parseNonDepSection "products"
-  _ <- try $ parseNonDepSection "targets"
-  try parseDeps <|> pure []
+  concat
+    <$> sepEndBy
+      ( do
+          key <- parseKey
+          _ <- symbol ":"
+          case key of
+            "dependencies" -> parseDeps
+            _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
+      )
+      (symbol ",")
   where
-    parseNonDepSection name = skipManyTill anySingle (symbol (name <> ":")) *> nestedBrackets
-    parseDeps = skipManyTill anySingle (symbol "dependencies:") *> betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
+    parseKey = try (lexeme $ takeWhile1P (Just "package key") (/= ':'))
+    parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
+    parseIdentifier = takeWhile1P (Just "parse identifier") (/= ',') $> []
     nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: [Char])))
+    parseNonDepArray = nestedBrackets $> []
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =
