@@ -80,16 +80,23 @@ expectedSwiftPackageNoDeps = SwiftPackage "6.0" []
 spec :: Spec
 spec = do
   packageDotSwiftFile <- runIO (TIO.readFile "test/Swift/testdata/Package.swift")
+  packageDotSwiftFullFile <- runIO (TIO.readFile "test/Swift/testdata/Package.full.swift")
   packageDotSwiftNoDepsFile <- runIO (TIO.readFile "test/Swift/testdata/Package.no-deps.swift")
 
   describe "Parses Package.swift file" $ do
-    it "should parse swift-tools-version" $ do
+    it "should parse swift-tools-version and dependencies" $ do
       case runParser parsePackageSwiftFile "" packageDotSwiftFile of
         Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldBe` expectedSwiftPackage
 
+  describe "Parses Package.full.swift file" $ do
+    it "should parse swift-tools-version and dependencies" $ do
+      case runParser parsePackageSwiftFile "" packageDotSwiftFullFile of
+        Left failCode -> expectationFailure $ show failCode
+        Right result -> result `shouldBe` expectedSwiftPackage
+
   describe "Parses Package.no-deps.swift file" $ do
-    it "should parse swift-tools-version" $ do
+    it "should parse swift-tools-version and dependencies" $ do
       case runParser parsePackageSwiftFile "" packageDotSwiftNoDepsFile of
         Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldBe` expectedSwiftPackageNoDeps

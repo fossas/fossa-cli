@@ -1,4 +1,8 @@
 // swift-tools-version: 6.0
+
+// This Package.swift has no dependencies. This Package.swift ensures the parser doesn't get confused
+// by the dependencies listed within `targets`
+
 import PackageDescription
 
 let package = Package(
