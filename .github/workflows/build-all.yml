@@ -41,19 +41,16 @@ jobs:
           os-name: macOS-intel
           project-file: cabal.project.ci.macos
           ghc: '9.8.4'
-          cabal: '3.10.3.0'
 
         - os: windows-latest
           os-name: Windows
           project-file: cabal.project.ci.windows
           ghc: '9.8.4'
-          cabal: '3.10.3.0'
 
         - os: macos-latest
           os-name: macOS-arm64
           project-file: cabal.project.ci.macos
           ghc: '9.8.4'
-          cabal: '3.10.3.0'
 
     steps:
 
@@ -81,10 +78,10 @@ jobs:
       name: Cache ghcup
       with:
         path: |
-          ~/.ghcup/bin
-          ~/.ghcup/ghc/${{ matrix.ghc }}
-          ~/.ghcup/cache
-        key: ${{ matrix.os-name }}-ghcup-${{ matrix.ghc }}-${{ matrix.cabal }}
+          ${{ runner.os == 'Windows' && 'C:\ghcup\bin' || '~/.ghcup/bin' }}
+          ${{ runner.os == 'Windows' && format('C:\ghcup\ghc\{0}', matrix.ghc) || format('~/.ghcup/ghc/{0}', matrix.ghc) }}
+          ${{ runner.os == 'Windows' && 'C:\ghcup\cache' || '~/.ghcup/cache' }}
+        key: ${{ matrix.os-name }}-ghcup-${{ matrix.ghc }}-3.10.3.0
 
     - uses: haskell-actions/setup@v2
       id: setup-haskell
@@ -92,7 +89,7 @@ jobs:
       if: ${{ !contains(matrix.os-name, 'Linux') }}
       with:
         ghc-version: ${{ matrix.ghc }}
-        cabal-version: ${{ matrix.cabal }}
+        cabal-version: '3.10.3.0'
 
     # Set up Rust.
     # This action installs the 'minimal' profile.
