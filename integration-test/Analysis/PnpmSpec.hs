@@ -27,6 +27,21 @@ elementPlus =
       [reldir|pnpm/element-plus/|]
       [reldir|element-plus-2.0.0/|]
 
+-- | jotai-eager uses pnpm v9 catalogs (catalog: specifiers in package.json
+-- resolved via the catalogs section in pnpm-lock.yaml).
+jotaiEager :: AnalysisTestFixture (Node.NodeProject)
+jotaiEager =
+  AnalysisTestFixture
+    "jotai-eager"
+    Node.discover
+    LocalEnvironment
+    Nothing
+    $ FixtureArtifact
+      "https://github.com/jotaijs/jotai-eager/archive/refs/tags/v0.2.4.tar.gz"
+      [reldir|pnpm/jotai-eager/|]
+      [reldir|jotai-eager-0.2.4/|]
+
 spec :: Spec
 spec = do
   testSuiteHasSomeDepResults elementPlus PnpmProjectType
+  testSuiteHasSomeDepResults jotaiEager PnpmProjectType
