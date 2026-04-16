@@ -157,6 +157,13 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 * Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
 * `fossa-cli` supports lockFileVersion: 4.x, 5.x, 6.x, 7.x, 8.x, and 9.x.
 
+### Catalogs
+
+pnpm [catalogs](https://pnpm.io/catalogs) (introduced in pnpm 9.5) are supported.
+When `catalog:` or `catalog:<name>` specifiers are used in `package.json`,
+the resolved versions from `pnpm-lock.yaml` are used for analysis.
+No additional configuration is needed.
+
 
 # F.A.Q
 

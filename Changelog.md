@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- pnpm: Support `catalog:` and `catalog:<name>` version specifiers (Central Package Management catalogs). Versions are resolved from the `catalogs` section in `pnpm-lock.yaml`.
+- pnpm: Remove debug `traceShow` in workspace parser that printed the entire parsed `pnpm-workspace.yaml` to stderr.
+
 ## 3.17.2
 
 - Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))

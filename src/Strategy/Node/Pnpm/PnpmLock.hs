@@ -139,8 +139,38 @@ data PnpmLockfile = PnpmLockfile
   , lockFileVersion :: PnpmLockFileVersion
   , lockFileSnapshots :: PnpmLockFileSnapshots
   -- ^ Dependency graph in lockfile version > 9
+  , lockFileCatalogs :: PnpmCatalogs
+  -- ^ Catalog definitions in lockfile version >= 9
   }
   deriving (Show, Eq, Ord)
+
+-- | Catalogs parsed from lockfile. Maps catalog name to (package name -> resolved version).
+-- See: https://pnpm.io/catalogs
+newtype PnpmCatalogs = PnpmCatalogs
+  { catalogEntries :: Map Text (Map Text Text)
+  }
+  deriving (Show, Eq, Ord, Semigroup, Monoid)
+
+instance FromJSON PnpmCatalogs where
+  parseJSON = withObject "PnpmCatalogs" $ \o -> do
+    parsed <- traverse parseCatalog (toHashMapText o)
+    pure $ PnpmCatalogs (Map.fromList $ HashMap.toList parsed)
+    where
+      parseCatalog :: Yaml.Value -> Parser (Map Text Text)
+      parseCatalog = withObject "Catalog" $ \entries ->
+        (Map.fromList . HashMap.toList)
+          <$> traverse (withObject "CatalogEntry" (.: "version")) (toHashMapText entries)
+
+-- | Resolve a @catalog:name@ version reference using the parsed catalogs section.
+-- @catalog:@ (empty name) maps to the @default@ catalog.
+-- @catalog:react19@ maps to the @react19@ catalog.
+-- If the catalog or package is not found, the original version string is returned.
+resolveCatalogVersion :: PnpmCatalogs -> Text -> Text -> Text
+resolveCatalogVersion (PnpmCatalogs cats) depName ver
+  | Just catalogName <- Text.stripPrefix "catalog:" ver =
+      let name = if Text.null catalogName then "default" else catalogName
+       in fromMaybe ver $ Map.lookup name cats >>= Map.lookup depName
+  | otherwise = ver
 
 type SnapshotDepName = Text
 
@@ -190,6 +220,8 @@ instance FromJSON PnpmLockfile where
     packages <- obj .:? "packages" .!= mempty
     -- PNPM 9 snapshots
     snapshots <- obj .:? "snapshots" .!= mempty
+    -- PNPM 9 catalogs
+    catalogs <- obj .:? "catalogs" .!= mempty
 
     -- Map pnpm non-workspace lockfile format to pnpm workspace lockfile format.
     --
@@ -208,7 +240,7 @@ instance FromJSON PnpmLockfile where
             then Map.insert "." virtualRootWs importers
             else importers
 
-    pure $ PnpmLockfile{importers = refinedImporters, packages = packages, lockFileVersion = rawLockFileVersion, lockFileSnapshots = snapshots}
+    pure $ PnpmLockfile{importers = refinedImporters, packages = packages, lockFileVersion = rawLockFileVersion, lockFileSnapshots = snapshots, lockFileCatalogs = catalogs}
     where
       getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
         (Just '1') -> pure $ PnpmLockLt4 ver
@@ -315,14 +347,16 @@ buildGraph lockFile = withoutLocalPackages . hydrateDepEnvs $
   run . withLabeling applyLabels $ do
     for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
       for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
-        for_ (toResolvedDependency depName depVersion) $ \dep -> do
-          direct dep
-          when isV9 $ label dep (PnpmEnv EnvProduction)
+        let resolvedVersion = resolveCatalogVersion lockFile.lockFileCatalogs depName depVersion
+         in for_ (toResolvedDependency depName resolvedVersion) $ \dep -> do
+              direct dep
+              when isV9 $ label dep (PnpmEnv EnvProduction)
 
       for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
-        for_ (toResolvedDependency depName depVersion) $ \dep -> do
-          direct dep
-          when isV9 $ label dep (PnpmEnv EnvDevelopment)
+        let resolvedVersion = resolveCatalogVersion lockFile.lockFileCatalogs depName depVersion
+         in for_ (toResolvedDependency depName resolvedVersion) $ \dep -> do
+              direct dep
+              when isV9 $ label dep (PnpmEnv EnvDevelopment)
 
     -- Add edges and deep dependencies by iterating over all packages.
     --
