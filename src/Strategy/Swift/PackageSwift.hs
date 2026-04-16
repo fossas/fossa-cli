@@ -199,19 +199,20 @@ parsePackageDep = try parsePathDep <|> parseGitDep
 
 parsePackageDependencies :: Parser [SwiftPackageDep]
 parsePackageDependencies = do
-  _ <- lexeme $ skipManyTill anySingle $ symbol "let package = Package("
+  _ <- lexeme $ skipManyTill anySingle $ symbol "let package = Package"
 
-  concat
-    <$> sepEndBy
-      ( do
-          key <- parseKey
-          case key of
-            "dependencies" -> parseDeps
-            _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
-      )
-      (symbol ",")
+  betweenBrackets $
+    concat
+      <$> sepEndBy
+        ( do
+            key <- parseKey
+            case key of
+              "dependencies" -> parseDeps
+              _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
+        )
+        (symbol ",")
   where
-    parseKey = try (lexeme $ takeWhile1P (Just "package key") (/= ':')) <* symbol ":"
+    parseKey = try $ lexeme $ takeWhile1P (Just "package key") (/= ':') <* symbol ":"
     parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
     parseIdentifier = takeWhile1P (Just "parse identifier") (/= ',') $> []
     nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: [Char])))

@@ -81,5 +81,5 @@ let package = Package(
     providers: [
         .brew(["example-lib"]),
         .apt(["libexample-dev"])
-    ]
+    ], // Trailing comma!
 )
