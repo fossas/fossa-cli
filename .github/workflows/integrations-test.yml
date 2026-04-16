@@ -77,6 +77,17 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
+    # Cache the Hackage package index so cabal update does an incremental
+    # update (~seconds) instead of a full download (~3.5 min).
+    # Shared across all jobs; refreshed daily.
+    - uses: actions/cache@v5
+      name: Cache Hackage index
+      with:
+        path: ~/.cache/cabal/packages
+        key: hackage-index-${{ runner.os }}-${{ steps.latest-tag.outputs.tag }}
+        restore-keys: |
+          hackage-index-${{ runner.os }}-
+
     - uses: actions/cache@v5
       name: Cache cabal store
       with:
@@ -193,6 +204,14 @@ jobs:
         extra_nix_config: "build-users-group = nixbld"
 
     # Restore caches populated by the build job.
+    - uses: actions/cache@v5
+      name: Cache Hackage index
+      with:
+        path: ~/.cache/cabal/packages
+        key: hackage-index-${{ runner.os }}-${{ needs.build.outputs.latest-tag }}
+        restore-keys: |
+          hackage-index-${{ runner.os }}-
+
     - uses: actions/cache@v5
       name: Cache cabal store
       with:
