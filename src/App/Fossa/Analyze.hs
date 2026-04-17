@@ -76,7 +76,7 @@ import App.Fossa.ManualDeps (
   ManualDepsResult (..),
   analyzeFossaDepsFile,
  )
-import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies', withPathDependencyNudge)
+import App.Fossa.PathDependency (enrichPathDependencies, enrichPathDependencies')
 import App.Fossa.PreflightChecks (PreflightCommandChecks (AnalyzeChecks), preflightChecks)
 import App.Fossa.Reachability.Upload (analyzeForReachability, onlyFoundUnits)
 import App.Fossa.Subcommand (SubCommand)
@@ -481,7 +481,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         $ runStickyLogger SevInfo
         $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
     (True, _) -> pure $ map enrichPathDependencies' filteredProjects
-    (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
+    (False, _) -> pure filteredProjects
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
   reachabilityUnitsResult <-

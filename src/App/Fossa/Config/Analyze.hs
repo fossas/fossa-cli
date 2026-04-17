@@ -139,6 +139,8 @@ import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilt
 -- CLI flags, for use with 'Data.Flag'
 data DeprecatedAllowNativeLicenseScan = DeprecatedAllowNativeLicenseScan deriving (Generic)
 data DeprecatedUseV3GoResolver = DeprecatedUseV3GoResolver deriving (Generic)
+data DeprecatedExperimentalAnalyzePathDependencies = DeprecatedExperimentalAnalyzePathDependencies deriving (Generic)
+data DisablePathDependencyScans = DisablePathDependencyScans deriving (Generic)
 data ForceVendoredDependencyRescans = ForceVendoredDependencyRescans deriving (Generic)
 data ForceFirstPartyScans = ForceFirstPartyScans deriving (Generic)
 data ForceNoFirstPartyScans = ForceNoFirstPartyScans deriving (Generic)
@@ -242,7 +244,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeSkipVSIGraphResolution :: [VSI.Locator]
   , analyzeBaseDir :: FilePath
   , analyzeDeprecatedUseV3GoResolver :: Flag DeprecatedUseV3GoResolver
-  , analyzePathDependencies :: Bool
+  , analyzeDeprecatedExperimentalAnalyzePathDependencies :: Flag DeprecatedExperimentalAnalyzePathDependencies
+  , analyzeDisablePathDependencyScans :: Flag DisablePathDependencyScans
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
@@ -364,6 +367,7 @@ cliParser =
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
     <*> experimentalAnalyzePathDependencies
+    <*> disablePathDependencyScans
     <*> flagOpt ForceFirstPartyScans (applyFossaStyle <> long "experimental-force-first-party-scans" <> stringToHelpDoc "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (applyFossaStyle <> long "experimental-block-first-party-scans" <> stringToHelpDoc "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (applyFossaStyle <> long "ignore-org-wide-custom-license-scan-configs" <> stringToHelpDoc "Ignore custom-license scan configurations for your organization. These configurations are defined in the `Integrations` section of the Admin settings in the FOSSA web app")
@@ -405,12 +409,16 @@ withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaSt
 experimentalUseV3GoResolver :: Parser (Flag DeprecatedUseV3GoResolver)
 experimentalUseV3GoResolver = flagOpt DeprecatedUseV3GoResolver (applyFossaStyle <> long "experimental-use-v3-go-resolver" <> hidden)
 
-experimentalAnalyzePathDependencies :: Parser Bool
+experimentalAnalyzePathDependencies :: Parser (Flag DeprecatedExperimentalAnalyzePathDependencies)
 experimentalAnalyzePathDependencies =
-  switch $
-    long "experimental-analyze-path-dependencies"
-      <> applyFossaStyle
-      <> stringToHelpDoc "License scan dependencies sourced from file system, as indicated in manifest files. This will be enabled by default in the future."
+  flagOpt DeprecatedExperimentalAnalyzePathDependencies (applyFossaStyle <> long "experimental-analyze-path-dependencies" <> hidden)
+
+disablePathDependencyScans :: Parser (Flag DisablePathDependencyScans)
+disablePathDependencyScans =
+  flagOpt DisablePathDependencyScans $
+    applyFossaStyle
+      <> long "disable-path-dependency-scans"
+      <> stringToHelpDoc "Disable license scanning of path dependencies. Path dependency analysis is enabled by default."
 
 vendoredDependencyModeOpt :: Parser ArchiveUploadType
 vendoredDependencyModeOpt = option (eitherReader parseType) (applyFossaStyle <> long "force-vendored-dependency-scan-method" <> metavar "METHOD" <> helpDoc vendoredDependencyScanMethodHelp)
@@ -506,6 +514,19 @@ mergeOpts maybeDebugDir cfg env cliOpts = do
         , "The --experimental-use-v3-go-resolver flag is deprecated and no longer has any effect."
         , ""
         , "The v3 Go resolver (package-based analysis) is now the default behavior."
+        , ""
+        , "Please remove this flag from your commands."
+        ]
+
+  let experimentalAnalyzePathDependenciesFlagUsed = fromFlag DeprecatedExperimentalAnalyzePathDependencies $ analyzeDeprecatedExperimentalAnalyzePathDependencies cliOpts
+  when experimentalAnalyzePathDependenciesFlagUsed $ do
+    logWarn $
+      vsep
+        [ "DEPRECATION NOTICE"
+        , "========================"
+        , "The --experimental-analyze-path-dependencies flag is deprecated and no longer has any effect."
+        , ""
+        , "Path dependency analysis is now enabled by default. Use --disable-path-dependency-scans to opt out."
         , ""
         , "Please remove this flag from your commands."
         ]
@@ -684,13 +705,13 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectStrategyConfig :: Maybe ConfigFile -> AnalyzeCliOpts -> StrategyConfig
-collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies} =
+collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzeDisablePathDependencyScans} =
   StrategyConfig
     ( fmap
         gradleConfigsOnly
         (maybeCfg >>= configExperimental >>= gradle)
     )
-    shouldAnalyzePathDependencies
+    (not $ fromFlag DisablePathDependencyScans analyzeDisablePathDependencyScans)
     (UseGitBackedCargoLocators True)
 
 collectVendoredDeps ::
