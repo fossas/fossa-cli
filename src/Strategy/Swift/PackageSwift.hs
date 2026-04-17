@@ -214,8 +214,8 @@ parsePackageDependencies = do
   where
     parseKey = try $ lexeme $ takeWhile1P (Just "package key") (/= ':') <* symbol ":"
     parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
-    parseIdentifier = takeWhile1P (Just "parse identifier") (/= ',') $> []
-    nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: [Char])))
+    parseIdentifier = takeWhile1P (Just "parse identifier") (`notElem` (",()[]" :: String)) $> []
+    nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: String)))
     parseNonDepArray = nestedBrackets $> []
 
 parseSwiftToolVersion :: Parser Text
