@@ -43,6 +43,17 @@ dependencyThree =
     , dependencyTags = Map.empty
     }
 
+dependencyPath :: Dependency
+dependencyPath =
+  Dependency
+    { dependencyType = UnresolvedPathType
+    , dependencyName = "../local-gem"
+    , dependencyVersion = Just (CEq "0.1.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.empty
+    }
+
 gitSection :: Section
 gitSection =
   GitSection
@@ -82,6 +93,17 @@ dependencySection =
     , DirectDep{directName = "dep-two"}
     ]
 
+pathSection :: Section
+pathSection =
+  PathSection
+    "../local-gem"
+    [ Spec
+        { specVersion = "0.1.0"
+        , specName = "local-gem"
+        , specDeps = []
+        }
+    ]
+
 gemfileLockSection :: [Section]
 gemfileLockSection = [gitSection, gemSection, dependencySection]
 
@@ -89,7 +111,7 @@ spec :: T.Spec
 spec = do
   gemfileLock <- T.runIO (TIO.readFile "test/Ruby/testdata/gemfileLock")
 
-  T.describe "gemfile lock analyzer" $
+  T.describe "gemfile lock analyzer" $ do
     T.it "produces the expected output" $ do
       let graph = buildGraph gemfileLockSection
 
@@ -101,6 +123,11 @@ spec = do
         , (dependencyTwo, dependencyThree)
         ]
         graph
+
+    T.it "emits PATH section gems as UnresolvedPathType with the local path as the name" $ do
+      let graph = buildGraph [pathSection, DependencySection [DirectDep{directName = "local-gem"}]]
+      expectDeps [dependencyPath] graph
+      expectDirect [dependencyPath] graph
 
   T.describe "gemfile lock parser" $ do
     T.it "parses error messages into an empty list" $ do

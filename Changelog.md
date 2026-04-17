@@ -3,6 +3,7 @@
 ## 3.17.2
 
 - Path dependencies: License scanning of path dependencies is now enabled by default. The `--experimental-analyze-path-dependencies` flag is deprecated and has no effect; use `--disable-path-dependency-scans` to opt out.
+- Ruby: Gems declared in `Gemfile.lock` `PATH` sections are now reported as path dependencies (previously they were emitted as regular gem deps with the local path only in `locations`). This lets them flow through path-dependency license scanning and upload.
 - Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
 
 ## 3.17.1

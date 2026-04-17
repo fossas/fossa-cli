@@ -72,6 +72,8 @@ data GemfileLabel
   = GemfileVersion Text
   | -- | repo url, revision
     GitRemote Text (Maybe Text)
+  | -- | local filesystem path to a gem source (from a Gemfile.lock PATH section)
+    PathRemote Text
   | -- | url
     OtherRemote Text
   deriving (Eq, Ord, Show)
@@ -94,6 +96,8 @@ toDependency pkg = foldr applyLabel start
     applyLabel (GemfileVersion ver) dep = dep{dependencyVersion = dependencyVersion dep <|> (Just . CEq) ver}
     applyLabel (GitRemote repo maybeRevision) dep =
       dep{dependencyType = GitType, dependencyName = repo, dependencyVersion = (Just . CEq) =<< maybeRevision, dependencyLocations = maybe repo (\revision -> repo <> "@" <> revision) maybeRevision : dependencyLocations dep}
+    applyLabel (PathRemote path) dep =
+      dep{dependencyType = UnresolvedPathType, dependencyName = path}
     applyLabel (OtherRemote loc) dep =
       dep{dependencyLocations = loc : dependencyLocations dep}
 
@@ -107,7 +111,7 @@ buildGraph sections =
     addSection (GitSection remote revision branch specs) =
       traverse_ (addSpec (GitRemote remote (revision <|> branch))) specs
     addSection (PathSection remote specs) =
-      traverse_ (addSpec (OtherRemote remote)) specs
+      traverse_ (addSpec (PathRemote remote)) specs
     addSection (GemSection remote specs) =
       traverse_ (addSpec (OtherRemote remote)) specs
     addSection UnknownSection{} = pure ()
