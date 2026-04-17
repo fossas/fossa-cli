@@ -19,7 +19,8 @@ import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
 import Data.Set (Set, fromList, member)
-import Data.Text (Text)
+import Data.String.Conversion (toText)
+import Data.Text (Text, intercalate)
 import Data.Void (Void)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
@@ -37,9 +38,11 @@ import Text.Megaparsec (
   many,
   noneOf,
   sepEndBy,
+  sepEndBy1,
   skipManyTill,
+  some,
  )
-import Text.Megaparsec.Char (space1)
+import Text.Megaparsec.Char (digitChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 -- | Parsing
@@ -156,8 +159,16 @@ parsePackageDep = try parsePathDep <|> parseGitDep
 
     parseRequirement :: Text -> Parser Text
     parseRequirement t =
-      try (symbol ("." <> t) *> betweenBrackets parseQuotedText)
-        <|> parseKeyValue t parseQuotedText
+      try (symbol ("." <> t) *> betweenBrackets parseVersion)
+        <|> parseKeyValue t parseVersion
+
+    parseVersion :: Parser Text
+    parseVersion = try parseQuotedText <|> parseVersionConstructor
+
+    parseVersionConstructor :: Parser Text
+    parseVersionConstructor = do
+      _ <- symbol "Version"
+      betweenBrackets $ (intercalate ".") <$> sepEndBy1 (toText <$> some digitChar) (symbol ",")
 
     parseUpToOperator :: Text -> Parser Text
     parseUpToOperator t = symbol ("." <> t) *> betweenBrackets (parseRequirement "from")
