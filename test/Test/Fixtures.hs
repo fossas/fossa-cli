@@ -640,7 +640,7 @@ fixtureStrategyConfig :: StrategyConfig
 fixtureStrategyConfig =
   StrategyConfig
     { allowedGradleConfigs = Nothing
-    , resolvePathDependencies = False
+    , resolvePathDependencies = True
     , useGitBackedCargoLocators = ANZ.UseGitBackedCargoLocators True
     }
 

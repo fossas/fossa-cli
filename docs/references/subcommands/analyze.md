@@ -188,7 +188,7 @@ In addition to the [standard flags](#specifying-fossa-project-details), the anal
 | [`--experimental-enable-binary-discovery`](../experimental/binary-discovery/README.md)   | Enable reporting binary files as unlicensed dependencies. For more information, see the [binary discovery overview](../experimental/binary-discovery/README.md).                               |
 | `--experimental-force-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to run                                                                                                                  |
 | `--experimental-block-first-party-scans`                                                 | Force [first party scans](../../features/first-party-license-scans.md) to not run. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans. |
-| `--experimental-analyze-path-dependencies`                                               | License scan path dependencies, and include them in the final analysis. For more information, see the [path dependency overview](../experimental/path-dependency.md).                          |
+| `--disable-path-dependency-scans`                                                        | Disable license scanning of path dependencies. Path dependency analysis is enabled by default. For more information, see the [path dependency overview](../experimental/path-dependency.md). |
 
 
 ### F.A.Q.

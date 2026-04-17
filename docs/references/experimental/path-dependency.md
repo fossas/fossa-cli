@@ -5,7 +5,7 @@
 Path dependency is a dependency, which is sourced from filesystem, as opposed to a package manager registry or URL. A path dependency may or may not have transitive dependencies. 
 Path dependency is also referred to as `local` or `vendor` dependency by some package managers.
 
-For example, in the following `go.mod` file, with `gomod` analysis and the `--experimental-analyze-path-dependencies` flag, `fossa-cli` would consider `../vendor/squirrel`, to be a path dependency. If path dependency analysis is disabled, `fossa-cli` would ignore this dependency completely and only show transitive dependencies originating from `../vendor/squirrel`. In such a case, license and copyright obligations originating from `../vendor/squirrel` will not be captured in FOSSA's findings, and subsequent software bill of materials generated.
+For example, in the following `go.mod` file, with `gomod` analysis, `fossa-cli` would consider `../vendor/squirrel`, to be a path dependency. If path dependency analysis is disabled (via the `--disable-path-dependency-scans` flag), `fossa-cli` would ignore this dependency completely and only show transitive dependencies originating from `../vendor/squirrel`. In such a case, license and copyright obligations originating from `../vendor/squirrel` will not be captured in FOSSA's findings, and subsequent software bill of materials generated.
 
 ```go
 // Example go.mod file
@@ -41,11 +41,13 @@ In the event that caching is causing problems, FOSSA can be made to rescan this 
 
 ### How do I enable path dependency in FOSSA analysis?
 
-Run `fossa analyze` with the `--experimental-analyze-path-dependencies` flag.
+Path dependency analysis is enabled by default. No flag is required.
+
+The legacy `--experimental-analyze-path-dependencies` flag is now a deprecated no-op and will be removed in a future release.
 
 ### How do I disable path dependency in FOSSA analysis?
 
-By default, path dependency analysis is disabled. Note that, in the future, `fossa-cli` will enable path dependency analysis by default.
+Run `fossa analyze` with the `--disable-path-dependency-scans` flag.
 
 ### Is `fossa-cli` uploading the content of my path dependency to the server?
 
