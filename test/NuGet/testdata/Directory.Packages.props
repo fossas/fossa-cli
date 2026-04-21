@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="one" Version="1.0.0" />
+    <PackageVersion Include="two" Version="2.0.0" />
+    <PackageVersion Include="three" Version="3.0.0" />
+    <PackageVersion Include="four" Version="4.0.0" />
+    <PackageVersion Include="five" Version="5.0.0" />
+    <PackageVersion Include="MixedCase.Package" Version="6.0.0" />
+  </ItemGroup>
+</Project>
