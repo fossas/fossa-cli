@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.17.3
 
 - Swift: Fix a bug in the `Package.swift` parser which would cause it to error on valid syntax.
 - NuGet: Add Central Package Management (CPM) support — versions defined in `Directory.Packages.props` are now resolved for `PackageReference` entries that omit a `Version` attribute. ([#1694](https://github.com/fossas/fossa-cli/pull/1694))
