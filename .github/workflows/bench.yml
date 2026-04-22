@@ -7,18 +7,24 @@ jobs:
     runs-on: ubuntu-latest
     container: fossa/haskell-static-alpine:ghc-9.8.4
 
+    env:
+      GHC_VERSION: '9.8.4'
+
     steps:
     - uses: dtolnay/rust-toolchain@stable
 
     - uses: actions/checkout@v6
       with:
         lfs: true
+        fetch-tags: true
+
+    - name: Get latest release tag
+      id: latest-tag
+      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
 
     # Adding the "git config ..." line ensures git doesn't fail during our build.
-    - name: Configure Git and Collect Config
-      run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
+    - name: Configure Git
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
 
     # adduser cannot add users to group: https://unix.stackexchange.com/a/397733
@@ -47,46 +53,24 @@ jobs:
 
     - uses: Swatinem/rust-cache@v2
 
-    # Compute cache key and save to a temporary file.
-    #
-    # We compute the cache key based on the solved install plan instead of just
-    # hashing the `.cabal` file, since there are many kinds of changes that will
-    # cause `.cabal` to change (e.g. adding new source modules).
-    - name: Compute cache key
-      id: compute-cache-key
-      run: |
-        cabal --project-file=cabal.project.ci.linux update
-        cabal --project-file=cabal.project.ci.linux build --dry-run
-        cat dist-newstyle/cache/plan.json | jq '."install-plan"[]."id"' | sort > /tmp/cabal-cache-key
-        echo "Install plan:"
-        cat /tmp/cabal-cache-key
-        export CABAL_CACHE_KEY=$(sha256sum /tmp/cabal-cache-key | awk '{print $1}')
-        echo "Cabal cache key: $CABAL_CACHE_KEY"
-        echo "cabal-cache-key=$CABAL_CACHE_KEY" >> $GITHUB_OUTPUT
-
-    # Benchmarks builds at a different optimization level than everything else.
-    # I think this means it needs its own cache, it can't rely on the others.
-    # Otherwise, the benchmarks need to be built at the same optimization level.
-    - uses: actions/cache@v3
+    # Benchmarks build at a different optimization level, so they use
+    # their own cache prefix to avoid collisions with the main build.
+    - uses: actions/cache@v4
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || '~/.local/state/cabal' }}
-        key: ${{ runner.os }}-benchmarks-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-cabal-cache-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
-          ${{ runner.os }}-benchmarks-cabal-cache-
-          ${{ runner.os }}-benchmarks-
-          ${{ runner.os }}-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-cabal-cache-
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ github.sha }}
+        key: ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-${{ hashFiles('spectrometer.cabal', 'cabal.project.ci.linux', 'cabal.project.common') }}
         restore-keys: |
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-${{ env.parent_commit }}
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-dist-newstyle-
-          ${{ runner.os }}-${{ env.GHC_VERSION }}-
-          ${{ runner.os }}-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-
+          ${{ runner.os }}-${{ env.GHC_VERSION }}-benchmarks-dist-newstyle-
 
     - name: Build Rust dependencies
       run: cargo build --release
