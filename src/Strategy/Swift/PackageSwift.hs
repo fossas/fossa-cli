@@ -112,9 +112,7 @@ instance ToText SwiftVersion where
 data SwiftVersionPart = Component Text | PrereleaseIdentifiers [Text] | BuildMetadataIdentifiers [Text]
 
 parseVersionConstructor :: Parser SwiftVersion
-parseVersionConstructor = do
-  _ <- symbol "Version"
-  assembleParts <$> parseParts
+parseVersionConstructor = (symbol "Version") >> assembleParts <$> parseParts
   where
     parseParts :: Parser [SwiftVersionPart]
     parseParts = betweenBrackets $ catMaybes <$> sepEndBy1 parseVersionArgument (symbol ",")
