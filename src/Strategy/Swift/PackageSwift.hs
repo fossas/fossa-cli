@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Strategy.Swift.PackageSwift (
   analyzePackageSwift,
   SwiftPackageGitDep (..),
@@ -17,9 +19,11 @@ import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp
 import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Functor (($>))
+import Data.List (foldl')
 import Data.Map.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Set (Set, fromList, member)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (ToText, toText)
 import Data.Text (Text, intercalate)
 import Data.Void (Void)
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
@@ -90,6 +94,52 @@ isEndLine :: Char -> Bool
 isEndLine '\n' = True
 isEndLine '\r' = True
 isEndLine _ = False
+
+-- | Represents https://developer.apple.com/documentation/packagedescription/version
+data SwiftVersion = SwiftVersion
+  { parts :: [Text]
+  , prereleaseIdentifiers :: [Text]
+  , buildMetadataIdentifiers :: [Text]
+  }
+
+instance ToText SwiftVersion where
+  toText SwiftVersion{..} = version <> prerelease <> build
+    where
+      version = (intercalate "." parts)
+      prerelease = if not $ null prereleaseIdentifiers then "-" <> (intercalate "." prereleaseIdentifiers) else ""
+      build = if not $ null buildMetadataIdentifiers then "+" <> (intercalate "." buildMetadataIdentifiers) else ""
+
+data SwiftVersionPart = Component Text | PrereleaseIdentifiers [Text] | BuildMetadataIdentifiers [Text]
+
+parseVersionConstructor :: Parser SwiftVersion
+parseVersionConstructor = do
+  _ <- symbol "Version"
+  assembleParts <$> parseParts
+  where
+    parseParts :: Parser [SwiftVersionPart]
+    parseParts = betweenBrackets $ catMaybes <$> sepEndBy1 parseVersionArgument (symbol ",")
+
+    parseVersionArgument :: Parser (Maybe SwiftVersionPart)
+    parseVersionArgument = do
+      key <- (optional . try) (lexeme $ takeWhile1P (Just "package key") (`notElem` (":," :: String)) <* symbol ":")
+      case key of
+        Nothing -> (Just . Component) . toText <$> some digitChar
+        Just ("prereleaseIdentifiers") -> (Just . PrereleaseIdentifiers) <$> parseStringArray
+        Just ("buildMetadataIdentifiers") -> (Just . BuildMetadataIdentifiers) <$> parseStringArray
+        _ -> pure Nothing
+
+    parseStringArray :: Parser [Text]
+    parseStringArray = betweenSquareBrackets (sepEndBy parseQuotedText (symbol ","))
+
+    assembleParts :: [SwiftVersionPart] -> SwiftVersion
+    assembleParts =
+      foldl'
+        ( \version part -> case part of
+            Component p -> version{parts = (parts version) ++ [p]}
+            PrereleaseIdentifiers p -> version{prereleaseIdentifiers = p}
+            BuildMetadataIdentifiers p -> version{buildMetadataIdentifiers = p}
+        )
+        (SwiftVersion{parts = [], prereleaseIdentifiers = [], buildMetadataIdentifiers = []})
 
 -- | Represents https://github.com/apple/swift-package-manager/blob/main/Documentation/PackageDescription.md#methods.
 data SwiftPackage = SwiftPackage
@@ -163,12 +213,7 @@ parsePackageDep = try parsePathDep <|> parseGitDep
         <|> parseKeyValue t parseVersion
 
     parseVersion :: Parser Text
-    parseVersion = try parseQuotedText <|> parseVersionConstructor
-
-    parseVersionConstructor :: Parser Text
-    parseVersionConstructor = do
-      _ <- symbol "Version"
-      betweenBrackets $ (intercalate ".") <$> sepEndBy1 (toText <$> some digitChar) (symbol ",")
+    parseVersion = try parseQuotedText <|> (toText <$> parseVersionConstructor)
 
     parseUpToOperator :: Text -> Parser Text
     parseUpToOperator t = symbol ("." <> t) *> betweenBrackets (parseRequirement "from")
