@@ -493,6 +493,7 @@ library
     Strategy.Node.YarnV2.Resolvers
     Strategy.Node.YarnV2.YarnLock
     Strategy.NuGet
+    Strategy.NuGet.DirectoryPackagesProps
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
@@ -690,6 +691,7 @@ test-suite unit-tests
     Node.PackageJsonSpec
     Node.PackageLockSpec
     Node.PackageLockV3Spec
+    NuGet.DirectoryPackagesPropsSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec

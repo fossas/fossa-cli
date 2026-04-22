@@ -16,6 +16,7 @@ import Control.Applicative (Alternative ((<|>)), optional)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
 import Control.Monad (void)
 import Data.Foldable (asum)
+import Data.Functor (($>))
 import Data.Map.Strict qualified as Map
 import Data.Set (Set, fromList, member)
 import Data.Text (Text)
@@ -33,6 +34,8 @@ import Text.Megaparsec (
   anySingle,
   between,
   empty,
+  many,
+  noneOf,
   sepEndBy,
   skipManyTill,
  )
@@ -196,8 +199,24 @@ parsePackageDep = try parsePathDep <|> parseGitDep
 
 parsePackageDependencies :: Parser [SwiftPackageDep]
 parsePackageDependencies = do
-  _ <- lexeme $ skipManyTill anySingle $ symbol "let package = Package("
-  skipManyTill anySingle (symbol "dependencies:") *> betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
+  _ <- lexeme $ skipManyTill anySingle $ symbol "let package = Package"
+
+  betweenBrackets $
+    concat
+      <$> sepEndBy
+        ( do
+            key <- parseKey
+            case key of
+              "dependencies" -> parseDeps
+              _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
+        )
+        (symbol ",")
+  where
+    parseKey = try $ lexeme $ takeWhile1P (Just "package key") (/= ':') <* symbol ":"
+    parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
+    parseIdentifier = takeWhile1P (Just "parse identifier") (`notElem` (",()[]" :: String)) $> []
+    nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: String)))
+    parseNonDepArray = nestedBrackets $> []
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =

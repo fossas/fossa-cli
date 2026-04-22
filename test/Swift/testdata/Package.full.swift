@@ -1,8 +1,7 @@
 // swift-tools-version:5.3
 
-// A typical Package.swift. The `targets` section is intentionally before the `dependencies` section to test
-// that our parser doesn't get confused by the target dependencies (which we should ignore) coming before
-// the actual dependencies
+// This Package.swift has values set for all valid options. This is to test that our parser is able to handle
+// all fields in a Package.swift
 
 import PackageDescription
 
@@ -18,18 +17,7 @@ let package = Package(
         .library(name: "PaperStatic", type: .static, targets: ["Paper"]),
         .library(name: "PaperDynamic", type: .dynamic, targets: ["Paper"]),
     ],
-    targets: [
-        .target(
-            name: "DeckOfPlayingCards",
-            dependencies: [
-                .byName(name: "PlayingCard")
-            ]),
-        .testTarget(
-            name: "DeckOfPlayingCardsTests",
-            dependencies: [
-                .target(name: "DeckOfPlayingCards")
-            ]),
-    ],
+    // Random comment
     dependencies: [
 
         // without any contsraint
@@ -68,5 +56,30 @@ let package = Package(
         // path
         .package(path: "../.."),
         .package(name: "package-with-name", path: "../.."),
-    ]
+    ],
+    targets: [
+        .target(
+            name: "DeckOfPlayingCards",
+            dependencies: [
+                .byName(name: "PlayingCard")
+            ]),
+        .testTarget(
+            name: "DeckOfPlayingCardsTests",
+            dependencies: [
+                .target(name: "DeckOfPlayingCards")
+            ]),
+    ],
+    swiftLanguageModes: [.v5, .v6],
+
+    /*
+     * Another comment
+     */
+
+    cLanguageStandard: .c11,
+    cxxLanguageStandard: .cxx17, // Specifies the C++17 standard
+    pkgConfig: "example-lib", // Searches for example-lib.pc
+    providers: [
+        .brew(["example-lib"]),
+        .apt(["libexample-dev"])
+    ], // Trailing comma!
 )
