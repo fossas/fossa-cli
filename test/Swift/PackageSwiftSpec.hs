@@ -76,6 +76,7 @@ expectedSwiftPackage =
       , gitDepUpToNextMinor "https://github.com/example/example2.git" "13.99.123+abcd"
       , gitDepExactly "https://github.com/example/example3.git" "0.0.3-build.1"
       , gitDepExactly "https://github.com/example/example4.git" "1.0.14"
+      , gitDepWithRhsHalfOpenInterval "https://github.com/example/example5.git" "1.0.14" "1.0.20"
       ]
       ++ [PathSource "../..", PathSource "../.."]
 

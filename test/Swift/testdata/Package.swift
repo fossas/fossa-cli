@@ -48,7 +48,7 @@ let package = Package(
         .package(url: "https://github.com/shogo4405/HaishinKit.swift", exact: "1.1.6"),
 
         // upToNextMajor
-       .package(url: "https://github.com/dankogai/swift-sion", .upToNextMajor(from: "0.0.1")),
+        .package(url: "https://github.com/dankogai/swift-sion", .upToNextMajor(from: "0.0.1")),
 
         // upToNextMinor
         .package(url: "git@github.com:behrang/YamlSwift.git", .upToNextMinor(from: "3.4.0")),
@@ -70,6 +70,7 @@ let package = Package(
         .package(url: "https://github.com/example/example2.git", .upToNextMinor(from: Version(13, 99, 123, buildMetadataIdentifiers: ["abcd"]))),
         .package(url: "https://github.com/example/example3.git", .exact(Version(0, 0, 3, prereleaseIdentifiers: ["build", "1"]))),
         .package(url: "https://github.com/example/example4.git", .exact(Version(1, 0, 14))),
+        .package(url: "https://github.com/example/example5.git", Version(1, 0, 14)..<Version(1, 0, 20)),
 
         // path
         .package(path: "../.."),

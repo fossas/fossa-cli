@@ -124,7 +124,8 @@ parseVersionConstructor = (symbol "Version") >> assembleParts <$> parseParts
         Nothing -> (Just . Component) . toText <$> some digitChar
         Just ("prereleaseIdentifiers") -> (Just . PrereleaseIdentifiers) <$> parseStringArray
         Just ("buildMetadataIdentifiers") -> (Just . BuildMetadataIdentifiers) <$> parseStringArray
-        _ -> pure Nothing
+        -- Unknown key -- Not reachable in practice, but consume the value of any unknown keys so the parser continues
+        _ -> Nothing <$ (void parseStringArray <|> void parseQuotedText <|> void (some digitChar))
 
     parseStringArray :: Parser [Text]
     parseStringArray = betweenSquareBrackets (sepEndBy parseQuotedText (symbol ","))
@@ -218,9 +219,9 @@ parsePackageDep = try parsePathDep <|> parseGitDep
 
     parseRange :: Text -> Parser (Text, Text)
     parseRange rangeOperator = do
-      lhs <- parseQuotedText
+      lhs <- parseVersion
       _ <- symbol rangeOperator
-      rhs <- parseQuotedText
+      rhs <- parseVersion
       pure (lhs, rhs)
 
     optionallyTry :: Parser a -> Parser (Maybe a)
