@@ -76,6 +76,13 @@ testJotaiEagerCatalogs =
       it "should not contain any unresolved catalog: version strings" $ \(result, _) ->
         filter (Text.isPrefixOf "catalog:") (allVersionStrings (allDeps result)) `shouldBe` []
 
+      -- Guard against a regression where catalog-backed deps are silently
+      -- dropped entirely — in that case the "no unresolved catalog:" check
+      -- would pass trivially. A real pnpm v9 project has many transitive
+      -- deps; a near-empty graph means resolution failed.
+      it "should discover a non-trivial dependency graph" $ \(result, _) ->
+        length (allDeps result) `shouldSatisfy` (> 10)
+
 spec :: Spec
 spec = do
   testSuiteHasSomeDepResults elementPlus PnpmProjectType
