@@ -57,6 +57,7 @@ let package = Package(
         .package(url: "https://github.com/example/example.git", .from(Version(1, 7, 0, prereleaseIdentifiers: ["a", "b"], buildMetadataIdentifiers: ["x", "banana"]))),
         .package(url: "https://github.com/example/example2.git", .upToNextMinor(from: Version(13, 99, 123, buildMetadataIdentifiers: ["abcd"]))),
         .package(url: "https://github.com/example/example3.git", .exact(Version(0, 0, 3, prereleaseIdentifiers: ["build", "1"]))),
+        .package(url: "https://github.com/example/example4.git", .exact(Version(1, 0, 14))),
 
         // path
         .package(path: "../.."),
