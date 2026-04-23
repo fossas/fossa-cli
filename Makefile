@@ -126,8 +126,8 @@ lint-cargo:
 	@cargo clippy
 
 # Build cargo deps needed by the CLI and move them into place for cabal.
-build-embedded-rust-bins: target/release/berkeleydb target/release/millhone
-	cargo build --release --bin millhone --bin berkeleydb
+build-embedded-rust-bins: target/release/berkeleydb target/release/cryptoscan target/release/millhone
+	cargo build --release --bin millhone --bin berkeleydb --bin cryptoscan
 
 # Runs linter on only modified files
 # 
