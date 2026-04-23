@@ -241,6 +241,19 @@ jobs:
         done
         exit $fail
 
+    # Smoke test: the otool guard above proves the binary doesn't reference
+    # Homebrew paths, but doesn't prove it actually launches. This catches
+    # install_name_tool corruption, init-time failures, and any other issue
+    # that would make the artifact DOA on an end-user Mac. rendergraph is
+    # omitted because it errors without piped JSON input; if the others
+    # launch it loads through the same dyld path.
+    - name: Smoke-launch macOS binaries
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        ./release/fossa --version
+        ./release/diagnose --help > /dev/null
+        ./release/millhone --help > /dev/null
+
       # Documentation for what to do if this breaks: https://docs.google.com/document/d/1-TmYi9XKcJZWPRQIiOKEZEGBjrNgqqHB8AgLc5cuKMQ/edit?tab=t.0#heading=h.4jnaw7ic688f
       # Read that if we need to create a new certificate or sign updates to the ToS.
     - name: Sign and Notarize Binaries (Mac OS)
