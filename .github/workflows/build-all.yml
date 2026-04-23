@@ -62,7 +62,7 @@ jobs:
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
       run: |
-        brew install jq upx
+        brew install jq
 
     # Set up Haskell.
     - uses: haskell-actions/setup@v2
@@ -212,27 +212,38 @@ jobs:
       run: |
         strip release/*
 
-    # Record pre-UPX sizes so we can see the compression ratio in CI logs.
-    - name: Record pre-UPX sizes
-      if: ${{ contains(matrix.os, 'macos') || matrix.os-name == 'Linux' }}
+    # UPX compression on Linux amd64 only.
+    #
+    # macOS is intentionally excluded: UPX 5.x refuses to pack Mach-O
+    # without --force-macos ("CantPackException: macOS is currently not
+    # supported"). Stacking UPX's own experimental macOS support on top
+    # of the hardened-runtime notarization question makes failures
+    # diagnostically ambiguous. macOS size reduction comes from
+    # split-sections in cabal.project.ci.macos instead.
+    #
+    # Windows is excluded because of the AV false-positive surface
+    # (Defender ML, corporate EDR, SmartScreen) at our distribution scale.
+    #
+    # LinuxARM is excluded because its build step runs a separate
+    # container and sequencing the UPX install there is more work than
+    # the first spike warrants; can revisit.
+    #
+    # rendergraph is excluded because its main reads from stdin and
+    # UPX's self-modifying stub is more brittle for piped tools.
+    - name: Record pre-UPX sizes (Linux)
+      if: ${{ matrix.os-name == 'Linux' }}
       run: |
         echo "Pre-UPX sizes:"
         ls -la release/
 
-    # UPX compression on macOS and Linux (amd64). Skipped on Windows due to
-    # antivirus false-positives that would disrupt distribution. Skipped on
-    # LinuxARM because its runner doesn't have apt; we can revisit if this
-    # ships. Must run BEFORE codesign so the signature covers the compressed
-    # binary. rendergraph is skipped because UPX's self-modification breaks
-    # its stdin-reading main.
     - name: Install UPX (Linux)
-      # The Linux build runs inside fossa/haskell-static-alpine — apk, not apt,
-      # and root already, so no sudo needed.
+      # Linux job runs inside fossa/haskell-static-alpine; apk, not apt,
+      # and root already.
       if: ${{ matrix.os-name == 'Linux' }}
       run: apk add --no-cache upx
 
-    - name: Compress binaries with UPX
-      if: ${{ contains(matrix.os, 'macos') || matrix.os-name == 'Linux' }}
+    - name: Compress binaries with UPX (Linux)
+      if: ${{ matrix.os-name == 'Linux' }}
       run: |
         upx --version | head -1
         for bin in release/fossa release/diagnose release/millhone; do
@@ -243,11 +254,8 @@ jobs:
         echo "Post-UPX sizes:"
         ls -la release/
 
-    # Smoke-launch after UPX to prove the compressed binary still boots
-    # before we attempt to sign + notarize it. On macOS, a failure here
-    # means UPX produced a Mach-O the OS can't load; on Linux, same for ELF.
-    - name: Smoke-launch binaries (post-UPX)
-      if: ${{ contains(matrix.os, 'macos') || matrix.os-name == 'Linux' }}
+    - name: Smoke-launch binaries (post-UPX, Linux)
+      if: ${{ matrix.os-name == 'Linux' }}
       run: |
         ./release/fossa --version
         ./release/diagnose --help > /dev/null
@@ -255,12 +263,8 @@ jobs:
 
       # Documentation for what to do if this breaks: https://docs.google.com/document/d/1-TmYi9XKcJZWPRQIiOKEZEGBjrNgqqHB8AgLc5cuKMQ/edit?tab=t.0#heading=h.4jnaw7ic688f
       # Read that if we need to create a new certificate or sign updates to the ToS.
-    # TEMP: this branch also triggers signing so we can validate that
-    # codesign + notarization survive UPX compression. Revert the extra
-    # condition before merging; tag builds should be the only signing
-    # trigger in steady state.
     - name: Sign and Notarize Binaries (Mac OS)
-      if: ${{ contains(matrix.os, 'macos') && (startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/zach/binary-size-upx-and-macos-split-sections') }}
+      if: ${{ contains(matrix.os, 'macos') && startsWith(github.ref, 'refs/tags/v') }}
       env:
         MACOS_BUILD_CERT_BASE64: ${{ secrets.MACOS_BUILD_CERT_BASE64 }}
         MACOS_BUILD_CERT_P12_PASSWORD: ${{ secrets.MACOS_BUILD_CERT_P12_PASSWORD }}
