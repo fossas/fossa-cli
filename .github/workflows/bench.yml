@@ -20,7 +20,9 @@ jobs:
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      run: |
+        tag="$(git tag --sort=-v:refname 2>/dev/null | head -1 || true)"
+        echo "tag=${tag:-none}" >> "$GITHUB_OUTPUT"
 
     # Adding the "git config ..." line ensures git doesn't fail during our build.
     - name: Configure Git

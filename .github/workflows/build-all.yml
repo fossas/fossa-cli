@@ -62,7 +62,12 @@ jobs:
 
     - name: Get latest release tag
       id: latest-tag
-      run: echo "tag=$(git describe --tags --abbrev=0 2>/dev/null || echo none)" >> $GITHUB_OUTPUT
+      # git describe needs reachable history (fails under fetch-depth: 2).
+      # git tag --sort lists all fetched tag refs regardless of shallow depth.
+      # `|| true` keeps pipefail happy when no tags have been fetched yet.
+      run: |
+        tag="$(git tag --sort=-v:refname 2>/dev/null | head -1 || true)"
+        echo "tag=${tag:-none}" >> "$GITHUB_OUTPUT"
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -195,6 +200,46 @@ jobs:
     - name: Strip binaries
       run: |
         strip release/*
+
+    # On Intel macOS runners, ghcup's GHC links against libunwind from
+    # Homebrew's llvm@18 (/usr/local/opt/llvm@18/lib/libunwind.1.dylib).
+    # That path does not exist on end-user Macs without Homebrew LLVM, so
+    # the binary fails to launch with "dyld: Library not loaded" — which
+    # is exactly the v3.16.3 regression (see PR #1675 / v3.16.4 changelog).
+    # Rewrite the load command to the system libunwind, which ships with
+    # every macOS 11+ install. Must happen BEFORE codesign so the re-sign
+    # covers the patched binary.
+    - name: Normalize macOS dylib paths (Intel)
+      if: ${{ matrix.os-name == 'macOS-intel' }}
+      run: |
+        for bin in release/fossa release/diagnose release/millhone release/rendergraph; do
+          if [ -f "$bin" ]; then
+            install_name_tool -change \
+              /usr/local/opt/llvm@18/lib/libunwind.1.dylib \
+              /usr/lib/libunwind.1.dylib \
+              "$bin"
+          fi
+        done
+
+    # Regression guard. Fail fast if any binary has a Homebrew-only
+    # dynamic dependency — end-user Macs without Homebrew won't have
+    # those paths. Runs on both Intel and arm64 to catch future
+    # regressions on either architecture.
+    - name: Assert no Homebrew dylib dependencies (macOS)
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        fail=0
+        for bin in release/fossa release/diagnose release/millhone release/rendergraph; do
+          if [ -f "$bin" ]; then
+            bad="$(otool -L "$bin" | grep -E '/usr/local/opt/|/opt/homebrew/' || true)"
+            if [ -n "$bad" ]; then
+              echo "::error::$bin has Homebrew dylib dependencies:"
+              echo "$bad"
+              fail=1
+            fi
+          fi
+        done
+        exit $fail
 
       # Documentation for what to do if this breaks: https://docs.google.com/document/d/1-TmYi9XKcJZWPRQIiOKEZEGBjrNgqqHB8AgLc5cuKMQ/edit?tab=t.0#heading=h.4jnaw7ic688f
       # Read that if we need to create a new certificate or sign updates to the ToS.
