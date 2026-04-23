@@ -235,9 +235,9 @@ jobs:
     # build (same deps, same source), we skip re-running UPX and
     # restore the packed copies straight from cache. The cache action
     # saves at end-of-job on cache miss, so future matching builds
-    # hit. Dropping --lzma in favour of UPX's default NRV compression
-    # makes the miss path ~3x faster (~20s vs ~60s) for ~2.5% larger
-    # output — cheap insurance.
+    # hit. --best --lzma gives the smallest output (~49 MB for fossa
+    # vs ~53 MB without --lzma); the ~60s LZMA pass only runs on
+    # cache misses.
     - name: Hash pre-UPX binaries
       if: ${{ matrix.os-name == 'Linux' }}
       id: upx-hash
@@ -271,7 +271,7 @@ jobs:
         upx --version | head -1
         for bin in release/fossa release/diagnose release/millhone; do
           if [ -f "$bin" ]; then
-            upx --best "$bin"
+            upx --best --lzma "$bin"
           fi
         done
 
