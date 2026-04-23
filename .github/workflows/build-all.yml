@@ -226,8 +226,10 @@ jobs:
     # binary. rendergraph is skipped because UPX's self-modification breaks
     # its stdin-reading main.
     - name: Install UPX (Linux)
+      # The Linux build runs inside fossa/haskell-static-alpine — apk, not apt,
+      # and root already, so no sudo needed.
       if: ${{ matrix.os-name == 'Linux' }}
-      run: sudo apt-get install -y --no-install-recommends upx-ucl
+      run: apk add --no-cache upx
 
     - name: Compress binaries with UPX
       if: ${{ contains(matrix.os, 'macos') || matrix.os-name == 'Linux' }}
