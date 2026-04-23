@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- pnpm: Support `catalog:` and `catalog:<name>` version specifiers. Versions are resolved from the `catalogs` section in `pnpm-lock.yaml`. ([#1696](https://github.com/fossas/fossa-cli/pull/1696))
+- pnpm: Remove stray `traceShow` debug output that dumped the parsed `pnpm-workspace.yaml` to stderr. ([#1696](https://github.com/fossas/fossa-cli/pull/1696))
+
 ## 3.17.2
 
 - Swift: Fix a bug in the `Package.swift` parser which would cause it to error on valid syntax.

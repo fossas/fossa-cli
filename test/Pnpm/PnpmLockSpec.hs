@@ -127,6 +127,7 @@ spec = do
   let pnpmLockV9SharedDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-shared-dep/pnpm-lock.yaml")
   let pnpmLockV9LocalDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-local-dep/pnpm-lock.yaml")
   let pnpmLockV9MultiVersion = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-multi-version/pnpm-lock.yaml")
+  let pnpmLockV9Catalogs = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-catalogs/pnpm-lock.yaml")
 
   describe "works with v9 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
@@ -134,6 +135,7 @@ spec = do
     describe "shared deps" $ checkGraph pnpmLockV9SharedDep pnpmLockV9SharedDepSpec
     describe "local dep env propagation" $ checkGraph pnpmLockV9LocalDep pnpmLockV9LocalDepSpec
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
+    describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -487,3 +489,34 @@ pnpmLockV9MultiVersionSpec graph = do
       expectDep (mkProdDep "sax@1.2.1") graph
       -- sax@1.4.4 is dev-only (from app-b)
       expectDep (mkDevDep "sax@1.4.4") graph
+
+pnpmLockV9CatalogsSpec :: Graphing Dependency -> Spec
+pnpmLockV9CatalogsSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with catalogs" $ do
+    it "should resolve default-catalog and named-catalog specifiers to their declared versions" $ do
+      -- uri-js and colorjs resolve through the `default` catalog (catalog:).
+      -- react resolves through `react19`; xml2js resolves through `testing`.
+      -- punycode is a non-catalog direct dep sitting alongside catalog-resolved
+      -- ones to confirm regular resolution is unaffected.
+      expectDirect
+        [ mkProdDep "uri-js@4.4.1" -- catalog: (default), prod
+        , mkProdDep "react@19.0.0" -- catalog:react19, prod
+        , mkProdDep "punycode@2.3.1" -- non-catalog direct dep
+        , mkDevDep "colorjs@0.1.9" -- catalog: (default), dev env preserved
+        , mkDevDep "xml2js@0.6.2" -- catalog:testing, dev env preserved
+        ]
+        graph
+
+    it "should build edges through catalog-resolved deps" $ do
+      hasEdge (mkProdDep "uri-js@4.4.1") (mkProdDep "punycode@2.3.1")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "sax@1.4.4")
+      hasEdge (mkDevDep "xml2js@0.6.2") (mkDevDep "xmlbuilder@11.0.1")
+
+    it "should hydrate transitive deps of catalog-resolved parents with the parent's environment" $ do
+      -- sax and xmlbuilder are only reachable via xml2js (dev catalog dep);
+      -- they must inherit dev rather than default to prod or no-env.
+      expectDep (mkDevDep "sax@1.4.4") graph
+      expectDep (mkDevDep "xmlbuilder@11.0.1") graph
