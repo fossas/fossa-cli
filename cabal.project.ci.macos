@@ -1,6 +1,10 @@
 tests: True
 optimization: 2
 jobs: $ncpus
+-- Emit each top-level binding into its own section so ld can GC unused
+-- code per-function rather than per-module. Linux and Windows CI
+-- project files already set this; macOS is the last holdout.
+split-sections: True
 
 packages: .
 
