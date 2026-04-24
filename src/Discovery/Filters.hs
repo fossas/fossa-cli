@@ -356,14 +356,21 @@ applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
 applyGlob :: Glob Rel -> Path Rel Dir -> FilterMatch
 applyGlob g dir = if g `globMatchesDir` dir then MatchAll else MatchNone
 
--- | Match a glob against a relative directory path. Strips the trailing slash
--- that 'toString' appends to a 'Path Rel Dir' so that patterns like
--- @node_modules/*@ and @**\/*.test@ match directories the way users expect.
--- Without normalizing, @node_modules/*@ would fail to match @node_modules/foo/@
--- because @*@ does not match the empty trailing component.
+-- | Match a glob against a relative directory path. Normalizes the path so
+-- glob matching is portable: strips the trailing slash that 'toString' appends
+-- to a 'Path Rel Dir' (so @node_modules/*@ matches @node_modules/foo/@), and
+-- converts backslashes to forward slashes so user-supplied forward-slash
+-- patterns match the backslash-separated paths produced on Windows.
 globMatchesDir :: Glob Rel -> Path Rel Dir -> Bool
-globMatchesDir glob dir = unGlob glob FilePattern.?== trimTrailingSlash (toString dir)
+globMatchesDir glob dir = unGlob glob FilePattern.?== normalize (toString dir)
   where
+    normalize :: String -> String
+    normalize = trimTrailingSlash . map toForwardSlash
+
+    toForwardSlash :: Char -> Char
+    toForwardSlash '\\' = '/'
+    toForwardSlash c = c
+
     trimTrailingSlash :: String -> String
     trimTrailingSlash s = case reverse s of
       '/' : rest -> reverse rest
