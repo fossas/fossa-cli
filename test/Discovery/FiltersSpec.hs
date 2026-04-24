@@ -7,6 +7,7 @@ module Discovery.FiltersSpec (
 import Control.Carrier.Reader (run, runReader)
 import Control.Monad (when)
 import Data.Foldable (traverse_)
+import Data.Glob qualified as Glob
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.String.Conversion (ToText (toText))
@@ -16,9 +17,13 @@ import Discovery.Filters (
   Exclude,
   FilterCombination,
   Include,
+  PathFilter (..),
   applyFilters,
   comboExclude,
+  comboExcludeWithGlobs,
   comboInclude,
+  comboIncludeWithGlobs,
+  partitionPathFilters,
   pathAllowed,
   toolAllowed,
   withToolFilter,
@@ -260,6 +265,57 @@ spec = do
         pathAllowed bigFilters $(mkRelDir "a/b/c") `shouldBe` False
         pathAllowed bigFilters $(mkRelDir "a/b/d") `shouldBe` True
 
+    describe "Glob-based matching" $ do
+      it "excludes paths matching a '**/name/**' glob" $ do
+        let filters = excludeGlob "**/vendor/**"
+        pathAllowed filters $(mkRelDir "foo/vendor/bar") `shouldBe` False
+        pathAllowed filters $(mkRelDir "a/b/vendor/c") `shouldBe` False
+        pathAllowed filters $(mkRelDir "foo/bar") `shouldBe` True
+
+      it "excludes paths matching a single-segment wildcard glob" $ do
+        let filters = excludeGlob "node_modules/*"
+        pathAllowed filters $(mkRelDir "node_modules/react") `shouldBe` False
+        pathAllowed filters $(mkRelDir "node_modules/@scope") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/node_modules/react") `shouldBe` True
+
+      it "still excludes the subtree when the walker reaches the glob-matched dir" $ do
+        -- When the tree walker reaches foo/vendor/, that dir matches
+        -- `**/vendor/**` (the final ** matches an empty tail in
+        -- System.FilePattern), so the walker prunes the subtree and never
+        -- descends. Covers the documented expectation.
+        let filters = excludeGlob "**/vendor/**"
+        pathAllowed filters $(mkRelDir "foo/vendor") `shouldBe` False
+
+      it "combines glob excludes with concrete path excludes" $ do
+        let filters =
+              excludePath $(mkRelDir "build")
+                <> excludeGlob "**/*.test"
+        pathAllowed filters $(mkRelDir "build") `shouldBe` False
+        pathAllowed filters $(mkRelDir "build/artifacts") `shouldBe` False
+        pathAllowed filters $(mkRelDir "foo/x.test") `shouldBe` False
+        pathAllowed filters $(mkRelDir "foo/bar") `shouldBe` True
+
+      it "rejects an include-glob miss" $ do
+        let filters = includeGlob "src/**"
+        pathAllowed filters $(mkRelDir "src/lib") `shouldBe` True
+        pathAllowed filters $(mkRelDir "test/lib") `shouldBe` False
+
+      it "prefers exclude over include when both globs match" $ do
+        let filters = includeGlob "src/**" <> excludeGlob "src/**"
+        pathAllowed filters $(mkRelDir "src/lib") `shouldBe` False
+
+    describe "PathFilter parsing" $ do
+      it "partitions concrete paths from glob patterns" $ do
+        let mixed =
+              [ PathFilterDir $(mkRelDir "vendor")
+              , PathFilterGlob (Glob.unsafeGlobRel "**/node_modules/**")
+              , PathFilterDir $(mkRelDir "build")
+              , PathFilterGlob (Glob.unsafeGlobRel "*.test")
+              ]
+            (paths, globs) = partitionPathFilters mixed
+        paths `shouldBe` [$(mkRelDir "vendor"), $(mkRelDir "build")]
+        map Glob.unGlob globs `shouldBe` ["**/node_modules/**", "*.test"]
+
   describe "tool filtering helpers" $ do
     it "should return an empty list when the tool is not allowed" $ do
       let filters = excludeTool CargoProjectType
@@ -300,3 +356,13 @@ includeTool :: DiscoveredProjectType -> AllFilters
 includeTool tool = AllFilters include mempty
   where
     include = comboInclude [TypeTarget $ toText tool] mempty
+
+includeGlob :: String -> AllFilters
+includeGlob glob = AllFilters include mempty
+  where
+    include = comboIncludeWithGlobs mempty mempty [Glob.unsafeGlobRel glob]
+
+excludeGlob :: String -> AllFilters
+excludeGlob glob = AllFilters mempty exclude
+  where
+    exclude = comboExcludeWithGlobs mempty mempty [Glob.unsafeGlobRel glob]
