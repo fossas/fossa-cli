@@ -71,6 +71,12 @@ expectedSwiftPackage =
       , -- range
         gitDepWithRhsHalfOpenInterval "https://github.com/LeoNatan/LNPopupController.git" "2.5.0" "2.5.6"
       , gitDepWithClosedRange "https://github.com/Polidea/RxBluetoothKit.git" "3.0.5" "3.0.7"
+      , -- version constructor
+        gitDepFrom "https://github.com/example/example.git" "1.7.0-a.b+x.banana"
+      , gitDepUpToNextMinor "https://github.com/example/example2.git" "13.99.123+abcd"
+      , gitDepExactly "https://github.com/example/example3.git" "0.0.3-build.1"
+      , gitDepExactly "https://github.com/example/example4.git" "1.0.14"
+      , gitDepWithRhsHalfOpenInterval "https://github.com/example/example5.git" "1.0.14" "1.0.20"
       ]
       ++ [PathSource "../..", PathSource "../.."]
 
