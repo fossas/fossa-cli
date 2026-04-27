@@ -304,6 +304,77 @@ spec = do
         let filters = includeGlob "src/**" <> excludeGlob "src/**"
         pathAllowed filters $(mkRelDir "src/lib") `shouldBe` False
 
+      it "respects '?' single-character wildcards" $ do
+        let filters = excludeGlob "build?/out"
+        pathAllowed filters $(mkRelDir "build1/out") `shouldBe` False
+        pathAllowed filters $(mkRelDir "buildA/out") `shouldBe` False
+        -- '?' matches exactly one character: zero or two characters must not
+        -- match.
+        pathAllowed filters $(mkRelDir "build/out") `shouldBe` True
+        pathAllowed filters $(mkRelDir "build12/out") `shouldBe` True
+
+      it "respects '[...]' character classes" $ do
+        let filters = excludeGlob "vendor[12]/**"
+        pathAllowed filters $(mkRelDir "vendor1") `shouldBe` False
+        pathAllowed filters $(mkRelDir "vendor2/foo") `shouldBe` False
+        pathAllowed filters $(mkRelDir "vendor3") `shouldBe` True
+        pathAllowed filters $(mkRelDir "vendor3/foo") `shouldBe` True
+
+      it "normalizes the trailing slash on Path Rel Dir for glob matching" $ do
+        -- Regression guard: `Path.toString` on a `Path Rel Dir` appends '/',
+        -- which would otherwise cause `System.FilePattern` to reject single-
+        -- segment patterns like `node_modules/*`. `globMatchesDir` strips the
+        -- trailing slash before matching; this test fails if that
+        -- normalization regresses.
+        let filters = excludeGlob "node_modules/*"
+        pathAllowed filters $(mkRelDir "node_modules/react") `shouldBe` False
+        pathAllowed filters $(mkRelDir "node_modules/lodash") `shouldBe` False
+
+      it "anchors root-level globs to the repo root" $ do
+        let filters = excludeGlob "build*"
+        pathAllowed filters $(mkRelDir "build") `shouldBe` False
+        pathAllowed filters $(mkRelDir "build123") `shouldBe` False
+        -- A nested `build` directory must not be matched by a root-anchored
+        -- single-segment glob.
+        pathAllowed filters $(mkRelDir "src/build") `shouldBe` True
+        pathAllowed filters $(mkRelDir "a/b/build123") `shouldBe` True
+
+      it "anchors root-level extension globs to the repo root" $ do
+        let filters = excludeGlob "*.lock"
+        pathAllowed filters $(mkRelDir "package.lock") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/package.lock") `shouldBe` True
+
+      it "applies a four-way mix of include/exclude globs and concrete paths" $ do
+        -- Include: concrete `src` plus glob `lib/**`.
+        -- Exclude: concrete `src/build` plus glob `**/vendor/**`.
+        let filters =
+              AllFilters
+                ( comboIncludeWithGlobs
+                    mempty
+                    [$(mkRelDir "src")]
+                    [Glob.unsafeGlobRel "lib/**"]
+                )
+                ( comboExcludeWithGlobs
+                    mempty
+                    [$(mkRelDir "src/build")]
+                    [Glob.unsafeGlobRel "**/vendor/**"]
+                )
+        -- Concrete include: `src` and its children are accepted.
+        pathAllowed filters $(mkRelDir "src") `shouldBe` True
+        pathAllowed filters $(mkRelDir "src/app") `shouldBe` True
+        -- Concrete exclude wins over the concrete include.
+        pathAllowed filters $(mkRelDir "src/build") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/build/out") `shouldBe` False
+        -- Glob include: `lib` and its descendants are accepted.
+        pathAllowed filters $(mkRelDir "lib") `shouldBe` True
+        pathAllowed filters $(mkRelDir "lib/foo/bar") `shouldBe` True
+        -- Glob exclude wins over both kinds of include.
+        pathAllowed filters $(mkRelDir "lib/foo/vendor/x") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/app/vendor/x") `shouldBe` False
+        -- Paths matched by neither include are rejected.
+        pathAllowed filters $(mkRelDir "test") `shouldBe` False
+        pathAllowed filters $(mkRelDir "other/dir") `shouldBe` False
+
     describe "PathFilter parsing" $ do
       it "partitions concrete paths from glob patterns" $ do
         let mixed =
