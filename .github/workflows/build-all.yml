@@ -212,6 +212,82 @@ jobs:
       run: |
         strip release/*
 
+    # UPX compression on Linux amd64 only.
+    #
+    # macOS is intentionally excluded: UPX 5.x refuses to pack Mach-O
+    # without --force-macos ("CantPackException: macOS is currently not
+    # supported"). Stacking UPX's own experimental macOS support on top
+    # of the hardened-runtime notarization question makes failures
+    # diagnostically ambiguous. macOS size reduction comes from
+    # split-sections in cabal.project.ci.macos instead.
+    #
+    # Windows is excluded because of the AV false-positive surface
+    # (Defender ML, corporate EDR, SmartScreen) at our distribution scale.
+    #
+    # LinuxARM is excluded because its build step runs a separate
+    # container and sequencing the UPX install there is more work than
+    # the first spike warrants; can revisit.
+    #
+    # rendergraph is excluded because its main reads from stdin and
+    # UPX's self-modifying stub is more brittle for piped tools.
+    # Cache the UPX-packed binaries keyed on the pre-UPX content hash.
+    # When a build produces the same uncompressed binaries as a prior
+    # build (same deps, same source), we skip re-running UPX and
+    # restore the packed copies straight from cache. The cache action
+    # saves at end-of-job on cache miss, so future matching builds
+    # hit. --best --lzma gives the smallest output (~49 MB for fossa
+    # vs ~53 MB without --lzma); the ~60s LZMA pass only runs on
+    # cache misses.
+    - name: Hash pre-UPX binaries
+      if: ${{ matrix.os-name == 'Linux' }}
+      id: upx-hash
+      run: |
+        combined=$(sha256sum release/fossa release/diagnose release/millhone \
+          | sha256sum | cut -d' ' -f1)
+        echo "key=$combined" >> "$GITHUB_OUTPUT"
+        echo "Pre-UPX sizes:"
+        ls -la release/
+
+    - name: Restore UPX-packed binaries from cache
+      if: ${{ matrix.os-name == 'Linux' }}
+      id: upx-cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          release/fossa
+          release/diagnose
+          release/millhone
+        key: ${{ matrix.os-name }}-upx-${{ steps.upx-hash.outputs.key }}
+
+    - name: Install UPX (Linux)
+      # Linux job runs inside fossa/haskell-static-alpine; apk, not apt,
+      # and root already.
+      if: ${{ matrix.os-name == 'Linux' && steps.upx-cache.outputs.cache-hit != 'true' }}
+      run: apk add --no-cache upx
+
+    - name: Compress binaries with UPX (Linux)
+      if: ${{ matrix.os-name == 'Linux' && steps.upx-cache.outputs.cache-hit != 'true' }}
+      run: |
+        upx --version | head -1
+        for bin in release/fossa release/diagnose release/millhone; do
+          if [ -f "$bin" ]; then
+            upx --best --lzma "$bin"
+          fi
+        done
+
+    - name: Show UPX output sizes (Linux)
+      if: ${{ matrix.os-name == 'Linux' }}
+      run: |
+        echo "Post-UPX sizes (cache hit: ${{ steps.upx-cache.outputs.cache-hit }}):"
+        ls -la release/
+
+    - name: Smoke-launch binaries (post-UPX, Linux)
+      if: ${{ matrix.os-name == 'Linux' }}
+      run: |
+        ./release/fossa --version
+        ./release/diagnose --help > /dev/null
+        ./release/millhone --help > /dev/null
+
       # Documentation for what to do if this breaks: https://docs.google.com/document/d/1-TmYi9XKcJZWPRQIiOKEZEGBjrNgqqHB8AgLc5cuKMQ/edit?tab=t.0#heading=h.4jnaw7ic688f
       # Read that if we need to create a new certificate or sign updates to the ToS.
     - name: Sign and Notarize Binaries (Mac OS)

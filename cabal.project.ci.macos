@@ -1,6 +1,12 @@
 tests: True
 optimization: 2
 jobs: $ncpus
+-- Note: split-sections intentionally NOT set here. Mach-O's
+-- subsections-via-symbols already provides function-granular dead-code
+-- elimination, so GHC refuses -fsplit-sections on this platform with
+-- -Winconsistent-flags, which our -Werror turns fatal. Linux and
+-- Windows still need the flag because their object formats don't have
+-- that property by default.
 
 packages: .
 
