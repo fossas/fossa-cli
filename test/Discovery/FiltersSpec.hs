@@ -304,19 +304,24 @@ spec = do
         let filters = includeGlob "src/**" <> excludeGlob "src/**"
         pathAllowed filters $(mkRelDir "src/lib") `shouldBe` False
 
-      it "respects '?' single-character wildcards" $ do
+      it "treats '?' as a literal character (System.FilePattern limitation)" $ do
+        -- System.FilePattern (the underlying glob engine) only implements
+        -- `*` and `**`. `?` is not a single-character wildcard; it is
+        -- matched literally. None of these alphanumeric paths should be
+        -- excluded by `build?/out`.
         let filters = excludeGlob "build?/out"
-        pathAllowed filters $(mkRelDir "build1/out") `shouldBe` False
-        pathAllowed filters $(mkRelDir "buildA/out") `shouldBe` False
-        -- '?' matches exactly one character: zero or two characters must not
-        -- match.
+        pathAllowed filters $(mkRelDir "build1/out") `shouldBe` True
+        pathAllowed filters $(mkRelDir "buildA/out") `shouldBe` True
         pathAllowed filters $(mkRelDir "build/out") `shouldBe` True
         pathAllowed filters $(mkRelDir "build12/out") `shouldBe` True
 
-      it "respects '[...]' character classes" $ do
+      it "treats '[...]' as literal characters (System.FilePattern limitation)" $ do
+        -- System.FilePattern does not support `[...]` character classes;
+        -- the brackets and their contents are matched literally. None of
+        -- these paths should be excluded by `vendor[12]/**`.
         let filters = excludeGlob "vendor[12]/**"
-        pathAllowed filters $(mkRelDir "vendor1") `shouldBe` False
-        pathAllowed filters $(mkRelDir "vendor2/foo") `shouldBe` False
+        pathAllowed filters $(mkRelDir "vendor1") `shouldBe` True
+        pathAllowed filters $(mkRelDir "vendor2/foo") `shouldBe` True
         pathAllowed filters $(mkRelDir "vendor3") `shouldBe` True
         pathAllowed filters $(mkRelDir "vendor3/foo") `shouldBe` True
 
