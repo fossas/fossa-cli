@@ -706,6 +706,9 @@ standardAnalyzeConfig =
     , ANZ.snippetScan = False
     , ANZ.debugDir = Nothing
     , ANZ.xVendetta = False
+    , ANZ.xCryptoScan = False
+    , ANZ.cryptoCbomOutput = Nothing
+    , ANZ.cryptoFipsReport = False
     }
 
 sampleJarParsedContent :: Text
