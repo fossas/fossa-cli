@@ -271,3 +271,12 @@ for binary in vendor-bins/*; do
     "$binary" --version || echo "failed to get version information"
   fi
 done
+
+# Strict smoke-test ficus: it is embedded via Template Haskell into the CLI
+# binary (and downstream consumers like Hubble), so a non-runnable ficus
+# (wrong glibc, wrong arch, corrupt download) ships silently otherwise and
+# only manifests at run time.
+./vendor-bins/ficus --version > /dev/null || {
+  echo "ERROR: vendor-bins/ficus does not run in this image"
+  exit 1
+}
