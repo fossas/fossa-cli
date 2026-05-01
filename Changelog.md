@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Vendetta: Debug bundles now include per-file component match data from Vendetta scans, making it easier to diagnose why a vendored dependency was or wasn't detected. ([#1706](https://github.com/fossas/fossa-cli/pull/1706))
+
 ## 3.17.3
 
 - pnpm: Support `catalog:` and `catalog:<name>` version specifiers. Versions are resolved from the `catalogs` section in `pnpm-lock.yaml`. ([#1696](https://github.com/fossas/fossa-cli/pull/1696))
