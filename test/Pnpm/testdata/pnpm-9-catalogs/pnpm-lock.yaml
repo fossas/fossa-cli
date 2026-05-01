@@ -1,0 +1,102 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+# Three catalogs exercised by the importers below:
+#   - default: referenced by `catalog:` (empty catalog name)
+#   - react19: referenced by `catalog:react19`
+#   - testing: referenced by `catalog:testing`, used only for dev deps
+catalogs:
+  default:
+    uri-js:
+      specifier: ^4.4.1
+      version: 4.4.1
+    colorjs:
+      specifier: ^0.1.9
+      version: 0.1.9
+  react19:
+    react:
+      specifier: ^19.0.0
+      version: 19.0.0
+  testing:
+    xml2js:
+      specifier: ^0.6.2
+      version: 0.6.2
+
+importers:
+
+  .:
+    dependencies:
+      # catalog: (empty name) must resolve through the `default` catalog.
+      uri-js:
+        specifier: 'catalog:'
+        version: 4.4.1
+      # catalog:<name> must resolve through the named catalog.
+      react:
+        specifier: 'catalog:react19'
+        version: 19.0.0
+      # Non-catalog direct dep: should be unaffected by catalog resolution.
+      punycode:
+        specifier: ^2.3.1
+        version: 2.3.1
+    devDependencies:
+      # catalog: on a dev dep must preserve the dev environment.
+      colorjs:
+        specifier: 'catalog:'
+        version: 0.1.9
+      # Named catalog on a dev dep; xml2js has transitive edges to sax and
+      # xmlbuilder, exercising edges through a catalog-resolved parent.
+      xml2js:
+        specifier: 'catalog:testing'
+        version: 0.6.2
+
+packages:
+
+  colorjs@0.1.9:
+    resolution: {integrity: sha512-filDwoNvVLqcLB4zMmWa65rgNHW/ff26wn3/q+XpYrI9EFts6fwnLIPYGOr8G+9cECMsxfCm9a2QzXdf+imY7A==}
+
+  punycode@2.3.1:
+    resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
+    engines: {node: '>=6'}
+
+  react@19.0.0:
+    resolution: {integrity: sha512-V1drlMdSuFLKJmtzRAlLFBRoQ6DeFnXwxl5P+nT05HHmFwJSYmzIMlNfU7lD2OKOqtmeY1u5mMo1z7r3GOzJQ==}
+    engines: {node: '>=0.10.0'}
+
+  sax@1.4.4:
+    resolution: {integrity: sha512-1n3r/tGXO6b6VXMdFT54SHzT9ytu9yr7TaELowdYpMqY/Ao7EnlQGmAQ1+RatX7Tkkdm6hONI2owqNx2aZj5Sw==}
+    engines: {node: '>=11.0.0'}
+
+  uri-js@4.4.1:
+    resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+  xml2js@0.6.2:
+    resolution: {integrity: sha512-T4rieHaC1EXcES0Kxxj4JWgaUQHDk+qwHcYOCFHfiwKz7tOVPLq7Hjq9dM1WCMhylqMEfP7hMcOIChvotiZegA==}
+    engines: {node: '>=4.0.0'}
+
+  xmlbuilder@11.0.1:
+    resolution: {integrity: sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA==}
+    engines: {node: '>=4.0'}
+
+snapshots:
+
+  colorjs@0.1.9: {}
+
+  punycode@2.3.1: {}
+
+  react@19.0.0: {}
+
+  sax@1.4.4: {}
+
+  uri-js@4.4.1:
+    dependencies:
+      punycode: 2.3.1
+
+  xml2js@0.6.2:
+    dependencies:
+      sax: 1.4.4
+      xmlbuilder: 11.0.1
+
+  xmlbuilder@11.0.1: {}
