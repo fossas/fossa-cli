@@ -254,11 +254,15 @@ runFicus maybeDebugDir ficusConfig = do
     logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
 
     logDebugWithTime "Creating process configuration..."
-    let processConfig =
+    -- When running in debug mode, pass --debug to Ficus too.
+    let debugArgs = case maybeDebugDir of
+          Just _ -> ["--debug"]
+          Nothing -> []
+        processConfig =
           setWorkingDir (toFilePath $ ficusConfigRootDir ficusConfig) $
             setStdout createPipe $
               setStderr createPipe $
-                proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
+                proc (toString $ cmdName cmd) (debugArgs ++ map toString (cmdArgs cmd))
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
