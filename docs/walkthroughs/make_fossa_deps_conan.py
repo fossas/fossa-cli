@@ -90,7 +90,7 @@ class FossaDep:
                 fossa_deps_yaml.append(f"  license: {json.dumps(dep.license)}")
 
                 if dep.metadata is not None and (dep.metadata.homepage is not None or dep.metadata.description is not None):
-                    fossa_deps_yaml.append("  meatdata:")
+                    fossa_deps_yaml.append("  metadata:")
                     if dep.metadata.homepage:
                         fossa_deps_yaml.append(f"    homepage: {json.dumps(dep.metadata.homepage)}")
                     if dep.metadata.description:
