@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.17.4
 
 - Vendetta: Debug bundles now include per-file component match data from Vendetta scans, making it easier to diagnose why a vendored dependency was or wasn't detected. ([#1706](https://github.com/fossas/fossa-cli/pull/1706))
 
