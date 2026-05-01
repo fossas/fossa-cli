@@ -258,12 +258,11 @@ runFicus maybeDebugDir ficusConfig = do
     let debugArgs = case maybeDebugDir of
           Just _ -> ["--debug"]
           Nothing -> []
-        allArgs = map toString $ cmdArgs cmd
         processConfig =
           setWorkingDir (toFilePath $ ficusConfigRootDir ficusConfig) $
             setStdout createPipe $
               setStderr createPipe $
-                proc (toString $ cmdName cmd) (debugArgs ++ allArgs)
+                proc (toString $ cmdName cmd) (debugArgs ++ map toString (cmdArgs cmd))
 
     logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
     logDebugWithTime "Starting Ficus process..."
