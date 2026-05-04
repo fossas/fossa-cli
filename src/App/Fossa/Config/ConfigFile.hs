@@ -11,6 +11,7 @@ module App.Fossa.Config.ConfigFile (
   ConfigRevision (..),
   ConfigTargets (..),
   ConfigPaths (..),
+  PathFilter (..),
   ConfigTelemetry (..),
   ConfigTelemetryScope (..),
   ExperimentalConfigs (..),
@@ -57,6 +58,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text, strip, toLower)
 import Diag.Diagnostic (ToDiagnostic (..))
+import Discovery.Filters (PathFilter (..))
 import Effect.Logger (
   Logger,
   logDebug,
@@ -257,8 +259,8 @@ data ConfigTargets = ConfigTargets
   deriving (Eq, Ord, Show)
 
 data ConfigPaths = ConfigPaths
-  { pathsOnly :: [Path Rel Dir]
-  , pathsExclude :: [Path Rel Dir]
+  { pathsOnly :: [PathFilter]
+  , pathsExclude :: [PathFilter]
   }
   deriving (Eq, Ord, Show)
 

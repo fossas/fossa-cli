@@ -334,6 +334,20 @@ The list of paths to exclude from scanning in your directory.
 
 This section is intended to be used as the inverse to `paths.only`. If you have a certain directory such as `development` you wish to exclude, `paths.exclude` enables you to do this.
 
+#### Glob patterns
+
+Entries in `paths.only` and `paths.exclude` may also be glob patterns. An entry is treated as a glob if it contains any of `*`, `?`, or `[`; other entries keep their existing semantics (match the directory and all of its children). Glob matching follows [`System.FilePattern`][filepattern] semantics: `*` matches a single path segment, `**` matches any number of segments, and `?` matches a single character.
+
+```yaml
+paths:
+  exclude:
+    - "**/vendor/**"
+    - "**/node_modules/**"
+    - "build/generated/*"
+```
+
+[filepattern]: https://hackage.haskell.org/package/filepattern
+
 ### Analysis target configuration
 Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `targets` and `paths` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project.
 

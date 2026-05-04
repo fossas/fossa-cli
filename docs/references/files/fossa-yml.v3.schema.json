@@ -528,18 +528,18 @@
         },
         "paths": {
             "type": "object",
-            "description": "The paths filtering section allows you to specify which paths should be scanned and which should not. The paths should be listed as their location from the root of your project.",
+            "description": "The paths filtering section allows you to specify which paths should be scanned and which should not. Entries may be concrete directory paths (which match the directory and all of its children) or glob patterns. An entry is treated as a glob if it contains any of `*`, `?`, or `[`. Glob syntax follows System.FilePattern: `*` matches a single path segment, `**` matches any number of segments, and `?` matches a single character.",
             "properties": {
                 "only": {
                     "type": "array",
-                    "description": "The list of paths to only allow scanning within.",
+                    "description": "The list of paths or glob patterns to only allow scanning within.",
                     "items": {
                         "type": "string"
                     }
                 },
                 "exclude": {
                     "type": "array",
-                    "description": "The list of paths to exclude from scanning in your directory.",
+                    "description": "The list of paths or glob patterns to exclude from scanning in your directory.",
                     "items": {
                         "type": "string"
                     }
