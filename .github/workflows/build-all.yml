@@ -58,6 +58,16 @@ jobs:
       with:
         lfs: true
         fetch-depth: 2
+        fetch-tags: true
+
+    - name: Get latest release tag
+      id: latest-tag
+      # git describe needs reachable history (fails under fetch-depth: 2).
+      # git tag --sort lists all fetched tag refs regardless of shallow depth.
+      # `|| true` keeps pipefail happy when no tags have been fetched yet.
+      run: |
+        tag="$(git tag --sort=-v:refname 2>/dev/null | head -1 || true)"
+        echo "tag=${tag:-none}" >> "$GITHUB_OUTPUT"
 
     - name: Install MacOS binary dependencies
       if: ${{ contains(matrix.os, 'macos') }}
@@ -117,50 +127,29 @@ jobs:
     - name: Ensure git ownership check does not lead to compiler error
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-    - name: Check git status and collect information
+    - name: Check git status
       # https://github.com/actions/checkout/issues/760#issuecomment-1099519159
-      run: |
-        git status --porcelain
-        echo "parent_commit=$(git rev-parse HEAD^)" >> $GITHUB_ENV
-
-    # Compute cache key and save to a temporary file.
-    #
-    # We compute the cache key based on the solved install plan instead of just
-    # hashing the `.cabal` file, since there are many kinds of changes that will
-    # cause `.cabal` to change (e.g. adding new source modules).
-    - name: Compute cache key (not ARM Linux)
-      if: ${{ matrix.os != 'LinuxARM' }}
-      id: compute-cache-key
-      run: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
-
-    - name: Compute Cache Key (Linux Arm)
-      if: ${{ matrix.os == 'LinuxARM' }}
-      id: compute-cache-key-arm
-      uses: docker://fossa/haskell-static-alpine:ghc-9.8.4
-      with:
-        args: ./.github/workflows/scripts/compute_cache_key.sh ${{ runner.os }} ${{ matrix.project-file }}
+      run: git status --porcelain
 
     # The home directory inside a github container run during a step is different than one run outside of it.
     # This is why there is special logic for 'LinuxARM'.
-    # Its builds run inside a container but are cached by an action outside of it..
+    # Its builds run inside a container but are cached by an action outside of it.
     - uses: actions/cache@v4
       name: Cache cabal store
       with:
         path: ${{ steps.setup-haskell.outputs.cabal-store || ( matrix.os == 'LinuxARM' && format('{0}/_github_home/.local/state/cabal', runner.temp) || '~/.local/state/cabal') }}
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ steps.compute-cache-key.outputs.cabal-cache-key || steps.compute-cache-key-arm.outputs.cabal-cache-key }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-${{ hashFiles('spectrometer.cabal', matrix.project-file, 'cabal.project.common') }}
         restore-keys: |
           ${{ matrix.os-name }}-${{ matrix.ghc }}-cabal-cache-
-          ${{ matrix.os-name }}-${{ matrix.ghc }}-
 
     - uses: actions/cache@v4
       name: Cache dist-newstyle
       with:
         path: ${{ github.workspace }}/dist-newstyle
-        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ github.sha }}
+        key: ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-${{ hashFiles('spectrometer.cabal', matrix.project-file, 'cabal.project.common') }}
         restore-keys: |
-          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ env.parent_commit }}
+          ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-${{ steps.latest-tag.outputs.tag }}-
           ${{ matrix.os-name }}-${{ matrix.ghc }}-dist-newstyle-
-          ${{ matrix.os-name }}-${{ matrix.ghc }}-
 
     - name: Update vendored binaries
       run: |
@@ -211,6 +200,59 @@ jobs:
     - name: Strip binaries
       run: |
         strip release/*
+
+    # On Intel macOS runners, ghcup's GHC links against libunwind from
+    # Homebrew's llvm@18 (/usr/local/opt/llvm@18/lib/libunwind.1.dylib).
+    # That path does not exist on end-user Macs without Homebrew LLVM, so
+    # the binary fails to launch with "dyld: Library not loaded" — which
+    # is exactly the v3.16.3 regression (see PR #1675 / v3.16.4 changelog).
+    # Rewrite the load command to the system libunwind, which ships with
+    # every macOS 11+ install. Must happen BEFORE codesign so the re-sign
+    # covers the patched binary.
+    - name: Normalize macOS dylib paths (Intel)
+      if: ${{ matrix.os-name == 'macOS-intel' }}
+      run: |
+        for bin in release/fossa release/diagnose release/millhone release/rendergraph; do
+          if [ -f "$bin" ]; then
+            install_name_tool -change \
+              /usr/local/opt/llvm@18/lib/libunwind.1.dylib \
+              /usr/lib/libunwind.1.dylib \
+              "$bin"
+          fi
+        done
+
+    # Regression guard. Fail fast if any binary has a Homebrew-only
+    # dynamic dependency — end-user Macs without Homebrew won't have
+    # those paths. Runs on both Intel and arm64 to catch future
+    # regressions on either architecture.
+    - name: Assert no Homebrew dylib dependencies (macOS)
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        fail=0
+        for bin in release/fossa release/diagnose release/millhone release/rendergraph; do
+          if [ -f "$bin" ]; then
+            bad="$(otool -L "$bin" | grep -E '/usr/local/opt/|/opt/homebrew/' || true)"
+            if [ -n "$bad" ]; then
+              echo "::error::$bin has Homebrew dylib dependencies:"
+              echo "$bad"
+              fail=1
+            fi
+          fi
+        done
+        exit $fail
+
+    # Smoke test: the otool guard above proves the binary doesn't reference
+    # Homebrew paths, but doesn't prove it actually launches. This catches
+    # install_name_tool corruption, init-time failures, and any other issue
+    # that would make the artifact DOA on an end-user Mac. rendergraph is
+    # omitted because it errors without piped JSON input; if the others
+    # launch it loads through the same dyld path.
+    - name: Smoke-launch macOS binaries
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: |
+        ./release/fossa --version
+        ./release/diagnose --help > /dev/null
+        ./release/millhone --help > /dev/null
 
       # Documentation for what to do if this breaks: https://docs.google.com/document/d/1-TmYi9XKcJZWPRQIiOKEZEGBjrNgqqHB8AgLc5cuKMQ/edit?tab=t.0#heading=h.4jnaw7ic688f
       # Read that if we need to create a new certificate or sign updates to the ToS.
