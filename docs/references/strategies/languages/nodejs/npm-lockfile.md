@@ -18,6 +18,29 @@ Search for files named `package.json` and check for a corresponding
 > will be combined to determine which dependencies are direct and which ones are
 > development.
 
+### Workspace Build Targets
+
+Each workspace package (including the root) is exposed as an individual build
+target. For example, a monorepo named `my-monorepo` with packages `api` and
+`web` will produce targets:
+
+```
+npm@./:my-monorepo
+npm@./:api
+npm@./:web
+```
+
+When a subset of targets is selected, only those packages' dependencies are
+included in the analysis.
+
+When no filtering is applied, all targets are selected and all dependencies
+from every workspace package are included in the analysis.
+
+> Note: Target-level dependency scoping is only supported for lockfile version 1
+> (npm v5–v6) and version 2 (npm v7–v8). Version 3 lockfiles (npm v9+) will
+> show workspace build targets, but filtering to specific targets does not yet
+> scope the dependency results.
+
 ## Analysis (for lockFile version 3)
 
 We consider `package-lock.json` to be version 3 compatible, if and only if, 

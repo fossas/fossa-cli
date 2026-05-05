@@ -14,12 +14,19 @@ module Strategy.Cargo (
   getDeps,
   mkProject,
   findProjects,
+
+  -- * for testing
+  Package (..),
+  extractGitCommitHash,
+  parseGitRepoUrl,
+  parsePkgId,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrategyConfig (useGitBackedCargoLocators), UseGitBackedCargoLocators (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -31,8 +38,8 @@ import Control.Effect.Diagnostics (
   run,
   warn,
  )
-import Control.Effect.Reader (Reader)
-import Control.Monad (unless)
+import Control.Effect.Reader (Reader, ask)
+import Control.Monad (guard, unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -47,7 +54,7 @@ import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust)
 import Data.Set (Set)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
@@ -77,6 +84,7 @@ import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, shrinkRoots)
+import Network.URI (parseURI, uriAuthority, uriPath, uriRegName)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
 import Text.Megaparsec (
   Parsec,
@@ -131,6 +139,7 @@ data Package = Package
   , pkgLicense :: Maybe Text.Text
   , pkgLicenseFile :: Maybe Text.Text
   , pkgDependencies :: [PackageDependency]
+  , pkgSourceUrl :: Maybe Text.Text
   }
   deriving (Eq, Ord, Show)
 
@@ -180,6 +189,7 @@ instance FromJSON Package where
       <*> obj .:? "license"
       <*> obj .:? "license_file"
       <*> obj .: "dependencies"
+      <*> obj .:? "source"
 
 instance FromJSON NodeDepKind where
   parseJSON = withObject "NodeDepKind" $ \obj ->
@@ -313,9 +323,10 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m) => CargoProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m, Has (Reader StrategyConfig) sig m) => CargoProject -> m DependencyResults
 getDeps project = do
-  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze $ project
+  strategyCfg <- ask @StrategyConfig
+  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" $ analyze (unUseGitBackedCargoLocators $ useGitBackedCargoLocators strategyCfg) project
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -329,6 +340,7 @@ cargoGenLockfileCmd =
     { cmdName = "cargo"
     , cmdArgs = ["generate-lockfile"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 cargoMetadataCmd :: Command
@@ -337,6 +349,7 @@ cargoMetadataCmd =
     { cmdName = "cargo"
     , cmdArgs = ["metadata"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 analyze ::
@@ -344,9 +357,10 @@ analyze ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
+  Bool ->
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
-analyze (CargoProject manifestDir manifestFile) = do
+analyze emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
   exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
   unless exists $
     void $
@@ -354,7 +368,7 @@ analyze (CargoProject manifestDir manifestFile) = do
         errCtx (FailedToGenLockFile manifestFile) $
           execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
-  graph <- context "Building dependency graph" $ pure (buildGraph meta)
+  graph <- context "Building dependency graph" $ pure (buildGraph emitGitBackedLocators meta)
   pure (graph, Complete)
 
 newtype FailedToGenLockFile = FailedToGenLockFile (Path Abs File)
@@ -372,14 +386,50 @@ instance ToDiagnostic FailedToRetrieveCargoMetadata where
 type PackageIdSourceKind = Text.Text
 type PackageIdSourceProtocol = Text.Text
 
-toDependency :: PackageId -> Set CargoLabel -> Dependency
-toDependency pkg =
+-- | Extract the git repository host+path from a cargo source URL.
+-- Input:  "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c..."
+-- Output: Just "github.com/fossas/locator-rs"
+parseGitRepoUrl :: Text -> Maybe Text
+parseGitRepoUrl src = do
+  stripped <- Text.stripPrefix "git+" src
+  uri <- parseURI (toString stripped)
+  auth <- uriAuthority uri
+  let host = toText (uriRegName auth)
+      rawPath = Text.dropWhile (== '/') (toText (uriPath uri))
+      cleanPath = fromMaybe rawPath (Text.stripSuffix ".git" rawPath)
+  guard (not (Text.null host) && not (Text.null cleanPath))
+  pure (host <> "/" <> cleanPath)
+
+-- | Extract the commit hash from a cargo package source URL.
+-- Input:  "git+https://github.com/fossas/foundation-libs#4bc3762e73f371717566fb075d02e1d25b21146e"
+-- Output: Just "4bc3762e73f371717566fb075d02e1d25b21146e"
+extractGitCommitHash :: Text -> Maybe Text
+extractGitCommitHash src = do
+  guard (Text.isPrefixOf "git+" src)
+  let (_, fragment) = breakOn "#" src
+  commit <- Text.stripPrefix "#" fragment
+  guard (not (Text.null commit))
+  pure commit
+
+-- | A map from PackageId to the package's source URL (which contains the commit hash for git deps).
+type PackageSourceMap = Map.Map PackageId Text
+
+-- | Build a lookup from package ID to source URL from the packages list.
+buildPackageSourceMap :: [Package] -> PackageSourceMap
+buildPackageSourceMap = Map.fromList . concatMap toEntry
+  where
+    toEntry pkg = case pkgSourceUrl pkg of
+      Just src -> [(pkgId pkg, src)]
+      Nothing -> []
+
+toDependency :: Bool -> PackageSourceMap -> PackageId -> Set CargoLabel -> Dependency
+toDependency emitGitBackedLocators sourceMap pkg =
   foldr
     applyLabel
     Dependency
       { dependencyType = depType
       , dependencyName = depName
-      , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
+      , dependencyVersion = Just $ CEq depVersion
       , dependencyLocations = []
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
@@ -407,11 +457,33 @@ toDependency pkg =
 
     -- For a path dependency, use the path as the package name. For example:
     -- path+file:///some/file/path -> /some/file/path
+    -- For a git dependency when the server supports it, use repo-url#crate-name. For example:
+    -- git+https://github.com/fossas/locator-rs?tag=v3.0.3#sha -> github.com/fossas/locator-rs#locator
+    -- When the server does not support git-backed locators, fall back to the plain crate name.
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of
             UnresolvedPathType -> sourceUrl
+            _
+              | emitGitBackedLocators
+              , Just repoUrl <- parseGitRepoUrl (pkgIdSource pkg) ->
+                  repoUrl <> "#" <> pkgIdName pkg
             _ -> pkgIdName pkg
+
+    -- For git dependencies without a tag, use the commit hash from the package source URL.
+    -- For all other dependencies (including tagged git deps), use the crate version.
+    depVersion = case (emitGitBackedLocators, untaggedGitCommitHash) of
+      (True, Just commitHash) -> commitHash
+      _ -> pkgIdVersion pkg
+
+    -- Look up the commit hash for an untagged git dependency.
+    -- Note: the `git+` here is from a URL like `git+https://github.com...`, not from a git+ locator.
+    untaggedGitCommitHash :: Maybe Text
+    untaggedGitCommitHash = case ("git+" `Text.isPrefixOf` pkgIdSource pkg, "?tag=" `Text.isInfixOf` pkgIdSource pkg) of
+      (True, False) -> do
+        sourceUrl <- Map.lookup pkg sourceMap
+        extractGitCommitHash sourceUrl
+      _ -> Nothing
 
 -- Possible values here are "build", "dev", and null.
 -- Null refers to productions, while dev and build refer to development-time dependencies
@@ -433,14 +505,16 @@ addEdge node = do
     addLabel dep
     edge parentId $ nodePkg dep
 
-buildGraph :: CargoMetadata -> Graphing Dependency
+buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
 -- By construction, workspace members are the root nodes in the graph.
 -- Use shrinkRoots to remove them and promote their direct dependencies to the
 -- direct dependencies we report for the project.
-buildGraph meta = shrinkRoots $
-  run . withLabeling toDependency $ do
+buildGraph emitGitBackedLocators meta = shrinkRoots $
+  run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
     traverse_ direct $ metadataWorkspaceMembers meta
     traverse_ addEdge $ resolvedNodes $ metadataResolve meta
+  where
+    sourceMap = buildPackageSourceMap $ metadataPackages meta
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
@@ -498,12 +572,14 @@ newPkgIdParser = eatSpaces (try longSpec <|> simplePkgSpec')
       -- In cases where we can't find a real name, use text after the last slash as a name.
       -- e.g. file:///path/to/my/project/bar#2.0.0 has the name 'bar'
       -- Cases of this are generally path dependencies.
+      -- Strip query parameters (e.g. ?tag=v0.3.6) before splitting, so that
+      -- git+https://github.com/fossas/broker?tag=v0.3.6#0.3.6 yields "broker", not "broker?tag=v0.3.6".
       let fallbackName =
             maybe pkgSource NonEmpty.last
               . NonEmpty.nonEmpty
               . filter (/= "")
               . Text.split (== '/')
-              $ sourceRemaining
+              $ Text.takeWhile (/= '?') sourceRemaining
 
       -- Parse (Optional): #adler@1.0.2
       nameVersion <- optional $ do

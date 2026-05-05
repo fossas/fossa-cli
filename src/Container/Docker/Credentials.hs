@@ -24,7 +24,7 @@ import Data.Text qualified as Text
 import Data.Text.Extra (breakOnEndAndRemove)
 import Effect.Exec (
   AllowErr (Never),
-  Command (Command, cmdAllowErr, cmdArgs, cmdName),
+  Command (Command, cmdAllowErr, cmdArgs, cmdEnvVars, cmdName),
   Exec,
   execJson',
  )
@@ -183,6 +183,7 @@ getCredential host credStore = do
         { cmdName = "docker-credential-" <> credHelperName
         , cmdArgs = ["get"]
         , cmdAllowErr = Never
+        , cmdEnvVars = Map.empty
         }
 
 data DockerCredentialHelperGetResponse = DockerCredentialHelperGetResponse

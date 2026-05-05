@@ -46,5 +46,6 @@ instance ToDiagnostic MissingNodeLockFile where
               [ "Ensure valid lockfile exist and is readable prior to running fossa."
               , indent 2 "For yarn package manager, you can perform: `yarn install` to install dependencies and generate lockfile."
               , indent 2 "For node package manager, you can perform: `npm install` to install dependencies and generate lockfile."
+              , indent 2 "For bun package manager, you can perform: `bun install` to install dependencies and generate lockfile."
               ]
     Errata (Just header) [] Nothing

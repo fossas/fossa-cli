@@ -6,7 +6,7 @@ module App.Fossa.ListTargets (
 ) where
 
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc), discoverFuncs)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig)
+import App.Fossa.Config.Analyze (StrategyConfig)
 import App.Fossa.Config.ListTargets (
   ListTargetOutputFormat (..),
   ListTargetsCliOpts,
@@ -80,7 +80,7 @@ listTargetsMain ListTargetsConfig{..} = do
     . runFinally
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
-    . runReader experimental
+    . runReader strategyConfig
     -- `fossa list-targets` does not support maven scope filters.
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader (NonStrict)
@@ -98,7 +98,7 @@ runAll ::
   , Has AtomicCounter sig m
   , Has Debug sig m
   , Has Stack sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
   , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m

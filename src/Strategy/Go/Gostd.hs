@@ -9,6 +9,7 @@ module Strategy.Go.Gostd (
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics)
 import Data.Char (isSpace)
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
@@ -39,6 +40,7 @@ goListStdCommand =
     { cmdName = "go"
     , cmdArgs = ["list", "std"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 listGoStdlibPackages :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m [GoStdlibDep]

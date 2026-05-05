@@ -1,5 +1,94 @@
 # FOSSA CLI Changelog
 
+## 3.17.3
+
+- pnpm: Support `catalog:` and `catalog:<name>` version specifiers. Versions are resolved from the `catalogs` section in `pnpm-lock.yaml`. ([#1696](https://github.com/fossas/fossa-cli/pull/1696))
+- pnpm: Remove stray `traceShow` debug output that dumped the parsed `pnpm-workspace.yaml` to stderr. ([#1696](https://github.com/fossas/fossa-cli/pull/1696))
+- Swift: Add support for versions specified using the `Version()` syntax
+
+## 3.17.2
+
+- Swift: Fix a bug in the `Package.swift` parser which would cause it to error on valid syntax.
+- NuGet: Add Central Package Management (CPM) support — versions defined in `Directory.Packages.props` are now resolved for `PackageReference` entries that omit a `Version` attribute. ([#1694](https://github.com/fossas/fossa-cli/pull/1694))
+- Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
+
+## 3.17.1
+
+- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
+- Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
+- UV: Add `directory` source type to uv.lock parser, fixing parse failures on projects with local directory dependencies ([#1690](https://github.com/fossas/fossa-cli/pull/1690))
+
+## 3.17.0
+
+- Vendetta: Support single-file library dependencies and multi-location vendored dependencies. Locations are now correctly classified as files or directories in vendored metadata. ([#1680](https://github.com/fossas/fossa-cli/pull/1680))
+- UV: Fix fatal parse error on uv.lock files containing editable/workspace packages with dynamic versions ([#1682](https://github.com/fossas/fossa-cli/pull/1682))
+- Gradle: Add additional development and test configurations for common plugins ([#1684](https://github.com/fossas/fossa-cli/pull/1684))
+
+## 3.16.7
+
+- Cargo: Deal with git-backed cargo locators properly ([#1670](https://github.com/fossas/fossa-cli/pull/1670))
+
+## 3.16.6
+
+- Bump tar crate to 0.4.45 to fix CVE-2026-33055 and CVE-2026-33056 ([#1679](https://github.com/fossas/fossa-cli/pull/1679))
+- Fix UTF-8 encoding for ficus output on Windows  ([#1646](https://github.com/fossas/fossa-cli/pull/1646))
+
+## 3.16.5
+
+- PNPM: Fix pnpm v9 lockfile transitive devDependency classification. Dependencies of devDependencies were incorrectly reported as production dependencies in pnpm v9 projects. ([#1668](https://github.com/fossas/fossa-cli/pull/1668))
+
+## 3.16.4
+
+- Bugfix: revert caching changes as they caused a problem with missing libs on macos ([#1675](https://github.com/fossas/fossa-cli/pull/1675))
+
+## 3.16.3
+
+- Elixir: Use `MIX_ENV=prod` for accurate production dependency resolution, with fallback to `--only prod` for projects lacking `config/prod.exs` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
+- Infrastructure: Add `cmdEnvVars` field to `Command` type for setting environment variables on subprocesses via `typed-process` ([#1662](https://github.com/fossas/fossa-cli/pull/1662))
+
+## 3.16.2
+
+- Conda: Make conda analysis work on versions of conda where the `--force` flag is deprecated for `conda env create` ([#1661](https://github.com/fossas/fossa-cli/pull/1661))
+- Bug fix: fail early if the `--output` flag is combined with `--snippet-scan` or `--x-vendetta` flags ([#1659](https://github.com/fossas/fossa-cli/pull/1659))
+- Hide deprecated `--experimental-use-v3-go-resolver`, `--experimental-skip-vsi-graph` and `--experimental-link-project-binary` flags, and deprecate the `experimental-link-user-defined-dependency-binary` subcommand. The flags and subcommand still work, but are no longer documented or shown in the help text ([#1633](https://github.com/fossas/fossa-cli/pull/1633))
+
+## 3.16.1
+
+- Licensing: Add standalone detection for Solace proprietary licenses (solace-software-2021, solace-non-production-1.0, solace-api-1.1) ([#1660](https://github.com/fossas/fossa-cli/pull/1660))
+- Licensing: Add support for SPDX tag-value format license declarations
+
+## 3.16.0
+
+- nodejs: Add support for Bun lockfiles (`bun.lock`). Analyzes npm and git dependencies, workspaces, and environment labeling. ([#1648](https://github.com/fossas/fossa-cli/pull/1648))
+- Licensing: Fix bug where public domain disclosures were being matched as GPL ([`#1650`](https://github.com/fossas/fossa-cli/pull/1650))
+
+## 3.15.9
+
+- Improvements for licensing and snippet scanning ([#1649](https://github.com/fossas/fossa-cli/pull/1649))
+  - Licensing: Additional proprietary license detection
+  - Snippet scanning: Support TLS operation with platform native certificate store
+
+## 3.15.8
+
+- Snippet scanning: Fix bug where proxies cause POSTs to get redirected to GETs ([#1645](https://github.com/fossas/fossa-cli/pull/1645))
+
+## 3.15.7
+
+- PNPM: Fixes an issue where transitive dependencies with peer dependencies weren't detected in lockfile v6. ([#1642](https://github.com/fossas/fossa-cli/pull/1642))
+
+## 3.15.6
+
+- Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))
+- Golang: Fix a bug where we did not correctly parse old-style go.mod files with quoted package names ([#1636](https://github.com/fossas/fossa-cli/pull/1636))
+- Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
+
+## 3.15.5
+- Fix reporting of transitive dependencies in pnpm v9 lockfiles ([#1632](https://github.com/fossas/fossa-cli/pull/1632))
+- Jar call-graph update - Attempt to fix a reachability issue ([#1634](https://github.com/fossas/fossa-cli/pull/1634))
+
+## 3.15.4
+- Scala fix: Prefer `MiniDependencyTreePlugin` over explicit `DependencyTreePlugin` ([#1627](https://github.com/fossas/fossa-cli/pull/1627)).
+
 ## 3.15.3
 - Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623)).
   The `fossa snippets` subcommand has been replaced by `fossa analyze --snippet-scan` ([documentation](./docs/features/snippet-scanning.md)). If you are still using `fossa snippets`, you can temporarily keep using it by using versions of the CLI previous to this release. We will eventually be sunsetting the services that back `fossa snippets`, but will keep them running to mid-February at the very earliest. Once those services stop running then `fossa snippets` will no longer work at all, even when using older versions of the CLI. Please reach out to support@fossa.com if you have any questions.

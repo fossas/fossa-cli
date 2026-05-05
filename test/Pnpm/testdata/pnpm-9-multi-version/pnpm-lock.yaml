@@ -1,0 +1,35 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+# Bug 3 regression: two workspace packages depend on different versions of
+# the same package — one as prod, one as dev.  Each version must receive
+# only its own environment label, not both.
+importers:
+  .:  {}
+
+  packages/app-a:
+    dependencies:
+      sax:
+        specifier: ^1.2.1
+        version: 1.2.1
+
+  packages/app-b:
+    devDependencies:
+      sax:
+        specifier: ^1.4.4
+        version: 1.4.4
+
+packages:
+  sax@1.2.1:
+    resolution: {integrity: sha512-xxxxxxxxxx==}
+
+  sax@1.4.4:
+    resolution: {integrity: sha512-yyyyyyyyyy==}
+
+snapshots:
+  sax@1.2.1: {}
+
+  sax@1.4.4: {}

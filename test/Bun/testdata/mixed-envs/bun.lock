@@ -1,0 +1,21 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "mixed-envs-root",
+      "dependencies": {
+        "lodash": "^4.17.21",
+      },
+    },
+    "packages/tools": {
+      "name": "tools",
+      "devDependencies": {
+        "lodash": "^4.17.21",
+      },
+    },
+  },
+  "packages": {
+    "tools": ["tools@workspace:packages/tools"],
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-fake=="],
+  },
+}

@@ -8,7 +8,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest-large]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: install script performs installation
         shell: bash
@@ -61,7 +61,7 @@ jobs:
   test-macos-arm:
     runs-on: "macos-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: install latest script can install a specific version
         shell: bash
         run: |
@@ -80,7 +80,7 @@ jobs:
   test-windows:
     runs-on: "windows-latest"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: get latest release version from github
         shell: pwsh

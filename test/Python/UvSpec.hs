@@ -29,56 +29,56 @@ lock =
     { uvlockPackages =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
-            , uvlockPackageVersion = "0.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "0.1.0"
+            , uvlockPackageSource = SourceVirtual "."
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = ["dep3", "dep4"]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
-            , uvlockPackageVersion = "1.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "1.1.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = ["dep4"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep2"
-            , uvlockPackageVersion = "2.1.2"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "2.1.2"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep3"
-            , uvlockPackageVersion = "0.9.9"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "0.9.9"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep4"
-            , uvlockPackageVersion = "1.0.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "1.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = ["dep5"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep5"
-            , uvlockPackageVersion = "3.0.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "3.0.1"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep6"
-            , uvlockPackageVersion = "1.1.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "1.1.1"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
@@ -97,38 +97,117 @@ lockNewStyleDevDeps =
     { uvlockPackages =
         [ UvLockPackage
             { uvlockPackageName = "my-project"
-            , uvlockPackageVersion = "0.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "0.1.0"
+            , uvlockPackageSource = SourceVirtual "."
             , uvlockPackageDependencies = ["dep1", "dep2"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = Map.fromList [("dev", ["dep3"])]
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
-            , uvlockPackageVersion = "1.1.0"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "1.1.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep3"
-            , uvlockPackageVersion = "0.9.9"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "0.9.9"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = ["dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep6"
-            , uvlockPackageVersion = "1.1.1"
-            , uvlockPackageSource = UvLockPackageSource Nothing
+            , uvlockPackageVersion = Just "1.1.1"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
     }
+
+--     my-project (editable, no version -- dynamic version project)
+--     /    \
+--   dep1  dep3 (dev)
+--           |
+--         dep6
+lockEditableNoVersion :: UvLock
+lockEditableNoVersion =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = Nothing
+            , uvlockPackageSource = SourceEditable "."
+            , uvlockPackageDependencies = ["dep1"]
+            , uvlockPackageDevDependencies = ["dep3"]
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep1"
+            , uvlockPackageVersion = Just "1.1.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep3"
+            , uvlockPackageVersion = Just "0.9.9"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = ["dep6"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep6"
+            , uvlockPackageVersion = Just "1.1.1"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
+
+--     my-project
+--     /    \
+--   dep1  local-lib (directory dep)
+lockWithDirectory :: UvLock
+lockWithDirectory =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = Just "0.1.0"
+            , uvlockPackageSource = SourceVirtual "."
+            , uvlockPackageDependencies = ["dep1", "local-lib"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "dep1"
+            , uvlockPackageVersion = Just "1.1.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "local-lib"
+            , uvlockPackageVersion = Just "0.2.0"
+            , uvlockPackageSource = SourceDirectory "../local-lib"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
+
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
   Dependency
@@ -157,6 +236,17 @@ dep5 = mkDep "dep5" "3.0.1" [EnvProduction, EnvDevelopment]
 
 dep6 :: Dependency
 dep6 = mkDep "dep6" "1.1.1" [EnvDevelopment]
+
+localLib :: Dependency
+localLib =
+  Dependency
+    { dependencyType = UnresolvedPathType
+    , dependencyName = "../local-lib"
+    , dependencyVersion = Just (CEq "0.2.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.fromList [EnvProduction]
+    , dependencyTags = mempty
+    }
 
 anyio :: Dependency
 anyio = mkDep "anyio" "4.11.0" [EnvProduction, EnvDevelopment]
@@ -199,6 +289,20 @@ spec = do
       expectDeps [dep1, dep3, dep6] result
       expectEdges [(dep3, dep6)] result
 
+    it "should skip editable packages without a version" $ do
+      let result = buildGraph lockEditableNoVersion
+
+      expectDirect [dep1, dep3] result
+      expectDeps [dep1, dep3, dep6] result
+      expectEdges [(dep3, dep6)] result
+
+    it "should handle directory source dependencies" $ do
+      let result = buildGraph lockWithDirectory
+
+      expectDirect [dep1, localLib] result
+      expectDeps [dep1, localLib] result
+      expectEdges [] result
+
   describe "parse uv.lock" $ do
     it' "correctly parse and interpret uv.lock" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv.lock|]
@@ -219,5 +323,45 @@ spec = do
         , (httpcore, certifi)
         , (httpcore, h11)
         , (starlette, anyio)
+        ]
+        result
+
+    it' "correctly parse uv.lock with editable package missing version" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-editable.lock|]
+      uvlock <- readContentsToml path
+      let result = buildGraph uvlock
+      -- In the editable lockfile, anyio and idna are only reachable via httpx (prod),
+      -- so they should only have EnvProduction (unlike the main test where starlette
+      -- provides a dev path to anyio).
+      let anyio' = mkDep "anyio" "4.11.0" [EnvProduction]
+      let idna' = mkDep "idna" "3.11" [EnvProduction]
+
+      expectDirect' [httpx, sniffio] result
+      expectDeps'
+        [anyio', httpx, idna', sniffio]
+        result
+      expectEdges'
+        [ (httpx, anyio')
+        , (httpx, idna')
+        , (anyio', idna')
+        , (anyio', sniffio)
+        ]
+        result
+
+    it' "correctly parse uv.lock with directory source dependency" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-directory.lock|]
+      uvlock <- readContentsToml path
+      let result = buildGraph uvlock
+      let anyio' = mkDep "anyio" "4.11.0" [EnvProduction]
+      let idna' = mkDep "idna" "3.11" [EnvProduction]
+      let sniffio' = mkDep "sniffio" "1.3.1" [EnvProduction]
+
+      expectDirect' [anyio', localLib] result
+      expectDeps'
+        [anyio', idna', localLib, sniffio']
+        result
+      expectEdges'
+        [ (anyio', idna')
+        , (anyio', sniffio')
         ]
         result

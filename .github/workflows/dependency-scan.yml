@@ -9,7 +9,7 @@ jobs:
       FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install and set GHC and Cabal versions
         # The first line works around a ghcup issue:

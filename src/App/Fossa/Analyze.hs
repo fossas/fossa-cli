@@ -56,11 +56,11 @@ import App.Fossa.Config.Analyze (
   AnalyzeConfig (..),
   BinaryDiscovery (BinaryDiscovery),
   DynamicLinkInspect (DynamicLinkInspect),
-  ExperimentalAnalyzeConfig (..),
   IATAssertion (IATAssertion),
   IncludeAll (IncludeAll),
   NoDiscoveryExclusion (NoDiscoveryExclusion),
   ScanDestination (..),
+  StrategyConfig (..),
   UnpackArchives (UnpackArchives),
   WithoutDefaultFilters (..),
  )
@@ -145,7 +145,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
-import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsReachability))
+import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsGitBackedCargoLocators, orgSupportsReachability))
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
@@ -222,7 +222,7 @@ runDependencyAnalysis ::
   , Has Exec sig m
   , Has (Output DiscoveredProjectScan) sig m
   , Has Stack sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
   , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
@@ -326,7 +326,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       vendoredDepsOptions = Config.vendoredDeps cfg
       grepOptions = Config.grepOptions cfg
       customFossaDepsFile = Config.customFossaDepsFile cfg
-      shouldAnalyzePathDependencies = resolvePathDependencies $ Config.experimental cfg
+      shouldAnalyzePathDependencies = resolvePathDependencies $ Config.strategyConfig cfg
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.snippetScan cfg
@@ -435,6 +435,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
   let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
+  let strategyCfg =
+        (Config.strategyConfig cfg)
+          { Config.useGitBackedCargoLocators = Config.UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators orgInfo
+          }
   (projectScans, ()) <-
     Diag.context "discovery/analysis tasks"
       . runOutput @DiscoveredProjectScan
@@ -442,7 +446,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runFinally
       . withTaskPool capabilities updateProgress
       . runAtomicCounter
-      . runReader (Config.experimental cfg)
+      . runReader strategyCfg
       . runReader (Config.mavenScopeFilterSet cfg)
       . runReader discoveryFilters
       . runReader (Config.overrideDynamicAnalysis cfg)

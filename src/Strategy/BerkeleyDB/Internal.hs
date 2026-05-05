@@ -9,6 +9,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Monad (when)
 import Data.ByteString.Base64 qualified as B64
 import Data.ByteString.Lazy qualified as BSL
+import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Rpm.DbHeaderBlob (PkgInfo (..), readPackageInfo)
 import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8, toText)
@@ -68,6 +69,7 @@ bdbCommand bin =
     { cmdName = toText $ toPath bin
     , cmdArgs = []
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 getSystemCwd :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m (Path Abs Dir)

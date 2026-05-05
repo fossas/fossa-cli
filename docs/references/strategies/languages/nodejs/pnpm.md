@@ -25,6 +25,10 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
     - `peerDependencies`: list of peer dependencies (will be treated like any other dependency)
     - `dev`: to infer if this is used dependency or not. If the value is `true` by default CLI will not include this in the final analysis.
 
+> 📘 Important Note
+>
+> Anything defined in the `importers` section will be ignored. In order to scan individual targts, the workspace needs to have individual/separate lock files. 
+
 An example is provided below:
 
 ```yml
@@ -152,6 +156,13 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 * Development dependencies (`dev: true`) are ignored by default from analysis. To include them in the analysis, execute CLI with `--include-unused` flag e.g. `fossa analyze --include-unused`.
 * Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
 * `fossa-cli` supports lockFileVersion: 4.x, 5.x, 6.x, 7.x, 8.x, and 9.x.
+
+### Catalogs
+
+pnpm [catalogs](https://pnpm.io/catalogs) (introduced in pnpm 9.5) are supported.
+When `catalog:` or `catalog:<name>` specifiers are used in `package.json`,
+the resolved versions from `pnpm-lock.yaml` are used for analysis.
+No additional configuration is needed.
 
 
 # F.A.Q

@@ -27,11 +27,12 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
-  Value (Null),
+  Value (Null, Object),
   object,
   withObject,
   withText,
   (.:),
+  (.?=),
  )
 import Data.Text (Text)
 
@@ -246,13 +247,13 @@ data UpdateProjectRequest = UpdateProjectRequest
 
 instance ToJSON UpdateProjectRequest where
   toJSON UpdateProjectRequest{..} =
-    object
-      [ "title" .= maybe Null toJSON updateProjectTitle
-      , "url" .= maybe Null toJSON updateProjectUrl
-      , "issueTrackerProjectIds" .= maybe Null toJSON updateProjectIssueTrackerIds
-      , "labels" .= maybe Null toJSON updateProjectLabelIds
-      , "policyId" .= maybe Null toJSON updateProjectPolicyId
-      , "default_branch" .= maybe Null toJSON updateProjectDefaultBranch
+    Object . mconcat $
+      [ "title" .?= updateProjectTitle
+      , "url" .?= updateProjectUrl
+      , "issueTrackerProjectIds" .?= updateProjectIssueTrackerIds
+      , "labels" .?= updateProjectLabelIds
+      , "policyId" .?= updateProjectPolicyId
+      , "default_branch" .?= updateProjectDefaultBranch
       ]
 
 -- Revision

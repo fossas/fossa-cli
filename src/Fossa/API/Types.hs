@@ -508,6 +508,7 @@ data Organization = Organization
   , orgCustomLicenseScanConfigs :: [GrepEntry]
   , orgSupportsReachability :: Bool
   , orgSupportsPreflightChecks :: Bool
+  , orgSupportsGitBackedCargoLocators :: Bool
   , orgSubscription :: Subscription
   , orgSnippetScanSourceCodeRetentionDays :: Maybe Int
   }
@@ -535,6 +536,7 @@ blankOrganization =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
     }
@@ -557,6 +559,7 @@ instance FromJSON Organization where
       <*> obj .:? "customLicenseScanConfigs" .!= []
       <*> obj .:? "supportsReachability" .!= False
       <*> obj .:? "supportsPreflightChecks" .!= False
+      <*> obj .:? "supportsGitBackedCargoLocators" .!= False
       <*> obj .:? "subscription" .!= Free
       <*> obj .:? "snippetScanSourceCodeRetentionDays" .!= Nothing
 

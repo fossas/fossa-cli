@@ -15,6 +15,7 @@ import Data.ByteString qualified as BS
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set (Set, toList)
 import Data.Set.NonEmpty (toSet)
@@ -125,6 +126,7 @@ gradleJarCmdTargets initScriptFilepath targets baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["-I", toText initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jarPaths") (toList targets)
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 gradleJarCmd :: FilePath -> Text.Text -> Command
@@ -133,6 +135,7 @@ gradleJarCmd initScriptFilepath baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["-I", toText initScriptFilepath, "jarPaths"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 data FailedToRunGradleReachabilityAnalysis

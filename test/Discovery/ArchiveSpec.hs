@@ -105,6 +105,40 @@ spec = do
         tempDirExists <- sendIO $ PIO.doesDirExist extractedDir
         tempDirExists `shouldBe` False
 
+  -- Regression test for ANE-2716: tar archives with GNU long name entries (type 'L' and 'K')
+  -- for symbolic links would fail with TwoTypeLEntries error because removeTarLinks
+  -- removed the symlinks but left orphaned L/K entries.
+  --
+  -- GNU tar uses type 'L' entries to store paths exceeding 100 characters, and type 'K'
+  -- entries for long link targets. Each L/K entry is followed by the actual file entry.
+  -- Reference: https://www.gnu.org/software/tar/manual/html_node/Standard.html
+  --   (search for "typeflag" - 'L' and 'K' are GNU extensions listed in the table)
+  --
+  -- The test archive contains both:
+  --   - Type 'L' entries: symlinks with long paths (>100 chars)
+  --   - Type 'K' entries: symlinks with long targets (>100 chars)
+  describe "extract tar.xz archive with GNU long name entries (L and K) for symlinks" $ do
+    target <- runIO longFileNameSymlinkTarXzPath
+    result <- runIO $
+      runStack . runDiagnostics . runFinally . failOnMaybe "extractTarXz" . withArchive extractTarXz target $ \dir -> do
+        -- The symlinks are removed by removeTarLinks, but the target file should exist
+        -- (it's in a deeply nested path that triggers L entries for the directories too)
+        let targetPath =
+              dir
+                </> $(mkRelDir "symlink-longname-test")
+                </> $(mkRelDir "very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length")
+                </> $(mkRelFile "target.txt")
+        content <- sendIO . TIO.readFile . toFilePath $ targetPath
+        pure (dir, content)
+
+    it "should extract without TwoTypeLEntries error" $ do
+      assertOnSuccess result $ \_ (_, extractedContent) -> extractedContent `shouldBe` "target content\n"
+
+    it "should have cleaned up the temporary directory" $ do
+      assertOnSuccess result $ \_ (extractedDir, _) -> do
+        tempDirExists <- sendIO $ PIO.doesDirExist extractedDir
+        tempDirExists `shouldBe` False
+
   describe "extract tar.bz2 archive to a temporary location" $ do
     target <- runIO simpleTarBz2Path
     result <- runIO $
@@ -166,6 +200,28 @@ simpleTarXzPath = PIO.resolveFile' "test/Discovery/testdata/simple.tar.xz"
 
 simpleTarBz2Path :: IO (Path Abs File)
 simpleTarBz2Path = PIO.resolveFile' "test/Discovery/testdata/simple.tar.bz2"
+
+-- Archive with GNU long name entries (type 'L' and 'K') for symlinks.
+-- Used to test regression fix for ANE-2716 (TwoTypeLEntries error).
+--
+-- GNU tar uses:
+--   - Type 'L' entries to store file paths exceeding 100 characters
+--   - Type 'K' entries to store link targets exceeding 100 characters
+-- Reference: https://www.gnu.org/software/tar/manual/html_node/Standard.html
+--   (search for "typeflag" - 'L' and 'K' are GNU extensions)
+--
+-- Created with:
+--   mkdir -p symlink-longname-test/very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length
+--   echo "target content" > "symlink-longname-test/very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length/target.txt"
+--   # Symlink with long PATH (triggers L entry):
+--   ln -s ../target.txt "symlink-longname-test/very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length/symlink-long-path.txt"
+--   # Symlinks with long TARGETS (triggers K entries):
+--   ln -s "very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length/target.txt" symlink-longname-test/symlink-long-target1.txt
+--   ln -s "very/deeply/nested/directory/structure/that/exceeds/one/hundred/characters/in/total/path/length/target.txt" symlink-longname-test/symlink-long-target2.txt
+--   gtar --format=gnu -cvf symlink-longname.tar symlink-longname-test && xz symlink-longname.tar
+--   rm -rf symlink-longname-test
+longFileNameSymlinkTarXzPath :: IO (Path Abs File)
+longFileNameSymlinkTarXzPath = PIO.resolveFile' "test/Discovery/testdata/symlink-longname.tar.xz"
 
 expectedSimpleContentA :: Text
 expectedSimpleContentA = "6b5effe3-215a-49ec-9286-f0702f7eb529"

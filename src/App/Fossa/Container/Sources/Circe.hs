@@ -5,6 +5,7 @@ where
 
 import App.Fossa.Config.Container.Common (ImageText, unImageText)
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath)
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Effect.Exec (AllowErr (..), Command (..))
@@ -20,4 +21,5 @@ circeReexportCommand paths img outputPath =
     { cmdName = toText $ toPath paths
     , cmdArgs = ["reexport"] <> [unImageText img] <> [outputPath]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }

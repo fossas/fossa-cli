@@ -21,9 +21,9 @@ module Strategy.Python.Poetry.PyProject (
 ) where
 
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
-import Data.Foldable (asum)
+import Data.Foldable (asum, foldl')
 import Data.Functor (void)
-import Data.Map (Map, unions)
+import Data.Map (Map, insert, union, unions)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -41,7 +41,7 @@ import DepTypes (
     COr
   ),
  )
-import Strategy.Python.Util (Req)
+import Strategy.Python.Util (Req (..), reqName)
 import Text.Megaparsec (
   Parsec,
   empty,
@@ -188,12 +188,28 @@ instance Toml.Schema.FromValue PyProjectPoetryGroupDependencies where
       PyProjectPoetryGroupDependencies
         <$> Toml.Schema.pickKey [Toml.Schema.Key "dependencies" Toml.Schema.fromValue, Toml.Schema.Else (pure mempty)]
 
+-- | Returns all production dependencies from a pyproject.toml.
+-- Merges legacy [tool.poetry.dependencies] with PEP 621 [project].dependencies.
+-- Poetry-style entries take precedence when a dep appears in both sections.
 allPoetryProductionDeps :: PyProject -> Map Text PoetryDependency
-allPoetryProductionDeps project = case pyprojectTool project of
-  Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
-    Just (PyProjectPoetry{dependencies}) -> dependencies
-    _ -> mempty
-  _ -> mempty
+allPoetryProductionDeps project = poetryDeps `union` pep621Deps
+  where
+    -- Legacy [tool.poetry.dependencies] — takes precedence in union
+    poetryDeps = case pyprojectTool project of
+      Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
+        Just (PyProjectPoetry{dependencies}) -> dependencies
+        _ -> mempty
+      _ -> mempty
+
+    -- PEP 621 [project].dependencies — fallback for deps not in poetryDeps.
+    -- We use PoetryTextVersion "*" as a placeholder since the actual version
+    -- comes from the lock file. The key purpose is to register the package name
+    -- so it's recognized as a production dependency.
+    pep621Deps :: Map Text PoetryDependency
+    pep621Deps = case pyprojectProject project of
+      Just (PyProjectMetadata{pyprojectDependencies = Just reqs}) ->
+        foldl' (\acc req -> insert (reqName req) (PoetryTextVersion "*") acc) mempty reqs
+      _ -> mempty
 
 allPoetryNonProductionDeps :: PyProject -> Map Text PoetryDependency
 allPoetryNonProductionDeps project = unions [olderPoetryDevDeps, optionalDeps]

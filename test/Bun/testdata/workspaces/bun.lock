@@ -1,0 +1,30 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "workspace-root",
+      "devDependencies": {
+        "@types/app": "workspace:*",
+        "typescript": "^5.0.0",
+      },
+    },
+    "packages/app": {
+      "name": "@types/app",
+      "dependencies": {
+        "lodash": "^4.17.21",
+      },
+    },
+    "packages/utils": {
+      "name": "utils",
+      "dependencies": {
+        "lodash": "^4.17.21",
+      },
+    },
+  },
+  "packages": {
+    "@types/app": ["@types/app@workspace:packages/app"],
+    "utils": ["utils@workspace:packages/utils"],
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-fake=="],
+    "typescript": ["typescript@5.3.3", "", { "bin": { "tsc": "bin/tsc" } }, "sha512-fake=="],
+  },
+}

@@ -6,7 +6,7 @@ module App.Fossa.Container.Sources.DockerEngine (
   revisionFromDockerEngine,
 ) where
 
-import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
@@ -54,17 +54,18 @@ analyzeFromDockerEngine ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  UseGitBackedCargoLocators ->
   Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   Text ->
   m ContainerScan
-analyzeFromDockerEngine systemDepsOnly filters withoutDefaultFilters engineHost imgTag =
+analyzeFromDockerEngine useGitBackedCargo systemDepsOnly filters withoutDefaultFilters engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromDockerEngine ::
   ( Has Diagnostics sig m

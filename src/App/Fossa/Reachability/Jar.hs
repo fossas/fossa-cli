@@ -20,6 +20,7 @@ import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as BS
 import Data.Error (createErrataWithHeaderOnly)
 import Data.FileEmbed.Extra (embedFile')
+import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.String.Conversion (toText)
 import Data.Text (isSuffixOf)
@@ -37,7 +38,7 @@ newtype CallGraphJarParser = CallGraphJarParser {jar :: BS.ByteString}
 
 -- This jar is from: https://github.com/fossas/jar-callgraph/pull/58
 execJar :: CallGraphJarParser
-execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.2.jar")}
+execJar = CallGraphJarParser{jar = $(embedFile' "scripts/jar-callgraph-1.0.3.jar")}
 
 withUnpackedPlugin ::
   (Has (Lift IO) sig m) =>
@@ -56,7 +57,7 @@ withUnpackedPlugin plugin act =
       act pluginJarFilepath
 
 jarPraseCmd :: FilePath -> Path Abs File -> Command
-jarPraseCmd plugin target = Command "java" ["-jar", toText plugin, toText $ toFilePath target] Never
+jarPraseCmd plugin target = Command "java" ["-jar", toText plugin, toText $ toFilePath target] Never Map.empty
 
 callGraphFromJar ::
   ( Has Exec sig m

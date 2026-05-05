@@ -16,7 +16,7 @@ import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import Data.Text (Text)
 import Discovery.Filters (AllFilters (..), combinedTargets)
 import Path (Abs, File, Path, mkAbsFile)
-import Test.Effect (expectationFailure', it', shouldBe')
+import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Types (DiscoveredProjectType, TargetFilter (TypeTarget))
 
@@ -143,3 +143,12 @@ spec = do
         case (combinedTargets $ includeFilters filters, combinedTargets $ excludeFilters filters) of
           (includedTargets, []) -> includedTargets `shouldBe'` [TypeTarget "gomod"]
           _ -> expectationFailure' ("Incorrect filters applied. Got " ++ show filters)
+
+  describe "incompatible flags" $ do
+    it' "should fail when --snippet-scan and --output are used together" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan --output"
+      expectFatal' $ mergeOpts Nothing Nothing envVars cliOpts
+
+    it' "should fail when --x-vendetta and --output are used together" $ do
+      cliOpts <- parseArgString cliParser "--x-vendetta --output"
+      expectFatal' $ mergeOpts Nothing Nothing envVars cliOpts

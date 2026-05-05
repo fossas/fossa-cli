@@ -12,7 +12,9 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 
 ## Analysis
 
-1. Run `mix deps.tree --format plain --only prod` and generate output similar to:
+FOSSA targets only production dependencies by first attempting to run commands with `MIX_ENV=prod`. If that fails (e.g. the project lacks a `config/prod.exs` file), it falls back to using `--only prod`, which filters the output but runs in the default (dev) environment.
+
+1. Run `MIX_ENV=prod mix deps.tree --format plain` (or `mix deps.tree --format plain --only prod` as a fallback) and generate output similar to:
 ```
 ├─ one─1.0.0 (github.com/dep/one)
 │  ├─ two─2.0.0 (hex package)
@@ -20,7 +22,7 @@ In order to find elixir projects, we look for `mix.exs` file, which specifies th
 │  └─ four─4.0.0 (github.com/dep/four)
 └─ five─5.0.0 (hex package)
 ```
-2. Run `mix deps --all` and generate output similar to:
+2. Run `MIX_ENV=prod mix deps --all` (or `mix deps --all` as a fallback) and generate output similar to:
 ```
 * one 1.0.0 (Hex package) (mix)
   locked at 1.0.0 (one) 3ad58ae7

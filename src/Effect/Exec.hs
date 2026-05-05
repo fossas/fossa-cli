@@ -70,7 +70,7 @@ import Data.Aeson (
   withObject,
   (.:),
  )
-import Data.Bifunctor (first, second)
+import Data.Bifunctor (bimap, first, second)
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Foldable (traverse_)
@@ -91,10 +91,12 @@ import Path (Abs, Dir, Path, SomeBase (..), fromAbsDir, toFilePath)
 import Path.IO (AnyPath (makeAbsolute))
 import Prettyprinter (Doc, indent, pretty, viaShow, vsep)
 import Prettyprinter.Render.Terminal (AnsiStyle)
+import System.Environment (getEnvironment)
 import System.Exit (ExitCode (..))
 import System.Process.Typed (
   proc,
   readProcess,
+  setEnv,
   setStdin,
   setWorkingDir,
  )
@@ -108,16 +110,41 @@ data Command = Command
   -- ^ Arguments for the command
   , cmdAllowErr :: AllowErr
   -- ^ Error (i.e. non-zero exit code) tolerance policy for running commands. This is helpful for commands like @npm@, that nonsensically return non-zero exit codes when a command succeeds
+  , cmdEnvVars :: Map.Map Text Text
+  -- ^ Additional environment variables to set when running the command.
+  -- These are merged with the current process environment.
   }
   deriving (Eq, Ord, Show, Generic)
 
-instance ToJSON Command
+instance ToJSON Command where
+  toJSON Command{..} =
+    object
+      [ "cmdName" .= cmdName
+      , "cmdArgs" .= cmdArgs
+      , "cmdAllowErr" .= cmdAllowErr
+      , "cmdEnvVars" .= cmdEnvVars
+      ]
+
+instance FromJSON Command where
+  parseJSON = withObject "Command" $ \o ->
+    Command
+      <$> o .: "cmdName"
+      <*> o .: "cmdArgs"
+      <*> o .: "cmdAllowErr"
+      <*> o .: "cmdEnvVars"
+
 instance RecordableValue Command
-instance FromJSON Command
 instance ReplayableValue Command
 
+-- | Render a command for display in logs/diagnostics.
+-- Env var values are redacted to prevent credential leaks in debug bundles.
 renderCommand :: Command -> Text
-renderCommand (Command name args _) = Text.intercalate " " $ [name] <> args
+renderCommand Command{..} =
+  let envPrefix =
+        if Map.null cmdEnvVars
+          then ""
+          else Text.intercalate " " (map (\(k, _) -> k <> "=<REDACTED>") (Map.toList cmdEnvVars)) <> " "
+   in envPrefix <> Text.intercalate " " ([cmdName] <> cmdArgs)
 
 data CmdFailure = CmdFailure
   { cmdFailureCmd :: Command
@@ -241,7 +268,7 @@ renderCmdFailure CmdFailure{..} =
     expectedCmdNotFoundErrStr = cmdName cmdFailureCmd <> ": startProcess: exec: invalid argument (Bad file descriptor)"
 
     prettyCommand :: Command -> Doc AnsiStyle
-    prettyCommand Command{..} = pretty $ cmdName <> " " <> Text.intercalate " " cmdArgs
+    prettyCommand cmd' = pretty $ renderCommand cmd'
 
     stdErr :: Text
     stdErr = decodeUtf8 cmdFailureStderr
@@ -454,7 +481,7 @@ mkAnalysisCommand candidates@CandidateAnalysisCommands{..} workdir args allowErr
         Nothing -> context "Command override supported, but not specified" $ selectBestCmd workdir candidates
         Just cmd -> context ("Command override provided: " <> cmd) . selectBestCmd workdir $ withCmdOverride cmd
       Nothing -> context "Override not supported for this command" $ selectBestCmd workdir candidates
-    pure $ Command{cmdName = cmd, cmdArgs = args, cmdAllowErr = allowErr}
+    pure $ Command{cmdName = cmd, cmdArgs = args, cmdAllowErr = allowErr, cmdEnvVars = Map.empty}
   where
     withCmdOverride :: Text -> CandidateAnalysisCommands
     withCmdOverride override =
@@ -470,7 +497,7 @@ selectBestCmd workdir CandidateAnalysisCommands{..} = selectBestCmd' (NE.toList 
   where
     selectBestCmd' :: (Has Diagnostics sig m, Has Exec sig m) => [Text] -> m Text
     selectBestCmd' (cmd : remaining) = context ("Evaluate command: " <> cmd) $ do
-      let attempt = Command{cmdName = cmd, cmdArgs = candidateCmdArgs, cmdAllowErr = Never}
+      let attempt = Command{cmdName = cmd, cmdArgs = candidateCmdArgs, cmdAllowErr = Never, cmdEnvVars = Map.empty}
       output <- recover . warnOnErr (CandidateCommandFailed cmd candidateCmdArgs) $ execThrow workdir attempt
       case output of
         Nothing -> selectBestCmd' remaining
@@ -514,7 +541,15 @@ runExecIO = interpret $ \case
         ioExceptionToCmdFailure :: IOException -> CmdFailure
         ioExceptionToCmdFailure = mkFailure (ExitFailure 1) "" . fromString . show
 
-    let process = setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs')
+    let baseProcess = setWorkingDir (fromAbsDir absolute) (proc cmdName' cmdArgs')
+    process <-
+      if Map.null (cmdEnvVars cmd)
+        then pure baseProcess
+        else do
+          currentEnv <- getEnvironment
+          let extraEnv = map (bimap toString toString) $ Map.toList (cmdEnvVars cmd)
+              mergedEnv = extraEnv ++ filter (\(k, _) -> k `notElem` map fst extraEnv) currentEnv
+          pure $ setEnv mergedEnv baseProcess
     processResult <- try . readProcess $ case stdin of
       Just stdin' -> setStdin (fromString . toString $ stdin') process
       Nothing -> process

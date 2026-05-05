@@ -26,6 +26,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Char (toLower)
 import Data.Foldable (find)
 import Data.HashMap.Strict qualified as HM
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
@@ -95,6 +96,7 @@ svnCommand =
     { cmdName = "svn"
     , cmdArgs = ["info"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 inferSVN :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m InferredProject

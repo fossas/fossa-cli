@@ -1,0 +1,18 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "git-deps-test",
+      "dependencies": {
+        "my-github-dep": "github:user/repo#abc123",
+        "my-git-dep": "git+https://github.com/other/project.git#def456",
+        "lodash": "^4.17.21",
+      },
+    },
+  },
+  "packages": {
+    "my-github-dep": ["my-github-dep@github:user/repo#abc123", "", {}, ""],
+    "my-git-dep": ["my-git-dep@git+https://github.com/other/project.git#def456", "", { "dependencies": { "lodash": "^4.17.21" } }, ""],
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-fake=="],
+  },
+}

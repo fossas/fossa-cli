@@ -5,6 +5,7 @@ module Strategy.Conan.Version (
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (void)
+import Data.Map.Strict qualified as Map
 import Data.SemVer (Version, fromText, toText, version)
 import Data.SemVer.Constraint (Constraint (..), satisfies)
 import Data.Text (Text)
@@ -59,6 +60,7 @@ conanVersionCmd =
     { cmdName = "conan"
     , cmdArgs = ["--version"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 guardConanVersion2Gt :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ()

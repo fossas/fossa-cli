@@ -19,6 +19,8 @@ module App.Fossa.Ficus.Types (
   FicusPerStrategyFlag (..),
   FicusAnalysisResults (..),
   FicusVendoredDependency (..),
+  FicusVendoredLocation (..),
+  ficusVendoredLocationPath,
   FicusVendoredDependencyScanResults (..),
 ) where
 
@@ -44,7 +46,7 @@ data FicusVendoredDependency = FicusVendoredDependency
   { ficusVendoredDependencyName :: Text
   , ficusVendoredDependencyEcosystem :: Text
   , ficusVendoredDependencyVersion :: Maybe Text
-  , ficusVendoredDependencyPath :: Text
+  , ficusVendoredDependencyLocations :: [FicusVendoredLocation]
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -54,7 +56,26 @@ instance FromJSON FicusVendoredDependency where
       <$> obj .: "name"
       <*> obj .: "ecosystem"
       <*> obj .:? "version"
-      <*> obj .: "path"
+      <*> obj .: "locations"
+
+data FicusVendoredLocation
+  = FicusVendoredFile Text
+  | FicusVendoredDirectory Text
+  deriving (Eq, Ord, Show, Generic)
+
+ficusVendoredLocationPath :: FicusVendoredLocation -> Text
+ficusVendoredLocationPath (FicusVendoredFile path) = path
+ficusVendoredLocationPath (FicusVendoredDirectory path) = path
+
+instance FromJSON FicusVendoredLocation where
+  parseJSON = withObject "FicusVendoredLocation" $ \obj -> do
+    mFile <- obj .:? "file"
+    mDir <- obj .:? "directory"
+    case (mFile, mDir) of
+      (Just path, Nothing) -> pure $ FicusVendoredFile path
+      (Nothing, Just path) -> pure $ FicusVendoredDirectory path
+      (Just _, Just _) -> fail "FicusVendoredLocation: both 'file' and 'directory' keys present"
+      (Nothing, Nothing) -> fail "FicusVendoredLocation: expected 'file' or 'directory' key"
 
 data FicusSnippetScanResults = FicusSnippetScanResults
   { ficusSnippetScanResultsAnalysisId :: Int

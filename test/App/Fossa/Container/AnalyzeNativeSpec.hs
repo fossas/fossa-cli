@@ -2,6 +2,7 @@
 
 module App.Fossa.Container.AnalyzeNativeSpec (spec) where
 
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators (..))
 import App.Fossa.Container.Scan (
   ContainerImageSource (DockerEngine),
   parseDockerEngineSource,
@@ -85,36 +86,36 @@ analyzeSpec = describe "analyze" $ do
   let osInfoArchive = currDir </> osInfoImage
 
   it' "should not analyze application dependencies when only-system-dependencies are requested" $ do
-    containerScan <- analyzeFromDockerArchive True mempty (toFlag' False) imageArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) True mempty (toFlag' False) imageArchive
     buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
 
   it' "should analyze application dependencies" $ do
-    containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) imageArchive
     buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black]
     buildImportsOf containerScan `shouldNotContain'` [networkX]
 
   it' "should apply tool exclusion filter" $ do
-    containerScan <- analyzeFromDockerArchive False (excludeTool SetuptoolsProjectType) (toFlag' False) imageArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False (excludeTool SetuptoolsProjectType) (toFlag' False) imageArchive
     buildImportsOf containerScan `shouldNotContain'` [numpy, scipy, black]
 
   it' "should apply project exclusion filter" $ do
     let appAPath = $(mkRelDir "app/services/b/")
-    containerScan <- analyzeFromDockerArchive False (excludeProject SetuptoolsProjectType appAPath) (toFlag' False) imageArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False (excludeProject SetuptoolsProjectType appAPath) (toFlag' False) imageArchive
     buildImportsOf containerScan `shouldNotContain'` [scipy]
     buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, black]
 
   it' "should analyze all targets, if default filter is disabled" $ do
-    containerScan <- analyzeFromDockerArchive False mempty (toFlag' True) imageArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' True) imageArchive
     buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy, black, networkX]
 
   it' "should apply path exclusion filter" $ do
     let appAPath = $(mkRelDir "app/services/b/internal/")
-    containerScan <- analyzeFromDockerArchive False (excludePath appAPath) (toFlag' False) imageArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False (excludePath appAPath) (toFlag' False) imageArchive
     buildImportsOf containerScan `shouldNotContain'` [black]
     buildImportsOf containerScan `shouldBeSupersetOf'` [numpy, scipy]
 
   it' "should get os-info from any layer" $ do
-    containerScan <- analyzeFromDockerArchive False mempty (toFlag' False) osInfoArchive
+    containerScan <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) osInfoArchive
     let osInfo = imageData containerScan
     (imageOs osInfo) `shouldBe'` Just "fakeos"
 
@@ -202,12 +203,12 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
       otherLayerId = "sha256:632e84390ad558f9db0524f5e38a0af3e79c623a46bdce8a5e6a1761041b9850"
 
   it' "Reads and merges the layers correctly" $ do
-    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) imageArchivePath
     let layerIds = map layerId imageLayers
     layerIds
       `shouldMatchList'` [baseLayerId, otherLayerId]
   it' "Each layer should have the expected number of JAR observations" $ do
-    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) imageArchivePath
     let observationsMap = Map.fromList $ map (\layer -> (layerId layer, observations layer)) imageLayers
 
     -- The CLI only passes observations along without inspecting them.
@@ -217,7 +218,7 @@ jarsInContainerSpec = describe "Jars in Containers" $ do
     (length <$> Map.lookup otherLayerId observationsMap) `shouldBe'` Just 2
 
   it' "Discovers non-system/non-JIC dependencies" $ do
-    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) imageArchivePath
 
     let srcUnitsMap = Map.fromList $ map (\layer -> (layerId layer, srcUnits layer)) imageLayers
         depLocator =
@@ -266,13 +267,13 @@ nestedJarsInContainerSpec = describe "Nested Jars in Containers" $ do
       otherLayerId = "sha256:6979b741102e5c5c787f94ad8bfdebeee561b1b89f21139d38489e1b3d6f9096"
 
   it' "Reads and merges the layers correctly" $ do
-    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) imageArchivePath
     let layerIds = map layerId imageLayers
     layerIds
       `shouldMatchList'` [baseLayerId, otherLayerId]
 
   it' "Each layer should have the expected number of JAR observations" $ do
-    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive False mempty (toFlag' False) imageArchivePath
+    ContainerScan{imageData = ContainerScanImage{imageLayers}} <- analyzeFromDockerArchive (UseGitBackedCargoLocators False) False mempty (toFlag' False) imageArchivePath
     let observationsMap = Map.fromList $ map (\layer -> (layerId layer, observations layer)) imageLayers
 
     -- The CLI only passes observations along without inspecting them.

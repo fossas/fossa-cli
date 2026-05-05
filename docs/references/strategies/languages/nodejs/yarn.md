@@ -39,6 +39,24 @@ the `package.json` files used to build the `yarn.lock` file are also checked,
 and the knowledge of both is combined to form a (usually) complete picture of
 the full graph of dependencies.
 
+### Workspace Build Targets
+
+Each workspace package (including the root) is exposed as an individual build
+target. For example, a monorepo named `my-monorepo` with packages `app`,
+`lib-utils`, and `lib-core` will produce targets:
+
+```
+yarn@./:my-monorepo
+yarn@./:app
+yarn@./:lib-utils
+yarn@./:lib-core
+```
+
+When a subset of targets is selected, only those packages' dependencies are
+included in the analysis.
+
+When no filtering is applied, all targets are selected and all dependencies
+from every workspace package are included in the analysis.
 
 ## FAQ
 

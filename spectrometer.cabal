@@ -386,6 +386,7 @@ library
     Data.String.Conversion
     Data.Tagged
     Data.Text.Extra
+    Data.Text.Jsonc
     Data.Tracing.Instrument
     DepTypes
     Diag.Common
@@ -480,6 +481,7 @@ library
     Strategy.Nim
     Strategy.Nim.NimbleLock
     Strategy.Node
+    Strategy.Node.Bun.BunLock
     Strategy.Node.Errors
     Strategy.Node.Npm.PackageLock
     Strategy.Node.Npm.PackageLockV3
@@ -491,6 +493,7 @@ library
     Strategy.Node.YarnV2.Resolvers
     Strategy.Node.YarnV2.YarnLock
     Strategy.NuGet
+    Strategy.NuGet.DirectoryPackagesProps
     Strategy.NuGet.Nuspec
     Strategy.NuGet.PackageReference
     Strategy.NuGet.PackagesConfig
@@ -611,6 +614,7 @@ test-suite unit-tests
     App.Fossa.VSI.TypesSpec
     App.Fossa.VSIDepsSpec
     BerkeleyDB.BerkeleyDBSpec
+    Bun.BunLockSpec
     BundlerSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
@@ -644,6 +648,7 @@ test-suite unit-tests
     Dart.PubSpecSpec
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
+    Data.Text.JsoncSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
@@ -657,6 +662,7 @@ test-suite unit-tests
     Extra.TextSpec
     Ficus.FicusSpec
     Fortran.FpmTomlSpec
+    Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
     Go.GoListPackagesSpec
@@ -685,6 +691,7 @@ test-suite unit-tests
     Node.PackageJsonSpec
     Node.PackageLockSpec
     Node.PackageLockV3Spec
+    NuGet.DirectoryPackagesPropsSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec

@@ -13,7 +13,7 @@ jobs:
         with:
           components: "clippy,rustfmt"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run hlint
         run: |
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check Markdown links
         uses: tcort/github-action-markdown-link-check@v1.1.0
@@ -46,7 +46,7 @@ jobs:
         with:
           components: "clippy,rustfmt"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Run the formatter
       - name: run fourmolu
@@ -59,7 +59,7 @@ jobs:
     container: ghcr.io/fossas/haskell-dev-tools:9.8.4
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Run the formatter
       - name: "run cabal-fmt"
@@ -70,7 +70,7 @@ jobs:
     name: "schema lint check"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: json-syntax-check
         uses: limitusus/json-syntax-check@v1
         with:
@@ -80,7 +80,7 @@ jobs:
     name: "Check for correct spelling of FOSSA"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: "Check for incorrect FOSSA wording"
         run: |
           ! grep 'Fossa ' **/*.md
@@ -89,7 +89,7 @@ jobs:
     name: "Lint bash scripts"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: run shellcheck
         uses: sudo-bot/action-shellcheck@latest
         with:

@@ -6,6 +6,7 @@ module App.Fossa.Ficus.Analyze (
   analyzeWithFicusMain,
   -- Exported for testing
   singletonFicusMessage,
+  vendoredDepsToSourceUnit,
 )
 where
 
@@ -27,6 +28,8 @@ import App.Fossa.Ficus.Types (
   FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta),
   FicusVendoredDependency (..),
   FicusVendoredDependencyScanResults (..),
+  FicusVendoredLocation (..),
+  ficusVendoredLocationPath,
  )
 import App.Types (ProjectRevision (..))
 import Control.Applicative ((<|>))
@@ -43,6 +46,7 @@ import Data.Conduit.Combinators qualified as CC
 import Data.Conduit.List qualified as CCL
 import Data.Foldable (traverse_)
 import Data.Hashable (Hashable)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (isJust)
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
@@ -57,7 +61,7 @@ import Path (Abs, Dir, Path, toFilePath)
 import Prettyprinter (pretty)
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), renderLocator, textToOriginPath)
 import System.FilePath ((</>))
-import System.IO (Handle, IOMode (WriteMode), hClose, hGetLine, hIsEOF, hPutStrLn, openFile, stderr)
+import System.IO (Handle, IOMode (WriteMode), hClose, hPutStrLn, hSetEncoding, openFile, stderr, utf8)
 import System.Process.Typed (
   createPipe,
   getStderr,
@@ -192,20 +196,17 @@ vendoredDepsToSourceUnit deps =
             { buildArtifact = "default"
             , buildSucceeded = True
             , buildImports = locators
-            , buildDependencies = dependencies
+            , buildDependencies = map vendoredDepToSourceUnitDependency deps
             }
     , sourceUnitGraphBreadth = Complete
     , sourceUnitNoticeFiles = []
-    , sourceUnitOriginPaths = map (textToOriginPath . ficusVendoredDependencyPath) deps
+    , sourceUnitOriginPaths = concatMap (map (textToOriginPath . ficusVendoredLocationPath) . ficusVendoredDependencyLocations) deps
     , sourceUnitLabels = Nothing
     , additionalData = Nothing
     }
   where
     locators :: [Locator]
     locators = map vendoredDepToLocator deps
-
-    dependencies :: [SourceUnitDependency]
-    dependencies = map vendoredDepToSourceUnitDependency deps
 
     vendoredDepToLocator :: FicusVendoredDependency -> Locator
     vendoredDepToLocator dep =
@@ -222,14 +223,19 @@ vendoredDepsToSourceUnit deps =
         , sourceDepImports = []
         , sourceDepData =
             Aeson.object
-              [ "vendored"
-                  Aeson..= [ Aeson.object
-                               [ "type" Aeson..= ("directory" :: Text)
-                               , "path" Aeson..= ficusVendoredDependencyPath dep
-                               ]
-                           ]
+              [ "vendored" Aeson..= map locationToVendoredPath (ficusVendoredDependencyLocations dep)
               ]
         }
+
+    locationToVendoredPath :: FicusVendoredLocation -> Aeson.Value
+    locationToVendoredPath loc =
+      let (locType, path) = case loc of
+            FicusVendoredFile p -> ("file" :: Text, p)
+            FicusVendoredDirectory p -> ("directory", p)
+       in Aeson.object
+            [ "type" Aeson..= locType
+            , "path" Aeson..= path
+            ]
 
 runFicus ::
   ( Has Diagnostics sig m
@@ -264,7 +270,9 @@ runFicus maybeDebugDir ficusConfig = do
           let stdoutPath = debugDir </> "fossa.ficus-stdout.log"
           let stderrPath = debugDir </> "fossa.ficus-stderr.log"
           stdoutH <- openFile stdoutPath WriteMode
+          hSetEncoding stdoutH utf8
           stderrH <- openFile stderrPath WriteMode
+          hSetEncoding stderrH utf8
           pure (Just stdoutH, Just stderrH)
       Nothing ->
         -- No debug mode, don't tee to files
@@ -345,7 +353,7 @@ runFicus maybeDebugDir ficusConfig = do
       let (snippetResults, vendoredDeps) = accumulator
       let vendoredResults = case vendoredDeps of
             [] -> Nothing
-            deps -> Just $ FicusVendoredDependencyScanResults (Just $ vendoredDepsToSourceUnit deps)
+            deps -> Just . FicusVendoredDependencyScanResults . Just $ vendoredDepsToSourceUnit deps
 
       pure $
         FicusAnalysisResults
@@ -353,32 +361,29 @@ runFicus maybeDebugDir ficusConfig = do
           , vendoredDependencyScanResults = vendoredResults
           }
 
+    -- Use Conduit with decodeUtf8Lenient to safely handle UTF-8 output from ficus.
+    -- This matches the approach used for stdout and prevents crashes on Windows
+    -- where the default system encoding (CP1252) cannot decode UTF-8 characters
+    -- like box-drawing characters (U+2501) used in ficus progress output.
     consumeStderr :: Handle -> Maybe Handle -> IO [Text]
     consumeStderr handle maybeFile = do
-      let loop acc (count :: Int) = do
-            eof <- hIsEOF handle
-            if eof
-              then pure (reverse acc) -- Reverse at the end to get correct order
-              else do
-                line <- hGetLine handle
-                -- Tee raw line to file if debug mode
-                traverse_ (`hPutStrLn` line) maybeFile
-                now <- getCurrentTime
-                let timestamp = formatTime defaultTimeLocale "%H:%M:%S.%3q" now
-                let msg = "[" ++ timestamp ++ "] STDERR " <> line
-                -- Keep at most the last 50 lines of stderr
-                -- I came up with 50 lines by looking at a few different error traces and making
-                -- sure that we captured all of the relevant error output, and then going a bit higher
-                -- to make sure that we didn't miss anything. I'd rather capture a bit too much than not enough.
-                -- Use cons (:) for O(1) prepending, track count explicitly for O(1) truncation
-                let newAcc =
-                      if count >= 50
-                        then take 50 (toText msg : acc)
-                        else toText msg : acc
-                let newCount = min (count + 1) 50
-                loop newAcc newCount
-      loop [] 0
-
+      acc <-
+        Conduit.runConduit $
+          CC.sourceHandle handle
+            .| CC.decodeUtf8Lenient
+            .| CC.linesUnbounded
+            .| CC.foldM
+              ( \acc line -> do
+                  -- Tee raw line to file if debug mode
+                  traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
+                  now <- getCurrentTime
+                  -- Keep at most the last 50 lines of stderr (newest first during accumulation)
+                  let ts = toText $ formatTime defaultTimeLocale "%H:%M:%S.%3q" now
+                  let msg = "[" <> ts <> "] STDERR " <> line
+                  pure (take 50 (msg : acc))
+              )
+              []
+      pure (reverse acc)
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
     displayFicusError :: FicusError -> Text
@@ -400,6 +405,7 @@ ficusCommand ficusConfig bin = do
           { cmdName = toText $ toPath bin
           , cmdArgs = configArgs endpoint
           , cmdAllowErr = Never
+          , cmdEnvVars = Map.empty
           }
   logDebug $ "Ficus command: " <> pretty (maskApiKeyInCommand $ renderCommand cmd)
   pure cmd

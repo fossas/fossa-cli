@@ -8,6 +8,7 @@ import App.Fossa.VSI.DynLinked.Util (runningLinux)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Data.Char (isSpace)
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -45,6 +46,7 @@ rpmQueryFileCommand file =
     { cmdName = "rpm"
     , cmdArgs = ["-qf", toText file]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Parse @rpm -qf@ output.
@@ -68,6 +70,7 @@ rpmQueryPackageInfoCommand packageName =
     { cmdName = "rpm"
     , cmdArgs = ["-qi", packageName]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Parse @rpm -qi@ output.

@@ -17,6 +17,7 @@ import App.Fossa.EmbeddedBinary (
 import App.Types (FileUpload (..))
 import Control.Effect.Diagnostics (Diagnostics, Has)
 import Data.ByteString.Lazy qualified as BL
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Tagged (Tagged, unTag)
 import Data.Text (Text)
@@ -44,6 +45,7 @@ themisCommand ThemisBins{..} pathPrefix flags = do
     { cmdName = toText . toPath $ unTag themisBinaryPaths
     , cmdArgs = generateThemisArgs indexBinaryPaths pathPrefix flags
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 generateThemisArgs :: Tagged ThemisIndex BinaryPaths -> Text -> [Text] -> [Text]
