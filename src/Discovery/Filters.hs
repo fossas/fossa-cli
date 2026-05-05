@@ -114,13 +114,22 @@ instance FromJSON PathFilter where
   parseJSON = withText "PathFilter" $ \txt ->
     let s = toString txt
      in if hasGlobChars s
-          then pure . PathFilterGlob $ Glob.unsafeGlobRel s
+          then pure . PathFilterGlob . Glob.unsafeGlobRel $ normalizeSlashes s
           else case parseRelDir s of
             Left err -> fail (show err)
             Right p -> pure $ PathFilterDir p
     where
       hasGlobChars :: String -> Bool
       hasGlobChars = any (`elem` ("*?[" :: String))
+
+-- | Normalize backslashes to forward slashes. 'System.FilePattern' only treats
+-- @/@ as a segment separator, so any user-supplied pattern or path containing
+-- backslashes must be normalized before glob matching.
+normalizeSlashes :: String -> String
+normalizeSlashes = map toForwardSlash
+  where
+    toForwardSlash '\\' = '/'
+    toForwardSlash c = c
 
 -- | Split a list of user-supplied path filter entries into concrete directory
 -- paths and glob patterns.
@@ -365,11 +374,7 @@ globMatchesDir :: Glob Rel -> Path Rel Dir -> Bool
 globMatchesDir glob dir = unGlob glob FilePattern.?== normalize (toString dir)
   where
     normalize :: String -> String
-    normalize = trimTrailingSlash . map toForwardSlash
-
-    toForwardSlash :: Char -> Char
-    toForwardSlash '\\' = '/'
-    toForwardSlash c = c
+    normalize = trimTrailingSlash . normalizeSlashes
 
     trimTrailingSlash :: String -> String
     trimTrailingSlash s = case reverse s of

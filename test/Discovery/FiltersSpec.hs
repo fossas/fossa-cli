@@ -6,6 +6,7 @@ module Discovery.FiltersSpec (
 
 import Control.Carrier.Reader (run, runReader)
 import Control.Monad (when)
+import Data.Aeson qualified as Aeson
 import Data.Foldable (traverse_)
 import Data.Glob qualified as Glob
 import Data.Set qualified as Set
@@ -391,6 +392,16 @@ spec = do
             (paths, globs) = partitionPathFilters mixed
         paths `shouldBe` [$(mkRelDir "vendor"), $(mkRelDir "build")]
         map Glob.unGlob globs `shouldBe` ["**/node_modules/**", "*.test"]
+
+      it "normalizes backslashes in glob patterns to forward slashes" $ do
+        -- A Windows user typing `node_modules\*` in `.fossa.yml` should get
+        -- the same glob as the forward-slash form, because System.FilePattern
+        -- only treats `/` as a segment separator.
+        let parse s = case Aeson.fromJSON (Aeson.String (Text.pack s)) :: Aeson.Result PathFilter of
+              Aeson.Success p -> p
+              Aeson.Error e -> error e
+        parse "node_modules\\*" `shouldBe` parse "node_modules/*"
+        parse "**\\vendor\\**" `shouldBe` parse "**/vendor/**"
 
   describe "tool filtering helpers" $ do
     it "should return an empty list when the tool is not allowed" $ do
