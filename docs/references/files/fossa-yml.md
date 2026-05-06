@@ -336,7 +336,7 @@ This section is intended to be used as the inverse to `paths.only`. If you have 
 
 #### Glob patterns
 
-Entries in `paths.only` and `paths.exclude` may also be glob patterns. An entry is treated as a glob if it contains any of `*`, `?`, or `[`; other entries keep their existing semantics (match the directory and all of its children). Glob matching follows [`System.FilePattern`][filepattern] semantics: `*` matches any sequence of characters within a single path segment, and `**` matches any number of segments. `?` and `[...]` are matched as literal characters (`System.FilePattern` only implements `*` and `**`); they trigger glob parsing but are not single-character wildcards or character classes.
+Entries in `paths.only` and `paths.exclude` may also be glob patterns. An entry is treated as a glob if it contains `*`; other entries keep their existing semantics (match the directory and all of its children). Glob matching follows [`System.FilePattern`][filepattern] semantics: `*` matches any sequence of characters within a single path segment, and `**` matches any number of segments.
 
 Patterns use forward slashes (`/`) as path separators; backslashes are normalized so Windows-native patterns also work.
 

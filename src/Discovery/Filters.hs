@@ -102,9 +102,9 @@ instance ToJSON (FilterCombination a) where
   toEncoding = genericToEncoding defaultOptions
 
 -- | A user-supplied path filter entry from `.fossa.yml`. Strings containing
--- glob metacharacters (`*`, `?`, `[`) are parsed as 'Glob' patterns; all other
--- strings are parsed as relative directory paths, preserving the existing
--- "match this directory and its children" semantics.
+-- `*` are parsed as 'Glob' patterns; all other strings are parsed as relative
+-- directory paths, preserving the existing "match this directory and its
+-- children" semantics.
 data PathFilter
   = PathFilterDir (Path Rel Dir)
   | PathFilterGlob (Glob Rel)
@@ -113,14 +113,11 @@ data PathFilter
 instance FromJSON PathFilter where
   parseJSON = withText "PathFilter" $ \txt ->
     let s = toString txt
-     in if hasGlobChars s
+     in if '*' `elem` s
           then pure . PathFilterGlob . Glob.unsafeGlobRel $ normalizeSlashes s
           else case parseRelDir s of
             Left err -> fail (show err)
             Right p -> pure $ PathFilterDir p
-    where
-      hasGlobChars :: String -> Bool
-      hasGlobChars = any (`elem` ("*?[" :: String))
 
 -- | Normalize backslashes to forward slashes. 'System.FilePattern' only treats
 -- @/@ as a segment separator, so any user-supplied pattern or path containing
