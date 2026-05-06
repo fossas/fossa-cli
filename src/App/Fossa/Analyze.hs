@@ -123,16 +123,19 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
+import Data.Glob (unGlob)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Effect.Exec (Exec)
 import Effect.Logger (
@@ -297,6 +300,23 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
+-- | Echo path-related include/exclude filters once at startup. Walker prunes
+-- are silent by design (they short-circuit before any strategy sees the
+-- directory), so this gives the user just enough visibility to tell which
+-- patterns are active and infer why a project they expected didn't appear.
+logActivePathFilters :: Has Logger sig m => AllFilters -> m ()
+logActivePathFilters AllFilters{includeFilters = include, excludeFilters = exclude} = do
+  emit "include path" (map (toText . toFilePath) (combinedPaths include))
+  emit "include glob" (map (toText . unGlob) (combinedPathGlobs include))
+  emit "exclude path" (map (toText . toFilePath) (combinedPaths exclude))
+  emit "exclude glob" (map (toText . unGlob) (combinedPathGlobs exclude))
+  where
+    emit :: Has Logger sig m => Text -> [Text] -> m ()
+    emit _ [] = pure ()
+    emit label items =
+      logInfo $
+        "Active " <> pretty label <> " filters: " <> pretty (Text.intercalate ", " items)
+
 analyze ::
   ( Has Debug sig m
   , Has Diag.Diagnostics sig m
@@ -331,6 +351,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.snippetScan cfg
       enableVendetta = Config.xVendetta cfg
+
+  logActivePathFilters filters
 
   manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
