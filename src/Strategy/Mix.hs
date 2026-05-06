@@ -15,15 +15,16 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import Path (Abs, Dir, Path)
 import Strategy.Elixir.MixTree (MixProject (..))
 import Types (DiscoveredProject (..), DiscoveredProjectType (MixProjectType))
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject MixProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject MixProject]
 discover = simpleDiscover findProjects mkProject MixProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MixProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MixProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "mix.exs" files of
     Nothing -> pure ([], WalkContinue)

@@ -5,6 +5,7 @@ module Discovery.Walk (
   walkWithFilters',
   WalkStep (..),
   findFileInAncestor,
+  enumeratePrunedSubtrees,
 
   -- * Helpers
   fileName,
@@ -19,7 +20,7 @@ import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Bifunctor (second)
-import Data.Foldable (find)
+import Data.Foldable (find, traverse_)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
 import Data.List ((\\))
@@ -28,6 +29,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters, pathAllowed)
+import Effect.Logger (Logger, logDebug, viaShow)
 import Effect.ReadFS
 import Path
 
@@ -68,7 +70,8 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkStop -> pure WalkFinish
 
 pathFilterIntercept ::
-  ( Applicative m
+  ( Has Logger sig m
+  , Monad m
   , Monoid o
   ) =>
   AllFilters ->
@@ -84,17 +87,34 @@ pathFilterIntercept filters base dir subdirs act = do
     Nothing -> act
     Just relative ->
       if pathAllowed filters relative
-        then (fmap . second) skipDisallowed act
-        else pure (mempty, WalkSkipAll)
+        then do
+          traverse_ logSkip disallowedRelativeSubdirs
+          (fmap . second) skipDisallowed act
+        else do
+          logSkip relative
+          pure (mempty, WalkSkipAll)
   where
-    disallowedSubdirs :: [Text]
-    disallowedSubdirs = do
+    -- Returns the list of immediate subdirectories that the filter rejects,
+    -- paired with their relative-to-base paths (for logging) and their bare
+    -- directory names (for the WalkStep skip list the walker consumes).
+    disallowedRelativeSubdirs :: [Path Rel Dir]
+    disallowedRelativeSubdirs = do
       subdir <- subdirs
       stripped <- stripProperPrefix base subdir
-      let isAllowed = pathAllowed filters stripped
-      if isAllowed
+      if pathAllowed filters stripped
         then mempty
-        else pure $ (toText . toFilePath . dirname) subdir
+        else pure stripped
+
+    disallowedSubdirs :: [Text]
+    disallowedSubdirs = map (toText . toFilePath . dirname) disallowedRelativeSubdirs
+
+    -- Per-prune events fire once per strategy walk, so emitting at info-level
+    -- here would surface N copies of every prune (one per strategy that walks
+    -- the tree). 'enumeratePrunedSubtrees' surfaces each prune once at info
+    -- before discovery begins; this debug line is for trace-level diagnostics.
+    logSkip :: Has Logger sig m => Path Rel Dir -> m ()
+    logSkip relPath =
+      logDebug $ "Skipping " <> viaShow relPath <> " (excluded by paths filter)"
 
     -- skipDisallowed needs to look at either:
     --  * WalkStep.WalkContinue
@@ -130,10 +150,12 @@ walk' f base = do
       tell res
       pure step
 
--- | Like @walk'@, but ignores paths that don't match the provided filters.
+-- | Like @walk'@, but ignores paths that don't match the provided filters and
+-- emits a log line for each subdirectory pruned by the filters.
 walkWithFilters' ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   , Monoid o
   ) =>
@@ -144,6 +166,27 @@ walkWithFilters' f root = do
   filters <- ask
   let f' dir subdirs files = pathFilterIntercept filters root dir subdirs $ f dir subdirs files
   walk' f' root
+
+-- | Return the relative-to-root paths of every directory pruned by the
+-- 'AllFilters' include/exclude path rules. Useful for surfacing pruned dirs
+-- to the user once at startup, before any per-strategy walks (which would
+-- otherwise emit one log per strategy that reaches the same prune).
+enumeratePrunedSubtrees ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  AllFilters ->
+  Path Abs Dir ->
+  m [Path Rel Dir]
+enumeratePrunedSubtrees filters root = walk' visit root
+  where
+    visit _dir subdirs _files = do
+      let pruned = do
+            subdir <- subdirs
+            stripped <- maybe [] pure (stripProperPrefix root subdir)
+            if pathAllowed filters stripped then [] else [stripped]
+          skipNames = map (toText . toFilePath . dirname) pruned
+      pure (pruned, WalkSkipSome skipNames)
 
 -- | Search upwards in the directory tree for the existence of the supplied file.
 findFileInAncestor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)

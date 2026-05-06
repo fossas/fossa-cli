@@ -50,6 +50,7 @@ import Effect.Grapher (
   mapping,
   withMapping,
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing qualified as G
@@ -112,10 +113,10 @@ instance FromJSON StackLocation where
           | txt `elem` ["project package", "archive"] -> pure Local
           | otherwise -> fail $ "Bad location type: " ++ toString txt
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
 discover = simpleDiscover findProjects mkProject StackProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [StackProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [StackProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "stack.yaml" files of
     Nothing -> pure ([], WalkContinue)

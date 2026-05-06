@@ -20,6 +20,7 @@ import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Discovery.Walk
+import Effect.Logger (Logger)
 import Effect.ReadFS
 import GHC.Generics (Generic)
 import Path
@@ -31,13 +32,13 @@ import Control.Effect.Reader (Reader)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MavenProjectClosure]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MavenProjectClosure]
 findProjects basedir = do
   pomFiles <- context "Finding pom files" $ findPomFiles basedir
   globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
   context "Building project closures" $ pure (buildProjectClosures basedir globalClosure)
 
-findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Path Abs File]
+findPomFiles :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Path Abs File]
 findPomFiles dir =
   execState @[Path Abs File] [] $
     flip walkWithFilters' dir $ \_ _ files -> do

@@ -53,6 +53,7 @@ instance AnalyzeProject BerkeleyDatabase where
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   OsInfo ->
@@ -63,6 +64,7 @@ discover osInfo = simpleDiscover (findProjects osInfo) mkProject BerkeleyDBProje
 findProjects ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   OsInfo ->

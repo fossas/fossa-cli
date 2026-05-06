@@ -29,6 +29,7 @@ import Database.SQLite3 qualified as SQLite
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue), findFirstMatchingFile, walkWithFilters')
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsBS)
 import GHC.Generics (Generic)
 import Graphing (directs)
@@ -48,6 +49,7 @@ instance ToJSON SqliteDB
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   OsInfo ->
@@ -59,6 +61,7 @@ findProjects ::
   ( Has ReadFS sig m
   , Has (Reader AllFilters) sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   ) =>
   OsInfo ->
   Path Abs Dir ->

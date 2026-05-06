@@ -100,6 +100,7 @@ discover ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Exec sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -126,7 +127,7 @@ runGradle dir cmd = gradleWrapper <||> gradleBinary
 -- This is to avoid invoking Gradle again for each subproject, which would be
 -- slow (because of Gradle's startup time) and possibly wrong (because
 -- subprojects need to resolve dependency constraints together).
-findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GradleProject]
+findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GradleProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let isProjectFile f =
         any

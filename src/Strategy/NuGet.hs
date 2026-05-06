@@ -26,6 +26,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, parent)
@@ -41,13 +42,14 @@ import Types (
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NuGetProject]
 discover = simpleDiscover findProjects mkProject NuGetProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findProjectAssetsJsonFile files of
     Just file -> pure ([NuGetProject file], WalkContinue)

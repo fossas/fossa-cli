@@ -35,6 +35,7 @@ import Discovery.Walk (
   fileName,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -58,10 +59,10 @@ import Types (
   LicenseType (..),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
 discover = simpleDiscover findProjects mkProject NuspecProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuspecProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuspecProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case find (L.isSuffixOf ".nuspec" . fileName) files of
     Nothing -> pure ([], WalkContinue)

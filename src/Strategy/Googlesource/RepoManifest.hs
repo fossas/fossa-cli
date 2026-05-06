@@ -48,6 +48,7 @@ import Discovery.Walk (
   fileName,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (
   ReadFS,
   doesFileExist,
@@ -80,11 +81,11 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
 discover = simpleDiscover findProjects mkProject RepoManifestProjectType
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RepoManifestProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RepoManifestProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case find (\f -> "manifest.xml" == fileName f) files of
     Nothing -> pure ([], WalkContinue)

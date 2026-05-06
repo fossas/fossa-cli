@@ -8,6 +8,7 @@ import Data.Aeson (ToJSON)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -17,13 +18,14 @@ import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectT
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject FpmProject]
 discover = simpleDiscover findProjects mkProject FpmProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [FpmProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [FpmProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let fmpSpecFile = findFileNamed "fpm.toml" files
   case (fmpSpecFile) of

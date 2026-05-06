@@ -20,6 +20,7 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs, Has)
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -35,10 +36,10 @@ import Types (
   GraphBreadth,
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
 discover = simpleDiscover findProjects mkProject GomodProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GomodulesProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GomodulesProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "go.mod" files of
     Nothing -> pure ([], WalkSkipSome ["vendor"])

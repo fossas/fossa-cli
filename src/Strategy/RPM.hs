@@ -34,6 +34,7 @@ import Discovery.Walk (
   fileName,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsText)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -67,10 +68,10 @@ data Dependencies = Dependencies
   }
   deriving (Eq, Ord, Show)
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RpmProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RpmProject]
 discover = simpleDiscover findProjects mkProject RpmProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RpmProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RpmProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
 

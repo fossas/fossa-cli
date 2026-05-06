@@ -26,10 +26,10 @@ import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PubProjectType))
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
 discover = simpleDiscover findProjects mkProject PubProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PubProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PubProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   -- Note: pub does not support pubspec.yml naming - it must be pubspec.yaml.
   let pubSpecFile = findFileNamed "pubspec.yaml" files

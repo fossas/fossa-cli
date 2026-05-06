@@ -23,6 +23,7 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec)
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -38,10 +39,10 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
 discover = simpleDiscover findProjects mkProject SetuptoolsProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [SetuptoolsProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [SetuptoolsProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let reqTxtFiles =
         filter

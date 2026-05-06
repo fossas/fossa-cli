@@ -121,7 +121,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
 import Data.Glob (unGlob)
 import Data.List.NonEmpty qualified as NE
@@ -137,6 +137,7 @@ import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
+import Discovery.Walk (enumeratePrunedSubtrees)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -145,6 +146,7 @@ import Effect.Logger (
   logInfo,
   logStdout,
   renderIt,
+  viaShow,
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
@@ -317,6 +319,23 @@ logActivePathFilters AllFilters{includeFilters = include, excludeFilters = exclu
       logInfo $
         "Active " <> pretty label <> " filters: " <> pretty (Text.intercalate ", " items)
 
+-- | Walk the tree once at startup and surface every directory the path
+-- filters will prune. Each prune is logged once at info level here, instead
+-- of emitting per-strategy duplicates from inside the walker (~28 strategies
+-- would otherwise each report the same prune).
+logPrunedSubtrees ::
+  ( Has Logger sig m
+  , Has ReadFS sig m
+  , Has Diag.Diagnostics sig m
+  ) =>
+  AllFilters ->
+  Path Abs Dir ->
+  m ()
+logPrunedSubtrees filters basedir = do
+  pruned <- enumeratePrunedSubtrees filters basedir
+  for_ pruned $ \p ->
+    logInfo $ "Skipping path " <> viaShow p <> " (excluded by paths filter)"
+
 analyze ::
   ( Has Debug sig m
   , Has Diag.Diagnostics sig m
@@ -353,6 +372,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       enableVendetta = Config.xVendetta cfg
 
   logActivePathFilters filters
+  logPrunedSubtrees filters basedir
 
   manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $

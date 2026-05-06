@@ -58,6 +58,7 @@ findProjects ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -70,6 +71,7 @@ findProjects dir = do
 findSwiftPackageProjects ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -87,6 +89,7 @@ findSwiftPackageProjects = walkWithFilters' $ \dir _ files -> do
 findXcodeProjects ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
@@ -110,6 +113,7 @@ findXcodeProjects = walkWithFilters' $ \dir _ files -> do
 findFirstResolvedFileRecursively ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->

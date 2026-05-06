@@ -45,10 +45,10 @@ instance ToDiagnostic DynamicAnalysisFailed where
   renderDiagnostic DynamicAnalysisFailed =
     Errata (Just "Dynamic analysis via 'conda env create' failed") [] Nothing
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
 discover = simpleDiscover findProjects mkProject CondaProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CondaProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CondaProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "environment.yml" files of
     Nothing -> pure ([], WalkContinue)

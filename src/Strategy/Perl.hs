@@ -35,6 +35,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsYaml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, deeps)
@@ -48,10 +49,10 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PerlProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PerlProject]
 discover = simpleDiscover findProjects mkProject PerlProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PerlProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PerlProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   -- We prefer MYMETA over META.
   -- Reference: https://metacpan.org/dist/App-mymeta_requires/view/bin/mymeta-requires

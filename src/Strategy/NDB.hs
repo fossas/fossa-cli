@@ -19,6 +19,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, directs)
@@ -50,6 +51,7 @@ instance AnalyzeProject NdbLocation where
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   OsInfo ->
@@ -60,6 +62,7 @@ discover osInfo = simpleDiscover (findProjects osInfo) mkProject NDBProjectType
 findProjects ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   OsInfo ->

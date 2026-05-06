@@ -13,6 +13,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint,
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS, readContentsToml)
 import Graphing (Graphing, directs)
 import Path (Abs, Dir, File, Path)
@@ -39,13 +40,14 @@ import Types (
 discover ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject PdmProject]
 discover = simpleDiscover findProjects mkProject PdmProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PdmProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PdmProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let pyprojectFile = findFileNamed "pyproject.toml" files
   let pdmlockFile = findFileNamed "pdm.lock" files

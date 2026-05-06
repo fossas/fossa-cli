@@ -80,6 +80,7 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
@@ -220,10 +221,10 @@ instance FromJSON CargoMetadata where
       <*> (obj .: "workspace_members" >>= traverse parsePkgId)
       <*> obj .: "resolve"
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
 discover = simpleDiscover findProjects mkProject CargoProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "Cargo.toml" files of
     Nothing -> pure ([], WalkContinue)
