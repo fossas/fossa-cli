@@ -36,7 +36,7 @@ module Discovery.Filters (
 
 import Control.Effect.Reader (Has, Reader, ask)
 import Control.Monad ((<=<))
-import Data.Aeson (FromJSON, ToJSON (toEncoding), defaultOptions, genericToEncoding, parseJSON, withText)
+import Data.Aeson (FromJSON, ToJSON (toEncoding), defaultOptions, genericToEncoding, pairs, parseJSON, withText, (.=))
 import Data.Glob (Glob, unGlob)
 import Data.Glob qualified as Glob
 import Data.List (isInfixOf, stripPrefix, (\\))
@@ -52,7 +52,7 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path, Rel, fromAbsDir, isProperPrefixOf, parseRelDir)
+import Path (Abs, Dir, Path, Rel, fromAbsDir, isProperPrefixOf, parseRelDir, toFilePath)
 import System.FilePattern qualified as FilePattern
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
@@ -98,8 +98,17 @@ data FilterCombination a = FilterCombination
   }
   deriving (Eq, Ord, Show, Generic)
 
+-- | Hand-written so the new @_combinedPathGlobs@ field is omitted when it's
+-- empty. Otherwise every serialized 'FilterCombination' would gain a
+-- @"_combinedPathGlobs":[]@ key compared to pre-glob-support encodings — even
+-- in runs that don't configure any globs — which would break consumers that
+-- pin on the JSON shape (telemetry, debug bundles).
 instance ToJSON (FilterCombination a) where
-  toEncoding = genericToEncoding defaultOptions
+  toEncoding fc =
+    pairs $
+      "_combinedTargets" .= _combinedTargets fc
+        <> "_combinedPaths" .= _combinedPaths fc
+        <> if null (_combinedPathGlobs fc) then mempty else "_combinedPathGlobs" .= _combinedPathGlobs fc
 
 -- | A user-supplied path filter entry from `.fossa.yml`. Strings containing
 -- `*` are parsed as 'Glob' patterns; all other strings are parsed as relative
@@ -235,7 +244,14 @@ pathAllowed AllFilters{..} path = isIncluded && not isExcluded
     isExcluded = isExcludedMember || isChildOfExcludeMember || isExcludedByGlob
     -- We include parents because our directory scanner will never make it to the included path without the parents
     -- We include children because our analysis filtering allows children of included members
-    isIncluded = includeIsEmpty || isParentOfIncludeMember || isIncludeMember || isChildOfIncludeMember || isIncludedByGlob
+    isIncluded =
+      includeIsEmpty
+        || isParentOfIncludeMember
+        || isIncludeMember
+        || isChildOfIncludeMember
+        || isIncludedByGlob
+        || isParentOfIncludedGlob
+        || isChildOfIncludedGlob
     isIncludeMember = path `elem` includedPaths
     isExcludedMember = path `elem` excludedPaths
     isChildOfIncludeMember = any (`isProperPrefixOf` path) includedPaths
@@ -243,6 +259,18 @@ pathAllowed AllFilters{..} path = isIncluded && not isExcluded
     isParentOfIncludeMember = any (path `isProperPrefixOf`) includedPaths
     isExcludedByGlob = any (`globMatchesDir` path) excludedGlobs
     isIncludedByGlob = any (`globMatchesDir` path) includedGlobs
+    -- A glob like @apps/*@ literally matches @apps/X@; if the walker is at
+    -- @apps/@, @isIncludedByGlob@ is False (the glob requires one segment past
+    -- @apps@), and without this branch the walker would refuse to descend and
+    -- silently drop every project under @apps/@. Allow @path@ when its
+    -- segments are a prefix of the glob's literal directory prefix
+    -- (everything before the first wildcard); a glob whose first segment is
+    -- @**@ has an empty literal prefix, so any path is a candidate ancestor.
+    isParentOfIncludedGlob = any (pathSegmentsPrefixOf (pathSegments path)) includedGlobs
+    -- Once an ancestor of @path@ matched an include glob, the walker should
+    -- descend into all of @path@'s descendants — same semantics as
+    -- @isChildOfIncludeMember@ for concrete includes.
+    isChildOfIncludedGlob = any (\g -> any (g `globMatchesDir`) (properAncestors path)) includedGlobs
     includedPaths = combinedPaths includeFilters
     excludedPaths = combinedPaths excludeFilters
     includedGlobs = combinedPathGlobs includeFilters
@@ -377,6 +405,53 @@ globMatchesDir glob dir = unGlob glob FilePattern.?== normalize (toString dir)
     trimTrailingSlash s = case reverse s of
       '/' : rest -> reverse rest
       _ -> s
+
+-- | Path components, in walk order. @"a/b/c/" -> ["a","b","c"]@. The trailing
+-- empty segment that 'splitOn' would produce on a directory's @toFilePath@
+-- result is dropped.
+pathSegments :: Path Rel Dir -> [String]
+pathSegments p =
+  filter (not . null) $ goSplit (normalizeSlashes (toFilePath p))
+  where
+    goSplit :: String -> [String]
+    goSplit s = case break (== '/') s of
+      (h, []) -> [h]
+      (h, _ : t) -> h : goSplit t
+
+-- | True if @segs@ is a (possibly empty) prefix of @glob@'s literal directory
+-- prefix — i.e. the segments before the first segment containing a wildcard.
+-- A glob whose very first segment is wildcarded (e.g. @**\/foo@) has an empty
+-- literal prefix and matches any input @segs@, because the @**@ can stand for
+-- arbitrary ancestor directories.
+pathSegmentsPrefixOf :: [String] -> Glob Rel -> Bool
+pathSegmentsPrefixOf segs g =
+  let prefix = takeWhile (notElem '*') (filter (not . null) (splitSlash (normalizeSlashes (unGlob g))))
+   in segs `isPrefixOfList` prefix
+  where
+    splitSlash :: String -> [String]
+    splitSlash s = case break (== '/') s of
+      (h, []) -> [h]
+      (h, _ : t) -> h : splitSlash t
+
+    isPrefixOfList :: Eq a => [a] -> [a] -> Bool
+    isPrefixOfList [] _ = True
+    isPrefixOfList _ [] = False
+    isPrefixOfList (x : xs) (y : ys) = x == y && isPrefixOfList xs ys
+
+-- | Strict ancestors of a relative directory, ordered shallow-first. Excludes
+-- both the repository root (which would be an empty 'Path Rel Dir' that
+-- 'parseRelDir' won't accept anyway) and the directory itself.
+properAncestors :: Path Rel Dir -> [Path Rel Dir]
+properAncestors p =
+  let segs = pathSegments p
+      -- Strict, non-empty prefixes: e.g. ["a","b","c"] -> [["a"], ["a","b"]].
+      properPrefixes = [take n segs | n <- [1 .. length segs - 1]]
+   in mapMaybe (parseRelDir . joinSegments) properPrefixes
+  where
+    joinSegments :: [String] -> String
+    joinSegments [] = ""
+    joinSegments [x] = x <> "/"
+    joinSegments (x : rest) = x <> "/" <> joinSegments rest
 
 -- MatchNone <> MatchAll = MatchAll is the reason for this order
 -- (MatchSome <> MatchAll) and (MatchAll <> MatchSome) outputs the results in MatchSome.

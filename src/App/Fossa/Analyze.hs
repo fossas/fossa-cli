@@ -378,9 +378,13 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.snippetScan cfg
       enableVendetta = Config.xVendetta cfg
+      -- Discovery runs with `mempty` when `--no-discovery-exclusion` is set
+      -- (see definition further down). Log against the same filter set so the
+      -- startup output matches what discovery actually applies.
+      discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
 
-  logActivePathFilters filters
-  logPrunedSubtrees filters basedir
+  logActivePathFilters discoveryFilters
+  logPrunedSubtrees discoveryFilters basedir
 
   manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -484,7 +488,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
-  let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   let strategyCfg =
         (Config.strategyConfig cfg)
           { Config.useGitBackedCargoLocators = Config.UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators orgInfo

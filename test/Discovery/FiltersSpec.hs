@@ -301,6 +301,27 @@ spec = do
         pathAllowed filters $(mkRelDir "src/lib") `shouldBe` True
         pathAllowed filters $(mkRelDir "test/lib") `shouldBe` False
 
+      it "lets the walker reach an include-glob's matches via ancestors" $ do
+        -- `apps/*` matches @apps/X@, not the bare @apps/@. Without ancestor
+        -- handling the walker would refuse to descend into @apps/@ and every
+        -- project under it would be silently dropped. Cover the parent dir
+        -- (must be allowed so the walker descends), the matched dirs (must
+        -- be allowed because the glob matches), and an unrelated sibling
+        -- (must still be rejected).
+        let filters = includeGlob "apps/*"
+        pathAllowed filters $(mkRelDir "apps") `shouldBe` True
+        pathAllowed filters $(mkRelDir "apps/foo") `shouldBe` True
+        pathAllowed filters $(mkRelDir "apps/foo/src") `shouldBe` True
+        pathAllowed filters $(mkRelDir "lib") `shouldBe` False
+
+      it "treats a leading '**' include glob as accepting any ancestor" $ do
+        -- `**/service/**` can match arbitrarily deep, so the walker has to be
+        -- allowed everywhere on the way down or it'll never reach a match.
+        let filters = includeGlob "**/service/**"
+        pathAllowed filters $(mkRelDir "anywhere") `shouldBe` True
+        pathAllowed filters $(mkRelDir "anywhere/else") `shouldBe` True
+        pathAllowed filters $(mkRelDir "deep/nested/service/foo") `shouldBe` True
+
       it "prefers exclude over include when both globs match" $ do
         let filters = includeGlob "src/**" <> excludeGlob "src/**"
         pathAllowed filters $(mkRelDir "src/lib") `shouldBe` False
