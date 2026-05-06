@@ -249,7 +249,7 @@ runFicus maybeDebugDir ficusConfig = do
   logDebugWithTime "About to extract Ficus binary..."
   withFicusBinary $ \bin -> do
     logDebugWithTime "Ficus binary extracted, building command..."
-    cmd <- ficusCommand ficusConfig bin
+    cmd <- ficusCommand ficusConfig bin (isJust maybeDebugDir)
     logDebugWithTime "Executing ficus (streaming)"
     logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
 
@@ -393,8 +393,8 @@ runFicus maybeDebugDir ficusConfig = do
 
 -- Run Ficus, passing config-based args as configuration.
 -- Caveat! This hard-codes some flags currently which may later need to be set on a strategy-by-strategy basis.
-ficusCommand :: (Has Diagnostics sig m, Has Logger sig m) => FicusConfig -> BinaryPaths -> m Command
-ficusCommand ficusConfig bin = do
+ficusCommand :: (Has Diagnostics sig m, Has Logger sig m) => FicusConfig -> BinaryPaths -> Bool -> m Command
+ficusCommand ficusConfig bin debugMode = do
   endpoint <- case ficusConfigEndpoint ficusConfig of
     Just baseUri -> do
       proxyUri <- setPath [PathComponent "api", PathComponent "proxy", PathComponent "analysis"] (TrailingSlash False) baseUri
@@ -411,7 +411,8 @@ ficusCommand ficusConfig bin = do
   pure cmd
   where
     snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
-    configArgs endpoint = ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
+    debugArgs = ["--debug" | debugMode]
+    configArgs endpoint = debugArgs ++ ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
