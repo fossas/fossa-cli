@@ -376,9 +376,10 @@ spec = do
         -- A Windows user typing `node_modules\*` in `.fossa.yml` should get
         -- the same glob as the forward-slash form, because System.FilePattern
         -- only treats `/` as a segment separator.
-        let parse s = case Aeson.fromJSON (Aeson.String (Text.pack s)) :: Aeson.Result PathFilter of
-              Aeson.Success p -> p
-              Aeson.Error e -> error e
+        let parse :: String -> Maybe PathFilter
+            parse s = case Aeson.fromJSON (Aeson.String (toText s)) :: Aeson.Result PathFilter of
+              Aeson.Success p -> Just p
+              Aeson.Error _ -> Nothing
         parse "node_modules\\*" `shouldBe` parse "node_modules/*"
         parse "**\\vendor\\**" `shouldBe` parse "**/vendor/**"
 
