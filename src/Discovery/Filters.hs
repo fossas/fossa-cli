@@ -426,7 +426,13 @@ pathSegments p =
 pathSegmentsPrefixOf :: [String] -> Glob Rel -> Bool
 pathSegmentsPrefixOf segs g =
   let prefix = takeWhile (notElem '*') (filter (not . null) (splitSlash (normalizeSlashes (unGlob g))))
-   in segs `isPrefixOfList` prefix
+   in -- An empty literal prefix means the glob's first segment is wildcarded
+      -- (e.g. @**/service/**@, @*/foo@). The wildcard can stand for any
+      -- ancestor segments, so any path is a candidate parent — let the walker
+      -- descend, the actual match check ('isIncludedByGlob') will fire when
+      -- it reaches a real match. Otherwise require @segs@ to be a prefix of
+      -- the literal directory part.
+      null prefix || segs `isPrefixOfList` prefix
   where
     splitSlash :: String -> [String]
     splitSlash s = case break (== '/') s of
