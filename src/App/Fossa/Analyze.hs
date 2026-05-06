@@ -146,7 +146,6 @@ import Effect.Logger (
   logInfo,
   logStdout,
   renderIt,
-  viaShow,
  )
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
