@@ -348,6 +348,12 @@ paths:
     - "build/generated/*"
 ```
 
+Each example above excludes a different shape of directory:
+
+- `**/vendor/**` skips Go-style vendored trees at any depth, e.g. `services/billing/vendor/k8s.io/apimachinery/pkg/apis/meta/v1/`.
+- `**/node_modules/**` skips installed npm packages wherever they appear, e.g. `apps/web-frontend/node_modules/@babel/preset-env/lib/plugins/syntax-dynamic-import/`.
+- `build/generated/*` is anchored at the repo root and matches *direct* children of `build/generated/` only. `build/generated/proto-go/` matches; the walker then prunes its entire subtree (e.g. `build/generated/proto-go/v1/messagepb/`).
+
 [filepattern]: https://hackage.haskell.org/package/filepattern
 
 ### Analysis target configuration
