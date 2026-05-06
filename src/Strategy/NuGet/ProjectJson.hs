@@ -39,7 +39,6 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -52,10 +51,10 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
 discover = simpleDiscover findProjects mkProject ProjectJsonProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectJsonProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectJsonProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)

@@ -16,7 +16,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec)
-import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -35,10 +34,10 @@ instance AnalyzeProject NimbleProject where
   analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ = getDepsStatically
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NimbleProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NimbleProject]
 discover = simpleDiscover findProjects mkProject NimbleProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NimbleProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NimbleProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "nimble.lock" files of
     Nothing -> pure ([], WalkContinue)

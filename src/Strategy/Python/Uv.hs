@@ -45,7 +45,6 @@ import Effect.Grapher (
   edge,
   evalGrapher,
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (
@@ -68,13 +67,13 @@ import Types (
  )
 
 discover ::
-  (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) =>
+  (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
   Path Abs Dir ->
   m [DiscoveredProject UvProject]
 discover = simpleDiscover findProjects mkProject PipenvProjectType
 
 findProjects ::
-  (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) =>
+  (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
   Path Abs Dir ->
   m [UvProject]
 findProjects = walkWithFilters' $ \_ _ files -> do

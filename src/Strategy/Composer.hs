@@ -52,7 +52,6 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -67,10 +66,10 @@ import Types (
   LicenseType (LicenseSPDX),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
 discover = simpleDiscover findProjects mkProject ComposerProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ComposerProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ComposerProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "composer.lock" files of
     Nothing -> pure ([], WalkContinue)

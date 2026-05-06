@@ -63,7 +63,6 @@ import Effect.Grapher (
   mapping,
   withMapping,
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
@@ -157,7 +156,7 @@ cabalGenPlanCmd =
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
 discover = simpleDiscover findProjects mkProject CabalProjectType
 
 isCabalFile :: Path Abs File -> Bool
@@ -167,7 +166,7 @@ isCabalFile file = isDotCabal || isCabalDotProject
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CabalProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CabalProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   -- NOTE: the long-term more-accurate version here is to parse the `cabal.project` file and look
   -- for relevant cabal files to mark as manifests.

@@ -19,7 +19,6 @@ import Data.Map qualified as Map
 import Data.Yaml (decodeThrow)
 import Discovery.Filters (AllFilters (AllFilters), comboInclude)
 import Discovery.Walk
-import Effect.Logger (ignoreLogger)
 import Effect.ReadFS
 import Path
 import Path.IO (createDir, createDirLink, emptyPermissions, getPermissions, setPermissions)
@@ -287,7 +286,6 @@ runWalkWithFiltersAndStep userStep maxIters filters startDir =
     . runWriter
     . fmap snd
     . runState (0 :: Int)
-    . ignoreLogger
     . runReader filters
     $ walkWithFilters'
       ( \dir _ _ -> do

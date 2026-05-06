@@ -17,7 +17,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs, Has)
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -30,10 +29,10 @@ import Types (
   GraphBreadth (Complete),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GodepProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GodepProject]
 discover = simpleDiscover findProjects mkProject GodepProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GodepProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GodepProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let gopkgToml = findFileNamed "Gopkg.toml" files
   let gopkgLock = findFileNamed "Gopkg.lock" files

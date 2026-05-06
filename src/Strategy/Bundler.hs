@@ -37,7 +37,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs, Has)
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, toFilePath)
@@ -59,10 +58,10 @@ import Types (
   LicenseType (UnknownType),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject BundlerProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject BundlerProject]
 discover = simpleDiscover findProjects mkProject BundlerProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [BundlerProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [BundlerProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let maybeGemfile = findFileNamed "Gemfile" files
       gemfileLock = findFileNamed "Gemfile.lock" files

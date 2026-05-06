@@ -322,7 +322,9 @@ logActivePathFilters AllFilters{includeFilters = include, excludeFilters = exclu
 -- | Walk the tree once at startup and surface every directory the path
 -- filters will prune. Each prune is logged once at info level here, instead
 -- of emitting per-strategy duplicates from inside the walker (~28 strategies
--- would otherwise each report the same prune).
+-- would otherwise each report the same prune). Short-circuits when no path
+-- filters are configured so the extra walk is only paid for when it can
+-- produce output.
 logPrunedSubtrees ::
   ( Has Logger sig m
   , Has ReadFS sig m
@@ -331,10 +333,17 @@ logPrunedSubtrees ::
   AllFilters ->
   Path Abs Dir ->
   m ()
-logPrunedSubtrees filters basedir = do
-  pruned <- enumeratePrunedSubtrees filters basedir
-  for_ pruned $ \p ->
-    logInfo $ "Skipping path " <> viaShow p <> " (excluded by paths filter)"
+logPrunedSubtrees filters basedir =
+  unless (noPathFilters filters) $ do
+    pruned <- enumeratePrunedSubtrees filters basedir
+    for_ pruned $ \p ->
+      logInfo $ "Skipping path " <> viaShow p <> " (excluded by paths filter)"
+  where
+    noPathFilters AllFilters{includeFilters = i, excludeFilters = e} =
+      null (combinedPaths i)
+        && null (combinedPathGlobs i)
+        && null (combinedPaths e)
+        && null (combinedPathGlobs e)
 
 analyze ::
   ( Has Debug sig m

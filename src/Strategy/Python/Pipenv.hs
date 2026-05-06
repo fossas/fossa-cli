@@ -72,7 +72,6 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsJson, readContentsToml)
 import GHC.Generics (Generic)
 import Graphing (Graphing, pruneUnreachable)
@@ -86,10 +85,10 @@ import Types (
   GraphBreadth (Complete),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
 discover = simpleDiscover findProjects mkProject PipenvProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findPipenvFiles files of
     (Nothing, _) -> pure ([], WalkContinue)

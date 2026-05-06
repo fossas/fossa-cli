@@ -20,7 +20,7 @@ import Control.Effect.Reader (Reader, ask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Maybe
 import Data.Bifunctor (second)
-import Data.Foldable (find, traverse_)
+import Data.Foldable (find)
 import Data.Functor (void)
 import Data.Glob qualified as Glob
 import Data.List ((\\))
@@ -29,7 +29,6 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters, pathAllowed)
-import Effect.Logger (Logger, logDebug, viaShow)
 import Effect.ReadFS
 import Path
 
@@ -70,8 +69,7 @@ walk f = walkDir $ \dir subdirs files -> do
     WalkStop -> pure WalkFinish
 
 pathFilterIntercept ::
-  ( Has Logger sig m
-  , Monad m
+  ( Applicative m
   , Monoid o
   ) =>
   AllFilters ->
@@ -87,34 +85,17 @@ pathFilterIntercept filters base dir subdirs act = do
     Nothing -> act
     Just relative ->
       if pathAllowed filters relative
-        then do
-          traverse_ logSkip disallowedRelativeSubdirs
-          (fmap . second) skipDisallowed act
-        else do
-          logSkip relative
-          pure (mempty, WalkSkipAll)
+        then (fmap . second) skipDisallowed act
+        else pure (mempty, WalkSkipAll)
   where
-    -- Returns the list of immediate subdirectories that the filter rejects,
-    -- paired with their relative-to-base paths (for logging) and their bare
-    -- directory names (for the WalkStep skip list the walker consumes).
-    disallowedRelativeSubdirs :: [Path Rel Dir]
-    disallowedRelativeSubdirs = do
+    disallowedSubdirs :: [Text]
+    disallowedSubdirs = do
       subdir <- subdirs
       stripped <- stripProperPrefix base subdir
-      if pathAllowed filters stripped
+      let isAllowed = pathAllowed filters stripped
+      if isAllowed
         then mempty
-        else pure stripped
-
-    disallowedSubdirs :: [Text]
-    disallowedSubdirs = map (toText . toFilePath . dirname) disallowedRelativeSubdirs
-
-    -- Per-prune events fire once per strategy walk, so emitting at info-level
-    -- here would surface N copies of every prune (one per strategy that walks
-    -- the tree). 'enumeratePrunedSubtrees' surfaces each prune once at info
-    -- before discovery begins; this debug line is for trace-level diagnostics.
-    logSkip :: Has Logger sig m => Path Rel Dir -> m ()
-    logSkip relPath =
-      logDebug $ "Skipping " <> viaShow relPath <> " (excluded by paths filter)"
+        else pure $ (toText . toFilePath . dirname) subdir
 
     -- skipDisallowed needs to look at either:
     --  * WalkStep.WalkContinue
@@ -150,12 +131,10 @@ walk' f base = do
       tell res
       pure step
 
--- | Like @walk'@, but ignores paths that don't match the provided filters and
--- emits a log line for each subdirectory pruned by the filters.
+-- | Like @walk'@, but ignores paths that don't match the provided filters.
 walkWithFilters' ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   , Monoid o
   ) =>

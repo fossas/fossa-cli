@@ -137,7 +137,7 @@ discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProject
         graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
         context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
 
-collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Manifest]
+collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Manifest]
 collectManifests = walkWithFilters' $ \_ _ files ->
   case findFileNamed "package.json" files of
     Nothing -> pure ([], skipJsFolders)

@@ -68,7 +68,6 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
@@ -104,10 +103,10 @@ leinVersionCmd =
     , cmdEnvVars = Map.empty
     }
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]
 discover = simpleDiscover findProjects mkProject LeiningenProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [LeiningenProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [LeiningenProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "project.clj" files of
     Nothing -> pure ([], WalkContinue)

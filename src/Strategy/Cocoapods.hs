@@ -48,10 +48,10 @@ import Types (
   LicenseType (UnknownType),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
 discover = simpleDiscover findProjects mkProject CocoapodsProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CocoapodsProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CocoapodsProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   let podfile = findFileNamed "Podfile" files
       podfileLock = findFileNamed "Podfile.lock" files

@@ -29,7 +29,6 @@ import Discovery.Walk (
   fileName,
   walkWithFilters',
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -43,10 +42,10 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
 discover = simpleDiscover findProjects mkProject PackagesConfigProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackagesConfigProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackagesConfigProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case find (\f -> fileName f == "packages.config") files of
     Nothing -> pure ([], WalkContinue)

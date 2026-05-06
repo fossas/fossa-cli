@@ -19,7 +19,6 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.Exec (Exec, Has)
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -30,10 +29,10 @@ import Types (
   DiscoveredProjectType (Rebar3ProjectType),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RebarProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RebarProject]
 discover = simpleDiscover findProjects mkProject Rebar3ProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RebarProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RebarProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "rebar.config" files of
     Nothing -> pure ([], WalkContinue)

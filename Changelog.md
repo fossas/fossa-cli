@@ -3,7 +3,7 @@
 ## 3.17.4
 
 - Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns (e.g. `**/vendor/**`, `node_modules/*`). An entry is treated as a glob if it contains `*`; other entries keep their existing directory-tree semantics. Glob matching follows [`System.FilePattern`](https://hackage.haskell.org/package/filepattern) semantics: `*` matches any sequence of characters within a single path segment, and `**` matches any number of segments. Patterns use forward slashes; backslashes are normalized so Windows-native patterns also work. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
-- Analyze: At startup, `fossa analyze` now prints (a) the active `paths.only`/`paths.exclude` filters from `.fossa.yml` and (b) the directories the walker will prune as a result. Each pruned subtree is reported once at info level so users can correlate a missing project with a configured filter. Per-prune trace logging during discovery is at debug level and visible with `--debug`. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
+- Analyze: At startup, `fossa analyze` now prints (a) the active `paths.only`/`paths.exclude` filters from `.fossa.yml` and (b) the directories the walker will prune as a result. Each pruned subtree is reported once at info level so users can correlate a missing project with a configured filter. The pre-discovery walk is skipped when no path filters are configured. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
 
 ## 3.17.3
 

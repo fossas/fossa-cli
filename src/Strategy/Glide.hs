@@ -13,7 +13,6 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
@@ -24,10 +23,10 @@ import Types (
   DiscoveredProjectType (GlideProjectType),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GlideProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GlideProject]
 discover = simpleDiscover findProjects mkProject GlideProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GlideProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GlideProject]
 findProjects = walkWithFilters' $ \dir _ files -> do
   case findFileNamed "glide.lock" files of
     Nothing -> pure ([], WalkContinue)

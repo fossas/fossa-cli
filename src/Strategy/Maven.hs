@@ -23,7 +23,6 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdge
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
@@ -40,7 +39,6 @@ discover ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
   , Has ReadFS sig m
-  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->

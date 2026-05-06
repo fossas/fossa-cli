@@ -47,7 +47,6 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, readContentsParser)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
@@ -73,10 +72,10 @@ import Types (
 
 type Parser = Parsec Void Text
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PaketProject]
+discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PaketProject]
 discover = simpleDiscover findProjects mkProject PaketProjectType
 
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PaketProject]
+findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PaketProject]
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "paket.lock" files of
     Nothing -> pure ([], WalkContinue)

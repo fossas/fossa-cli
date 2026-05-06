@@ -74,7 +74,6 @@ discover ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
@@ -148,7 +147,6 @@ findProjects ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir ->
