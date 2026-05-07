@@ -39,7 +39,7 @@ import Control.Monad ((<=<))
 import Data.Aeson (FromJSON, ToJSON (toEncoding), defaultOptions, genericToEncoding, pairs, parseJSON, withText, (.=))
 import Data.Glob (Glob, unGlob)
 import Data.Glob qualified as Glob
-import Data.List (isInfixOf, stripPrefix, (\\))
+import Data.List (isInfixOf, isPrefixOf, stripPrefix, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -432,17 +432,12 @@ pathSegmentsPrefixOf segs g =
       -- descend, the actual match check ('isIncludedByGlob') will fire when
       -- it reaches a real match. Otherwise require @segs@ to be a prefix of
       -- the literal directory part.
-      null prefix || segs `isPrefixOfList` prefix
+      null prefix || segs `isPrefixOf` prefix
   where
     splitSlash :: String -> [String]
     splitSlash s = case break (== '/') s of
       (h, []) -> [h]
       (h, _ : t) -> h : splitSlash t
-
-    isPrefixOfList :: Eq a => [a] -> [a] -> Bool
-    isPrefixOfList [] _ = True
-    isPrefixOfList _ [] = False
-    isPrefixOfList (x : xs) (y : ys) = x == y && isPrefixOfList xs ys
 
 -- | Strict ancestors of a relative directory, ordered shallow-first. Excludes
 -- both the repository root (which would be an empty 'Path Rel Dir' that
@@ -451,7 +446,7 @@ properAncestors :: Path Rel Dir -> [Path Rel Dir]
 properAncestors p =
   let segs = pathSegments p
       -- Strict, non-empty prefixes: e.g. ["a","b","c"] -> [["a"], ["a","b"]].
-      properPrefixes = [take n segs | n <- [1 .. length segs - 1]]
+      properPrefixes = map (`take` segs) [1 .. length segs - 1]
    in mapMaybe (parseRelDir . joinSegments) properPrefixes
   where
     joinSegments :: [String] -> String
