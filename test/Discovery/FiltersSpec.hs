@@ -314,9 +314,11 @@ spec = do
         pathAllowed filters $(mkRelDir "apps/foo/src") `shouldBe` True
         pathAllowed filters $(mkRelDir "lib") `shouldBe` False
 
-      it "treats a leading '**' include glob as accepting any ancestor" $ do
-        -- `**/service/**` can match arbitrarily deep, so the walker has to be
-        -- allowed everywhere on the way down or it'll never reach a match.
+      it "should include all parents of glob matches" $ do
+        -- pathAllowed is what determines if the walker should traverse the
+        -- directory. For this test, we're asserting that `**/` should traverse
+        -- every directory, so all lines should be true. The previous block of
+        -- `apps/*` is asserting on a false example.
         let filters = includeGlob "**/service/**"
         pathAllowed filters $(mkRelDir "anywhere") `shouldBe` True
         pathAllowed filters $(mkRelDir "anywhere/else") `shouldBe` True
