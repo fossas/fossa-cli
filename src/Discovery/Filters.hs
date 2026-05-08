@@ -402,9 +402,17 @@ globMatchesDir glob dir = unGlob glob FilePattern.?== normalize (toString dir)
     normalize = trimTrailingSlash . normalizeSlashes
 
     trimTrailingSlash :: String -> String
-    trimTrailingSlash s = case reverse s of
-      '/' : rest -> reverse rest
+    trimTrailingSlash s = case unsnoc s of
+      Just (initSegs, '/') -> initSegs
       _ -> s
+
+    -- Matches @Data.List.unsnoc@ from base-4.19 (GHC 9.8), which we can't
+    -- import directly because the project supports @base >= 4.15@.
+    unsnoc :: [a] -> Maybe ([a], a)
+    unsnoc = foldr go Nothing
+      where
+        go x Nothing = Just ([], x)
+        go x (Just (xs, y)) = Just (x : xs, y)
 
 -- | Path components, in walk order. @"a/b/c/" -> ["a","b","c"]@. The trailing
 -- empty segment that 'splitOn' would produce on a directory's @toFilePath@
