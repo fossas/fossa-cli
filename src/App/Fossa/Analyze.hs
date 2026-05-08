@@ -123,13 +123,10 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
-import Data.Glob (unGlob)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text)
-import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -301,23 +298,6 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
--- | Echo path-related include/exclude filters once at startup. Walker prunes
--- are silent by design (they short-circuit before any strategy sees the
--- directory), so this gives the user just enough visibility to tell which
--- patterns are active and infer why a project they expected didn't appear.
-logActivePathFilters :: Has Logger sig m => AllFilters -> m ()
-logActivePathFilters AllFilters{includeFilters = include, excludeFilters = exclude} = do
-  emit "include path" (map (toText . toFilePath) (combinedPaths include))
-  emit "include glob" (map (toText . unGlob) (combinedPathGlobs include))
-  emit "exclude path" (map (toText . toFilePath) (combinedPaths exclude))
-  emit "exclude glob" (map (toText . unGlob) (combinedPathGlobs exclude))
-  where
-    emit :: Has Logger sig m => Text -> [Text] -> m ()
-    emit _ [] = pure ()
-    emit label items =
-      logInfo $
-        "Active " <> pretty label <> " filters: " <> pretty (Text.intercalate ", " items)
-
 -- | Walk the tree once at startup and surface every directory the path
 -- filters will prune. Each prune is logged once at info level here, instead
 -- of emitting per-strategy duplicates from inside the walker (~28 strategies
@@ -383,7 +363,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       -- startup output matches what discovery actually applies.
       discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
 
-  logActivePathFilters discoveryFilters
   logPrunedSubtrees discoveryFilters basedir
 
   manualDepsResult <-
