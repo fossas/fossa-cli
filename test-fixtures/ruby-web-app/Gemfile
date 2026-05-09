@@ -1,0 +1,6 @@
+source 'https://rubygems.org'
+
+gem 'rails', '~> 7.1'
+gem 'bcrypt', '~> 3.1'
+gem 'rbnacl', '~> 7.1'
+gem 'scrypt', '~> 3.0'

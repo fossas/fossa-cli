@@ -4,6 +4,7 @@
 
 module App.Fossa.EmbeddedBinary (
   BinaryPaths,
+  CryptoScan,
   Ficus,
   Lernie,
   ThemisIndex,
@@ -11,6 +12,7 @@ module App.Fossa.EmbeddedBinary (
   toPath,
   withThemisAndIndex,
   withBerkeleyBinary,
+  withCryptoScanBinary,
   withFicusBinary,
   withLernieBinary,
   withMillhoneBinary,
@@ -59,6 +61,7 @@ data PackagedBinary
   = Themis
   | ThemisIndex
   | BerkeleyDB
+  | CryptoScan
   | Ficus
   | Lernie
   | Millhone
@@ -77,6 +80,8 @@ data BinaryPaths = BinaryPaths
 data ThemisBinary
 
 data ThemisIndex
+
+data CryptoScan
 
 data Lernie
 
@@ -118,6 +123,9 @@ extractThemisFiles = do
 withBerkeleyBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withBerkeleyBinary = withEmbeddedBinary BerkeleyDB
 
+withCryptoScanBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
+withCryptoScanBinary = withEmbeddedBinary CryptoScan
+
 withLernieBinary :: (Has (Lift IO) sig m) => (BinaryPaths -> m c) -> m c
 withLernieBinary = withEmbeddedBinary Lernie
 
@@ -156,6 +164,7 @@ writeBinary dest bin = do
     Themis -> embeddedBinaryThemis
     ThemisIndex -> embeddedBinaryThemisIndex
     BerkeleyDB -> embeddedBinaryBerkeleyDB
+    CryptoScan -> embeddedBinaryCryptoScan
     Ficus -> embeddedBinaryFicus
     Lernie -> embeddedBinaryLernie
     Millhone -> embeddedBinaryMillhone
@@ -172,6 +181,7 @@ extractedPath bin = case bin of
   Themis -> $(mkRelFile "themis-cli")
   ThemisIndex -> $(mkRelFile "index.gob.xz")
   BerkeleyDB -> $(mkRelFile "berkeleydb-plugin")
+  CryptoScan -> $(mkRelFile "cryptoscan")
   Ficus -> $(mkRelFile "ficus")
   Lernie -> $(mkRelFile "lernie")
   Millhone -> $(mkRelFile "millhone")
@@ -231,6 +241,15 @@ embeddedBinaryMillhone = $(embedFileIfExists "target/release/millhone.exe")
 #else
 embeddedBinaryMillhone :: ByteString
 embeddedBinaryMillhone = $(embedFileIfExists "target/release/millhone")
+#endif
+
+-- To build this, run `make build` or `cargo build --release`.
+#ifdef mingw32_HOST_OS
+embeddedBinaryCryptoScan :: ByteString
+embeddedBinaryCryptoScan = $(embedFileIfExists "target/release/cryptoscan.exe")
+#else
+embeddedBinaryCryptoScan :: ByteString
+embeddedBinaryCryptoScan = $(embedFileIfExists "target/release/cryptoscan")
 #endif
 
 -- To build this, run `make build` or `cargo build --release`.
