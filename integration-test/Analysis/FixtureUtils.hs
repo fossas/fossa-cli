@@ -28,6 +28,7 @@ import Control.Carrier.Telemetry (
   IgnoreTelemetryC,
   withoutTelemetry,
  )
+import Control.Monad (when)
 import Data.Conduit (runConduitRes, (.|))
 import Data.Conduit.Binary qualified as CB
 import Data.Function ((&))
@@ -105,13 +106,13 @@ data FixtureArtifact = FixtureArtifact
   { tarGzFileUrl :: Text
   , extractAt :: Path Rel Dir
   , scopedDir :: Path Rel Dir
-  , -- | Subdirectories of 'scopedDir' to remove after extraction.
-    --
-    -- Use this when an upstream tarball contains a subproject that is no
-    -- longer buildable (e.g. transitive deps removed from a public registry).
-    -- The directory is deleted before discovery runs, so it won't be picked
-    -- up as a separate project to analyze.
-    excludePaths :: [Path Rel Dir]
+  , excludePaths :: [Path Rel Dir]
+  -- ^ Subdirectories of 'scopedDir' to remove after extraction.
+  --
+  -- Use this when an upstream tarball contains a subproject that is no
+  -- longer buildable (e.g. transitive deps removed from a public registry).
+  -- The directory is deleted before discovery runs, so it won't be picked
+  -- up as a separate project to analyze.
   }
   deriving (Show, Eq, Ord)
 
@@ -251,4 +252,4 @@ applyExcludePaths projectRoot = mapM_ removeIfExists
     removeIfExists rel = do
       let absPath = projectRoot </> rel
       exists <- PIO.doesDirExist absPath
-      if exists then PIO.removeDirRecur absPath else pure ()
+      when exists $ PIO.removeDirRecur absPath
