@@ -45,6 +45,7 @@ keycloak =
       "https://github.com/keycloak/keycloak/archive/refs/tags/15.1.0.tar.gz"
       [reldir|maven/keycloak/|]
       [reldir|keycloak-15.1.0//|]
+      []
 
 guava :: AnalysisTestFixture Maven.MavenProject
 guava =
@@ -57,6 +58,7 @@ guava =
       "https://github.com/google/guava/archive/refs/tags/v31.1.tar.gz"
       [reldir|maven/guava/|]
       [reldir|guava-31.1|]
+      []
 
 simplePomFile :: AnalysisTestFixture Maven.MavenProject
 simplePomFile =
@@ -69,6 +71,7 @@ simplePomFile =
       "https://github.com/fossas/example-pom-file/archive/refs/heads/main.tar.gz"
       [reldir|maven/simple_pom_file/|]
       [reldir|example-pom-file-main|]
+      []
 
 pomFileWithBuildDirOverride :: AnalysisTestFixture Maven.MavenProject
 pomFileWithBuildDirOverride =
@@ -81,6 +84,7 @@ pomFileWithBuildDirOverride =
       "https://github.com/fossas/example-pom-file/archive/refs/heads/override-build-directory.tar.gz"
       [reldir|maven/build_dir_override/|]
       [reldir|example-pom-file-override-build-directory|]
+      []
 
 testKeycloakNonStrict :: Spec
 testKeycloakNonStrict = do

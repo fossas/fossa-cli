@@ -30,6 +30,7 @@ bat =
       "https://github.com/sharkdp/bat/archive/refs/tags/v0.18.3.tar.gz"
       [reldir|rust/bat/|]
       [reldir|bat-0.18.3//|]
+      []
 
 fd :: AnalysisTestFixture (Cargo.CargoProject)
 fd =
@@ -42,6 +43,7 @@ fd =
       "https://github.com/sharkdp/fd/archive/refs/tags/v8.3.0.tar.gz"
       [reldir|rust/fd/|]
       [reldir|fd-8.3.0/|]
+      []
 
 spec :: Spec
 spec = do

@@ -25,6 +25,7 @@ vault =
       "https://github.com/hashicorp/vault/archive/refs/tags/v1.9.1.tar.gz"
       [reldir|go/vault/|]
       [reldir|vault-1.9.1/|]
+      []
 
 testVault :: Spec
 testVault =

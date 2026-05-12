@@ -22,6 +22,7 @@ shadowsocksXNG =
       "https://github.com/shadowsocks/ShadowsocksX-NG/archive/refs/tags/v1.9.4.tar.gz"
       [reldir|cocoapods/ShadowsocksX-NG/|]
       [reldir|ShadowsocksX-NG-1.9.4/|]
+      []
 
 sDWebImage :: AnalysisTestFixture (Cocoapods.CocoapodsProject)
 sDWebImage =
@@ -34,6 +35,7 @@ sDWebImage =
       "https://github.com/SDWebImage/SDWebImage/archive/refs/tags/5.12.0.tar.gz"
       [reldir|cocoapods/ring/|]
       [reldir|SDWebImage-5.12.0/|]
+      []
 
 spec :: Spec
 spec = do

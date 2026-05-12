@@ -39,6 +39,7 @@ recursiveArchive =
     "https://github.com/fossas/cli-license-scan-integration-test-fixtures/archive/refs/heads/main.zip"
     [reldir|manual-deps/license-scanner/|]
     [reldir|recursive-archive|]
+    []
 
 vendoredDep :: VendoredDependency
 vendoredDep =

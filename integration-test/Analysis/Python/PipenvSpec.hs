@@ -22,6 +22,7 @@ pipenv =
       "https://github.com/pypa/pipenv/archive/refs/tags/v2021.11.23.tar.gz"
       [reldir|python/pipenv/pipenv/|]
       [reldir|pipenv-2021.11.23/|]
+      []
 
 spec :: Spec
 spec = do

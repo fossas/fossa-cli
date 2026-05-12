@@ -22,6 +22,7 @@ uv =
       "https://github.com/fpgmaas/cookiecutter-uv/archive/refs/tags/0.0.11.tar.gz"
       [reldir|python/uv/cookiecutter-uv/|]
       [reldir|cookiecutter-uv-0.0.11/|]
+      []
 
 spec :: Spec
 spec = do

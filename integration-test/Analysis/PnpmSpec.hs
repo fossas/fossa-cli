@@ -36,6 +36,7 @@ elementPlus =
       "https://github.com/element-plus/element-plus/archive/refs/tags/2.0.0.tar.gz"
       [reldir|pnpm/element-plus/|]
       [reldir|element-plus-2.0.0/|]
+      []
 
 -- | jotai-eager uses pnpm v9 catalogs (catalog: specifiers in package.json
 -- resolved via the catalogs section in pnpm-lock.yaml).
@@ -50,6 +51,7 @@ jotaiEager =
       "https://github.com/jotaijs/jotai-eager/archive/refs/tags/v0.2.4.tar.gz"
       [reldir|pnpm/jotai-eager/|]
       [reldir|jotai-eager-0.2.4/|]
+      []
 
 -- | Collect all dependency vertices from all discovered projects' graphs.
 allDeps :: [(a, DependencyResults)] -> [Dependency]

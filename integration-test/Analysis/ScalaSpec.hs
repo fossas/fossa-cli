@@ -32,6 +32,7 @@ scalaExampleProject =
       "https://github.com/fossas/scala3-example-project/archive/refs/heads/main.tar.gz"
       [reldir|scala/scala-3-ex-project/|]
       [reldir|scala3-example-project-main/target/scala-3.4.0/|]
+      []
 
 spec :: Spec
 spec = do

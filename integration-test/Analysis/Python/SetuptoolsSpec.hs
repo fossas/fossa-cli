@@ -22,6 +22,7 @@ theFuck =
       "https://github.com/nvbn/thefuck/archive/refs/tags/3.31.tar.gz"
       [reldir|python/setuptools/thefuck/|]
       [reldir|thefuck-3.31/|]
+      []
 
 flask :: AnalysisTestFixture (Setuptools.SetuptoolsProject)
 flask =
@@ -34,6 +35,7 @@ flask =
       "https://github.com/pallets/flask/archive/refs/tags/2.0.2.tar.gz"
       [reldir|python/setuptools/flask/|]
       [reldir|flask-2.0.2/|]
+      []
 
 spec :: Spec
 spec = do

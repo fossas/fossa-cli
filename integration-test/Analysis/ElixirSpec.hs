@@ -47,6 +47,7 @@ absinthe =
       "https://github.com/absinthe-graphql/absinthe/archive/refs/tags/v1.6.6.tar.gz"
       [reldir|elixir/absinthe/|]
       [reldir|absinthe-1.6.6/|]
+      []
 
 -- | commanded v1.4.6: Tests the primary (MIX_ENV=prod) path.
 --
@@ -66,6 +67,7 @@ commanded =
       "https://github.com/commanded/commanded/archive/refs/tags/v1.4.6.tar.gz"
       [reldir|elixir/commanded/|]
       [reldir|commanded-1.4.6/|]
+      []
 
 spec :: Spec
 spec = do

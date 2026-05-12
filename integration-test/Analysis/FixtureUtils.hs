@@ -105,6 +105,13 @@ data FixtureArtifact = FixtureArtifact
   { tarGzFileUrl :: Text
   , extractAt :: Path Rel Dir
   , scopedDir :: Path Rel Dir
+  , -- | Subdirectories of 'scopedDir' to remove after extraction.
+    --
+    -- Use this when an upstream tarball contains a subproject that is no
+    -- longer buildable (e.g. transitive deps removed from a public registry).
+    -- The directory is deleted before discovery runs, so it won't be picked
+    -- up as a separate project to analyze.
+    excludePaths :: [Path Rel Dir]
   }
   deriving (Show, Eq, Ord)
 
@@ -230,4 +237,18 @@ getArtifact target = sendIO $ do
         Nothing -> pure . Left $ "Failed to extract file from " <> urlStr
         Just extractor -> do
           sendIO $ extractor archiveExtractFolder tempFile
+          sendIO $ applyExcludePaths (archiveExtractFolder </> scopedDir target) (excludePaths target)
           pure . Right $ archiveExtractFolder
+
+-- | Recursively remove each excluded path from the extracted project directory.
+--
+-- Silently skips paths that don't exist in the artifact, since a fixture
+-- declaring an exclude for a path the upstream tarball doesn't ship is not
+-- itself a test failure.
+applyExcludePaths :: Path Abs Dir -> [Path Rel Dir] -> IO ()
+applyExcludePaths projectRoot = mapM_ removeIfExists
+  where
+    removeIfExists rel = do
+      let absPath = projectRoot </> rel
+      exists <- PIO.doesDirExist absPath
+      if exists then PIO.removeDirRecur absPath else pure ()

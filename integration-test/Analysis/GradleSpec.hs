@@ -32,6 +32,7 @@ springBoot =
       "https://github.com/spring-projects/spring-boot/archive/refs/tags/v4.0.0-RC2.tar.gz"
       [reldir|gradle/sample/|]
       [reldir|spring-boot-4.0.0-RC2|]
+      []
 
 gradleSettingsOnly :: AnalysisTestFixture (Gradle.GradleProject)
 gradleSettingsOnly =
@@ -44,6 +45,7 @@ gradleSettingsOnly =
       "https://docs.gradle.org/7.3.3/samples/zips/sample_building_java_applications-groovy-dsl.zip"
       [reldir|gradle/sample/|]
       [reldir|.|]
+      []
 
 testSpringBoot :: Spec
 testSpringBoot =

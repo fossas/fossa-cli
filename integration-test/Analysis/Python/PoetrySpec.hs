@@ -22,6 +22,7 @@ poetry =
       "https://github.com/python-poetry/poetry/archive/72497bcb66b5a1cc20e3aa95973c523a22b05bfa.tar.gz"
       [reldir|python/poetry/poetry/|]
       [reldir|poetry-72497bcb66b5a1cc20e3aa95973c523a22b05bfa/|]
+      []
 
 spec :: Spec
 spec = do

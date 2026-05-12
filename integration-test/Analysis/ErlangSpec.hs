@@ -25,6 +25,7 @@ emqx =
       "https://github.com/emqx/emqx/archive/refs/tags/v4.3.10.tar.gz"
       [reldir|erlang/emqx/|]
       [reldir|emqx-4.3.10/|]
+      []
 
 spec :: Spec
 spec = do

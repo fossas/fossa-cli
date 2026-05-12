@@ -28,6 +28,7 @@ serviceStack discoveryFunc =
       "https://github.com/ServiceStack/ServiceStack/archive/refs/tags/v5.13.2.tar.gz"
       [reldir|nuget/ServiceStack/|]
       [reldir|servicestack-5.13.2//|]
+      []
 
 dotnetCoreTwoExample :: (Path Abs Dir -> TestC IO [DiscoveredProject a]) -> AnalysisTestFixture a
 dotnetCoreTwoExample discoveryFunc =
@@ -40,6 +41,7 @@ dotnetCoreTwoExample discoveryFunc =
       "https://github.com/james-fossa/dotnet-core-2.0-example/archive/refs/tags/0.0.1.tar.gz"
       [reldir|nuget/dotnet-core-2.0-example-0.0.1/|]
       [reldir|dotnet-core-2.0-example-0.0.1//|]
+      []
 
 testServiceStackForPkgReferences :: Spec
 testServiceStackForPkgReferences =
@@ -81,6 +83,7 @@ dapperAOT =
       "https://github.com/DapperLib/DapperAOT/archive/refs/tags/1.0.48.tar.gz"
       [reldir|nuget/DapperAOT/|]
       [reldir|DapperAOT-1.0.48//|]
+      []
 
 -- | Versions pinned in DapperAOT's Directory.Packages.props at tag 1.0.48.
 -- Used to verify that PackageReferences without inline versions are resolved
