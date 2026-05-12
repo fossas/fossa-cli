@@ -40,6 +40,5 @@ ring =
 
 spec :: Spec
 spec = do
-  -- Placeholder counts; will be replaced once CI reports the actual values.
-  testSuiteDepResultSummary NonStrict cljHttp LeiningenProjectType (DependencyResultsSummary 999 999 999 1 Complete)
+  testSuiteDepResultSummary NonStrict cljHttp LeiningenProjectType (DependencyResultsSummary 71 27 44 1 Complete)
   testSuiteDepResultSummary NonStrict ring LeiningenProjectType (DependencyResultsSummary 23 6 17 1 Complete)
