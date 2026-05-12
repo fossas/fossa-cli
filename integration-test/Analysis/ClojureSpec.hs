@@ -6,19 +6,32 @@ module Analysis.ClojureSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Data.List (isInfixOf)
 import Path
 import Strategy.Leiningen qualified as Leiningen
 import Test.Hspec
-import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
+import Types (DiscoveredProject (..), DiscoveredProjectType (..), GraphBreadth (Complete))
 
 clojureEnv :: FixtureEnvironment
 clojureEnv = NixEnv ["openjdk11", "clojure", "leiningen"]
+
+-- | Discover Leiningen projects but skip anything under a @.circleci@ directory.
+--
+-- The pinned eastwood Release-1.0.0 tarball ships a secondary @project.clj@ at
+-- @.circleci/nvd/@ that pulls in OWASP dependency-check artifacts which are no
+-- longer resolvable from Maven Central / Clojars. Without this filter, @lein
+-- deps :tree-data@ fails on that subproject and breaks the integration test
+-- even though the eastwood project itself is healthy.
+discoverSkippingCircleCI :: Path Abs Dir -> TestC IO [DiscoveredProject Leiningen.LeiningenProject]
+discoverSkippingCircleCI dir = filter notUnderCircleCI <$> Leiningen.discover dir
+  where
+    notUnderCircleCI dp = not (".circleci" `isInfixOf` toFilePath (projectPath dp))
 
 eastwood :: AnalysisTestFixture (Leiningen.LeiningenProject)
 eastwood =
   AnalysisTestFixture
     "eastwood"
-    Leiningen.discover
+    discoverSkippingCircleCI
     clojureEnv
     Nothing
     $ FixtureArtifact
