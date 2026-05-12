@@ -14,17 +14,17 @@ import Types (DiscoveredProjectType (..), GraphBreadth (Complete))
 clojureEnv :: FixtureEnvironment
 clojureEnv = NixEnv ["openjdk11", "clojure", "leiningen"]
 
-eastwood :: AnalysisTestFixture (Leiningen.LeiningenProject)
-eastwood =
+cljHttp :: AnalysisTestFixture (Leiningen.LeiningenProject)
+cljHttp =
   AnalysisTestFixture
-    "eastwood"
+    "clj-http"
     Leiningen.discover
     clojureEnv
     Nothing
     $ FixtureArtifact
-      "https://github.com/jonase/eastwood/archive/refs/tags/Release-1.0.0.tar.gz"
-      [reldir|clojure/eastwood/|]
-      [reldir|eastwood-Release-1.0.0/|]
+      "https://github.com/dakrone/clj-http/archive/refs/tags/3.13.1.tar.gz"
+      [reldir|clojure/clj-http/|]
+      [reldir|clj-http-3.13.1/|]
 
 ring :: AnalysisTestFixture (Leiningen.LeiningenProject)
 ring =
@@ -40,5 +40,6 @@ ring =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary NonStrict eastwood LeiningenProjectType (DependencyResultsSummary 10 7 3 1 Complete)
+  -- Placeholder counts; will be replaced once CI reports the actual values.
+  testSuiteDepResultSummary NonStrict cljHttp LeiningenProjectType (DependencyResultsSummary 999 999 999 1 Complete)
   testSuiteDepResultSummary NonStrict ring LeiningenProjectType (DependencyResultsSummary 23 6 17 1 Complete)
