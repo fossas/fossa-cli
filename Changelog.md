@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.6
+
+- Licensing - Fix two bad GPL matches [No PR]
+
 ## 3.17.5
 
 - Vendetta: Debug bundles now include per-file component match data from Vendetta scans, making it easier to diagnose why a vendored dependency was or wasn't detected. ([#1706](https://github.com/fossas/fossa-cli/pull/1706))
