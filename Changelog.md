@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Scala/sbt: Run the uppercase `dependencyBrowseTreeHTML` task when the project explicitly enables `addDependencyTreePlugin` on sbt 1.4+. Previously the lowercase `dependencyBrowseTreeHtml` was used unconditionally for the explicit-plugin path, which sbt 1.4+ rejects, causing deep dependencies to be silently dropped. ([TKT-15490](https://fossa.atlassian.net/browse/ANE-2718))
+
 ## 3.17.5
 
 - Vendetta: Debug bundles now include per-file component match data from Vendetta scans, making it easier to diagnose why a vendored dependency was or wasn't detected. ([#1706](https://github.com/fossas/fossa-cli/pull/1706))
