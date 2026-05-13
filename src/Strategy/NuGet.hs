@@ -16,7 +16,6 @@ import Control.Effect.Reader (Reader)
 import Data.Aeson (
   ToJSON,
  )
-import Data.Foldable (find)
 import Data.List qualified as L
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
@@ -51,9 +50,7 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findProjectAssetsJsonFile files of
     Just file -> pure ([NuGetProject file], WalkContinue)
-    Nothing -> case find isPackageRefFile files of
-      Just file -> pure ([NuGetProject file], WalkContinue)
-      Nothing -> pure ([], WalkContinue)
+    Nothing -> pure (map NuGetProject (filter isPackageRefFile files), WalkContinue)
   where
     findProjectAssetsJsonFile :: [Path Abs File] -> Maybe (Path Abs File)
     findProjectAssetsJsonFile = findFileNamed "project.assets.json"
