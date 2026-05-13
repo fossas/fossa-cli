@@ -120,7 +120,7 @@ import Data.String (IsString)
 import Data.String.Conversion (ToText (toText))
 import Data.Text (Text, null, strip, toLower)
 import Diag.Result (Result (Failure, Success), renderFailure)
-import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExclude, comboInclude, setExclude, setInclude, targetFilterParser)
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (..), comboExcludeWithGlobs, comboIncludeWithGlobs, partitionPathFilters, setExclude, setInclude, targetFilterParser)
 import Effect.Exec (Exec)
 import Effect.Logger (Logger, logDebug, logInfo, renderIt, vsep)
 import Effect.ReadFS (ReadFS, doesDirExist, doesFileExist)
@@ -624,11 +624,13 @@ collectConfigFileFilters configFile = do
   let pullFromFile :: (a -> [b]) -> (ConfigFile -> Maybe a) -> [b]
       pullFromFile field section = maybe [] field (section configFile)
       onlyT = pullFromFile targetsOnly configTargets
-      onlyP = pullFromFile pathsOnly configPaths
+      (onlyP, onlyG) = partitionPathFilters $ pullFromFile pathsOnly configPaths
       excludeT = pullFromFile targetsExclude configTargets
-      excludeP = pullFromFile pathsExclude configPaths
+      (excludeP, excludeG) = partitionPathFilters $ pullFromFile pathsExclude configPaths
 
-  AllFilters (comboInclude onlyT onlyP) (comboExclude excludeT excludeP)
+  AllFilters
+    (comboIncludeWithGlobs onlyT onlyP onlyG)
+    (comboExcludeWithGlobs excludeT excludeP excludeG)
 
 collectConfigMavenScopeFilters :: ConfigFile -> MavenScopeFilters
 collectConfigMavenScopeFilters configFile = do
