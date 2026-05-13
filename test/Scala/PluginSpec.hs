@@ -59,6 +59,18 @@ spec = do
       detectDependencyPlugins sbtNoPlugins
         `shouldBe` DependencyPluginsDetected{hasMiniDependencyTreePlugin = False, dependencyTreePlugin = Nothing}
 
+    -- `sbt plugins` lists user-disabled plugins (`disablePlugins(...)`) with a
+    -- ": disabled in <scope>" suffix. The FQCN still appears on those lines,
+    -- so detection must anchor on ": enabled in" to avoid routing to a task
+    -- the active plugin set doesn't provide.
+    it "should not treat MiniDependencyTreePlugin as present when listed as disabled" $ do
+      detectDependencyPlugins sbtDisabledMiniPlugin
+        `shouldBe` DependencyPluginsDetected{hasMiniDependencyTreePlugin = False, dependencyTreePlugin = Nothing}
+
+    it "should not treat modern DependencyTreePlugin as present when listed as disabled" $ do
+      detectDependencyPlugins sbtDisabledModernPlugin
+        `shouldBe` DependencyPluginsDetected{hasMiniDependencyTreePlugin = False, dependencyTreePlugin = Nothing}
+
 -- sbt 1.4+ with only built-in plugin
 sbt14BuiltinOnly :: Text
 sbt14BuiltinOnly =
@@ -164,4 +176,29 @@ sbtNoPlugins =
 [info]   sbt.plugins.CorePlugin: enabled in root
 [info]   sbt.plugins.IvyPlugin: enabled in root
 [info]   sbt.plugins.JvmPlugin: enabled in root
+|]
+
+-- User-disabled MiniDependencyTreePlugin (e.g. `disablePlugins(MiniDependencyTreePlugin)`
+-- in build.sbt). The FQCN appears on a ": disabled in" line — detection
+-- must reject it.
+sbtDisabledMiniPlugin :: Text
+sbtDisabledMiniPlugin =
+  [r|[info] welcome to sbt 1.9.7 (Eclipse Adoptium Java 11.0.21)
+[info] In file:/Users/test/project/
+[info]   sbt.plugins.CorePlugin: enabled in root
+[info]   sbt.plugins.IvyPlugin: enabled in root
+[info]   sbt.plugins.JvmPlugin: enabled in root
+[info]   sbt.plugins.MiniDependencyTreePlugin: disabled in root
+|]
+
+-- User-disabled modern DependencyTreePlugin. Routing to the uppercase task
+-- would fail because the plugin isn't active.
+sbtDisabledModernPlugin :: Text
+sbtDisabledModernPlugin =
+  [r|[info] welcome to sbt 1.11.5 (Eclipse Adoptium Java 17.0.10)
+[info] In file:/Users/test/project/
+[info]   sbt.plugins.CorePlugin: enabled in root
+[info]   sbt.plugins.IvyPlugin: enabled in root
+[info]   sbt.plugins.JvmPlugin: enabled in root
+[info]   sbt.plugins.DependencyTreePlugin: disabled in root
 |]

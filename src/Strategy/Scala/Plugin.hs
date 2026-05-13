@@ -70,18 +70,24 @@ hasDependencyPlugins projectDir = do
 --      used on sbt < 1.4. Provides the lowercase @dependencyBrowseTreeHtml@
 --      task.
 --
+-- Detection anchors on the @\<FQCN\>: enabled in@ suffix rather than the bare
+-- FQCN. @sbt plugins@ lists plugins the user has explicitly disabled (via
+-- @disablePlugins(...)@) with @: disabled in \<scope\>@ — those still
+-- contain the FQCN as a substring, so an unanchored match would wrongly
+-- route to a task that doesn't exist on the active plugin set.
+--
 -- When both modern and legacy non-mini plugins are present we prefer the
 -- modern one (sbt 1.4+ wins) since legacy plugin presence on a modern sbt
 -- typically means the user has both kinds of declarations in their build.
 detectDependencyPlugins :: Text -> DependencyPluginsDetected
 detectDependencyPlugins stdoutText =
   DependencyPluginsDetected
-    { hasMiniDependencyTreePlugin = Text.count ".MiniDependencyTreePlugin" stdoutText > 0
+    { hasMiniDependencyTreePlugin = "sbt.plugins.MiniDependencyTreePlugin: enabled in" `Text.isInfixOf` stdoutText
     , dependencyTreePlugin =
-        if Text.count "sbt.plugins.DependencyTreePlugin" stdoutText > 0
+        if "sbt.plugins.DependencyTreePlugin: enabled in" `Text.isInfixOf` stdoutText
           then Just ModernDependencyTreePlugin
           else
-            if Text.count "net.virtualvoid.sbt.graph.DependencyGraphPlugin" stdoutText > 0
+            if "net.virtualvoid.sbt.graph.DependencyGraphPlugin: enabled in" `Text.isInfixOf` stdoutText
               then Just LegacyDependencyGraphPlugin
               else Nothing
     }
