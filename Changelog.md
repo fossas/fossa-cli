@@ -2,7 +2,9 @@
 
 ## 3.17.6
 
+- Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
 - Licensing - Fix two bad GPL matches [No PR]
+
 
 ## 3.17.5
 

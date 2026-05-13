@@ -5,6 +5,8 @@ module Discovery.WalkSpec (
   spec,
 ) where
 
+import App.Fossa.Config.Common (collectConfigFileFilters)
+import App.Fossa.Config.ConfigFile (ConfigFile)
 import Control.Carrier.Reader (runReader)
 import Control.Carrier.State.Strict (runState)
 import Control.Carrier.Writer.Strict (runWriter, tell)
@@ -14,7 +16,8 @@ import Control.Effect.State (get, put)
 import Data.Foldable (traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Discovery.Filters (AllFilters)
+import Data.Yaml (decodeThrow)
+import Discovery.Filters (AllFilters (AllFilters), comboInclude)
 import Discovery.Walk
 import Effect.ReadFS
 import Path
@@ -60,6 +63,106 @@ walkWithFilters'Spec =
       sendIO $ do
         fooPermissions <- getPermissions foo
         setPermissions bar fooPermissions
+
+    -- Mirror of the exclude test above: with an include filter, the walker
+    -- should accept the included subtree (including ancestors needed to reach
+    -- it) but prune siblings that are neither the include nor an ancestor.
+    it' "respects include-path filters" . withTempDir "test-Discovery-Walk-include" $ \tmpDir -> do
+      let dirs@[foo, bar, _baz] =
+            map
+              (tmpDir </>)
+              [ $(mkRelDir "foo")
+              , $(mkRelDir "foo/bar")
+              , $(mkRelDir "foo/baz")
+              ]
+      sendIO $ traverse_ createDir dirs
+
+      let filters = includePath $(mkRelDir "foo/bar")
+      paths <- runWalkWithFilters' 100 filters tmpDir
+      pathsToTree paths
+        `shouldBe'` dirTree
+          [
+            ( tmpDir
+            , dirTree
+                [
+                  ( foo
+                  , dirTree
+                      [ (bar, dirTree [])
+                      ]
+                  )
+                ]
+            )
+          ]
+
+    -- Strategy-supplied 'WalkSkipSome' must compose with the filter-derived
+    -- prune list. Tree: tmpDir / { strategy-skip, filter-skip, keep }. The
+    -- visit function returns 'WalkSkipSome ["strategy-skip"]'; the filter
+    -- excludes 'filter-skip'. Both subtrees should be pruned, only 'keep'
+    -- and 'tmpDir' should appear in the visited set.
+    it' "merges strategy WalkSkipSome with filter prunes" . withTempDir "test-Discovery-Walk-merge" $ \tmpDir -> do
+      let dirs@[strategySkip, filterSkip, keep] =
+            map
+              (tmpDir </>)
+              [ $(mkRelDir "strategy-skip")
+              , $(mkRelDir "filter-skip")
+              , $(mkRelDir "keep")
+              ]
+      sendIO $ traverse_ createDir dirs
+
+      let filters = excludePath $(mkRelDir "filter-skip")
+      paths <- runWalkWithFiltersAndStep (WalkSkipSome ["strategy-skip"]) 100 filters tmpDir
+      pathsToTree paths
+        `shouldBe'` dirTree
+          [
+            ( tmpDir
+            , dirTree
+                [(keep, dirTree [])]
+            )
+          ]
+      -- Sanity: the prune-list directories really were created on disk;
+      -- otherwise the assertion above would pass vacuously.
+      sendIO $ traverse_ (const (pure ())) [strategySkip, filterSkip]
+
+    -- End-to-end: a YAML config goes through the same parse path that
+    -- '.fossa.yml' takes, then 'collectConfigFileFilters' produces the
+    -- 'AllFilters' that the walker actually consumes. This catches the
+    -- "globs parse but never reach the walker" class of regression.
+    it' "applies paths.exclude globs parsed from a YAML config" . withTempDir "test-Discovery-Walk-yaml" $ \tmpDir -> do
+      let dirs@[zip', zipPython, src, srcLib] =
+            map
+              (tmpDir </>)
+              [ $(mkRelDir "zip")
+              , $(mkRelDir "zip/python")
+              , $(mkRelDir "src")
+              , $(mkRelDir "src/lib")
+              ]
+      sendIO $ traverse_ createDir dirs
+
+      let yaml =
+            "version: 3\n\
+            \paths:\n\
+            \  exclude:\n\
+            \    - \"**/zip/**\"\n"
+      cfgFn <- sendIO $ decodeThrow yaml
+      let cfgPath = tmpDir </> $(mkRelFile ".fossa.yml")
+          cfg = cfgFn cfgPath :: ConfigFile
+          filters = collectConfigFileFilters cfg
+
+      paths <- runWalkWithFilters' 100 filters tmpDir
+      pathsToTree paths
+        `shouldBe'` dirTree
+          [
+            ( tmpDir
+            , dirTree
+                [
+                  ( src
+                  , dirTree [(srcLib, dirTree [])]
+                  )
+                ]
+            )
+          ]
+      -- Make sure the dirs we expected to be pruned actually exist on disk.
+      sendIO $ traverse_ (const (pure ())) [zip', zipPython]
 
 walkSpec :: Spec
 walkSpec =
@@ -162,7 +265,22 @@ runWalkWithFilters' ::
   AllFilters ->
   Path Abs Dir ->
   m [Path Abs Dir]
-runWalkWithFilters' maxIters filters startDir =
+runWalkWithFilters' = runWalkWithFiltersAndStep WalkContinue
+
+-- | Like 'runWalkWithFilters'', but lets the caller pin the 'WalkStep' that
+-- every visited directory returns. Use 'WalkSkipSome' to verify that the
+-- caller's skip list is merged with the filter-derived prunes inside
+-- 'pathFilterIntercept'.
+runWalkWithFiltersAndStep ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  WalkStep ->
+  Int ->
+  AllFilters ->
+  Path Abs Dir ->
+  m [Path Abs Dir]
+runWalkWithFiltersAndStep userStep maxIters filters startDir =
   do
     fmap fst
     . runWriter
@@ -176,11 +294,14 @@ runWalkWithFilters' maxIters filters startDir =
             then do
               put (iterations + 1)
               tell [dir]
-              pure ((), WalkContinue)
+              pure ((), userStep)
             else do
               pure ((), WalkStop)
       )
       startDir
+
+includePath :: Path Rel Dir -> AllFilters
+includePath path = AllFilters (comboInclude mempty [path]) mempty
 
 runWalkWithCircuitBreaker ::
   (Has ReadFS sig m, Has Diagnostics sig m) => Int -> Path Abs Dir -> m [Path Abs Dir]
