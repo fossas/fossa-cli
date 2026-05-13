@@ -203,13 +203,13 @@ analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies
       }
 
 analyzeWithDepTreeJson :: (Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
-analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependencyBrowseTreeHTML" $ do
+analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependency tree JSON" $ do
   treeJson' <-
     errCtx MissingFullDependencyPluginCtx $
       errHelp MissingFullDependencyPluginHelp $
         errDoc sbtDepsGraphPluginUrl $
           errDoc scalaFossaDocUrl $
-            fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
+            fromMaybeText "Could not retrieve dependency tree JSON output from sbt" treeJson
   projectGraph <- TreeJson.analyze treeJson'
   pure $
     DependencyResults
