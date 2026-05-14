@@ -45,8 +45,17 @@ testServiceStackForPkgReferences :: Spec
 testServiceStackForPkgReferences =
   aroundAll (withAnalysisOf NonStrict $ serviceStack NuGet.discover) $ do
     describe "ServiceStack" $ do
+      -- 92 = every project file under v5.13.2 (91 .csproj + 1
+      -- .fsproj). The pre-ANE-2523 expectation was 64; that count
+      -- was masking the bug — 19 directories hold 2-3 sibling csproj
+      -- files (e.g. src/ServiceStack/{ServiceStack, ServiceStack.Core,
+      -- ServiceStack.Source}.csproj for the .NET-Framework /
+      -- .NET-Core / source-distribution variants), and the old
+      -- `find isPackageRefFile` was picking only one alphabetically
+      -- and silently dropping the rest. Discovery now emits one
+      -- NuGetProject per project file.
       it "should find targets" $ \(result, _) -> do
-        length result `shouldBe` 64
+        length result `shouldBe` 92
 
 testServiceStackForPkgConfig :: Spec
 testServiceStackForPkgConfig =
