@@ -692,6 +692,7 @@ test-suite unit-tests
     Node.PackageLockSpec
     Node.PackageLockV3Spec
     NuGet.DirectoryPackagesPropsSpec
+    NuGet.NuGetSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec
