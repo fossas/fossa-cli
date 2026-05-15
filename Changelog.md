@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Scala/sbt: Run the uppercase `dependencyBrowseTreeHTML` task when the project explicitly enables `addDependencyTreePlugin` on sbt 1.4+. Previously the lowercase `dependencyBrowseTreeHtml` was used unconditionally for the explicit-plugin path, which sbt 1.4+ rejects, causing deep dependencies to be silently dropped. ([TKT-15490](https://fossa.atlassian.net/browse/ANE-2718))
+
 ## 3.17.6
 
 - Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
