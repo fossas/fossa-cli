@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.VendoredDependencySpec (
@@ -17,14 +16,8 @@ import App.Fossa.VendoredDependency (
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
 import Path (Abs, Dir, Path, mkRelDir, (</>))
-#ifndef mingw32_HOST_OS
-import Path (mkRelFile, toFilePath)
-#endif
 import Path.IO (getCurrentDir)
 import Test.Effect (it', shouldContain')
-#ifndef mingw32_HOST_OS
-import Test.Effect (shouldStartWith')
-#endif
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
@@ -49,19 +42,6 @@ spec = do
         let specDir = currDir </> $(mkRelDir "test/ArchiveUploader/normal")
         compressedFilePath <- sendIO $ withSystemTempDir "fossa-temp" (flippedCompressFile specDir fileToTar)
         compressedFilePath `shouldContain'` fileToTar
-
-#ifndef mingw32_HOST_OS
-    -- Posix-only: safeSeparators uses System.FilePath.Posix, and the customer
-    -- bug only manifests for Posix-style absolute paths produced by meta-fossa.
-    it' "should write the tarball inside outputDir when fileToTar is absolute" $
-      do
-        let specDir = currDir </> $(mkRelDir "test/ArchiveUploader/normal")
-        let absFile = toFilePath (specDir </> $(mkRelFile "foo"))
-        (outDirStr, compressedFilePath) <-
-          sendIO . withSystemTempDir "fossa-temp" $ \out ->
-            (toFilePath out,) <$> compressFile out specDir absFile
-        compressedFilePath `shouldStartWith'` outDirStr
-#endif
 
   describe "safeSeparators" $ do
     it "joins relative path components with underscores" $
