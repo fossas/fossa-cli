@@ -488,41 +488,43 @@ toResolvedDependency toEnv pkgs mkPkg depName depVersion = do
 data LabelingMode = LabelingOff | LabelingOn
   deriving (Show, Eq, Ord)
 
+-- | Configuration for 'buildGraphCore'.
+--
+-- Each field controls version-specific behavior:
+--
+--   - 'bgcGetPkgNameVersion': parse (name, version) from a package key
+--   - 'bgcMkPkgKey': build a registry package key from (name, version)
+--   - 'bgcToEnv': derive environment from @dev@ field (or ignore it for v9)
+--   - 'bgcLabelingMode': whether to label direct deps for hydrateDepEnvs propagation
+--   - 'bgcSnapshotEdges': additional edges from v9 snapshots (empty for older versions)
+data BuildGraphConfig = BuildGraphConfig
+  { bgcGetPkgNameVersion :: Text -> Maybe (Text, Text)
+  , bgcMkPkgKey :: Text -> Text -> Text
+  , bgcToEnv :: Bool -> Set.Set DepEnvironment
+  , bgcLabelingMode :: LabelingMode
+  , bgcSnapshotEdges :: [(SnapshotDepName, [(SnapshotDepName, SnapShotDepRev)])]
+  }
+
 -- | Core graph-building logic shared across all lockfile versions.
---
--- Parameters control version-specific behavior:
---
---   - 'getPkgNameVersion': parse (name, version) from a package key
---   - 'mkPkgKey': build a registry package key from (name, version)
---   - 'toEnv': derive environment from @dev@ field (or ignore it for v9)
---   - 'LabelingMode': whether to label direct deps for hydrateDepEnvs propagation
---   - 'snapshotEdges': additional edges from v9 snapshots (empty for older versions)
-buildGraphCore
-  :: (Text -> Maybe (Text, Text)) -- ^ getPkgNameVersion
-  -> (Text -> Text -> Text) -- ^ mkPkgKey
-  -> (Bool -> Set.Set DepEnvironment) -- ^ toEnv
-  -> LabelingMode -- ^ labeling mode
-  -> [(SnapshotDepName, [(SnapshotDepName, SnapShotDepRev)])] -- ^ snapshotEdges
-  -> PnpmLockfile
-  -> Graphing Dependency
-buildGraphCore getPkgNameVersion mkPkgKey toEnv labelingMode snapshotEdges lockFile =
+buildGraphCore :: BuildGraphConfig -> PnpmLockfile -> Graphing Dependency
+buildGraphCore cfg lockFile =
   withoutLocalPackages . hydrateDepEnvs $
     run . withLabeling applyLabels $ do
       -- Direct dependencies from each importer (workspace package).
       for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
         for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
           let resolvedVersion = resolveCatalogVersion lockFile.lockFileCatalogs depName depVersion
-           in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+           in for_ (toResolvedDependency (bgcToEnv cfg) pkgs (bgcMkPkgKey cfg) depName resolvedVersion) $ \dep -> do
                 direct dep
-                case labelingMode of
+                case bgcLabelingMode cfg of
                   LabelingOn -> label dep (PnpmEnv EnvProduction)
                   LabelingOff -> pure ()
 
         for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
           let resolvedVersion = resolveCatalogVersion lockFile.lockFileCatalogs depName depVersion
-           in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+           in for_ (toResolvedDependency (bgcToEnv cfg) pkgs (bgcMkPkgKey cfg) depName resolvedVersion) $ \dep -> do
                 direct dep
-                case labelingMode of
+                case bgcLabelingMode cfg of
                   LabelingOn -> label dep (PnpmEnv EnvDevelopment)
                   LabelingOff -> pure ()
 
@@ -533,20 +535,20 @@ buildGraphCore getPkgNameVersion mkPkgKey toEnv labelingMode snapshotEdges lockF
                 <> Map.toList (peerDependencies pkgMeta)
                 <> fromMaybe mempty (HashMap.lookup pkgKey snapshotEdgesHM)
 
-        let (depName, depVersion) = case getPkgNameVersion pkgKey of
+        let (depName, depVersion) = case bgcGetPkgNameVersion cfg pkgKey of
               Nothing -> (pkgKey, Nothing)
               Just (name, version) -> (name, Just version)
-        let parentDep = toDependency toEnv depName depVersion pkgMeta
+        let parentDep = toDependency (bgcToEnv cfg) depName depVersion pkgMeta
 
         -- It is ok if this dependency was already graphed as direct
         -- @direct 1 <> deep 1 = direct 1@
         deep parentDep
 
         for_ deepDependencies $ \(deepName, deepVersion) -> do
-          maybe (pure ()) (edge parentDep) (toResolvedDependency toEnv pkgs mkPkgKey deepName deepVersion)
+          maybe (pure ()) (edge parentDep) (toResolvedDependency (bgcToEnv cfg) pkgs (bgcMkPkgKey cfg) deepName deepVersion)
   where
     pkgs = packages lockFile
-    snapshotEdgesHM = HashMap.fromList snapshotEdges
+    snapshotEdgesHM = HashMap.fromList (bgcSnapshotEdges cfg)
 
 --
 -- Per-version graph builders
@@ -560,7 +562,13 @@ buildGraphPreV9
   -> PnpmLockfile
   -> Graphing Dependency
 buildGraphPreV9 getPkgNameVersion mkPkgKey =
-  buildGraphCore getPkgNameVersion mkPkgKey toEnvInline LabelingOff mempty
+  buildGraphCore (BuildGraphConfig
+    { bgcGetPkgNameVersion = getPkgNameVersion
+    , bgcMkPkgKey = mkPkgKey
+    , bgcToEnv = toEnvInline
+    , bgcLabelingMode = LabelingOff
+    , bgcSnapshotEdges = mempty
+    })
 
 -- | Build graph for lockfile v4/v5.
 --
@@ -580,13 +588,13 @@ buildGraphV678 = buildGraphPreV9 getPkgNameVersionV6 mkPkgKeyV6
 -- label propagation, and uses snapshots for transitive dependency edges.
 buildGraphV9 :: PnpmLockfile -> Graphing Dependency
 buildGraphV9 lockFile =
-  buildGraphCore
-    getPkgNameVersionV9
-    mkPkgKeyV9
-    toEnvEmpty
-    LabelingOn
-    (HashMap.toList lockFile.lockFileSnapshots.snapshots)
-    lockFile
+  buildGraphCore (BuildGraphConfig
+    { bgcGetPkgNameVersion = getPkgNameVersionV9
+    , bgcMkPkgKey = mkPkgKeyV9
+    , bgcToEnv = toEnvEmpty
+    , bgcLabelingMode = LabelingOn
+    , bgcSnapshotEdges = HashMap.toList lockFile.lockFileSnapshots.snapshots
+    }) lockFile
 
 --
 -- Top-level dispatch
