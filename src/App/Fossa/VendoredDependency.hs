@@ -7,6 +7,7 @@ module App.Fossa.VendoredDependency (
   vendoredDepToLocator,
   forceVendoredToArchive,
   compressFile,
+  safeSeparators,
   hashFile,
   hashBs,
   dedupVendoredDeps,
@@ -197,8 +198,11 @@ hashFile fileToHash = do
   fileContent <- BS.readFile fileToHash
   pure . toText . show $ md5 fileContent
 
+-- Drop root components so absolute inputs don't yield a result starting with
+-- '/', which `(</>)` would treat as absolute and use to overwrite the caller's
+-- intended output directory.
 safeSeparators :: FilePath -> FilePath
-safeSeparators = intercalate "_" . splitDirectories
+safeSeparators = intercalate "_" . filter (/= "/") . splitDirectories
 
 skippedDepsDebugLog :: NeedScanningDeps -> SkippableDeps -> VendoredDependencyScanMode -> SkippedDepsLogMsg
 skippedDepsDebugLog needScanningDeps skippedDeps scanMode =

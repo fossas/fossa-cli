@@ -10,13 +10,14 @@ import App.Fossa.VendoredDependency (
   SkippedDepsLogMsg (..),
   VendoredDependencyScanMode (..),
   compressFile,
+  safeSeparators,
   skippedDepsDebugLog,
  )
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Path (Abs, Dir, Path, mkRelDir, (</>))
+import Path (Abs, Dir, Path, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
-import Test.Effect (it', shouldContain')
+import Test.Effect (it', shouldContain', shouldStartWith')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 
@@ -41,6 +42,24 @@ spec = do
         let specDir = currDir </> $(mkRelDir "test/ArchiveUploader/normal")
         compressedFilePath <- sendIO $ withSystemTempDir "fossa-temp" (flippedCompressFile specDir fileToTar)
         compressedFilePath `shouldContain'` fileToTar
+
+    it' "should write the tarball inside outputDir when fileToTar is absolute" $
+      do
+        let specDir = currDir </> $(mkRelDir "test/ArchiveUploader/normal")
+        let absFile = toFilePath (specDir </> $(mkRelFile "foo"))
+        (outDirStr, compressedFilePath) <-
+          sendIO . withSystemTempDir "fossa-temp" $ \out ->
+            (toFilePath out,) <$> compressFile out specDir absFile
+        compressedFilePath `shouldStartWith'` outDirStr
+
+  describe "safeSeparators" $ do
+    it "joins relative path components with underscores" $
+      safeSeparators "build/base-files" `shouldBe` "build_base-files"
+    it "leaves bare filenames untouched" $
+      safeSeparators "base-files" `shouldBe` "base-files"
+    it "drops the root component for absolute paths" $
+      safeSeparators "/home/marcel/build/tmp/fossa_metadata/src/base-files"
+        `shouldBe` "home_marcel_build_tmp_fossa_metadata_src_base-files"
 
   describe "skippedDepsDebugLog" $ do
     it "should return SkippingUnsupportedMsg when skipping is not supported" $
