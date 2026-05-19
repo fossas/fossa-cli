@@ -179,10 +179,21 @@ type GoLabeledGrapher m a = LabeledGrapherC GoPackage DepEnvironment m a
 -- * Removes path dependencies and their transitive deps that aren't used elsewhere in the graph.
 --   The go tools give us this data but we haven't decided yet how to present it.
 -- * Replaces modules according to the module's 'replacement' field.
--- * Skips over test dependencies and their children.
+-- * Tags test-only dependencies (reached via 'TestImports' of a main module
+--   package) with 'EnvTesting' so they can be filtered out at upload time by
+--   'shouldPublishDep'. Production dependencies are always tagged with
+--   'EnvProduction'; a module reached through both paths gets both labels.
 buildGraph :: (Has Diagnostics sig m) => Path Abs Dir -> [GoPackage] -> m (Graphing.Graphing Dependency, GraphBreadth)
 buildGraph goModDir rawPackages = do
-  g <- runLabeledGrapher . traverse_ (makeGraph EnvProduction) =<< getMainPackages
+  mains <- getMainPackages
+  -- Production traversal must run first so that any module reachable from both
+  -- production and test code keeps its 'EnvProduction' label and a fully
+  -- traversed production subtree. The subsequent test traversal short-circuits
+  -- when it hits an already-graphed vertex, but still appends 'EnvTesting' at
+  -- the vertex it re-encounters.
+  g <- runLabeledGrapher $ do
+    traverse_ (makeGraph EnvProduction) mains
+    traverse_ traverseTestDeps mains
   fmap ((,Complete)) . uncurry pkgGraphToDepGraph $ g
   where
     (mainPackages, stdLibImportPaths, pkgsNoStdLibImports) = foldl' go ([], HashSet.empty, HashMap.empty) rawPackages
@@ -231,6 +242,15 @@ buildGraph goModDir rawPackages = do
 
     maybeEdge :: (Has Diagnostics sig m, Has (Grapher GoPackage) sig m) => GoPackage -> Maybe GoPackage -> m ()
     maybeEdge d = maybe (pure ()) (edge d)
+
+    -- For each TestImport of a main-module package, graph the imported package
+    -- (and its transitive 'packageDeps') tagged as 'EnvTesting', wiring it as
+    -- an edge from the main-module package. We do not recurse into the
+    -- 'testDeps' of non-main packages: when compiling tests of the main
+    -- module, Go does not pull in the test imports of dependencies.
+    traverseTestDeps :: (Has Diagnostics sig m) => GoPackage -> GoLabeledGrapher m ()
+    traverseTestDeps pkg@GoPackage{testDeps} =
+      traverse_ (lookupPackage >=> makeGraph EnvTesting >=> maybeEdge pkg) testDeps
 
     lookupPackage :: Has Diagnostics sig m => ImportPath -> m GoPackage
     lookupPackage impPath = Diagnostics.fromMaybe (MissingModuleErr getSourceLocation impPath) $ HashMap.lookup impPath pkgsNoStdLibImports

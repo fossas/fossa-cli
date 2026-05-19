@@ -8,7 +8,7 @@ import Control.Carrier.Stack (runStack)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import DepTypes (
-  DepEnvironment (EnvProduction),
+  DepEnvironment (EnvProduction, EnvTesting),
   DepType (GoType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
@@ -294,11 +294,26 @@ pathDepPkgModule =
     , dependencyTags = Map.empty
     }
 
+-- 'transitiveTestMod' is reachable only via the 'testDeps' of another test
+-- dep, which we intentionally do not traverse, so it should not appear in
+-- 'expectedGraph'.
+testMod :: Dependency
+testMod =
+  Dependency
+    { dependencyType = GoType
+    , dependencyName = "testMod"
+    , dependencyVersion = Just $ CEq "1.0.0"
+    , dependencyLocations = []
+    , dependencyEnvironments = Set.singleton EnvTesting
+    , dependencyTags = Map.empty
+    }
+
 expectedGraph :: Graphing.Graphing Dependency
 expectedGraph =
   Graphing.direct replacedModule
     <> Graphing.direct moduleA
     <> Graphing.direct pathModule
+    <> Graphing.direct testMod
     <> Graphing.edge replacedModule moduleA
     <> Graphing.edge pathModule pathDepPkgModule
 

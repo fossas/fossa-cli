@@ -5,6 +5,7 @@
 - Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
 - Licensing - Fix two bad GPL matches [No PR]
 - NuGet: PackageReference discovery now analyzes every `.csproj`/`.xproj`/`.vbproj`/`.dbproj`/`.fsproj` in a directory. Previously only the first match returned by the directory listing was analyzed, so sibling project files were silently dropped. ([#1712](https://github.com/fossas/fossa-cli/pull/1712))
+- Go: `go list`-based analysis now tags test-only dependencies (reached via a main-module package's `TestImports`) with the testing environment. They are filtered out of uploads by default, matching prior behavior, but can now be surfaced with `--include-unused-deps`. Previously test dependencies were dropped from the graph entirely and `--include-unused-deps` had no effect for Go projects.
 
 
 ## 3.17.5
