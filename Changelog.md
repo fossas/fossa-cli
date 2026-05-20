@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.7
+
+- Vendored dependencies: archive uploads with an absolute `path` (as produced by the meta-fossa Yocto layer) no longer crash with a `permission denied` error while writing the tarball.
+
 ## 3.17.6
 
 - Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
