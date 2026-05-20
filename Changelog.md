@@ -1,15 +1,17 @@
 # FOSSA CLI Changelog
 
+## 3.17.8
+
+- Vendored dependencies: archive uploads with an absolute `path` (as produced by the meta-fossa Yocto layer) no longer crash with a `permission denied` error while writing the tarball. ([#1713](https://github.com/fossas/fossa-cli/pull/1713))
+
 ## 3.17.7
 
-- Vendored dependencies: archive uploads with an absolute `path` (as produced by the meta-fossa Yocto layer) no longer crash with a `permission denied` error while writing the tarball.
+- NuGet: PackageReference discovery now analyzes every `.csproj`/`.xproj`/`.vbproj`/`.dbproj`/`.fsproj` in a directory. Previously only the first match returned by the directory listing was analyzed, so sibling project files were silently dropped. ([#1712](https://github.com/fossas/fossa-cli/pull/1712))
 
 ## 3.17.6
 
 - Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
 - Licensing - Fix two bad GPL matches [No PR]
-- NuGet: PackageReference discovery now analyzes every `.csproj`/`.xproj`/`.vbproj`/`.dbproj`/`.fsproj` in a directory. Previously only the first match returned by the directory listing was analyzed, so sibling project files were silently dropped. ([#1712](https://github.com/fossas/fossa-cli/pull/1712))
-
 
 ## 3.17.5
 
