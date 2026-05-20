@@ -9,6 +9,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 where
 
 import Control.Applicative ((<|>))
+
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
@@ -554,47 +555,55 @@ buildGraphCore cfg lockFile =
 -- Per-version graph builders
 --
 
--- | Shared builder for v4 through v8: environment from @dev@ field,
--- no label propagation, no snapshot edges.
-buildGraphPreV9
-  :: (Text -> Maybe (Text, Text)) -- ^ getPkgNameVersion
-  -> (Text -> Text -> Text) -- ^ mkPkgKey
-  -> PnpmLockfile
-  -> Graphing Dependency
-buildGraphPreV9 getPkgNameVersion mkPkgKey =
-  buildGraphCore (BuildGraphConfig
-    { bgcGetPkgNameVersion = getPkgNameVersion
-    , bgcMkPkgKey = mkPkgKey
-    , bgcToEnv = toEnvInline
-    , bgcLabelingMode = LabelingOff
-    , bgcSnapshotEdges = mempty
-    })
+-- | Config for lockfile versions 4/5.
+buildGraphConfigV4or5 :: BuildGraphConfig
+buildGraphConfigV4or5 = BuildGraphConfig
+  { bgcGetPkgNameVersion = getPkgNameVersionV5
+  , bgcMkPkgKey = mkPkgKeyV5
+  , bgcToEnv = toEnvInline
+  , bgcLabelingMode = LabelingOff
+  , bgcSnapshotEdges = mempty
+  }
+
+-- | Config for lockfile versions 6/7/8.
+buildGraphConfigV678 :: BuildGraphConfig
+buildGraphConfigV678 = BuildGraphConfig
+  { bgcGetPkgNameVersion = getPkgNameVersionV6
+  , bgcMkPkgKey = mkPkgKeyV6
+  , bgcToEnv = toEnvInline
+  , bgcLabelingMode = LabelingOff
+  , bgcSnapshotEdges = mempty
+  }
+
+-- | Config for lockfile version 9.
+-- Snapshot edges come from the lockfile itself, so this is a function.
+buildGraphConfigV9 :: PnpmLockfile -> BuildGraphConfig
+buildGraphConfigV9 lockFile = BuildGraphConfig
+  { bgcGetPkgNameVersion = getPkgNameVersionV9
+  , bgcMkPkgKey = mkPkgKeyV9
+  , bgcToEnv = toEnvEmpty
+  , bgcLabelingMode = LabelingOn
+  , bgcSnapshotEdges = HashMap.toList lockFile.lockFileSnapshots.snapshots
+  }
 
 -- | Build graph for lockfile v4/v5.
 --
 -- v5 uses @\/name\/version@ keys and derives environment from @dev@ field.
 buildGraphV4or5 :: PnpmLockfile -> Graphing Dependency
-buildGraphV4or5 = buildGraphPreV9 getPkgNameVersionV5 mkPkgKeyV5
+buildGraphV4or5 = buildGraphCore buildGraphConfigV4or5
 
 -- | Build graph for lockfile v6/v7/v8.
 --
 -- v6+ uses @\/name@version@ keys and derives environment from @dev@ field.
 buildGraphV678 :: PnpmLockfile -> Graphing Dependency
-buildGraphV678 = buildGraphPreV9 getPkgNameVersionV6 mkPkgKeyV6
+buildGraphV678 = buildGraphCore buildGraphConfigV678
 
 -- | Build graph for lockfile v9.
 --
 -- v9 uses @name@version@ keys (no leading slash), derives environment via
 -- label propagation, and uses snapshots for transitive dependency edges.
 buildGraphV9 :: PnpmLockfile -> Graphing Dependency
-buildGraphV9 lockFile =
-  buildGraphCore (BuildGraphConfig
-    { bgcGetPkgNameVersion = getPkgNameVersionV9
-    , bgcMkPkgKey = mkPkgKeyV9
-    , bgcToEnv = toEnvEmpty
-    , bgcLabelingMode = LabelingOn
-    , bgcSnapshotEdges = HashMap.toList lockFile.lockFileSnapshots.snapshots
-    }) lockFile
+buildGraphV9 lockFile = buildGraphCore (buildGraphConfigV9 lockFile) lockFile
 
 --
 -- Top-level dispatch
