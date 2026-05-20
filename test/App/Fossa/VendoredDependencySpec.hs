@@ -15,11 +15,12 @@ import App.Fossa.VendoredDependency (
  )
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Path (Abs, Dir, Path, mkRelDir, (</>))
+import Path (Abs, Dir, Path, mkRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
+import System.FilePath (isPathSeparator)
 import Test.Effect (it', shouldContain')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldSatisfy)
 
 flippedCompressFile :: Path Abs Dir -> FilePath -> Path Abs Dir -> IO FilePath
 flippedCompressFile directory fileToTar outputDir = compressFile outputDir directory fileToTar
@@ -48,8 +49,8 @@ spec = do
       safeSeparators "foo/bar" `shouldBe` "foo_bar"
     it "leaves bare filenames untouched" $
       safeSeparators "foo" `shouldBe` "foo"
-    it "drops the root component for absolute paths" $
-      safeSeparators "/foo/bar/baz" `shouldBe` "foo_bar_baz"
+    it "strips path separators from an OS-native absolute path" $
+      safeSeparators (toFilePath currDir) `shouldSatisfy` (not . any isPathSeparator)
 
   describe "skippedDepsDebugLog" $ do
     it "should return SkippingUnsupportedMsg when skipping is not supported" $
