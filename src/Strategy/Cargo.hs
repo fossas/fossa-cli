@@ -538,7 +538,7 @@ buildGraph emitGitBackedLocators meta = shrinkRoots $
     prodAdj =
       Map.fromList $
         map
-          (\node -> (resolveNodeId node, map nodePkg (filter isProdEdge (resolveNodeDeps node))))
+          (\node -> (resolveNodeId node, map nodePkg . filter isProdEdge . resolveNodeDeps $ node))
           nodes
 
     -- Every edge in the metadata graph, for Development reachability.
