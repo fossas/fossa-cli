@@ -19,7 +19,6 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, listToMaybe)
-import Data.Maybe qualified as Maybe
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -136,15 +135,39 @@ newtype PnpmLabel = PnpmEnv DepEnvironment
 --    - [pnpm](https://pnpm.io/)
 --    - [pnpm-lockfile](https://github.com/pnpm/pnpm/blob/5cfd6d01946edcce86f62580bddc788d02f93ed6/packages/lockfile-types/src/index.ts)
 --    - [pnpm-lockfile-v6](https://github.com/pnpm/pnpm/pull/5810/files)
-data PnpmLockfile = PnpmLockfile
-  { importers :: Map Text ProjectMap
-  , packages :: Map Text PackageData
-  , lockFileVersion :: PnpmLockFileVersion
-  , lockFileSnapshots :: PnpmLockFileSnapshots
-  -- ^ Dependency graph in lockfile version > 9
-  , lockFileCatalogs :: PnpmCatalogs
-  -- ^ Catalog definitions in lockfile version >= 9
+-- | Shared fields present in all lockfile versions.
+data PnpmLockfileBase = PnpmLockfileBase
+  { lockfileImporters :: Map Text ProjectMap
+  , lockfilePackages  :: Map Text PackageData
+  , lockfileRawVersion :: Text
+  -- ^ Raw lockfileVersion string, used for warning about unsupported versions.
   }
+  deriving (Show, Eq, Ord)
+
+-- | Version-specific extension for v4/v5 lockfiles.
+newtype PnpmLockfileV4Or5 = PnpmLockfileV4Or5 PnpmLockfileBase
+  deriving (Show, Eq, Ord)
+
+-- | Version-specific extension for v6/v7/v8 lockfiles.
+newtype PnpmLockfileV678 = PnpmLockfileV678 PnpmLockfileBase
+  deriving (Show, Eq, Ord)
+
+-- | Version-specific extension for v9+ lockfiles.
+data PnpmLockfileV9 = PnpmLockfileV9
+  { lockfileBase      :: PnpmLockfileBase
+  , lockfileSnapshots :: PnpmLockFileSnapshots
+  , lockfileCatalogs  :: PnpmCatalogs
+  }
+  deriving (Show, Eq, Ord)
+
+-- | Pnpm lockfile, parameterized by version.
+--
+-- The type constructor encodes the version, so that each variant
+-- carries only the data relevant to its format.
+data PnpmLockfile
+  = LockfileV4Or5 PnpmLockfileV4Or5
+  | LockfileV678  PnpmLockfileV678
+  | LockfileV9    PnpmLockfileV9
   deriving (Show, Eq, Ord)
 
 -- | Catalogs parsed from lockfile. Maps catalog name to (package name -> resolved version).
@@ -209,51 +232,68 @@ instance FromJSON PnpmLockFileSnapshots where
       pure $
         PnpmLockFileSnapshots{snapshots = snapshots'}
 
-data PnpmLockFileVersion
-  = PnpmLockLt4 Text
-  | PnpmLock4Or5
-  | PnpmLockV678 Text
-  | PnpmLockV9
+-- | Internal version classifier used during JSON parsing.
+data VersionClassifier
+  = VersionV4Or5
+  | VersionV678
+  | VersionV9
   deriving (Show, Eq, Ord)
+
+-- | Classify the lockfile version string.
+classifyVersion :: TextLike -> Parser VersionClassifier
+classifyVersion (TextLike ver) = case listToMaybe (toString ver) of
+  Just '1' -> pure VersionV4Or5
+  Just '2' -> pure VersionV4Or5
+  Just '3' -> pure VersionV4Or5
+  Just '4' -> pure VersionV4Or5
+  Just '5' -> pure VersionV4Or5
+  Just x   | x `elem` ['6', '7', '8'] -> pure VersionV678
+  Just '9' -> pure VersionV9
+  _        -> fail $ "expected numeric lockfileVersion, got: " <> show ver
+
+-- | Parse the shared base fields (importers + packages) common to all versions.
+parseBaseLockfile :: TextLike -> Object -> Parser PnpmLockfileBase
+parseBaseLockfile (TextLike rawVer) obj = do
+  -- Map pnpm non-workspace lockfile format to pnpm workspace lockfile format.
+  --
+  -- For lockfile without workspaces, the 'importers' field is not included in
+  -- the lockfile. And 'dependencies' and 'devDependencies' are instead shown
+  -- at the root level.
+  --
+  -- A project without a workspace is the same as having a single workspace at
+  -- the path of ".".
+  importers <- obj .:? "importers" .!= mempty
+  packages  <- obj .:? "packages" .!= mempty
+  dependencies      <- obj .:? "dependencies" .!= mempty
+  devDependencies   <- obj .:? "devDependencies" .!= mempty
+  let virtualRootWs = ProjectMap dependencies devDependencies
+  let refinedImporters =
+        if Map.null importers
+          then Map.insert "." virtualRootWs importers
+          else importers
+  pure $ PnpmLockfileBase
+    { lockfileImporters = refinedImporters
+    , lockfilePackages  = packages
+    , lockfileRawVersion = rawVer
+    }
 
 instance FromJSON PnpmLockfile where
   parseJSON = Yaml.withObject "pnpm-lock content" $ \obj -> do
-    rawLockFileVersion <- getVersion =<< obj .:? "lockfileVersion" .!= (TextLike mempty)
-    importers <- obj .:? "importers" .!= mempty
-    packages <- obj .:? "packages" .!= mempty
-    -- PNPM 9 snapshots
-    snapshots <- obj .:? "snapshots" .!= mempty
-    -- PNPM 9 catalogs
-    catalogs <- obj .:? "catalogs" .!= mempty
+    rawVer <- obj .:? "lockfileVersion" .!= (TextLike mempty)
+    base   <- parseBaseLockfile rawVer obj
 
-    -- Map pnpm non-workspace lockfile format to pnpm workspace lockfile format.
-    --
-    -- For lockfile without workspaces, the 'importers' field is not included in
-    -- the lockfile. And 'dependencies' and 'devDependencies' are instead shown
-    -- at the root level.
-    --
-    -- A project without a workspace is the same as having a single workspace at
-    -- the path of ".".
-
-    dependencies <- obj .:? "dependencies" .!= mempty
-    devDependencies <- obj .:? "devDependencies" .!= mempty
-    let virtualRootWs = ProjectMap dependencies devDependencies
-    let refinedImporters =
-          if Map.null importers
-            then Map.insert "." virtualRootWs importers
-            else importers
-
-    pure $ PnpmLockfile{importers = refinedImporters, packages = packages, lockFileVersion = rawLockFileVersion, lockFileSnapshots = snapshots, lockFileCatalogs = catalogs}
-    where
-      getVersion (TextLike ver) = case (listToMaybe . toString $ ver) of
-        (Just '1') -> pure $ PnpmLockLt4 ver
-        (Just '2') -> pure $ PnpmLockLt4 ver
-        (Just '3') -> pure $ PnpmLockLt4 ver
-        (Just '4') -> pure PnpmLock4Or5
-        (Just '5') -> pure PnpmLock4Or5
-        (Just x) | x `elem` ['6', '7', '8'] -> pure $ PnpmLockV678 ver
-        (Just '9') -> pure PnpmLockV9
-        _ -> fail ("expected numeric lockfileVersion, got: " <> show ver)
+    versionClass <- classifyVersion rawVer
+    case versionClass of
+      VersionV4Or5 -> pure $ LockfileV4Or5 $ PnpmLockfileV4Or5 base
+      VersionV678  -> pure $ LockfileV678  $ PnpmLockfileV678  base
+      VersionV9    -> do
+        snapshots <- obj .:? "snapshots" .!= mempty
+        catalogs  <- obj .:? "catalogs" .!= mempty
+        pure $ LockfileV9 $ PnpmLockfileV9
+          { lockfileBase = base
+          , lockfileSnapshots = snapshots
+          , lockfileCatalogs  = catalogs
+          }
 
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
@@ -498,23 +538,25 @@ data LabelingMode = LabelingOff | LabelingOn
 --   - 'bgcToEnv': derive environment from @dev@ field (or ignore it for v9)
 --   - 'bgcLabelingMode': whether to label direct deps for hydrateDepEnvs propagation
 --   - 'bgcSnapshotEdges': additional edges from v9 snapshots (empty for older versions)
+--   - 'bgcCatalogs': catalog name -> (package name -> resolved version) mappings
 data BuildGraphConfig = BuildGraphConfig
-  { bgcGetPkgNameVersion :: Text -> Maybe (Text, Text)
-  , bgcMkPkgKey :: Text -> Text -> Text
-  , bgcToEnv :: Bool -> Set.Set DepEnvironment
-  , bgcLabelingMode :: LabelingMode
-  , bgcSnapshotEdges :: [(SnapshotDepName, [(SnapshotDepName, SnapShotDepRev)])]
+  { bgcGetPkgNameVersion :: Text -> Maybe (Text, Text) -- ^ Parse (name, version) from a package key
+  , bgcMkPkgKey :: Text -> Text -> Text -- ^ Build a registry package key from (name, version)
+  , bgcToEnv :: Bool -> Set.Set DepEnvironment -- ^ Derive environment from @dev@ field (or ignore for v9)
+  , bgcLabelingMode :: LabelingMode -- ^ Whether to label direct deps for hydrateDepEnvs propagation
+  , bgcSnapshotEdges :: [(SnapshotDepName, [(SnapshotDepName, SnapShotDepRev)])] -- ^ Additional edges from v9 snapshots
+  , bgcCatalogs :: PnpmCatalogs -- ^ Catalog name -> (package name -> resolved version) mappings
   }
 
 -- | Core graph-building logic shared across all lockfile versions.
-buildGraphCore :: BuildGraphConfig -> PnpmLockfile -> Graphing Dependency
-buildGraphCore cfg lockFile =
+buildGraphCore :: BuildGraphConfig -> PnpmLockfileBase -> Graphing Dependency
+buildGraphCore cfg base =
   withoutLocalPackages . hydrateDepEnvs $
     run . withLabeling applyLabels $ do
       -- Direct dependencies from each importer (workspace package).
-      for_ (toList lockFile.importers) $ \(_, projectImporters) -> do
+      for_ (toList (lockfileImporters base)) $ \(_, projectImporters) -> do
         for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
-          let resolvedVersion = resolveCatalogVersion lockFile.lockFileCatalogs depName depVersion
+          let resolvedVersion = resolveCatalogVersion (bgcCatalogs cfg) depName depVersion
            in for_ (toResolvedDependency (bgcToEnv cfg) pkgs (bgcMkPkgKey cfg) depName resolvedVersion) $ \dep -> do
                 direct dep
                 case bgcLabelingMode cfg of
@@ -522,7 +564,7 @@ buildGraphCore cfg lockFile =
                   LabelingOff -> pure ()
 
         for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
-          let resolvedVersion = resolveCatalogVersion lockFile.lockFileCatalogs depName depVersion
+          let resolvedVersion = resolveCatalogVersion (bgcCatalogs cfg) depName depVersion
            in for_ (toResolvedDependency (bgcToEnv cfg) pkgs (bgcMkPkgKey cfg) depName resolvedVersion) $ \dep -> do
                 direct dep
                 case bgcLabelingMode cfg of
@@ -548,7 +590,7 @@ buildGraphCore cfg lockFile =
         for_ deepDependencies $ \(deepName, deepVersion) -> do
           maybe (pure ()) (edge parentDep) (toResolvedDependency (bgcToEnv cfg) pkgs (bgcMkPkgKey cfg) deepName deepVersion)
   where
-    pkgs = packages lockFile
+    pkgs = lockfilePackages base
     snapshotEdgesHM = HashMap.fromList (bgcSnapshotEdges cfg)
 
 --
@@ -563,9 +605,8 @@ buildGraphConfigV4or5 = BuildGraphConfig
   , bgcToEnv = toEnvInline
   , bgcLabelingMode = LabelingOff
   , bgcSnapshotEdges = mempty
+  , bgcCatalogs = mempty
   }
-
--- | Config for lockfile versions 6/7/8.
 buildGraphConfigV678 :: BuildGraphConfig
 buildGraphConfigV678 = BuildGraphConfig
   { bgcGetPkgNameVersion = getPkgNameVersionV6
@@ -573,37 +614,18 @@ buildGraphConfigV678 = BuildGraphConfig
   , bgcToEnv = toEnvInline
   , bgcLabelingMode = LabelingOff
   , bgcSnapshotEdges = mempty
+  , bgcCatalogs = mempty
   }
-
--- | Config for lockfile version 9.
 -- Snapshot edges come from the lockfile itself, so this is a function.
-buildGraphConfigV9 :: PnpmLockfile -> BuildGraphConfig
+buildGraphConfigV9 :: PnpmLockfileV9 -> BuildGraphConfig
 buildGraphConfigV9 lockFile = BuildGraphConfig
   { bgcGetPkgNameVersion = getPkgNameVersionV9
   , bgcMkPkgKey = mkPkgKeyV9
   , bgcToEnv = toEnvEmpty
   , bgcLabelingMode = LabelingOn
-  , bgcSnapshotEdges = HashMap.toList lockFile.lockFileSnapshots.snapshots
+  , bgcSnapshotEdges = HashMap.toList lockFile.lockfileSnapshots.snapshots
+  , bgcCatalogs = lockFile.lockfileCatalogs
   }
-
--- | Build graph for lockfile v4/v5.
---
--- v5 uses @\/name\/version@ keys and derives environment from @dev@ field.
-buildGraphV4or5 :: PnpmLockfile -> Graphing Dependency
-buildGraphV4or5 = buildGraphCore buildGraphConfigV4or5
-
--- | Build graph for lockfile v6/v7/v8.
---
--- v6+ uses @\/name@version@ keys and derives environment from @dev@ field.
-buildGraphV678 :: PnpmLockfile -> Graphing Dependency
-buildGraphV678 = buildGraphCore buildGraphConfigV678
-
--- | Build graph for lockfile v9.
---
--- v9 uses @name@version@ keys (no leading slash), derives environment via
--- label propagation, and uses snapshots for transitive dependency edges.
-buildGraphV9 :: PnpmLockfile -> Graphing Dependency
-buildGraphV9 lockFile = buildGraphCore (buildGraphConfigV9 lockFile) lockFile
 
 --
 -- Top-level dispatch
@@ -613,19 +635,23 @@ buildGraphV9 lockFile = buildGraphCore (buildGraphConfigV9 lockFile) lockFile
 -- (prod\/dev). hydrateDepEnvs then propagates those environments to all
 -- transitive successors.
 buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph lockFile = case lockFileVersion lockFile of
-  PnpmLockLt4 _ -> buildGraphV4or5 lockFile
-  PnpmLock4Or5 -> buildGraphV4or5 lockFile
-  PnpmLockV678 _ -> buildGraphV678 lockFile
-  PnpmLockV9 -> buildGraphV9 lockFile
+buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphConfigV4or5 base
+buildGraph (LockfileV678  (PnpmLockfileV678 base))  = buildGraphCore buildGraphConfigV678 base
+buildGraph (LockfileV9 v)                               = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
 
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
 
-  case lockFileVersion pnpmLockFile of
-    PnpmLockLt4 raw -> logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> raw <> " of, which is not officially supported!"
-    _ -> pure ()
+  -- Warn about unsupported versions (v1-v3).
+  case pnpmLockFile of
+    LockfileV4Or5 (PnpmLockfileV4Or5 base) ->
+      case Text.uncons (lockfileRawVersion base) of
+        Just (c, _) | c `elem` ['1', '2', '3'] ->
+          logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> lockfileRawVersion base <> ", which is not officially supported!"
+        _ -> pure ()
+    LockfileV678 _ -> pure ()
+    LockfileV9   _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
 
