@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.10
+
+- Licensing: Fix bad SPL matches ([#1717](https://github.com/fossas/fossa-cli/pull/1717)).
+
 ## 3.17.9
 
 - Cargo: Fix transitive dev-dependency classification. Dependencies reachable only through dev-dep or build-dep roots are now correctly labeled as Development instead of Production ([#1692](https://github.com/fossas/fossa-cli/pull/1692)).
