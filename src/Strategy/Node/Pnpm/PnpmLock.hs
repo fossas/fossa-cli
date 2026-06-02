@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Strategy.Node.Pnpm.PnpmLock (
   analyze,
 
@@ -50,8 +48,6 @@ import Strategy.Node.Pnpm.Types (
   ProjectMapDepMetadata (..),
   Resolution (..),
   TarballResolution (..),
-  SnapshotDepName,
-  SnapShotDepRev,
   withoutPeerDepSuffix,
   )
 import Strategy.Node.Pnpm.V4_8 (
