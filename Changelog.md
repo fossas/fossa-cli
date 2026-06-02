@@ -1,11 +1,25 @@
 # FOSSA CLI Changelog
 
+## 3.17.10
+
+- Licensing: Fix bad SPL matches ([#1717](https://github.com/fossas/fossa-cli/pull/1717)).
+
+## 3.17.9
+
+- Cargo: Fix transitive dev-dependency classification. Dependencies reachable only through dev-dep or build-dep roots are now correctly labeled as Development instead of Production ([#1692](https://github.com/fossas/fossa-cli/pull/1692)).
+
+## 3.17.8
+
+- Vendored dependencies: archive uploads with an absolute `path` (as produced by the meta-fossa Yocto layer) no longer crash with a `permission denied` error while writing the tarball. ([#1713](https://github.com/fossas/fossa-cli/pull/1713))
+
+## 3.17.7
+
+- NuGet: PackageReference discovery now analyzes every `.csproj`/`.xproj`/`.vbproj`/`.dbproj`/`.fsproj` in a directory. Previously only the first match returned by the directory listing was analyzed, so sibling project files were silently dropped. ([#1712](https://github.com/fossas/fossa-cli/pull/1712))
+
 ## 3.17.6
 
 - Config: `paths.only` and `paths.exclude` in `.fossa.yml` now accept glob patterns. ([#1703](https://github.com/fossas/fossa-cli/pull/1703))
 - Licensing - Fix two bad GPL matches [No PR]
-- NuGet: PackageReference discovery now analyzes every `.csproj`/`.xproj`/`.vbproj`/`.dbproj`/`.fsproj` in a directory. Previously only the first match returned by the directory listing was analyzed, so sibling project files were silently dropped. ([#1712](https://github.com/fossas/fossa-cli/pull/1712))
-
 
 ## 3.17.5
 
@@ -27,8 +41,7 @@
 - Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
 
 ## 3.17.1
-
-- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`.
+- Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`. ([#1643](https://github.com/fossas/fossa-cli/pull/1643))
 - Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
 - UV: Add `directory` source type to uv.lock parser, fixing parse failures on projects with local directory dependencies ([#1690](https://github.com/fossas/fossa-cli/pull/1690))
 
