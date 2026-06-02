@@ -9,7 +9,6 @@ MOUNTED_DEV_TOOLS_OPTS := --rm
 MOUNTED_DEV_TOOLS_OPTS += --mount "type=bind,source=${current_dir},target=/fossa-cli"
 MOUNTED_DEV_TOOLS_OPTS += --workdir "/fossa-cli"
 MOUNTED_DEV_TOOLS := ${MOUNTED_DEV_TOOLS_OPTS} ${DEV_TOOLS}
-CONTAINER_CMD ?= docker
 SHELL := bash
 
 build-cli: build-cargo
@@ -161,29 +160,29 @@ check-links:
 
 # Run the formatter from within a docker image, with the project mounted as a volume
 fmt-ci:
-	@${CONTAINER_CMD} pull ${DEV_TOOLS}
-	@${CONTAINER_CMD} run ${MOUNTED_DEV_TOOLS} make fmt-haskell
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make fmt-haskell
 
 # Run the fast-lint target with the CI docker container
 fast-lint-ci:
-	@${CONTAINER_CMD} pull ${DEV_TOOLS}
-	@${CONTAINER_CMD} run ${MOUNTED_DEV_TOOLS} make fast-lint-haskell
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make fast-lint-haskell
 
 # Docker doesn't always check for new versions during build, so pulling ensures
 # that we always have the latest.
 check-ci:
-	@${CONTAINER_CMD} pull ${DEV_TOOLS}
-	@${CONTAINER_CMD} run ${MOUNTED_DEV_TOOLS} make check-haskell
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make check-haskell
 
 # Run the fast-check target with the CI docker container
 fast-check-ci:
-	@${CONTAINER_CMD} pull ${DEV_TOOLS}
-	@${CONTAINER_CMD} run ${MOUNTED_DEV_TOOLS} make fast-check
+	docker pull ${DEV_TOOLS}
+	docker run ${MOUNTED_DEV_TOOLS} make fast-check
 
 # Run bash in the CI edocker container.  Useful for debugging make with CI tools.
 ci-shell:
-	@${CONTAINER_CMD} pull ${DEV_TOOLS}
-	@${CONTAINER_CMD} run -it ${MOUNTED_DEV_TOOLS} bash
+	docker pull ${DEV_TOOLS}
+	docker run -it ${MOUNTED_DEV_TOOLS} bash
 
 # Runs benchmarks
 bench:
