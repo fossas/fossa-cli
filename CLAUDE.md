@@ -24,6 +24,7 @@
 - Types: Prefer `newtype`, use `Text` instead of `String`
 - Functions: Avoid partial functions, list comprehensions, match guards
 - Error handling: Never use `error` or `undefined`
+- **Tests**: Partial functions (`head`, `tail`, `!!`, etc.) are acceptable in test code.
 
 ## Code Style Guidelines - Rust
 - Format with `rustfmt` via `cargo fmt`
