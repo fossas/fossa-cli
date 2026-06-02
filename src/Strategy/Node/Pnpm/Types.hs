@@ -10,7 +10,6 @@ module Strategy.Node.Pnpm.Types (
 
   -- * Catalogs
   PnpmCatalogs (..),
-  resolveCatalogVersion,
 
   -- * Snapshots
   SnapshotDepName,
@@ -28,11 +27,6 @@ module Strategy.Node.Pnpm.Types (
   TarballResolution (..),
   RegistryResolution (..),
   DirectoryResolution (..),
-
-  -- * Version classification
-  VersionClassifier (..),
-  classifyVersion,
-  parseBaseLockfile,
 
   -- * Graph configuration
   LabelingMode (..),
@@ -208,14 +202,6 @@ instance FromJSON PnpmCatalogs where
 -- | Resolve a @catalog:name@ version reference using the parsed catalogs section.
 -- @catalog:@ (empty name) maps to the @default@ catalog.
 -- @catalog:react19@ maps to the @react19@ catalog.
--- If the catalog or package is not found, the original version string is returned.
-resolveCatalogVersion :: PnpmCatalogs -> Text -> Text -> Text
-resolveCatalogVersion (PnpmCatalogs cats) depName ver
-  | Just catalogName <- Text.stripPrefix "catalog:" ver =
-      let name = if Text.null catalogName then "default" else catalogName
-       in fromMaybe ver $ Map.lookup name cats >>= Map.lookup depName
-  | otherwise = ver
-
 --
 -- Snapshots
 --

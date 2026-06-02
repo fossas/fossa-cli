@@ -40,6 +40,7 @@ import Strategy.Node.Pnpm.Types (
   GitResolution (..),
   LabelingMode (..),
   PackageData (..),
+  PnpmCatalogs (..),
   PnpmLockfile (..),
   PnpmLockfileBase (..),
   PnpmLockfileV4Or5 (..),
@@ -51,7 +52,6 @@ import Strategy.Node.Pnpm.Types (
   TarballResolution (..),
   SnapshotDepName,
   SnapShotDepRev,
-  resolveCatalogVersion,
   withoutPeerDepSuffix,
   )
 import Strategy.Node.Pnpm.V4_8 (
@@ -97,6 +97,17 @@ toDep toEnv depType name version isDev =
 -- >> withoutSymConstraint "1.2.0_vue@3.0" = "1.2.0"
 withoutSymConstraint :: Text -> Text
 withoutSymConstraint version = fst $ Text.breakOn "_" version
+
+-- | Resolve a catalog reference to its actual version.
+--
+-- If the version is a @catalog:name@ reference, looks up the package
+-- in the catalog map. Otherwise returns the version unchanged.
+resolveCatalogVersion :: PnpmCatalogs -> Text -> Text -> Text
+resolveCatalogVersion (PnpmCatalogs cats) depName ver
+  | Just catalogName <- Text.stripPrefix "catalog:" ver =
+      let name = if Text.null catalogName then "default" else catalogName
+       in fromMaybe ver $ Map.lookup name cats >>= Map.lookup depName
+  | otherwise = ver
 
 -- | Apply accumulated labels to transform a graph node.
 applyLabels :: Dependency -> Set.Set PnpmLabel -> Dependency
