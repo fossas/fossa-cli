@@ -199,9 +199,6 @@ instance FromJSON PnpmCatalogs where
         (Map.fromList . HashMap.toList)
           <$> traverse (withObject "CatalogEntry" (.: "version")) (toHashMapText entries)
 
--- | Resolve a @catalog:name@ version reference using the parsed catalogs section.
--- @catalog:@ (empty name) maps to the @default@ catalog.
--- @catalog:react19@ maps to the @react19@ catalog.
 --
 -- Snapshots
 --
