@@ -211,8 +211,8 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
 -- transitive successors.
 buildGraph :: PnpmLockfile -> Graphing Dependency
 buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphConfigV4or5 base
-buildGraph (LockfileV678  (PnpmLockfileV678 base))  = buildGraphCore buildGraphConfigV678 base
-buildGraph (LockfileV9 v)                               = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
+buildGraph (LockfileV678 (PnpmLockfileV678 base)) = buildGraphCore buildGraphConfigV678 base
+buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
 
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
@@ -226,6 +226,6 @@ analyze file = context "Analyzing Pnpm Lockfile" $ do
           logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> lockfileRawVersion base <> ", which is not officially supported!"
         _ -> pure ()
     LockfileV678 _ -> pure ()
-    LockfileV9   _ -> pure ()
+    LockfileV9 _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph pnpmLockFile

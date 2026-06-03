@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
 
 module Strategy.Node.Pnpm.V4_8 (
   -- * Key parsers

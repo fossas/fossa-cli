@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
 
 module Strategy.Node.Pnpm.Types (
   -- * Lockfile types
@@ -41,7 +40,6 @@ import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.KeyMap (toHashMapText)
-import DepTypes (DepEnvironment)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -52,6 +50,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Yaml (Object, Parser, (.!=), (.:), (.:?))
 import Data.Yaml qualified as Yaml
+import DepTypes (DepEnvironment)
 
 -- | Pnpm Lockfile
 --
@@ -146,7 +145,7 @@ import Data.Yaml qualified as Yaml
 -- | Shared fields present in all lockfile versions.
 data PnpmLockfileBase = PnpmLockfileBase
   { lockfileImporters :: Map Text ProjectMap
-  , lockfilePackages  :: Map Text PackageData
+  , lockfilePackages :: Map Text PackageData
   , lockfileRawVersion :: Text
   -- ^ Raw lockfileVersion string, used for warning about unsupported versions.
   }
@@ -162,9 +161,9 @@ newtype PnpmLockfileV678 = PnpmLockfileV678 PnpmLockfileBase
 
 -- | Version-specific extension for v9+ lockfiles.
 data PnpmLockfileV9 = PnpmLockfileV9
-  { lockfileBase      :: PnpmLockfileBase
+  { lockfileBase :: PnpmLockfileBase
   , lockfileSnapshots :: PnpmLockFileSnapshots
-  , lockfileCatalogs  :: PnpmCatalogs
+  , lockfileCatalogs :: PnpmCatalogs
   }
   deriving (Show, Eq, Ord)
 
@@ -174,8 +173,8 @@ data PnpmLockfileV9 = PnpmLockfileV9
 -- carries only the data relevant to its format.
 data PnpmLockfile
   = LockfileV4Or5 PnpmLockfileV4Or5
-  | LockfileV678  PnpmLockfileV678
-  | LockfileV9    PnpmLockfileV9
+  | LockfileV678 PnpmLockfileV678
+  | LockfileV9 PnpmLockfileV9
   deriving (Show, Eq, Ord)
 
 --
@@ -341,9 +340,9 @@ classifyVersion (TextLike ver) = case listToMaybe (toString ver) of
   Just '3' -> pure VersionV4Or5
   Just '4' -> pure VersionV4Or5
   Just '5' -> pure VersionV4Or5
-  Just x   | x `elem` ['6', '7', '8'] -> pure VersionV678
+  Just x | x `elem` ['6', '7', '8'] -> pure VersionV678
   Just '9' -> pure VersionV9
-  _        -> fail $ "expected numeric lockfileVersion, got: " <> show ver
+  _ -> fail $ "expected numeric lockfileVersion, got: " <> show ver
 
 -- | Parse the shared base fields (importers + packages) common to all versions.
 parseBaseLockfile :: TextLike -> Object -> Parser PnpmLockfileBase
@@ -357,38 +356,41 @@ parseBaseLockfile (TextLike rawVer) obj = do
   -- A project without a workspace is the same as having a single workspace at
   -- the path of \".\".
   importers <- obj .:? "importers" .!= mempty
-  packages  <- obj .:? "packages" .!= mempty
-  dependencies      <- obj .:? "dependencies" .!= mempty
-  devDependencies   <- obj .:? "devDependencies" .!= mempty
+  packages <- obj .:? "packages" .!= mempty
+  dependencies <- obj .:? "dependencies" .!= mempty
+  devDependencies <- obj .:? "devDependencies" .!= mempty
   let virtualRootWs = ProjectMap dependencies devDependencies
   let refinedImporters =
         if Map.null importers
           then Map.insert "." virtualRootWs importers
           else importers
-  pure $ PnpmLockfileBase
-    { lockfileImporters = refinedImporters
-    , lockfilePackages  = packages
-    , lockfileRawVersion = rawVer
-    }
+  pure $
+    PnpmLockfileBase
+      { lockfileImporters = refinedImporters
+      , lockfilePackages = packages
+      , lockfileRawVersion = rawVer
+      }
 
 -- | FromJSON for the sum type — reads 'lockfileVersion' and dispatches.
 instance FromJSON PnpmLockfile where
   parseJSON = Yaml.withObject "pnpm-lock content" $ \obj -> do
     rawVer <- obj .:? "lockfileVersion" .!= (TextLike mempty)
-    base   <- parseBaseLockfile rawVer obj
+    base <- parseBaseLockfile rawVer obj
 
     versionClass <- classifyVersion rawVer
     case versionClass of
       VersionV4Or5 -> pure $ LockfileV4Or5 $ PnpmLockfileV4Or5 base
-      VersionV678  -> pure $ LockfileV678  $ PnpmLockfileV678  base
-      VersionV9    -> do
+      VersionV678 -> pure $ LockfileV678 $ PnpmLockfileV678 base
+      VersionV9 -> do
         snapshots <- obj .:? "snapshots" .!= mempty
-        catalogs  <- obj .:? "catalogs" .!= mempty
-        pure $ LockfileV9 $ PnpmLockfileV9
-          { lockfileBase = base
-          , lockfileSnapshots = snapshots
-          , lockfileCatalogs  = catalogs
-          }
+        catalogs <- obj .:? "catalogs" .!= mempty
+        pure $
+          LockfileV9 $
+            PnpmLockfileV9
+              { lockfileBase = base
+              , lockfileSnapshots = snapshots
+              , lockfileCatalogs = catalogs
+              }
 
 --
 -- Graph configuration
@@ -414,17 +416,17 @@ data LabelingMode = LabelingOff | LabelingOn
 --   - 'bgcCatalogs': catalog name -> (package name -> resolved version) mappings
 data BuildGraphConfig = BuildGraphConfig
   { bgcGetPkgNameVersion :: Text -> Maybe (Text, Text)
-    -- ^ Parse (name, version) from a package key
+  -- ^ Parse (name, version) from a package key
   , bgcMkPkgKey :: Text -> Text -> Text
-    -- ^ Build a registry package key from (name, version)
+  -- ^ Build a registry package key from (name, version)
   , bgcToEnv :: Bool -> Set.Set DepEnvironment
-    -- ^ Derive environment from @dev@ field (or ignore for v9)
+  -- ^ Derive environment from @dev@ field (or ignore for v9)
   , bgcLabelingMode :: LabelingMode
-    -- ^ Whether to label direct deps for hydrateDepEnvs propagation
+  -- ^ Whether to label direct deps for hydrateDepEnvs propagation
   , bgcSnapshotEdges :: [(SnapshotDepName, [(SnapshotDepName, SnapShotDepRev)])]
-    -- ^ Additional edges from v9 snapshots
+  -- ^ Additional edges from v9 snapshots
   , bgcCatalogs :: PnpmCatalogs
-    -- ^ Catalog name -> (package name -> resolved version) mappings
+  -- ^ Catalog name -> (package name -> resolved version) mappings
   }
 
 --

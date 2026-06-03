@@ -21,8 +21,8 @@ import DepTypes (DepEnvironment)
 import Strategy.Node.Pnpm.Types (
   BuildGraphConfig (..),
   LabelingMode (LabelingOn),
-  PnpmLockfileV9 (..),
   PnpmLockFileSnapshots (snapshots),
+  PnpmLockfileV9 (..),
   )
 import Strategy.Node.Pnpm.V4_8 (parseAtKey)
 
@@ -60,11 +60,12 @@ toEnvEmpty _ = mempty
 --
 -- Snapshot edges come from the lockfile itself, so this is a function.
 buildGraphConfigV9 :: PnpmLockfileV9 -> BuildGraphConfig
-buildGraphConfigV9 lockFile = BuildGraphConfig
-  { bgcGetPkgNameVersion = getPkgNameVersionV9
-  , bgcMkPkgKey = mkPkgKeyV9
-  , bgcToEnv = toEnvEmpty
-  , bgcLabelingMode = LabelingOn
-  , bgcSnapshotEdges = HashMap.toList lockFile.lockfileSnapshots.snapshots
-  , bgcCatalogs = lockFile.lockfileCatalogs
-  }
+buildGraphConfigV9 lockFile =
+  BuildGraphConfig
+    { bgcGetPkgNameVersion = getPkgNameVersionV9
+    , bgcMkPkgKey = mkPkgKeyV9
+    , bgcToEnv = toEnvEmpty
+    , bgcLabelingMode = LabelingOn
+    , bgcSnapshotEdges = HashMap.toList lockFile.lockfileSnapshots.snapshots
+    , bgcCatalogs = lockFile.lockfileCatalogs
+    }
