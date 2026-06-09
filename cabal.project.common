@@ -31,7 +31,7 @@ allow-newer:
 -- we can remove this if/when 0.4.0.2 is released on hackage
 source-repository-package
   type: git
-  location: https://github.com/fossas/semver.git
+  location: /home/chris/devel/semver
   tag: 7bc42dd298e0d98e119486ceab4f74042d46b004
 
 -- cpio-conduit-0.7.2 on hackage has an incompatibility with newer versions of
@@ -40,7 +40,7 @@ source-repository-package
 -- We can remove this if/when 0.7.3 is released on hackage
 source-repository-package
   type: git
-  location: https://github.com/da-x/cpio-conduit
+  location: /home/chris/devel/cpio-conduit
   tag: 30d92919e82c5033fffac7b34288f5a7fd28e9be
 
 -- Current implementation of yarn-lock throws runtime error, as described by patches:
@@ -49,7 +49,7 @@ source-repository-package
 -- TODO: Remove once, both PRs are merged.
 source-repository-package
   type: git
-  location: https://github.com/fossas/yarn2nix
+  location: /home/chris/devel/yarn2nix
   tag: 7d9f505b35750e54bf9d73e5a996df4a1c5ab117
   subdir: yarn-lock
 
@@ -57,14 +57,15 @@ source-repository-package
 -- environment variable. Modified source code below, supports aforementioned environment variables.
 source-repository-package
   type: git
-  location: https://github.com/fossas/hs-certificate
+  location: /home/chris/devel/hs-certificate
   tag: d93afd2dc78c2f6910766fabc2f5e4452bcae2f2
   subdir: x509-system
 
 -- This can be removed once https://github.com/weldr/codec-rpm/pull/40 merges and is available on hackage.
+-- Using local fork with updated bounds (update-deps-bounds branch).
 source-repository-package
   type: git
-  location: https://github.com/fossas/codec-rpm
-  tag: 55e6cc0c0b7906ca257cb7c6268b2d99592bb30f
+  location: /home/chris/devel/codec-rpm
+  branch: update-deps-bounds
 
 index-state: hackage.haskell.org 2026-06-02T00:59:56Z
