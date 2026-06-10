@@ -107,8 +107,24 @@ def name_version_of(label: str) -> Tuple[str, str]:
     name, version = label.split("/", 1)
     return name, version
 
+# Conan recipes may declare `license` as a single string ("MIT") or as a list/tuple of
+# strings (["MIT", "Apache-2.0"]). The fossa-deps `license` field must be a single string,
+# so a list is joined into one SPDX expression. We use " AND " (every license's obligations
+# apply) as the conservative default; change MULTI_LICENSE_JOINER to " OR " if your packages
+# are dual-licensed (consumer's choice).
+MULTI_LICENSE_JOINER = " AND "
+
 def license_of(node: dict) -> Optional[str]:
-    return node.get("license")
+    raw = node.get("license")
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return raw or None
+    if isinstance(raw, (list, tuple)):
+        parts = [str(item).strip() for item in raw if item is not None and str(item).strip()]
+        return MULTI_LICENSE_JOINER.join(parts) if parts else None
+    # Unexpected shape (number, dict, ...): coerce to a string so fossa-deps stays valid.
+    return str(raw)
 
 def homepage_of(node: dict) -> Optional[str]:
     candidate = node.get("homepage")
