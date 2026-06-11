@@ -114,6 +114,11 @@ def name_version_of(label: str) -> Tuple[str, str]:
 # are dual-licensed (consumer's choice).
 MULTI_LICENSE_JOINER = " AND "
 
+# fossa-deps requires a license string for every custom dependency. When a Conan recipe
+# declares no license, fall back to the SPDX "NOASSERTION" marker so the file stays valid;
+# emitting a bare `license: null` triggers: expected String, but encountered Null.
+NO_LICENSE = "NOASSERTION"
+
 def license_of(node: dict) -> Optional[str]:
     raw = node.get("license")
     if raw is None:
@@ -174,7 +179,7 @@ def mk_fossa_deps(graph):
             vendored_deps.append(FossaVendorDep(name, version, src_dir))
         else:
             logging.info(f"could not find source code in disk for: {label}, using this as vendored dependency for fossa-deps")
-            custom_deps.append(FossaCustomDep(name, version, license, FossaCustomDepMetadata(homepage, description)))
+            custom_deps.append(FossaCustomDep(name, version, license or NO_LICENSE, FossaCustomDepMetadata(homepage, description)))
 
     fossa_dep_yml = FossaDep(vendored_deps, custom_deps)
     fossa_dep_yml.dump()
