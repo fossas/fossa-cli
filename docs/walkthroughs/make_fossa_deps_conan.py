@@ -107,8 +107,29 @@ def name_version_of(label: str) -> Tuple[str, str]:
     name, version = label.split("/", 1)
     return name, version
 
+# Conan recipes may declare `license` as a single string ("MIT") or as a list/tuple of
+# strings (["MIT", "Apache-2.0"]). The fossa-deps `license` field must be a single string,
+# so a list is joined into one SPDX expression. We use " AND " (every license's obligations
+# apply) as the conservative default; change MULTI_LICENSE_JOINER to " OR " if your packages
+# are dual-licensed (consumer's choice).
+MULTI_LICENSE_JOINER = " AND "
+
+# fossa-deps requires a license string for every custom dependency. When a Conan recipe
+# declares no license, fall back to the SPDX "NOASSERTION" marker so the file stays valid;
+# emitting a bare `license: null` triggers: expected String, but encountered Null.
+NO_LICENSE = "NOASSERTION"
+
 def license_of(node: dict) -> Optional[str]:
-    return node.get("license")
+    raw = node.get("license")
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        return raw or None
+    if isinstance(raw, (list, tuple)):
+        parts = [str(item).strip() for item in raw if item is not None and str(item).strip()]
+        return MULTI_LICENSE_JOINER.join(parts) if parts else None
+    # Unexpected shape (number, dict, ...): coerce to a string so fossa-deps stays valid.
+    return str(raw)
 
 def homepage_of(node: dict) -> Optional[str]:
     candidate = node.get("homepage")
@@ -158,7 +179,7 @@ def mk_fossa_deps(graph):
             vendored_deps.append(FossaVendorDep(name, version, src_dir))
         else:
             logging.info(f"could not find source code in disk for: {label}, using this as vendored dependency for fossa-deps")
-            custom_deps.append(FossaCustomDep(name, version, license, FossaCustomDepMetadata(homepage, description)))
+            custom_deps.append(FossaCustomDep(name, version, license or NO_LICENSE, FossaCustomDepMetadata(homepage, description)))
 
     fossa_dep_yml = FossaDep(vendored_deps, custom_deps)
     fossa_dep_yml.dump()
