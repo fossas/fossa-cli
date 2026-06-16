@@ -1,5 +1,11 @@
 # FOSSA CLI Changelog
 
+## 3.17.11
+
+- Conan: Handle list-valued license in make_fossa_deps_conan ([#1719](https://github.com/fossas/fossa-cli/pull/1719)).
+- Strip non printable characters from locators ([#1720](https://github.com/fossas/fossa-cli/pull/1720)).
+- Container scanning: Support scanning /var/lib/dpkg/status.d directory ([#1721](https://github.com/fossas/fossa-cli/pull/1721)).
+
 ## 3.17.10
 
 - Licensing: Fix bad SPL matches ([#1717](https://github.com/fossas/fossa-cli/pull/1717)).
