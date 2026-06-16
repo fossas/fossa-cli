@@ -9,10 +9,10 @@ import Container.OsRelease (OsInfo)
 import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
+import Data.Foldable (find)
 import Data.String.Conversion (toText)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters)
-import Data.Foldable (find)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
@@ -28,6 +28,7 @@ import Types (
   DiscoveredProject (..),
   DiscoveredProjectType (DpkgDatabaseProjectType),
  )
+
 data DpkgDatabase = DpkgDatabase
   { dbDir :: Path Abs Dir
   , dbFile :: Path Abs File
@@ -61,16 +62,16 @@ findProjects ::
   m [DpkgDatabase]
 findProjects osInfo = walkWithFilters' $ \dir dirs files -> do
   let standardDBs = case findFileNamed "status" files of
-        Just file -> 
+        Just file ->
           if Text.isInfixOf "var/lib/dpkg/" (toText . toFilePath $ file)
             then [DpkgDatabase dir file osInfo]
             else []
         Nothing -> []
   statusD_DBs <- case find (\f -> toFilePath f == "var/lib/dpkg/status.d/") dirs of
-      Just dir' -> do
-        (_, filesInDir) <- listDir dir'
-        pure $ map (\file -> DpkgDatabase dir' file osInfo) (filter (not . Text.isSuffixOf ".md5sums" . toText) filesInDir)
-      Nothing -> pure []
+    Just dir' -> do
+      (_, filesInDir) <- listDir dir'
+      pure $ map (\file -> DpkgDatabase dir' file osInfo) (filter (not . Text.isSuffixOf ".md5sums" . toText) filesInDir)
+    Nothing -> pure []
   pure (standardDBs ++ statusD_DBs, WalkContinue)
 
 mkProject :: DpkgDatabase -> DiscoveredProject DpkgDatabase
