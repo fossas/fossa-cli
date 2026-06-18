@@ -10,6 +10,7 @@ module Strategy.Scala.Plugin (
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Stack (context)
+import Data.List (find)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString)
 import Data.Text (Text)
@@ -82,15 +83,15 @@ hasDependencyPlugins projectDir = do
 detectDependencyPlugins :: Text -> DependencyPluginsDetected
 detectDependencyPlugins stdoutText =
   DependencyPluginsDetected
-    { hasMiniDependencyTreePlugin = "sbt.plugins.MiniDependencyTreePlugin: enabled in" `Text.isInfixOf` stdoutText
-    , dependencyTreePlugin =
-        if "sbt.plugins.DependencyTreePlugin: enabled in" `Text.isInfixOf` stdoutText
-          then Just ModernDependencyTreePlugin
-          else
-            if "net.virtualvoid.sbt.graph.DependencyGraphPlugin: enabled in" `Text.isInfixOf` stdoutText
-              then Just LegacyDependencyGraphPlugin
-              else Nothing
+    { hasMiniDependencyTreePlugin = enabled "sbt.plugins.MiniDependencyTreePlugin"
+    , dependencyTreePlugin = snd <$> find (enabled . fst) treePlugins
     }
+  where
+    enabled name = (name <> ": enabled in") `Text.isInfixOf` stdoutText
+    treePlugins =
+      [ ("sbt.plugins.DependencyTreePlugin", ModernDependencyTreePlugin)
+      , ("net.virtualvoid.sbt.graph.DependencyGraphPlugin", LegacyDependencyGraphPlugin)
+      ]
 
 -- | The sbt task that writes @tree.html@/@tree.json@ alongside its dependency
 -- output. Plugin name vs task casing:
