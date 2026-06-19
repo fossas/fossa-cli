@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Scala/sbt: Fix silently dropped deep dependencies on sbt 1.4+ with explicit `addDependencyTreePlugin`. ([#1711](https://github.com/fossas/fossa-cli/pull/1711))
+- Scala/sbt: Route projects using `addDependencyTreePlugin` (sbt 1.4+) to the correct `dependencyBrowseTreeHTML` task, restoring deep dependencies. ([#1711](https://github.com/fossas/fossa-cli/pull/1711))
 
 ## 3.17.6
 
