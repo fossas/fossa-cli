@@ -71,11 +71,19 @@ hasDependencyPlugins projectDir = do
 --      used on sbt < 1.4. Provides the lowercase @dependencyBrowseTreeHtml@
 --      task.
 --
--- Detection anchors on the @\<FQCN\>: enabled in@ suffix rather than the bare
--- FQCN. @sbt plugins@ lists plugins the user has explicitly disabled (via
--- @disablePlugins(...)@) with @: disabled in \<scope\>@ — those still
--- contain the FQCN as a substring, so an unanchored match would wrongly
--- route to a task that doesn't exist on the active plugin set.
+-- @sbt plugins@ groups its output into per-project @Enabled plugins in
+-- \<project\>:@ sections, listing one bare plugin FQCN per indented line,
+-- followed by a trailing @Plugins that are loaded to the build but not enabled
+-- in any subprojects:@ section. A plugin the user disabled via
+-- @disablePlugins(...)@ moves into that trailing section. We therefore search
+-- only the text *before* that marker, so a disabled (loaded-but-not-enabled)
+-- plugin is not mistaken for an active one.
+--
+-- The plugin FQCN appears on its own line with no @: enabled in@ suffix. An
+-- earlier attempt to anchor detection on such a suffix matched nothing in real
+-- sbt output, which silently dropped deep dependencies and fell back to poms
+-- (regressed TKT-15490). See @test/Scala/PluginSpec.hs@ for fixtures captured
+-- from actual @sbt -batch -no-colors plugins@ runs.
 --
 -- When both modern and legacy non-mini plugins are present we prefer the
 -- modern one (sbt 1.4+ wins) since legacy plugin presence on a modern sbt
@@ -87,7 +95,9 @@ detectDependencyPlugins stdoutText =
     , dependencyTreePlugin = snd <$> find (enabled . fst) treePlugins
     }
   where
-    enabled name = (name <> ": enabled in") `Text.isInfixOf` stdoutText
+    enabledSection = fst $ Text.breakOn notEnabledMarker stdoutText
+    notEnabledMarker = "Plugins that are loaded to the build but not enabled"
+    enabled name = name `Text.isInfixOf` enabledSection
     treePlugins =
       [ ("sbt.plugins.DependencyTreePlugin", ModernDependencyTreePlugin)
       , ("net.virtualvoid.sbt.graph.DependencyGraphPlugin", LegacyDependencyGraphPlugin)
