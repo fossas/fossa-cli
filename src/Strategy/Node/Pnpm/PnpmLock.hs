@@ -7,11 +7,11 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Data.Maybe (fromMaybe)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -22,13 +22,13 @@ import DepTypes (
   VerConstraint (CEq),
   hydrateDepEnvs,
   insertEnvironment,
-  )
+ )
 import Effect.Grapher (deep, direct, edge, label, run, withLabeling)
 import Effect.Logger (
   Logger,
   logWarn,
   pretty,
-  )
+ )
 import Effect.ReadFS (ReadFS, readContentsYaml)
 import Graphing (Graphing)
 import Graphing qualified
@@ -49,11 +49,11 @@ import Strategy.Node.Pnpm.Types (
   Resolution (..),
   TarballResolution (..),
   withoutPeerDepSuffix,
-  )
+ )
 import Strategy.Node.Pnpm.V4_8 (
   buildGraphConfigV4or5,
   buildGraphConfigV678,
-  )
+ )
 import Strategy.Node.Pnpm.V9 (buildGraphConfigV9)
 
 -- | Label attached to direct dependencies so that hydrateDepEnvs can
@@ -67,8 +67,12 @@ newtype PnpmLabel = PnpmEnv DepEnvironment
 --
 
 -- | Convert a resolved package into a 'Dependency' node.
-toDependency :: (Bool -> Set.Set DepEnvironment)
-             -> Text -> Maybe Text -> PackageData -> Dependency
+toDependency ::
+  (Bool -> Set.Set DepEnvironment) ->
+  Text ->
+  Maybe Text ->
+  PackageData ->
+  Dependency
 toDependency toEnv name maybeVersion (PackageData isDev _ (RegistryResolve _) _ _) =
   toDep toEnv NodeJSType name (withoutPeerDepSuffix . withoutSymConstraint <$> maybeVersion) isDev
 toDependency toEnv _ _ (PackageData isDev _ (GitResolve (GitResolution url rev)) _ _) =
@@ -81,8 +85,13 @@ toDependency toEnv name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
   toDep toEnv UserType name Nothing isDev
 
 -- | Construct a 'Dependency' from its components.
-toDep :: (Bool -> Set.Set DepEnvironment)
-      -> DepType -> Text -> Maybe Text -> Bool -> Dependency
+toDep ::
+  (Bool -> Set.Set DepEnvironment) ->
+  DepType ->
+  Text ->
+  Maybe Text ->
+  Bool ->
+  Dependency
 toDep toEnv depType name version isDev =
   Dependency depType name (CEq <$> version) mempty (toEnv isDev) mempty
 
@@ -124,13 +133,17 @@ withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
 --
 -- Non-registry resolvers (tarball, git, directory) use the version value
 -- directly as the @packages@ key. Registry resolvers use a constructed key.
-toResolvedDependency
-  :: (Bool -> Set.Set DepEnvironment) -- ^ toEnv for this version
-  -> Map Text PackageData
-  -> (Text -> Text -> Text) -- ^ mkPkgKey for this version
-  -> Text -- ^ dependency name
-  -> Text -- ^ dependency version
-  -> Maybe Dependency
+toResolvedDependency ::
+  -- | toEnv for this version
+  (Bool -> Set.Set DepEnvironment) ->
+  Map Text PackageData ->
+  -- | mkPkgKey for this version
+  (Text -> Text -> Text) ->
+  -- | dependency name
+  Text ->
+  -- | dependency version
+  Text ->
+  Maybe Dependency
 toResolvedDependency toEnv pkgs mkPkg depName depVersion = do
   -- Some versions of the lockfile remove the peer dep suffix.
   -- Others do not which is why it tries both.
@@ -163,44 +176,44 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
       catalogs = bgcCatalogs
       pkgs = lockfilePackages base
       snapshotEdgesHM = HashMap.fromList snapshotEdges
-  in withoutLocalPackages . hydrateDepEnvs $
-    run . withLabeling applyLabels $ do
-      -- Direct dependencies from each importer (workspace package).
-      for_ (toList (lockfileImporters base)) $ \(_, projectImporters) -> do
-        for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
-          let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
-           in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
-                direct dep
-                case labelingMode of
-                  LabelingOn -> label dep (PnpmEnv EnvProduction)
-                  LabelingOff -> pure ()
+   in withoutLocalPackages . hydrateDepEnvs $
+        run . withLabeling applyLabels $ do
+          -- Direct dependencies from each importer (workspace package).
+          for_ (toList (lockfileImporters base)) $ \(_, projectImporters) -> do
+            for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+              let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
+               in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+                    direct dep
+                    case labelingMode of
+                      LabelingOn -> label dep (PnpmEnv EnvProduction)
+                      LabelingOff -> pure ()
 
-        for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
-          let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
-           in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
-                direct dep
-                case labelingMode of
-                  LabelingOn -> label dep (PnpmEnv EnvDevelopment)
-                  LabelingOff -> pure ()
+            for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+              let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
+               in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+                    direct dep
+                    case labelingMode of
+                      LabelingOn -> label dep (PnpmEnv EnvDevelopment)
+                      LabelingOff -> pure ()
 
-      -- Deep dependencies and edges from the packages section.
-      for_ (toList pkgs) $ \(pkgKey, pkgMeta) -> do
-        let deepDependencies =
-              Map.toList (dependencies pkgMeta)
-                <> Map.toList (peerDependencies pkgMeta)
-                <> fromMaybe mempty (HashMap.lookup pkgKey snapshotEdgesHM)
+          -- Deep dependencies and edges from the packages section.
+          for_ (toList pkgs) $ \(pkgKey, pkgMeta) -> do
+            let deepDependencies =
+                  Map.toList (dependencies pkgMeta)
+                    <> Map.toList (peerDependencies pkgMeta)
+                    <> fromMaybe mempty (HashMap.lookup pkgKey snapshotEdgesHM)
 
-        let (depName, depVersion) = case getPkgNameVersion pkgKey of
-              Nothing -> (pkgKey, Nothing)
-              Just (name, version) -> (name, Just version)
-        let parentDep = toDependency toEnv depName depVersion pkgMeta
+            let (depName, depVersion) = case getPkgNameVersion pkgKey of
+                  Nothing -> (pkgKey, Nothing)
+                  Just (name, version) -> (name, Just version)
+            let parentDep = toDependency toEnv depName depVersion pkgMeta
 
-        -- It is ok if this dependency was already graphed as direct
-        -- @direct 1 <> deep 1 = direct 1@
-        deep parentDep
+            -- It is ok if this dependency was already graphed as direct
+            -- @direct 1 <> deep 1 = direct 1@
+            deep parentDep
 
-        for_ deepDependencies $ \(deepName, deepVersion) -> do
-          maybe (pure ()) (edge parentDep) (toResolvedDependency toEnv pkgs mkPkgKey deepName deepVersion)
+            for_ deepDependencies $ \(deepName, deepVersion) -> do
+              maybe (pure ()) (edge parentDep) (toResolvedDependency toEnv pkgs mkPkgKey deepName deepVersion)
 
 --
 -- Top-level dispatch
@@ -222,8 +235,9 @@ analyze file = context "Analyzing Pnpm Lockfile" $ do
   case pnpmLockFile of
     LockfileV4Or5 (PnpmLockfileV4Or5 base) ->
       case Text.uncons (lockfileRawVersion base) of
-        Just (c, _) | c `elem` ['1', '2', '3'] ->
-          logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> lockfileRawVersion base <> ", which is not officially supported!"
+        Just (c, _)
+          | c `elem` ['1', '2', '3'] ->
+              logWarn . pretty $ "pnpm-lock file is using older lockFileVersion: " <> lockfileRawVersion base <> ", which is not officially supported!"
         _ -> pure ()
     LockfileV678 _ -> pure ()
     LockfileV9 _ -> pure ()

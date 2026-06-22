@@ -23,7 +23,7 @@ import Strategy.Node.Pnpm.Types (
   LabelingMode (LabelingOn),
   PnpmLockFileSnapshots (snapshots),
   PnpmLockfileV9 (..),
-  )
+ )
 import Strategy.Node.Pnpm.V4_8 (parseAtKey)
 
 --

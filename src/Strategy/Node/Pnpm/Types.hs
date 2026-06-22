@@ -1,4 +1,3 @@
-
 module Strategy.Node.Pnpm.Types (
   -- * Lockfile types
   PnpmLockfileBase (..),

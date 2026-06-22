@@ -1,4 +1,3 @@
-
 module Strategy.Node.Pnpm.V4_8 (
   -- * Key parsers
   getPkgNameVersionV5,
@@ -39,12 +38,12 @@ parseAtKey slashRequired pkgKey =
     Nothing | slashRequired -> Nothing
     Nothing -> Just pkgKey
     Just txt -> Just txt
-  >>= \txt -> do
-    let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
-    let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
-    case (Text.stripSuffix "@" nameWithSlash, version) of
-      (Just name, v) -> Just (name, v <> peerDepInfo)
-      _ -> Nothing
+    >>= \txt -> do
+      let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
+      let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+      case (Text.stripSuffix "@" nameWithSlash, version) of
+        (Just name, v) -> Just (name, v <> peerDepInfo)
+        _ -> Nothing
 
 --
 -- Key parsers
@@ -97,22 +96,24 @@ toEnvInline isDev = Set.singleton (if isDev then EnvDevelopment else EnvProducti
 
 -- | Config for lockfile versions 4/5.
 buildGraphConfigV4or5 :: BuildGraphConfig
-buildGraphConfigV4or5 = BuildGraphConfig
-  { bgcGetPkgNameVersion = getPkgNameVersionV5
-  , bgcMkPkgKey = mkPkgKeyV5
-  , bgcToEnv = toEnvInline
-  , bgcLabelingMode = LabelingOff
-  , bgcSnapshotEdges = mempty
-  , bgcCatalogs = mempty
-  }
+buildGraphConfigV4or5 =
+  BuildGraphConfig
+    { bgcGetPkgNameVersion = getPkgNameVersionV5
+    , bgcMkPkgKey = mkPkgKeyV5
+    , bgcToEnv = toEnvInline
+    , bgcLabelingMode = LabelingOff
+    , bgcSnapshotEdges = mempty
+    , bgcCatalogs = mempty
+    }
 
 -- | Config for lockfile versions 6/7/8.
 buildGraphConfigV678 :: BuildGraphConfig
-buildGraphConfigV678 = BuildGraphConfig
-  { bgcGetPkgNameVersion = getPkgNameVersionV6
-  , bgcMkPkgKey = mkPkgKeyV6
-  , bgcToEnv = toEnvInline
-  , bgcLabelingMode = LabelingOff
-  , bgcSnapshotEdges = mempty
-  , bgcCatalogs = mempty
-  }
+buildGraphConfigV678 =
+  BuildGraphConfig
+    { bgcGetPkgNameVersion = getPkgNameVersionV6
+    , bgcMkPkgKey = mkPkgKeyV6
+    , bgcToEnv = toEnvInline
+    , bgcLabelingMode = LabelingOff
+    , bgcSnapshotEdges = mempty
+    , bgcCatalogs = mempty
+    }
