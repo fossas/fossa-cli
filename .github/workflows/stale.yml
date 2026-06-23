@@ -1,0 +1,31 @@
+name: Close Stale Issues
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    concurrency:
+      group: stale-issues-workflow
+      cancel-in-progress: false
+
+    steps:
+    - uses: actions/stale@v10
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        days-before-issue-stale: 21
+        days-before-issue-close: 7
+        stale-issue-message: "This issue has been marked stale because it has had no activity for 21 days. It will be closed in 7 days if no further activity occurs."
+        close-issue-message: "This issue has been automatically closed because it has had no activity for 7 days since being marked stale."
+        stale-issue-label: "stale"
+
+        # Don't auto-close PRs
+        days-before-pr-stale: -1
+        days-before-pr-close: -1
