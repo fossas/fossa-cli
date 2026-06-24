@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Scala/sbt: Route projects using `addDependencyTreePlugin` (sbt 1.4+) to the correct `dependencyBrowseTreeHTML` task, restoring deep dependencies. ([#1711](https://github.com/fossas/fossa-cli/pull/1711))
+
 ## 3.17.11
 
 - Conan: Handle list-valued license in make_fossa_deps_conan ([#1719](https://github.com/fossas/fossa-cli/pull/1719)).
