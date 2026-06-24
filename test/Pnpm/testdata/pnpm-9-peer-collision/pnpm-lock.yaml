@@ -1,0 +1,55 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+# ANE-2852 regression: a dev-only package (`core`) is installed under multiple
+# peer-suffixed snapshot keys.  Those keys all collapse to the same de-suffixed
+# key (`core@1.0.0`).  A last-wins collapse keeps only one variant's dependency
+# list, so a transitive child reachable only through a dropped variant loses its
+# dev path and leaks as production.  Here `plugin-a` lives only on the
+# `(peerx@1.0.0)` variant and `plugin-b` only on the `(peery@1.0.0)` variant, so
+# last-wins always drops one of them.  Merging the colliding entries keeps both
+# edges and lets the dev environment propagate to both children.
+importers:
+  .:
+    devDependencies:
+      core:
+        specifier: ^1.0.0
+        version: 1.0.0(peerx@1.0.0)
+
+packages:
+  core@1.0.0:
+    resolution: {integrity: sha512-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa==}
+
+  peerx@1.0.0:
+    resolution: {integrity: sha512-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb==}
+
+  peery@1.0.0:
+    resolution: {integrity: sha512-cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc==}
+
+  plugin-a@1.0.0:
+    resolution: {integrity: sha512-dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd==}
+
+  plugin-b@1.0.0:
+    resolution: {integrity: sha512-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee==}
+
+snapshots:
+  core@1.0.0(peerx@1.0.0):
+    dependencies:
+      peerx: 1.0.0
+      plugin-a: 1.0.0
+
+  core@1.0.0(peery@1.0.0):
+    dependencies:
+      peery: 1.0.0
+      plugin-b: 1.0.0
+
+  peerx@1.0.0: {}
+
+  peery@1.0.0: {}
+
+  plugin-a@1.0.0: {}
+
+  plugin-b@1.0.0: {}

@@ -202,7 +202,20 @@ instance FromJSON PnpmLockFileSnapshots where
 
       -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
       -- section which is where we look the dependency up.
-      let snapshots' = (HashMap.mapKeys withoutPeerDepSuffix) . toHashMapText $ snapshots
+      --
+      -- A single package can have several peer-suffixed snapshot keys (e.g.
+      -- @core@1.0.0(peerx@1.0.0)@ and @core@1.0.0(peery@1.0.0)@) that all
+      -- collapse to the same de-suffixed key. Merge (union) their dependency
+      -- lists instead of letting one variant overwrite the others, otherwise
+      -- edges that live only on a dropped variant are lost and their dev/prod
+      -- environment fails to propagate. (ANE-2852)
+      let snapshots' =
+            HashMap.fromListWith
+              (<>)
+              . map (\(k, v) -> (withoutPeerDepSuffix k, v))
+              . HashMap.toList
+              . toHashMapText
+              $ snapshots
       pure $
         PnpmLockFileSnapshots{snapshots = snapshots'}
 
