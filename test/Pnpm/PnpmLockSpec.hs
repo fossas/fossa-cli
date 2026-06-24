@@ -128,6 +128,7 @@ spec = do
   let pnpmLockV9LocalDep = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-local-dep/pnpm-lock.yaml")
   let pnpmLockV9MultiVersion = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-multi-version/pnpm-lock.yaml")
   let pnpmLockV9Catalogs = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-catalogs/pnpm-lock.yaml")
+  let pnpmLockV9PeerCollision = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-collision/pnpm-lock.yaml")
 
   describe "works with v9 format" $ do
     checkGraph pnpmLockV9 pnpmLockV9GraphSpec
@@ -136,6 +137,7 @@ spec = do
     describe "local dep env propagation" $ checkGraph pnpmLockV9LocalDep pnpmLockV9LocalDepSpec
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
+    describe "colliding peer-suffixed snapshot keys" $ checkGraph pnpmLockV9PeerCollision pnpmLockV9PeerCollisionSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -489,6 +491,30 @@ pnpmLockV9MultiVersionSpec graph = do
       expectDep (mkProdDep "sax@1.2.1") graph
       -- sax@1.4.4 is dev-only (from app-b)
       expectDep (mkDevDep "sax@1.4.4") graph
+
+-- ANE-2852 regression: a dev-only package (`core`) appears in `snapshots:`
+-- under several peer-suffixed keys that all collapse to the same de-suffixed
+-- key. The collapse must merge (not overwrite) the colliding dependency lists,
+-- otherwise a child reachable only through a dropped variant (`plugin-a` /
+-- `plugin-b`) loses its dev path and leaks as production.
+pnpmLockV9PeerCollisionSpec :: Graphing Dependency -> Spec
+pnpmLockV9PeerCollisionSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with colliding peer-suffixed snapshot keys" $ do
+    it "should mark the direct dev dependency as dev" $
+      expectDirect [mkDevDep "core@1.0.0"] graph
+
+    it "should keep edges from every colliding peer variant" $ do
+      hasEdge (mkDevDep "core@1.0.0") (mkDevDep "plugin-a@1.0.0")
+      hasEdge (mkDevDep "core@1.0.0") (mkDevDep "plugin-b@1.0.0")
+
+    it "should propagate dev to children of all merged variants" $ do
+      -- Without the merge, last-wins drops one variant and its child leaks
+      -- with an empty environment (reported as production).
+      expectDep (mkDevDep "plugin-a@1.0.0") graph
+      expectDep (mkDevDep "plugin-b@1.0.0") graph
 
 pnpmLockV9CatalogsSpec :: Graphing Dependency -> Spec
 pnpmLockV9CatalogsSpec graph = do

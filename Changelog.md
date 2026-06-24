@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- pnpm: Fix v9 dev-dependency filtering when peer-suffixed lockfile keys collide ([#1724](https://github.com/fossas/fossa-cli/pull/1724)).
+
 ## 3.17.11
 
 - Conan: Handle list-valued license in make_fossa_deps_conan ([#1719](https://github.com/fossas/fossa-cli/pull/1719)).
