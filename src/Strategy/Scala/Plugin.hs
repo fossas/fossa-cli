@@ -4,10 +4,13 @@ module Strategy.Scala.Plugin (
   hasDependencyPlugins,
   detectDependencyPlugins,
   genTreeJson,
+  DependencyTreePluginKind (..),
+  DependencyPluginsDetected (..),
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Effect.Stack (context)
+import Data.List (find)
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (ConvertUtf8 (decodeUtf8), toString)
 import Data.Text (Text)
@@ -22,45 +25,112 @@ import Effect.Exec (
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseAbsFile, (</>))
 import Strategy.Scala.Common (mkSbtCommand)
 
+-- | Which non-mini dependency-tree plugin (if any) the project has installed.
+--
+-- The two plugins differ in the casing of their @dependencyBrowseTree@ task.
+-- See 'mkDependencyBrowseTreeCmd' for the command names.
+data DependencyTreePluginKind
+  = -- | @sbt.plugins.DependencyTreePlugin@. Built into sbt 1.4+ and enabled
+    -- explicitly via @addDependencyTreePlugin@ in @plugins.sbt@. Provides the
+    -- uppercase @dependencyBrowseTreeHTML@ task.
+    ModernDependencyTreePlugin
+  | -- | @net.virtualvoid.sbt.graph.DependencyGraphPlugin@. The third-party
+    -- @sbt-dependency-graph@ plugin used on sbt < 1.4. Provides the lowercase
+    -- @dependencyBrowseTreeHtml@ task.
+    LegacyDependencyGraphPlugin
+  deriving (Eq, Ord, Show)
+
+-- | What the @sbt plugins@ output told us about dependency-tree plugins.
+data DependencyPluginsDetected = DependencyPluginsDetected
+  { hasMiniDependencyTreePlugin :: Bool
+  , dependencyTreePlugin :: Maybe DependencyTreePluginKind
+  }
+  deriving (Eq, Ord, Show)
+
 -- | Returns list of plugins used by sbt.
 -- Ref: https://www.scala-sbt.org/1.x/docs/Plugins.html
 getPlugins :: Command
 getPlugins = mkSbtCommand "plugins"
 
--- | Returns (hasMiniDependencyTreePlugin, hasDependencyTreePlugin) by running sbt plugins.
-hasDependencyPlugins :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Bool, Bool)
+-- | Detect which dependency-tree plugins are loaded by running @sbt plugins@.
+hasDependencyPlugins :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m DependencyPluginsDetected
 hasDependencyPlugins projectDir = do
   stdoutText <- (TextLazy.toStrict . decodeUtf8) <$> context "Identifying plugins" (execThrow projectDir getPlugins)
   pure $ detectDependencyPlugins stdoutText
 
--- | Detect dependency plugins from sbt plugins output.
--- Returns (hasMiniDependencyTreePlugin, hasDependencyTreePlugin).
-detectDependencyPlugins :: Text -> (Bool, Bool)
+-- | Classify dependency-tree plugins from the @sbt plugins@ output.
+--
+-- The plugin names mapped here:
+--
+--    * @sbt.plugins.MiniDependencyTreePlugin@ — bundled with sbt 1.4+, gives
+--      us the @dependencyTree@ task used by 'Strategy.Scala.SbtDependencyTree'.
+--    * @sbt.plugins.DependencyTreePlugin@ — opt-in on sbt 1.4+ via
+--      @addDependencyTreePlugin@. Provides the uppercase
+--      @dependencyBrowseTreeHTML@ task.
+--    * @net.virtualvoid.sbt.graph.DependencyGraphPlugin@ — third-party plugin
+--      used on sbt < 1.4. Provides the lowercase @dependencyBrowseTreeHtml@
+--      task.
+--
+-- @sbt plugins@ groups its output into per-project @Enabled plugins in
+-- \<project\>:@ sections, listing one bare plugin FQCN per indented line,
+-- followed by a trailing @Plugins that are loaded to the build but not enabled
+-- in any subprojects:@ section. A plugin the user disabled via
+-- @disablePlugins(...)@ moves into that trailing section. We therefore search
+-- only the text *before* that marker, so a disabled (loaded-but-not-enabled)
+-- plugin is not mistaken for an active one.
+--
+-- The plugin FQCN appears on its own line with no @: enabled in@ suffix. An
+-- earlier attempt to anchor detection on such a suffix matched nothing in real
+-- sbt output, which silently dropped deep dependencies and fell back to poms
+-- (regressed TKT-15490). See @test/Scala/PluginSpec.hs@ for fixtures captured
+-- from actual @sbt -batch -no-colors plugins@ runs.
+--
+-- When both modern and legacy non-mini plugins are present we prefer the
+-- modern one (sbt 1.4+ wins) since legacy plugin presence on a modern sbt
+-- typically means the user has both kinds of declarations in their build.
+detectDependencyPlugins :: Text -> DependencyPluginsDetected
 detectDependencyPlugins stdoutText =
-  ( Text.count ".MiniDependencyTreePlugin" stdoutText > 0
-  , Text.count ".DependencyTreePlugin" stdoutText > 0
-      || Text.count "net.virtualvoid.sbt.graph.DependencyGraphPlugin" stdoutText > 0 -- sbt < 1.4
-  )
+  DependencyPluginsDetected
+    { hasMiniDependencyTreePlugin = enabled "sbt.plugins.MiniDependencyTreePlugin"
+    , dependencyTreePlugin = snd <$> find (enabled . fst) treePlugins
+    }
+  where
+    enabledSection = fst $ Text.breakOn notEnabledMarker stdoutText
+    notEnabledMarker = "Plugins that are loaded to the build but not enabled"
+    enabled name = name `Text.isInfixOf` enabledSection
+    treePlugins =
+      [ ("sbt.plugins.DependencyTreePlugin", ModernDependencyTreePlugin)
+      , ("net.virtualvoid.sbt.graph.DependencyGraphPlugin", LegacyDependencyGraphPlugin)
+      ]
 
--- | Generates Dependency Trees.
--- Ref: https://github.com/sbt/sbt/blob/master/main/src/main/scala/sbt/plugins/DependencyTreeSettings.scala#L101
+-- | The sbt task that writes @tree.html@/@tree.json@ alongside its dependency
+-- output. Plugin name vs task casing:
 --
--- This command unlike 'dependencyBrowseTree', does not open
--- the browser when executed.
+--    * 'ModernDependencyTreePlugin' (sbt 1.4+, @addDependencyTreePlugin@) →
+--      @dependencyBrowseTreeHTML@.
+--    * 'LegacyDependencyGraphPlugin' (sbt < 1.4, @sbt-dependency-graph@) →
+--      @dependencyBrowseTreeHtml@.
 --
--- It writes following files in target directory:
---  ./tree.json
---  ./tree.html
---  ./tree.data.js
---
--- This command is only used when the plugin is installed explicitly, i.e. sbt < 1.4.
--- Newer versions of sbt will use the built-in dependency graph plugin.
-mkDependencyBrowseTreeHTMLCmd :: Command
-mkDependencyBrowseTreeHTMLCmd = mkSbtCommand "dependencyBrowseTreeHtml"
+-- Picking the wrong casing produces an sbt error like
+-- @[error] Not a valid command: dependencyBrowseTreeHTML@ which surfaces to
+-- the user as "Could not retrieve output from sbt dependencyBrowseTreeHTML".
+-- That regression (CLI 3.8.30) is tracked under TKT-15490 / ANE-2718.
+mkDependencyBrowseTreeCmd :: DependencyTreePluginKind -> Command
+mkDependencyBrowseTreeCmd ModernDependencyTreePlugin = mkSbtCommand "dependencyBrowseTreeHTML"
+mkDependencyBrowseTreeCmd LegacyDependencyGraphPlugin = mkSbtCommand "dependencyBrowseTreeHtml"
 
-genTreeJson :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m [Path Abs File]
-genTreeJson projectDir = do
-  stdoutBL <- context "Generating dependency tree html" $ execThrow projectDir mkDependencyBrowseTreeHTMLCmd
+-- | Generates dependency trees by invoking the appropriate
+-- @dependencyBrowseTree*@ task. Unlike @dependencyBrowseTree@, this does not
+-- open a browser when executed.
+--
+-- It writes the following files in the target directory:
+--
+--    * @./tree.json@
+--    * @./tree.html@
+--    * @./tree.data.js@
+genTreeJson :: (Has Exec sig m, Has Diagnostics sig m) => DependencyTreePluginKind -> Path Abs Dir -> m [Path Abs File]
+genTreeJson pluginKind projectDir = do
+  stdoutBL <- context "Generating dependency tree html" $ execThrow projectDir (mkDependencyBrowseTreeCmd pluginKind)
 
   -- stdout for "sbt dependencyBrowseTreeHTML" looks like:
   -- -
