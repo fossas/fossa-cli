@@ -1,6 +1,7 @@
 # CLAUDE.md - Guidelines for Fossa CLI
 
 ## Build Commands
+
 - Haskell: `cabal build`, `make build-cli`
 - Rust: `cargo build --release`
 - Full Build: `make build` (builds both)
@@ -12,21 +13,26 @@
 - Analyze Project: `make analyze`
 
 ## Code Quality Standards
+
 - Compiler warnings should be treated as errors and fixed, not ignored
 - Linter warnings should be treated as errors and fixed, not ignored
 - All tests must pass before submitting code
 - Code should be thoroughly tested with appropriate unit tests
 
 ## Code Style Guidelines - Haskell
+
 - GHC Version: 9.8
 - Formatting: `fourmolu` with 2 spaces, leading commas
 - Imports: Use explicit imports, qualified with full names
 - Types: Prefer `newtype`, use `Text` instead of `String`
 - Functions: Avoid partial functions, list comprehensions, match guards
 - Error handling: Never use `error` or `undefined`
-- **Tests**: Partial functions (`head`, `tail`, `!!`, etc.) are acceptable in test code.
+- **Tests**: A narrow set of partial functions is allowed in `**.*Spec` modules
+  as configured in `.hlint.yaml` (`head`, `tail`, `last`, `!!`,
+  `Data.List.NonEmpty.fromList`). Use them sparingly and prefer safe alternatives.
 
 ## Code Style Guidelines - Rust
+
 - Format with `rustfmt` via `cargo fmt`
 - Lint with Clippy via `cargo clippy`
 - Follow standard Rust idioms including error handling

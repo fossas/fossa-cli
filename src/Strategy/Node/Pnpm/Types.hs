@@ -39,10 +39,11 @@ import Control.Applicative ((<|>))
 import Data.Aeson (FromJSON (..), withObject)
 import Data.Aeson.Extra (TextLike (..))
 import Data.Aeson.KeyMap (toHashMapText)
+import Data.Char (isDigit)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (listToMaybe)
+import Text.Read (readMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -332,16 +333,19 @@ data VersionClassifier
   deriving (Show, Eq, Ord)
 
 -- | Classify the lockfile version string.
+--
+-- >> classifyVersion (TextLike "5.4") = VersionV4Or5
+-- >> classifyVersion (TextLike "9.0") = VersionV9
+-- >> classifyVersion (TextLike "10.0") = VersionV9
 classifyVersion :: TextLike -> Parser VersionClassifier
-classifyVersion (TextLike ver) = case listToMaybe (toString ver) of
-  Just '1' -> pure VersionV4Or5
-  Just '2' -> pure VersionV4Or5
-  Just '3' -> pure VersionV4Or5
-  Just '4' -> pure VersionV4Or5
-  Just '5' -> pure VersionV4Or5
-  Just x | x `elem` ['6', '7', '8'] -> pure VersionV678
-  Just '9' -> pure VersionV9
-  _ -> fail $ "expected numeric lockfileVersion, got: " <> show ver
+classifyVersion (TextLike ver) =
+  case readMaybe (toString (Text.takeWhile isDigit ver)) :: Maybe Int of
+    Nothing -> fail $ "expected numeric lockfileVersion, got: " <> show ver
+    Just v
+      | v >= 1 && v <= 5 -> pure VersionV4Or5
+      | v >= 6 && v <= 8 -> pure VersionV678
+      | v >= 9           -> pure VersionV9
+      | otherwise        -> fail $ "unsupported lockfileVersion: " <> show ver
 
 -- | Parse the shared base fields (importers + packages) common to all versions.
 parseBaseLockfile :: TextLike -> Object -> Parser PnpmLockfileBase

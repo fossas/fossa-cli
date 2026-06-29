@@ -33,17 +33,16 @@ import Strategy.Node.Pnpm.Types (BuildGraphConfig (..), LabelingMode (LabelingOf
 -- >> parseAtKey False "pkg-a@1.0.0" = Just ("pkg-a", "1.0.0")
 -- >> parseAtKey True "pkg-a@1.0.0" = Nothing
 parseAtKey :: Bool -> Text -> Maybe (Text, Text)
-parseAtKey slashRequired pkgKey =
-  case Text.stripPrefix "/" pkgKey of
-    Nothing | slashRequired -> Nothing
-    Nothing -> Just pkgKey
-    Just txt -> Just txt
-    >>= \txt -> do
-      let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
-      let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
-      case (Text.stripSuffix "@" nameWithSlash, version) of
-        (Just name, v) -> Just (name, v <> peerDepInfo)
-        _ -> Nothing
+parseAtKey slashRequired pkgKey = do
+  txt <- case Text.stripPrefix "/" pkgKey of
+           Nothing | slashRequired -> Nothing
+           Nothing -> Just pkgKey
+           Just txt  -> Just txt
+  let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
+  let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
+  case (Text.stripSuffix "@" nameWithSlash, version) of
+    (Just name, v) -> Just (name, v <> peerDepInfo)
+    _ -> Nothing
 
 --
 -- Key parsers

@@ -149,11 +149,11 @@ toResolvedDependency toEnv pkgs mkPkg depName depVersion = do
   -- Others do not which is why it tries both.
   let strippedVersion = withoutPeerDepSuffix depVersion
   let maybeNonRegistrySrcPackage =
-        Map.lookup strippedVersion pkgs
-          <|> Map.lookup depVersion pkgs
+        Map.lookup depVersion pkgs
+          <|> Map.lookup strippedVersion pkgs
   let maybeRegistrySrcPackage =
-        fmap (strippedVersion,) (Map.lookup (mkPkg depName strippedVersion) pkgs)
-          <|> fmap (depVersion,) (Map.lookup (mkPkg depName depVersion) pkgs)
+        fmap (depVersion,) (Map.lookup (mkPkg depName depVersion) pkgs)
+          <|> fmap (strippedVersion,) (Map.lookup (mkPkg depName strippedVersion) pkgs)
   case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
     (Nothing, Nothing) -> Nothing
     (Just nonRegistryPkg, _) ->
