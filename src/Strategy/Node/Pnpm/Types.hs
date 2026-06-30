@@ -43,7 +43,6 @@ import Data.Char (isDigit)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Text.Read (readMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -51,6 +50,7 @@ import Data.Text qualified as Text
 import Data.Yaml (Object, Parser, (.!=), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (DepEnvironment)
+import Text.Read (readMaybe)
 
 -- | Pnpm Lockfile
 --
@@ -344,8 +344,8 @@ classifyVersion (TextLike ver) =
     Just v
       | v >= 1 && v <= 5 -> pure VersionV4Or5
       | v >= 6 && v <= 8 -> pure VersionV678
-      | v >= 9           -> pure VersionV9
-      | otherwise        -> fail $ "unsupported lockfileVersion: " <> show ver
+      | v >= 9 -> pure VersionV9
+      | otherwise -> fail $ "unsupported lockfileVersion: " <> show ver
 
 -- | Parse the shared base fields (importers + packages) common to all versions.
 parseBaseLockfile :: TextLike -> Object -> Parser PnpmLockfileBase

@@ -35,9 +35,9 @@ import Strategy.Node.Pnpm.Types (BuildGraphConfig (..), LabelingMode (LabelingOf
 parseAtKey :: Bool -> Text -> Maybe (Text, Text)
 parseAtKey slashRequired pkgKey = do
   txt <- case Text.stripPrefix "/" pkgKey of
-           Nothing | slashRequired -> Nothing
-           Nothing -> Just pkgKey
-           Just txt  -> Just txt
+    Nothing | slashRequired -> Nothing
+    Nothing -> Just pkgKey
+    Just txt -> Just txt
   let (nameAndVersion, peerDepInfo) = Text.breakOn "(" txt
   let (nameWithSlash, version) = Text.breakOnEnd "@" nameAndVersion
   case (Text.stripSuffix "@" nameWithSlash, version) of
