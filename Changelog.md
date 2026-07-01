@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.17.12
 
+- Licensing: Add FSL 1.1 license variants. ([#1727](https://github.com/fossas/fossa-cli/pull/1727))
 - Scala/sbt: Route projects using `addDependencyTreePlugin` (sbt 1.4+) to the correct `dependencyBrowseTreeHTML` task, restoring deep dependencies. ([#1711](https://github.com/fossas/fossa-cli/pull/1711))
 
 ## 3.17.11
