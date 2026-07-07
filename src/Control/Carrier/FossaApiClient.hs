@@ -106,6 +106,7 @@ runFossaApiClient apiOpts action = do
             UpdateReleaseGroupRelease releaseGroupId releaseId updateReq -> Core.updateReleaseGroupRelease releaseGroupId releaseId updateReq
             GetReleaseGroups -> Core.getReleaseGroups
             GetReleaseGroupReleases releaseGroupId -> Core.getReleaseGroupReleases releaseGroupId
+            ResolveReleaseGroupRelease releaseGroupTitle releaseTitle -> Core.resolveReleaseGroupRelease releaseGroupTitle releaseTitle
             CreateReleaseGroup req -> Core.createReleaseGroup req
             -- Project
             GetProjectV2 locator -> Core.getProjectV2 locator

@@ -57,6 +57,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   deleteReleaseGroupRelease,
   getReleaseGroups,
   getReleaseGroupReleases,
+  resolveReleaseGroupRelease,
   updateReleaseGroupRelease,
   createReleaseGroup,
   createReleaseGroupRelease,
@@ -1848,6 +1849,30 @@ createReleaseGroupRelease apiOpts releaseGroupId createReleaseReq = fossaReq $ d
   resp <-
     context "Creating release group release" $
       req POST (releaseGroupReleaseURLEndpoint baseUrl $ toText releaseGroupId) (ReqBodyJson createReleaseReq) jsonResponse baseOpts
+  pure (responseBody resp)
+
+releaseGroupReleaseLookupURLEndpoint :: Url 'Https -> Url 'Https
+releaseGroupReleaseLookupURLEndpoint baseUrl = baseUrl /: "api" /: "cli" /: "project_group" /: "release_lookup"
+
+-- | Resolve a release group title + release title to their numeric ids in a
+-- single request. Core filters in the database and returns only the ids, so the
+-- CLI avoids fetching and client-side filtering every release group and release.
+resolveReleaseGroupRelease ::
+  APIClientEffs sig m =>
+  ApiOpts ->
+  Text ->
+  Text ->
+  m CoreTypes.ReleaseGroupReleaseLookup
+resolveReleaseGroupRelease apiOpts releaseGroupTitle releaseTitle = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let opts =
+        "releaseGroupTitle"
+          =: releaseGroupTitle
+          <> "releaseTitle"
+            =: releaseTitle
+  resp <-
+    context "Resolving release group release" $
+      req GET (releaseGroupReleaseLookupURLEndpoint baseUrl) NoReqBody jsonResponse (baseOpts <> opts)
   pure (responseBody resp)
 
 updateProjectURLEndpoint :: Url 'Https -> Text -> Url 'Https
