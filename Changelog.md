@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Release groups: `fossa release-group add-projects` resolves its target release with a single server-side lookup when the FOSSA instance supports it, avoiding timeouts for organizations with large numbers of release groups or releases. ([#1728](https://github.com/fossas/fossa-cli/pull/1728))
+
 ## 3.17.12
 
 - Licensing: Add FSL 1.1 license variants. ([#1727](https://github.com/fossas/fossa-cli/pull/1727))
