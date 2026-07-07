@@ -93,6 +93,11 @@ spec = do
       res <- ignoreDebug $ addProjectsMain addProjectsConfig
       res `shouldBe'` ()
 
+    it' "should fail when the lookup endpoint cannot resolve the release" $ do
+      GetOrganization `returnsOnce` orgWithFasterLookup
+      fails (ResolveReleaseGroupRelease "example-title" "example-release-title") "not found"
+      expectFatal' $ ignoreDebug $ addProjectsMain addProjectsConfig
+
 constructUpdateRequestSpec :: Spec
 constructUpdateRequestSpec = do
   describe "constructUpdateRequest" $ do

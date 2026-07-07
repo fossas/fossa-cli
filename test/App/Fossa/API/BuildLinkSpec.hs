@@ -10,7 +10,7 @@ import Control.Effect.FossaApiClient (
 import Data.Text (Text)
 import Fossa.API.Types (
   OrgId (OrgId),
-  Organization (Organization),
+  Organization (..),
  )
 import Fossa.API.Types qualified as API
 import Srclib.Types (Locator (Locator))
@@ -36,13 +36,39 @@ fullSamlURL = "https://app.fossa.com/account/saml/33?next=/projects/a%252bb/refs
 simpleStandardURL :: Text
 simpleStandardURL = "https://app.fossa.com/projects/haskell%2b89%2fspectrometer/refs/branch/master/revision123"
 
+-- | Build an Organization for these tests, varying only the id. Uses record
+-- syntax so that new fields on Organization don't silently break these fixtures.
+mkOrg :: OrgId -> Organization
+mkOrg oid =
+  Organization
+    { organizationId = oid
+    , orgUsesSAML = True
+    , orgCoreSupportsLocalLicenseScan = False
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = False
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = False
+    , orgSupportsGitBackedCargoLocators = False
+    , orgSubscription = API.Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
+    }
+
 spec :: Spec
 spec = do
   describe "BuildLink" $ do
     describe "SAML URL builder" $ do
       it' "should render simple locators" $ do
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
-            org = Just $ Organization (OrgId 1) True False True CLILicenseScan True True True False False False False [] False False False API.Free Nothing False
+            org = Just $ mkOrg (OrgId 1)
             revision = ProjectRevision "" "not this revision" $ Just "master123"
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
@@ -50,7 +76,7 @@ spec = do
 
       it' "should render git@ locators" $ do
         let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
-            org = Just $ Organization (OrgId 103) True False True CLILicenseScan True True True False False False False [] False False False API.Free Nothing False
+            org = Just $ mkOrg (OrgId 103)
             revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
@@ -58,7 +84,7 @@ spec = do
 
       it' "should render full url correctly" $ do
         let locator = Locator "a" "b" $ Just "c"
-            org = Just $ Organization (OrgId 33) True False True CLILicenseScan True True True False False False False [] False False False API.Free Nothing False
+            org = Just $ mkOrg (OrgId 33)
             revision = ProjectRevision "" "not this revision" $ Just "master"
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
@@ -75,7 +101,7 @@ spec = do
     describe "Fossa URL Builder" $
       it' "should render from API info" $ do
         GetApiOpts `returnsOnce` Fixtures.apiOpts
-        GetOrganization `returnsOnce` Organization (OrgId 1) True False True CLILicenseScan True True True False False False False [] False False False API.Free Nothing False
+        GetOrganization `returnsOnce` mkOrg (OrgId 1)
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             revision = ProjectRevision "" "not this revision" $ Just "master123"
         actual <- getFossaBuildUrl revision locator
