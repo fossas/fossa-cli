@@ -160,11 +160,8 @@ parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
 verboseGraphFileName :: String
 verboseGraphFileName = "fossa-depgraph-verbose.json"
 
--- | Find and parse the per-module output of 'execPluginVerboseGraph'.
---
--- The @graph@ goal is not an aggregator: in a multi-module build it runs once
--- per reactor module and writes into each module's own build directory, so we
--- walk the project tree to collect every output file.
+-- | Find and parse the output of 'execPluginVerboseGraph'. The @graph@ goal
+-- runs per reactor module, writing into each module's build directory.
 parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
 parseVerboseGraphs dir = do
   outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) dir
@@ -286,20 +283,12 @@ mavenPluginDependenciesCmd workdir plugin = do
         "-DrepeatTransitiveDependenciesInTextGraph=true"
       ]
 
--- | The (non-aggregating) graph command is documented
---  [here.](https://ferstl.github.io/depgraph-maven-plugin/graph-mojo.html)
---
---  Maven's dependency mediation attaches a package shared by several parents to
---  a single winning parent, omitting the other edges from the resolved graph.
---  The @aggregate@ goal only ever emits the winning edges (it hardcodes
---  @NodeResolution.INCLUDED@), so 'mavenPluginDependenciesCmd' alone
---  mis-attributes shared transitive dependencies to a single parent.
---
---  Unlike @aggregate@, the @graph@ goal supports @showDuplicates@, which asks
---  Maven for the verbose graph and reports the omitted edges with
---  @"resolution": "OMITTED_FOR_DUPLICATE"@. This command recovers those edges;
---  its JSON output is merged into the aggregate output by
---  'augmentWithDuplicateEdges'.
+-- | The @aggregate@ goal above cannot report edges Maven resolved away as
+--  duplicates (it hardcodes @NodeResolution.INCLUDED@ and has no
+--  @showDuplicates@ option), so a package shared by several parents appears
+--  under only one of them. The non-aggregating
+--  [graph goal](https://ferstl.github.io/depgraph-maven-plugin/graph-mojo.html)
+--  with @showDuplicates@ reports those edges as @OMITTED_FOR_DUPLICATE@.
 mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
 mavenPluginVerboseGraphCmd workdir plugin = do
   candidates <- mavenCmdCandidates workdir
@@ -383,13 +372,8 @@ data Edge = Edge
   }
   deriving (Eq, Ord, Show)
 
--- | A dependency graph as produced by the depgraph plugin's JSON format.
---
--- Edges are matched to artifacts via the string @id@ field. The plugin also
--- emits @numericId@\/@numericFrom@\/@numericTo@, but those use two unrelated
--- counters (observed with depgraph 4.0.1: an edge's @numericTo@ does not point
--- at the artifact carrying that @numericId@), so they cannot be used as a join
--- key.
+-- | The depgraph plugin's JSON format. Edges join to artifacts via the string
+-- @id@ field; the numeric ids use two unrelated counters and cannot be used.
 data VerboseGraph = VerboseGraph
   { verboseArtifacts :: [VerboseArtifact]
   , verboseEdges :: [VerboseEdge]
@@ -435,14 +419,9 @@ instance FromJSON VerboseEdge where
         <*> o .: "to"
         <*> (o .:? "resolution" .!= "INCLUDED")
 
--- | Merge duplicate-resolved edges recovered by 'execPluginVerboseGraph' into
--- the graph parsed from the aggregate output.
---
--- Only @OMITTED_FOR_DUPLICATE@ edges are merged: a duplicate is the same
--- group\/artifact\/version as the winning node, so both endpoints already exist
--- in the aggregate output and the edge can be added without introducing new
--- nodes. @OMITTED_FOR_CONFLICT@ edges point at a *losing* version that the
--- build does not ship, so they are intentionally left out.
+-- | Merge @OMITTED_FOR_DUPLICATE@ edges into the aggregate output; both
+-- endpoints of a duplicate already exist there. @OMITTED_FOR_CONFLICT@ edges
+-- point at a losing version the build does not ship, so they are skipped.
 augmentWithDuplicateEdges :: PluginOutput -> [VerboseGraph] -> PluginOutput
 augmentWithDuplicateEdges output@PluginOutput{outArtifacts, outEdges} verboseGraphs =
   output{outEdges = nub (outEdges <> concatMap duplicateEdges verboseGraphs)}

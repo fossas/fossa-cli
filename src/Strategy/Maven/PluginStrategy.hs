@@ -112,14 +112,9 @@ analyze dir plugin = do
     context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput')
   pure (graph, Complete)
 
--- | Maven's dependency mediation attaches a package shared by several parents
--- to a single winning parent; the aggregate goal only reports those winning
--- edges, so a shared transitive dependency looks exclusive to one parent (see
--- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd'). Recover the omitted
--- edges with a second plugin run and merge them into the parsed output.
---
--- Recovery is best-effort: on any failure the aggregate output is used as-is,
--- which matches the behavior before this step existed.
+-- | Recover edges Maven resolved away as duplicates (see
+-- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd') and merge them into the
+-- parsed output. Best-effort: on failure the aggregate output is used as-is.
 recoverDuplicateEdges ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m

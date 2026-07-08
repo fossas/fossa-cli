@@ -215,13 +215,9 @@ kafkaClientCompile = Artifact 6 "org.apache.kafka" "kafka-clients" "3.0.2" ["com
 kafkaClientTest :: Artifact
 kafkaClientTest = kafkaClientCompile{artifactNumericId = 1, artifactScopes = ["test"]}
 
--- | Shape of the depgraph plugin's JSON output with @showDuplicates=true@.
--- Maven resolved log4j-api under poi-ooxml; the log4j-core edge to it was
--- omitted as a duplicate and is only visible in the verbose graph.
---
--- The numericId/numericFrom/numericTo values deliberately do NOT line up:
--- depgraph numbers artifacts and edge endpoints with unrelated counters, so
--- the parser must join edges to artifacts via the string ids.
+-- | depgraph JSON with @showDuplicates=true@. The numeric ids deliberately do
+-- not line up: depgraph numbers artifacts and edge endpoints independently, so
+-- edges must join to artifacts via the string ids.
 verboseGraphJson :: BS.ByteString
 verboseGraphJson =
   BS.pack
@@ -264,9 +260,7 @@ verboseGraphParsingSpec =
     it "should parse the depgraph plugin's json format" $
       eitherDecode verboseGraphJson `shouldBe` Right expectedVerboseGraph
 
--- Aggregate output for the same build. Numeric ids deliberately differ from
--- the verbose graph's ids: the two runs number artifacts independently, so the
--- merge must map through group/artifact/version.
+-- Aggregate output for the same build, with its own unrelated numeric ids.
 mkAggregateArtifact :: Int -> Text -> Text -> Text -> Bool -> Artifact
 mkAggregateArtifact numericId groupId artifactId version isDirect =
   Artifact
@@ -302,8 +296,6 @@ augmentWithDuplicateEdgesSpec =
         `shouldBe` outArtifacts aggregateOutput
 
     it "should ignore included edges and artifacts absent from the aggregate output" $ do
-      -- org.example:app is not in the aggregate output, so the INCLUDED edges
-      -- rooted there must not produce anything even if they were considered.
       let onlyIncluded =
             expectedVerboseGraph
               { verboseEdges =
