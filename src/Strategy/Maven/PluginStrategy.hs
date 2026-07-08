@@ -11,6 +11,7 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (renderDiagnostic),
   context,
   errCtx,
+  recover,
   warnOnErr,
   (<||>),
  )
@@ -20,6 +21,7 @@ import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (
@@ -42,13 +44,16 @@ import Strategy.Maven.Plugin (
   Edge (..),
   PluginOutput (..),
   ReactorOutput (ReactorOutput),
+  augmentWithDuplicateEdges,
   depGraphPlugin,
   depGraphPluginLegacy,
   execPluginAggregate,
   execPluginReactor,
+  execPluginVerboseGraph,
   installPlugin,
   parsePluginOutput,
   parseReactorOutput,
+  parseVerboseGraphs,
   reactorArtifactName,
   reactorArtifacts,
   withUnpackedPlugin,
@@ -103,8 +108,34 @@ analyze dir plugin = do
       errCtx MvnPluginExecFailed $
         execPluginAggregate dir plugin
     pluginOutput <- parsePluginOutput dir
-    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
+    pluginOutput' <- recoverDuplicateEdges dir plugin pluginOutput
+    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput')
   pure (graph, Complete)
+
+-- | Maven's dependency mediation attaches a package shared by several parents
+-- to a single winning parent; the aggregate goal only reports those winning
+-- edges, so a shared transitive dependency looks exclusive to one parent (see
+-- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd'). Recover the omitted
+-- edges with a second plugin run and merge them into the parsed output.
+--
+-- Recovery is best-effort: on any failure the aggregate output is used as-is,
+-- which matches the behavior before this step existed.
+recoverDuplicateEdges ::
+  ( CandidateCommandEffs sig m
+  , Has ReadFS sig m
+  ) =>
+  Path Abs Dir ->
+  DepGraphPlugin ->
+  PluginOutput ->
+  m PluginOutput
+recoverDuplicateEdges dir plugin pluginOutput =
+  context "Running plugin to recover duplicate-resolved edges" $ do
+    recovered <-
+      recover $
+        warnOnErr DuplicateEdgesNotRecovered $ do
+          execPluginVerboseGraph dir plugin
+          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs dir
+    pure (fromMaybe pluginOutput recovered)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
 instance ToDiagnostic MvnPluginInstallFailed where
@@ -116,6 +147,12 @@ data MvnPluginExecFailed = MvnPluginExecFailed
 instance ToDiagnostic MvnPluginExecFailed where
   renderDiagnostic (MvnPluginExecFailed) = do
     let header = "Failed to execute maven plugin for analysis"
+    Errata (Just header) [] Nothing
+
+data DuplicateEdgesNotRecovered = DuplicateEdgesNotRecovered
+instance ToDiagnostic DuplicateEdgesNotRecovered where
+  renderDiagnostic DuplicateEdgesNotRecovered = do
+    let header = "Failed to recover duplicate-resolved dependency edges; transitive dependencies shared between multiple parents may be attributed to only one of them."
     Errata (Just header) [] Nothing
 
 data MayIncludeSubmodule = MayIncludeSubmodule

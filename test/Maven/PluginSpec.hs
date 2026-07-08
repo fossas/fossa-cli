@@ -2,18 +2,31 @@
 
 module Maven.PluginSpec (spec) where
 
+import Data.Aeson (eitherDecode)
+import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Text (Text)
 import Data.Tree (Tree (..))
-import Strategy.Maven.Plugin (Artifact (..), Edge (..), PluginOutput (..), textArtifactToPluginOutput)
+import Strategy.Maven.Plugin (
+  Artifact (..),
+  Edge (..),
+  PluginOutput (..),
+  VerboseArtifact (..),
+  VerboseEdge (..),
+  VerboseGraph (..),
+  augmentWithDuplicateEdges,
+  textArtifactToPluginOutput,
+ )
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldMatchList')
-import Test.Hspec (Spec, describe)
+import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (parseMaybe)
 import Text.RawString.QQ (r)
 
 spec :: Spec
 spec = do
   textArtifactConversionSpec
+  verboseGraphParsingSpec
+  augmentWithDuplicateEdgesSpec
 
 singleTextArtifact :: TextArtifact
 singleTextArtifact =
@@ -201,3 +214,110 @@ kafkaClientCompile = Artifact 6 "org.apache.kafka" "kafka-clients" "3.0.2" ["com
 
 kafkaClientTest :: Artifact
 kafkaClientTest = kafkaClientCompile{artifactNumericId = 1, artifactScopes = ["test"]}
+
+-- | Shape of the depgraph plugin's JSON output with @showDuplicates=true@.
+-- Maven resolved log4j-api under poi-ooxml; the log4j-core edge to it was
+-- omitted as a duplicate and is only visible in the verbose graph.
+--
+-- The numericId/numericFrom/numericTo values deliberately do NOT line up:
+-- depgraph numbers artifacts and edge endpoints with unrelated counters, so
+-- the parser must join edges to artifacts via the string ids.
+verboseGraphJson :: BS.ByteString
+verboseGraphJson =
+  BS.pack
+    [r|{
+  "graphName": "example",
+  "artifacts": [
+    { "id": "org.example:app:jar", "numericId": 7, "groupId": "org.example", "artifactId": "app", "version": "1.0.0", "scopes": [], "types": ["jar"] },
+    { "id": "org.apache.poi:poi-ooxml:jar", "numericId": 3, "groupId": "org.apache.poi", "artifactId": "poi-ooxml", "version": "5.2.5", "scopes": ["compile"], "types": ["jar"] },
+    { "id": "org.apache.logging.log4j:log4j-api:jar", "numericId": 9, "groupId": "org.apache.logging.log4j", "artifactId": "log4j-api", "version": "2.21.1", "scopes": ["compile"], "types": ["jar"] },
+    { "id": "org.apache.logging.log4j:log4j-core:jar", "numericId": 1, "groupId": "org.apache.logging.log4j", "artifactId": "log4j-core", "version": "2.21.1", "scopes": ["compile"], "types": ["jar"] }
+  ],
+  "dependencies": [
+    { "from": "org.example:app:jar", "to": "org.apache.poi:poi-ooxml:jar", "numericFrom": 1, "numericTo": 2, "resolution": "INCLUDED" },
+    { "from": "org.example:app:jar", "to": "org.apache.logging.log4j:log4j-core:jar", "numericFrom": 1, "numericTo": 4, "resolution": "INCLUDED" },
+    { "from": "org.apache.poi:poi-ooxml:jar", "to": "org.apache.logging.log4j:log4j-api:jar", "numericFrom": 2, "numericTo": 3, "resolution": "INCLUDED" },
+    { "from": "org.apache.logging.log4j:log4j-core:jar", "to": "org.apache.logging.log4j:log4j-api:jar", "numericFrom": 4, "numericTo": 3, "resolution": "OMITTED_FOR_DUPLICATE" }
+  ]
+}|]
+
+expectedVerboseGraph :: VerboseGraph
+expectedVerboseGraph =
+  VerboseGraph
+    { verboseArtifacts =
+        [ VerboseArtifact "org.example:app:jar" "org.example" "app" "1.0.0"
+        , VerboseArtifact "org.apache.poi:poi-ooxml:jar" "org.apache.poi" "poi-ooxml" "5.2.5"
+        , VerboseArtifact "org.apache.logging.log4j:log4j-api:jar" "org.apache.logging.log4j" "log4j-api" "2.21.1"
+        , VerboseArtifact "org.apache.logging.log4j:log4j-core:jar" "org.apache.logging.log4j" "log4j-core" "2.21.1"
+        ]
+    , verboseEdges =
+        [ VerboseEdge "org.example:app:jar" "org.apache.poi:poi-ooxml:jar" "INCLUDED"
+        , VerboseEdge "org.example:app:jar" "org.apache.logging.log4j:log4j-core:jar" "INCLUDED"
+        , VerboseEdge "org.apache.poi:poi-ooxml:jar" "org.apache.logging.log4j:log4j-api:jar" "INCLUDED"
+        , VerboseEdge "org.apache.logging.log4j:log4j-core:jar" "org.apache.logging.log4j:log4j-api:jar" "OMITTED_FOR_DUPLICATE"
+        ]
+    }
+
+verboseGraphParsingSpec :: Spec
+verboseGraphParsingSpec =
+  describe "verbose graph parsing" $
+    it "should parse the depgraph plugin's json format" $
+      eitherDecode verboseGraphJson `shouldBe` Right expectedVerboseGraph
+
+-- Aggregate output for the same build. Numeric ids deliberately differ from
+-- the verbose graph's ids: the two runs number artifacts independently, so the
+-- merge must map through group/artifact/version.
+mkAggregateArtifact :: Int -> Text -> Text -> Text -> Bool -> Artifact
+mkAggregateArtifact numericId groupId artifactId version isDirect =
+  Artifact
+    { artifactNumericId = numericId
+    , artifactGroupId = groupId
+    , artifactArtifactId = artifactId
+    , artifactVersion = version
+    , artifactScopes = ["compile"]
+    , artifactOptional = False
+    , artifactIsDirect = isDirect
+    }
+
+aggregateOutput :: PluginOutput
+aggregateOutput =
+  PluginOutput
+    { outArtifacts =
+        [ mkAggregateArtifact 10 "org.apache.poi" "poi-ooxml" "5.2.5" True
+        , mkAggregateArtifact 11 "org.apache.logging.log4j" "log4j-api" "2.21.1" False
+        , mkAggregateArtifact 12 "org.apache.logging.log4j" "log4j-core" "2.21.1" True
+        ]
+    , outEdges = [Edge 10 11]
+    }
+
+augmentWithDuplicateEdgesSpec :: Spec
+augmentWithDuplicateEdgesSpec =
+  describe "augmentWithDuplicateEdges" $ do
+    it "should add duplicate-resolved edges between existing artifacts" $
+      outEdges (augmentWithDuplicateEdges aggregateOutput [expectedVerboseGraph])
+        `shouldBe` [Edge 10 11, Edge 12 11]
+
+    it "should not modify artifacts" $
+      outArtifacts (augmentWithDuplicateEdges aggregateOutput [expectedVerboseGraph])
+        `shouldBe` outArtifacts aggregateOutput
+
+    it "should ignore included edges and artifacts absent from the aggregate output" $ do
+      -- org.example:app is not in the aggregate output, so the INCLUDED edges
+      -- rooted there must not produce anything even if they were considered.
+      let onlyIncluded =
+            expectedVerboseGraph
+              { verboseEdges =
+                  [ VerboseEdge "org.example:app:jar" "org.apache.poi:poi-ooxml:jar" "INCLUDED"
+                  , VerboseEdge "org.apache.poi:poi-ooxml:jar" "org.apache.logging.log4j:log4j-api:jar" "INCLUDED"
+                  ]
+              }
+      outEdges (augmentWithDuplicateEdges aggregateOutput [onlyIncluded])
+        `shouldBe` outEdges aggregateOutput
+
+    it "should not duplicate an edge that already exists" $ do
+      let alreadyPresent = aggregateOutput{outEdges = [Edge 10 11, Edge 12 11]}
+      outEdges (augmentWithDuplicateEdges alreadyPresent [expectedVerboseGraph])
+        `shouldBe` [Edge 10 11, Edge 12 11]
+
+    it "should do nothing without verbose graphs" $
+      augmentWithDuplicateEdges aggregateOutput [] `shouldBe` aggregateOutput
