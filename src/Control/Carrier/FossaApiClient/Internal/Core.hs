@@ -29,6 +29,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   createReleaseGroupRelease,
   getReleaseGroups,
   getReleaseGroupReleases,
+  resolveReleaseGroupRelease,
   updateReleaseGroupRelease,
   getProjectV2,
   updateProject,
@@ -396,6 +397,17 @@ getReleaseGroupReleases ::
 getReleaseGroupReleases releaseGroupId = do
   apiOpts <- ask
   API.getReleaseGroupReleases apiOpts releaseGroupId
+
+resolveReleaseGroupRelease ::
+  ( API.APIClientEffs sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Text ->
+  Text ->
+  m CoreTypes.ReleaseGroupReleaseLookup
+resolveReleaseGroupRelease releaseGroupTitle releaseTitle = do
+  apiOpts <- ask
+  API.resolveReleaseGroupRelease apiOpts releaseGroupTitle releaseTitle
 
 getProjectV2 ::
   ( API.APIClientEffs sig m

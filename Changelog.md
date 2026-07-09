@@ -3,6 +3,7 @@
 ## 3.17.13
 
 - Licensing: Detect the Lucky Penny Software RPL-1.5 dual-license notice (AutoMapper, MediatR), resolving it to `rpl-1.5 OR proprietary-license` instead of `unknown`. ([#1729](https://github.com/fossas/fossa-cli/pull/1729))
+- Release groups: `fossa release-group add-projects` resolves its target release with a single server-side lookup when the FOSSA instance supports it, avoiding timeouts for organizations with large numbers of release groups or releases. ([#1728](https://github.com/fossas/fossa-cli/pull/1728))
 
 ## 3.17.12
 
