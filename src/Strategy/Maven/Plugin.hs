@@ -5,6 +5,7 @@ module Strategy.Maven.Plugin (
   withUnpackedPlugin,
   installPlugin,
   parsePluginOutput,
+  parseVerboseGraphs,
   depGraphPlugin,
   depGraphPluginLegacy,
   Artifact (..),
@@ -13,10 +14,15 @@ module Strategy.Maven.Plugin (
   PluginOutput (..),
   ReactorOutput (..),
   ReactorArtifact (..),
+  VerboseArtifact (..),
+  VerboseEdge (..),
+  VerboseGraph (..),
+  augmentWithDuplicateEdges,
   parseReactorOutput,
   textArtifactToPluginOutput,
   execPluginAggregate,
   execPluginReactor,
+  execPluginVerboseGraph,
   mavenCmdCandidates,
 ) where
 
@@ -36,13 +42,13 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, isNothing)
+import Data.Maybe (catMaybes, isNothing, mapMaybe, maybeToList)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
-import Discovery.Walk (findFileInAncestor)
+import Discovery.Walk (WalkStep (WalkContinue), findFileInAncestor, findFileNamed, walk')
 import Effect.Exec (
   AllowErr (Never),
   CandidateAnalysisCommands (..),
@@ -133,6 +139,11 @@ execPluginReactor projectdir outputdir plugin = do
   cmd <- mavenPluginReactorCmd projectdir outputdir plugin
   execPlugin (const cmd) projectdir plugin
 
+execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginVerboseGraph dir plugin = do
+  cmd <- mavenPluginVerboseGraphCmd dir plugin
+  execPlugin (const cmd) dir plugin
+
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.txt")
 
@@ -145,6 +156,16 @@ reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
 
 parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
 parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
+
+verboseGraphFileName :: String
+verboseGraphFileName = "fossa-depgraph-verbose.json"
+
+-- | Find and parse the output of 'execPluginVerboseGraph'. The @graph@ goal
+-- runs per reactor module, writing into each module's build directory.
+parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
+parseVerboseGraphs dir = do
+  outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) dir
+  traverse readContentsJson outputs
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
@@ -262,6 +283,27 @@ mavenPluginDependenciesCmd workdir plugin = do
         "-DrepeatTransitiveDependenciesInTextGraph=true"
       ]
 
+-- | The @aggregate@ goal above cannot report edges Maven resolved away as
+--  duplicates (it hardcodes @NodeResolution.INCLUDED@ and has no
+--  @showDuplicates@ option), so a package shared by several parents appears
+--  under only one of them. The non-aggregating
+--  [graph goal](https://ferstl.github.io/depgraph-maven-plugin/graph-mojo.html)
+--  with @showDuplicates@ reports those edges as @OMITTED_FOR_DUPLICATE@.
+mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginVerboseGraphCmd workdir plugin = do
+  candidates <- mavenCmdCandidates workdir
+  mkAnalysisCommand candidates workdir args Never
+  where
+    args =
+      [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":graph"
+      , "-DgraphFormat=json"
+      , -- match the node identity used by the aggregate command
+        "-DmergeScopes"
+      , -- request Maven's verbose graph so duplicate-resolved edges are reported
+        "-DshowDuplicates=true"
+      , "-DoutputFileName=" <> toText verboseGraphFileName
+      ]
+
 -- | The reactor command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
 --  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
@@ -329,3 +371,86 @@ data Edge = Edge
   , edgeTo :: Int
   }
   deriving (Eq, Ord, Show)
+
+-- | The depgraph plugin's JSON format. Edges join to artifacts via the string
+-- @id@ field; the numeric ids use two unrelated counters and cannot be used.
+data VerboseGraph = VerboseGraph
+  { verboseArtifacts :: [VerboseArtifact]
+  , verboseEdges :: [VerboseEdge]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VerboseGraph where
+  parseJSON = withObject "Verbose graph" $
+    \o ->
+      VerboseGraph
+        <$> (o .:? "artifacts" .!= [])
+        <*> (o .:? "dependencies" .!= [])
+
+data VerboseArtifact = VerboseArtifact
+  { verboseArtifactId :: Text
+  , verboseArtifactGroupId :: Text
+  , verboseArtifactArtifactId :: Text
+  , verboseArtifactVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VerboseArtifact where
+  parseJSON = withObject "Verbose graph artifact" $
+    \o ->
+      VerboseArtifact
+        <$> o .: "id"
+        <*> o .: "groupId"
+        <*> o .: "artifactId"
+        <*> o .: "version"
+
+data VerboseEdge = VerboseEdge
+  { verboseEdgeFrom :: Text
+  , verboseEdgeTo :: Text
+  , verboseEdgeResolution :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VerboseEdge where
+  parseJSON = withObject "Verbose graph dependency" $
+    \o ->
+      VerboseEdge
+        <$> o .: "from"
+        <*> o .: "to"
+        <*> (o .:? "resolution" .!= "INCLUDED")
+
+-- | Merge @OMITTED_FOR_DUPLICATE@ edges into the aggregate output; both
+-- endpoints of a duplicate already exist there. @OMITTED_FOR_CONFLICT@ edges
+-- point at a losing version the build does not ship, so they are skipped.
+augmentWithDuplicateEdges :: PluginOutput -> [VerboseGraph] -> PluginOutput
+augmentWithDuplicateEdges output@PluginOutput{outArtifacts, outEdges} verboseGraphs =
+  output{outEdges = nub (outEdges <> concatMap duplicateEdges verboseGraphs)}
+  where
+    idByGav :: Map (Text, Text, Text) Int
+    idByGav =
+      Map.fromList $
+        map (\a -> ((artifactGroupId a, artifactArtifactId a, artifactVersion a), artifactNumericId a)) outArtifacts
+
+    duplicateEdges :: VerboseGraph -> [Edge]
+    duplicateEdges VerboseGraph{verboseArtifacts, verboseEdges} = mapMaybe toAggregateEdge verboseEdges
+      where
+        gavByVerboseId :: Map Text (Text, Text, Text)
+        gavByVerboseId =
+          Map.fromList $
+            map
+              (\a -> (verboseArtifactId a, (verboseArtifactGroupId a, verboseArtifactArtifactId a, verboseArtifactVersion a)))
+              verboseArtifacts
+
+        lookupAggregateId :: Text -> Maybe Int
+        lookupAggregateId verboseId = Map.lookup verboseId gavByVerboseId >>= (`Map.lookup` idByGav)
+
+        toAggregateEdge :: VerboseEdge -> Maybe Edge
+        toAggregateEdge VerboseEdge{verboseEdgeFrom, verboseEdgeTo, verboseEdgeResolution} =
+          if verboseEdgeResolution /= "OMITTED_FOR_DUPLICATE"
+            then Nothing
+            else case (lookupAggregateId verboseEdgeFrom, lookupAggregateId verboseEdgeTo) of
+              (Just parent, Just child) ->
+                if parent == child
+                  then Nothing
+                  else Just (Edge parent child)
+              _ -> Nothing
