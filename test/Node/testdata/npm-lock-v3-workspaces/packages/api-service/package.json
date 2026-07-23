@@ -1,0 +1,9 @@
+{
+  "name": "@fossa-test/api-service",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "cors": "^2.8.5",
+    "uuid": "^9.0.1"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@fossa-test/shared-utils",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "uuid": "^9.0.1"
+  }
+}

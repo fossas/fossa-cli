@@ -776,6 +776,7 @@ test-suite integration-tests
     Analysis.GradleSpec
     Analysis.LicenseScannerSpec
     Analysis.MavenSpec
+    Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
     Analysis.Python.PipenvSpec
