@@ -421,7 +421,10 @@ buildGraph foundTargets pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
     -- analysis reports them as-is to preserve pre-scoping output.
     resolveDirectDeps :: PackagePath -> [PackagePath] -> [Dependency]
     resolveDirectDeps selfPath depPaths
-      | isScoped = mapMaybe toDependency $ concatMap (expandLinks (Set.singleton selfPath)) depPaths
+      | isScoped =
+          concatMap
+            (mapMaybe toDependency . expandLinks (Set.singleton selfPath))
+            depPaths
       | otherwise = mapMaybe toDependency depPaths
 
     -- Expands a workspace link stub (e.g. "node_modules/some-ws-name" with
@@ -437,14 +440,13 @@ buildGraph foundTargets pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
         | linkedPath `Set.member` visited -> []
         | otherwise -> case (linkedPath, Map.lookup linkedPath (packages pkgLockV3)) of
             (PackageLockV3WorkSpace workspacePath, Just workspaceMeta) ->
-              concatMap (expandLinks (Set.insert linkedPath visited)) $
-                map (vendoredPathElseTopLevelPath workspacePath) $
-                  concatMap
-                    Map.keys
-                    [ plV3PkgDependencies workspaceMeta
-                    , plV3PkgPeerDependencies workspaceMeta
-                    , plV3PkgOptionalDependencies workspaceMeta
-                    ]
+              concatMap (expandLinks (Set.insert linkedPath visited) . vendoredPathElseTopLevelPath workspacePath) $
+                concatMap
+                  Map.keys
+                  [ plV3PkgDependencies workspaceMeta
+                  , plV3PkgPeerDependencies workspaceMeta
+                  , plV3PkgOptionalDependencies workspaceMeta
+                  ]
             _ -> []
 
     -- Resolves a link stub to the entry it points at.
