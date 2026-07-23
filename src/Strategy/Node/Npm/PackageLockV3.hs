@@ -15,7 +15,7 @@ module Strategy.Node.Npm.PackageLockV3 (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey (fromJSONKey),
@@ -42,7 +42,7 @@ import DepTypes (
  )
 import Effect.Grapher (direct, edge, evalGrapher, run)
 import Effect.ReadFS (ReadFS, readContentsJson)
-import Graphing (Graphing)
+import Graphing (Graphing, pruneUnreachable)
 import Path (
   Abs,
   File,
@@ -165,10 +165,13 @@ instance FromJSON NpmLockV3Resolved where
   parseJSON (Bool _) = pure $ NpmLockV3Resolved Nothing
   parseJSON _ = fail "Expected to contain string or boolean value for 'resolved' field!"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze file = context "Analyzing Npm Lockfile (v3)" $ do
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe (Set.Set Text) -> Path Abs File -> m (Graphing Dependency)
+analyze selectedPaths file = context "Analyzing Npm Lockfile (v3)" $ do
   packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
-  context "Building dependency graph" $ pure $ buildGraph packageLockJson
+  -- When scoping, prune here so a target with no direct deps yields an empty
+  -- graph. Otherwise mkResult sees an empty direct set and falls back to
+  -- returning the whole graph unpruned.
+  context "Building dependency graph" $ pure $ maybe id (const pruneUnreachable) selectedPaths $ buildGraph selectedPaths packageLockJson
 
 -- | Builds a graph for package lock v3.
 --
@@ -219,8 +222,8 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 --    - http://npm.github.io/how-npm-works-docs/npm3/how-npm3-works.html
 --
 --  --
-buildGraph :: PackageLockV3 -> Graphing Dependency
-buildGraph pkgLockV3 = run . evalGrapher $ do
+buildGraph :: Maybe (Set.Set Text) -> PackageLockV3 -> Graphing Dependency
+buildGraph selectedPaths pkgLockV3 = run . evalGrapher $ do
   for_ (Map.toList $ packages pkgLockV3) $ \(pkgPathKey, pkgMetadata) -> do
     case pkgPathKey of
       -- For root package,
@@ -264,7 +267,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
         let resolvedDeps :: [Dependency]
             resolvedDeps = mapMaybe toDependency directDeps
 
-        traverse_ direct resolvedDeps
+        when (isSelectedPath "") $ traverse_ direct resolvedDeps
 
       -- For workspace packages, for instance:
       --
@@ -303,7 +306,7 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
         let resolvedDeps :: [Dependency]
             resolvedDeps = mapMaybe toDependency directDeps
 
-        traverse_ direct resolvedDeps
+        when (isSelectedPath workspaceRootPath) $ traverse_ direct resolvedDeps
 
       -- For typical dependency packages, for instance:
       --
@@ -352,6 +355,12 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
           Just parentDep -> do
             for_ resolvedDeepDeps $ edge parentDep
   where
+    -- Deps of unselected entries stay non-direct and are dropped downstream by
+    -- Graphing.pruneUnreachable (in mkResult), which keeps only deps reachable
+    -- from a direct dep. Nothing means no target filter, so every entry is kept.
+    isSelectedPath :: Text -> Bool
+    isSelectedPath path = maybe True (Set.member path) selectedPaths
+
     -- Prefer resolution path in following order of precedent:
     --
     --  1) {prefix}/node_modules/{pkgName}

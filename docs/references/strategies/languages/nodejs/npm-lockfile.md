@@ -36,10 +36,11 @@ included in the analysis.
 When no filtering is applied, all targets are selected and all dependencies
 from every workspace package are included in the analysis.
 
-> Note: Target-level dependency scoping is only supported for lockfile version 1
-> (npm v5–v6) and version 2 (npm v7–v8). Version 3 lockfiles (npm v9+) will
-> show workspace build targets, but filtering to specific targets does not yet
-> scope the dependency results.
+> Note: Selecting a workspace target scopes the analysis to that workspace's own
+> declared dependencies and their transitive closure. Dependencies contributed
+> only by other, unselected workspaces are excluded. A dependency reachable only
+> through a sibling workspace (one workspace that depends on another) is not
+> pulled into the selected workspace's results.
 
 ## Analysis (for lockFile version 3)
 

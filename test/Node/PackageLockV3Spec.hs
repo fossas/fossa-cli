@@ -19,10 +19,12 @@ import DepTypes (
 import Effect.ReadFS (readContentsJson)
 import GraphUtil (
   expectDep,
+  expectDeps',
   expectDirect,
   expectEdge,
  )
 import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLockV3 (
@@ -31,13 +33,14 @@ import Strategy.Node.Npm.PackageLockV3 (
   PackageLockV3Package (plV3PkgResolved),
   PackageName (PackageName),
   PackagePath (PackageLockV3PathKey, PackageLockV3Root, PackageLockV3WorkSpace),
+  analyze,
   buildGraph,
   isV3Compatible,
   parsePathKey,
   vendorPrefixes,
  )
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldNotContain)
 
 fixtureSimplePackageLockPath :: Path Rel File
 fixtureSimplePackageLockPath = $(mkRelFile "simple-package-lock.json")
@@ -47,6 +50,9 @@ multiLevelVendorLockPath = $(mkRelFile "multi-level-vendor-package-lock.json")
 
 workspaceNestedModulePackageLockPath :: Path Rel File
 workspaceNestedModulePackageLockPath = $(mkRelFile "ws-nested-module-package-lock.json")
+
+emptyWorkspaceLockPath :: Path Rel File
+emptyWorkspaceLockPath = $(mkRelFile "empty-workspace-package-lock.json")
 
 spec :: Spec
 spec = do
@@ -66,6 +72,10 @@ spec = do
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> workspaceNestedModulePackageLockPath) workspaceNestedModulePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> multiLevelVendorLockPath) multiLevelVendorLockGraphSpec
+
+  -- Scoping to a single workspace path
+  checkScopedGraph (Set.fromList ["packages/a"]) (graphingFixtureDir </> fixtureSimplePackageLockPath) scopedToWorkspaceAGraphSpec
+  emptyWorkspaceScopeSpec (graphingFixtureDir </> emptyWorkspaceLockPath)
 
 vendorPrefixesSpec :: Spec
 vendorPrefixesSpec = do
@@ -404,6 +414,43 @@ workspaceNestedModulePackageLockGraphSpec graph = do
       hasDep (mkProdDep "c@1.0.0")
       hasEdge (mkProdDep "b@2.0.0") (mkProdDep "c@1.0.0")
 
+scopedToWorkspaceAGraphSpec :: Graphing Dependency -> Spec
+scopedToWorkspaceAGraphSpec graph =
+  describe "buildGraph scoped to workspace a" $ do
+    it "should mark only the selected workspace's dependencies as direct" $
+      -- └─┬ workspace-a-name@2.0.0 -> ./packages/a
+      --   ├── aws-sdk@1.0.0
+      --   └── commander@9.2.0
+      expectDirect
+        [ mkProdDep "aws-sdk@1.0.0"
+        , mkProdDep "commander@9.2.0"
+        ]
+        graph
+
+    it "should keep the selected workspace's transitive closure" $ do
+      let pruned = Graphing.pruneUnreachable graph
+      expectDep (mkProdDep "commander@9.2.0") pruned
+      expectDep (mkProdDep "aws-sdk@1.0.0") pruned
+      expectDep (mkProdDep "xml2js@0.2.4") pruned
+      expectDep (mkProdDep "sax@1.2.1") pruned
+      expectDep (mkProdDep "xmlbuilder@9.0.7") pruned
+
+    it "should drop dependencies contributed only by unselected packages" $ do
+      let pruned = Graphing.pruneUnreachable graph
+      Graphing.vertexList pruned `shouldNotContain` [mkProdDep "react@18.1.0"]
+      Graphing.vertexList pruned `shouldNotContain` [mkProdDep "aws-sdk@2.1134.0"]
+      Graphing.vertexList pruned `shouldNotContain` [mkDevDep "mocha@10.0.0"]
+
+emptyWorkspaceScopeSpec :: Path Abs File -> Spec
+emptyWorkspaceScopeSpec fixture = describe "analyze scoped to a dependency-free workspace" $ do
+  it' "returns an empty graph rather than the full repo graph" $ do
+    graph <- analyze (Just (Set.fromList ["packages/empty"])) fixture
+    expectDeps' [] graph
+
+  it' "still reports a scoped workspace's own closure" $ do
+    graph <- analyze (Just (Set.fromList [""])) fixture
+    expectDeps' [mkProdDep "a@1.0.0", mkProdDep "b@1.0.0"] graph
+
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
 
@@ -429,4 +476,13 @@ checkGraph pathToFixture buildGraphSpec = do
   case maybePkgLockV3 of
     Left errMsg -> describe "packageLockV3" $ it "should parse lockfile" (expectationFailure errMsg)
     Right pkgLockV3 -> do
-      buildGraphSpec (buildGraph pkgLockV3)
+      buildGraphSpec (buildGraph Nothing pkgLockV3)
+
+-- | Like 'checkGraph', but scopes the graph to the given workspace path keys
+-- (as they appear in the lockfile's @packages@ map) before handing it to the spec.
+checkScopedGraph :: Set.Set Text -> Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkScopedGraph selectedPaths pathToFixture buildGraphSpec = do
+  maybePkgLockV3 <- runIO $ eitherDecodeFileStrict' (toString pathToFixture)
+  case maybePkgLockV3 of
+    Left errMsg -> describe "packageLockV3 (scoped)" $ it "should parse lockfile" (expectationFailure errMsg)
+    Right pkgLockV3 -> buildGraphSpec (buildGraph (Just selectedPaths) pkgLockV3)

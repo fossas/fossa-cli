@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.15
+
+- npm: Scoping a scan to a single workspace build target (`--only-target`) now works for v3 `package-lock.json` files (npm v9+). Previously each workspace returned the full repo-wide dependency set instead of its own. ([#1734](https://github.com/fossas/fossa-cli/pull/1734))
+
 ## 3.17.14
 
 - Licensing: Detect Unicode 3.0 license. ([#1731](https://github.com/fossas/fossa-cli/pull/1731))

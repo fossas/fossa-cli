@@ -9,6 +9,7 @@ module Strategy.Node (
   getDeps,
   findWorkspaceBuildTargets,
   extractDepListsForTargets,
+  resolveNpmV3WorkspacePaths,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -39,7 +40,7 @@ import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty qualified as NonEmptySet
-import Data.String.Conversion (decodeUtf8, toString)
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Tagged (applyTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -73,6 +74,7 @@ import Path (
   Rel,
   mkRelFile,
   parent,
+  stripProperPrefix,
   toFilePath,
   (</>),
  )
@@ -99,6 +101,7 @@ import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
 import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs))
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
+import System.FilePath qualified as FP
 import Types (
   BuildTarget (BuildTarget),
   DependencyResults (DependencyResults),
@@ -222,7 +225,7 @@ analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> M
 analyzeNpmLock targets (Manifest npmLockFile) graph = do
   npmLockVersion <- detectNpmLockVersion npmLockFile
   result <- case npmLockVersion of
-    NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile
+    NpmLockV3Compatible -> PackageLockV3.analyze (resolveNpmV3WorkspacePaths targets graph) npmLockFile
     NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
@@ -306,6 +309,36 @@ findWorkspaceNames PkgJsonGraph{..} =
 
     workspaceNames :: [Text]
     workspaceNames = mapMaybe (packageName <=< flip Map.lookup jsonLookup) childManifests
+
+-- | Map selected build targets (workspace package names) to the root-relative
+-- path keys npm v3 lockfiles use: @""@ for the root, @"packages/a"@ for a
+-- member. 'Nothing' means no target filter, so no scoping is applied.
+resolveNpmV3WorkspacePaths :: FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
+resolveNpmV3WorkspacePaths ProjectWithoutTargets _ = Nothing
+resolveNpmV3WorkspacePaths (FoundTargets targets) graph@PkgJsonGraph{..} =
+  case findWorkspaceRootManifest graph of
+    Left _ -> Nothing
+    Right (Manifest rootManifest) ->
+      Just $ Set.fromList [path | (name, path) <- namePathPairs, name `Set.member` targetNames]
+      where
+        rootDir = parent rootManifest
+        targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
+
+        namePathPairs :: [(Text, Text)]
+        namePathPairs =
+          [ (name, manifestToWorkspacePath m)
+          | (Manifest m, pj) <- Map.toList jsonLookup
+          , Just name <- [packageName pj]
+          ]
+
+        manifestToWorkspacePath :: Path Abs File -> Text
+        manifestToWorkspacePath m =
+          let manifestDir = parent m
+           in if manifestDir == rootDir
+                then ""
+                -- npm keys workspaces with forward slashes on every OS, so
+                -- normalize the platform separator before matching.
+                else maybe "" (Text.replace "\\" "/" . toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
 
 extractDepLists :: PkgJsonGraph -> FlatDeps
 extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
