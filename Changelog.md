@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.14
+
+- Licensing: Detect Unicode 3.0 license. ([#1731](https://github.com/fossas/fossa-cli/pull/1731))
+
 ## 3.17.13
 
 - Licensing: Detect the Lucky Penny Software RPL-1.5 dual-license notice (AutoMapper, MediatR), resolving it to `rpl-1.5 OR proprietary-license` instead of `unknown`. ([#1729](https://github.com/fossas/fossa-cli/pull/1729))
