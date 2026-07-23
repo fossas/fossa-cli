@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Npm: Support target-level dependency scoping for v3 lockfiles (npm v9+ workspaces). ([#NNNN](https://github.com/fossas/fossa-cli/pull/NNNN))
+- Npm: Support target-level dependency scoping for v3 lockfiles (npm v9+ workspaces). ([#1732](https://github.com/fossas/fossa-cli/pull/1732))
 
 ## 3.17.14
 
