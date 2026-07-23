@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Node: Workspaces declared with a leading `./` (for example `./packages/*`) are now matched, so their members are analyzed and their production dependencies are no longer dropped from the results. ([#1733](https://github.com/fossas/fossa-cli/pull/1733))
+- Npm: Support target-level dependency scoping for v3 lockfiles (npm v9+ workspaces). ([#NNNN](https://github.com/fossas/fossa-cli/pull/NNNN))
 
 ## 3.17.14
 

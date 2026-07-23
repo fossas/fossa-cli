@@ -15,7 +15,7 @@ module Strategy.Node.Npm.PackageLockV3 (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Monad (unless)
+import Control.Monad (unless, when)
 import Data.Aeson (
   FromJSON (parseJSON),
   FromJSONKey (fromJSONKey),
@@ -30,8 +30,10 @@ import Data.Aeson (
 import Data.Foldable (find, for_, traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, isJust, mapMaybe)
+import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Set.NonEmpty qualified as NonEmptySet
 import Data.Text (Text, breakOnEnd)
 import Data.Text qualified as Text
 import DepTypes (
@@ -43,11 +45,13 @@ import DepTypes (
 import Effect.Grapher (direct, edge, evalGrapher, run)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
+import Graphing qualified
 import Path (
   Abs,
   File,
   Path,
  )
+import Types (FoundTargets (..), unBuildTarget)
 
 data PackageLockV3 = PackageLockV3
   { rootPackage :: PackageLockV3Package
@@ -136,26 +140,30 @@ instance FromJSON PackageName where
 
 -- | Describes package and it's dependencies.
 data PackageLockV3Package = PackageLockV3Package
-  { plV3PkgVersion :: Maybe Text
+  { plV3PkgName :: Maybe Text
+  , plV3PkgVersion :: Maybe Text
   , plV3PkgResolved :: NpmLockV3Resolved
   , plV3PkgDependencies :: Map PackageName Text
   , plV3PkgDevDependencies :: Map PackageName Text
   , plV3PkgOptionalDependencies :: Map PackageName Text
   , plV3PkgPeerDependencies :: Map PackageName Text
   , plV3PkgDev :: Bool
+  , plV3PkgLink :: Bool
   }
   deriving (Show, Eq, Ord)
 
 instance FromJSON PackageLockV3Package where
   parseJSON = withObject "PackageLockV3Package" $ \obj ->
     PackageLockV3Package
-      <$> obj .:? "version"
+      <$> obj .:? "name"
+      <*> obj .:? "version"
       <*> obj .:? "resolved" .!= (NpmLockV3Resolved Nothing)
       <*> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
       <*> obj .:? "optionalDependencies" .!= mempty
       <*> obj .:? "peerDependencies" .!= mempty
       <*> obj .:? "dev" .!= False -- if 'dev' key is not included, it is presumed to be prod dependency
+      <*> obj .:? "link" .!= False -- 'link' is only present (and true) for workspace link entries
 
 newtype NpmLockV3Resolved = NpmLockV3Resolved {unNpmLockV3Resolved :: Maybe Text}
   deriving (Eq, Ord, Show)
@@ -165,10 +173,10 @@ instance FromJSON NpmLockV3Resolved where
   parseJSON (Bool _) = pure $ NpmLockV3Resolved Nothing
   parseJSON _ = fail "Expected to contain string or boolean value for 'resolved' field!"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze file = context "Analyzing Npm Lockfile (v3)" $ do
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FoundTargets -> m (Graphing Dependency)
+analyze file targets = context "Analyzing Npm Lockfile (v3)" $ do
   packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
-  context "Building dependency graph" $ pure $ buildGraph packageLockJson
+  context "Building dependency graph" $ pure $ buildGraph targets packageLockJson
 
 -- | Builds a graph for package lock v3.
 --
@@ -218,9 +226,19 @@ analyze file = context "Analyzing Npm Lockfile (v3)" $ do
 --    - https://docs.npmjs.com/cli/v8/using-npm/workspaces
 --    - http://npm.github.io/how-npm-works-docs/npm3/how-npm3-works.html
 --
+--  Target scoping:
+--
+--  When a proper subset of the project's build targets is selected (via
+--  --only-target / --exclude-target), only the selected root/workspace
+--  entries mark their dependencies as direct, and the graph is pruned to
+--  what is reachable from those directs. Selection matches build target
+--  names against the "name" field of root/workspace entries. When all
+--  targets are selected (the default), or no entry matches, the whole
+--  unscoped graph is produced, preserving pre-scoping output exactly.
+--
 --  --
-buildGraph :: PackageLockV3 -> Graphing Dependency
-buildGraph pkgLockV3 = run . evalGrapher $ do
+buildGraph :: FoundTargets -> PackageLockV3 -> Graphing Dependency
+buildGraph foundTargets pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
   for_ (Map.toList $ packages pkgLockV3) $ \(pkgPathKey, pkgMetadata) -> do
     case pkgPathKey of
       -- For root package,
@@ -249,22 +267,23 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
       -- to version spec (e.g. ^1.0.0) provided in 'dependencies' field.
       --
       -- Root's direct dependencies are always resolved at top-path.
-      PackageLockV3Root -> do
-        let directDeps :: [PackagePath]
-            directDeps =
-              map toTopLevelPackage $
-                concatMap
-                  Map.keys
-                  [ plV3PkgDependencies pkgMetadata
-                  , plV3PkgDevDependencies pkgMetadata
-                  , plV3PkgPeerDependencies pkgMetadata
-                  , plV3PkgOptionalDependencies pkgMetadata
-                  ]
+      PackageLockV3Root ->
+        when (isSelected PackageLockV3Root) $ do
+          let directDeps :: [PackagePath]
+              directDeps =
+                map toTopLevelPackage $
+                  concatMap
+                    Map.keys
+                    [ plV3PkgDependencies pkgMetadata
+                    , plV3PkgDevDependencies pkgMetadata
+                    , plV3PkgPeerDependencies pkgMetadata
+                    , plV3PkgOptionalDependencies pkgMetadata
+                    ]
 
-        let resolvedDeps :: [Dependency]
-            resolvedDeps = mapMaybe toDependency directDeps
+          let resolvedDeps :: [Dependency]
+              resolvedDeps = resolveDirectDeps PackageLockV3Root directDeps
 
-        traverse_ direct resolvedDeps
+          traverse_ direct resolvedDeps
 
       -- For workspace packages, for instance:
       --
@@ -288,22 +307,23 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
       -- Direct Dependencies within workspace pkg are treated as direct.
       -- Direct Peer Dependencies within workspace pkg are treated as direct.
       -- Development Dependencies within workspace pkg are treated as direct development.
-      PackageLockV3WorkSpace workspaceRootPath -> do
-        let directDeps :: [PackagePath]
-            directDeps =
-              map (vendoredPathElseTopLevelPath workspaceRootPath) $
-                concatMap
-                  Map.keys
-                  [ plV3PkgDependencies pkgMetadata
-                  , plV3PkgDevDependencies pkgMetadata
-                  , plV3PkgPeerDependencies pkgMetadata
-                  , plV3PkgOptionalDependencies pkgMetadata
-                  ]
+      PackageLockV3WorkSpace workspaceRootPath ->
+        when (isSelected (PackageLockV3WorkSpace workspaceRootPath)) $ do
+          let directDeps :: [PackagePath]
+              directDeps =
+                map (vendoredPathElseTopLevelPath workspaceRootPath) $
+                  concatMap
+                    Map.keys
+                    [ plV3PkgDependencies pkgMetadata
+                    , plV3PkgDevDependencies pkgMetadata
+                    , plV3PkgPeerDependencies pkgMetadata
+                    , plV3PkgOptionalDependencies pkgMetadata
+                    ]
 
-        let resolvedDeps :: [Dependency]
-            resolvedDeps = mapMaybe toDependency directDeps
+          let resolvedDeps :: [Dependency]
+              resolvedDeps = resolveDirectDeps (PackageLockV3WorkSpace workspaceRootPath) directDeps
 
-        traverse_ direct resolvedDeps
+          traverse_ direct resolvedDeps
 
       -- For typical dependency packages, for instance:
       --
@@ -344,14 +364,98 @@ buildGraph pkgLockV3 = run . evalGrapher $ do
                   , plV3PkgOptionalDependencies pkgMetadata
                   ]
 
+        -- When scoping, drop edges to workspace link stubs: they have no
+        -- version, and the linked workspace's deps are attributed via
+        -- 'resolveDirectDeps' when that workspace (or a consumer) is selected.
         let resolvedDeepDeps :: [Dependency]
-            resolvedDeepDeps = mapMaybe toDependency deepDeps
+            resolvedDeepDeps =
+              mapMaybe toDependency $
+                if isScoped
+                  then filter (not . isLinkEntry) deepDeps
+                  else deepDeps
 
         case currentDep of
           Nothing -> pure () -- This will never happen, given that we are iterating on same package path.
           Just parentDep -> do
             for_ resolvedDeepDeps $ edge parentDep
   where
+    -- Root/workspace entries selected for analysis. @Nothing@ means the
+    -- analysis is unscoped (all entries are selected), which must preserve
+    -- pre-scoping output exactly. Falls back to unscoped when no entry
+    -- matches any target (e.g. entries missing a "name" field), so a bad
+    -- selection never silently produces an empty graph.
+    scopedSelection :: Maybe (Set PackagePath)
+    scopedSelection = case foundTargets of
+      ProjectWithoutTargets -> Nothing
+      FoundTargets targets ->
+        let targetNames :: Set Text
+            targetNames = Set.map unBuildTarget $ NonEmptySet.toSet targets
+
+            topLevelEntries :: Map PackagePath PackageLockV3Package
+            topLevelEntries = Map.filterWithKey (\k _ -> isTopLevelEntry k) (packages pkgLockV3)
+
+            selected :: Set PackagePath
+            selected = Map.keysSet $ Map.filter (maybe False (`Set.member` targetNames) . plV3PkgName) topLevelEntries
+         in if Set.null selected || selected == Map.keysSet topLevelEntries
+              then Nothing
+              else Just selected
+
+    isTopLevelEntry :: PackagePath -> Bool
+    isTopLevelEntry = \case
+      PackageLockV3Root -> True
+      PackageLockV3WorkSpace _ -> True
+      PackageLockV3PathKey _ _ -> False
+
+    isScoped :: Bool
+    isScoped = isJust scopedSelection
+
+    isSelected :: PackagePath -> Bool
+    isSelected pkgPath = maybe True (Set.member pkgPath) scopedSelection
+
+    pruneIfScoped :: Graphing Dependency -> Graphing Dependency
+    pruneIfScoped = if isScoped then Graphing.pruneUnreachable else id
+
+    -- Converts the resolved direct dependency paths of a root/workspace entry
+    -- to dependencies. When scoping, workspace link stubs are expanded into
+    -- the linked workspace's own dependencies (see 'expandLinks'); unscoped
+    -- analysis reports them as-is to preserve pre-scoping output.
+    resolveDirectDeps :: PackagePath -> [PackagePath] -> [Dependency]
+    resolveDirectDeps selfPath depPaths
+      | isScoped = mapMaybe toDependency $ concatMap (expandLinks (Set.singleton selfPath)) depPaths
+      | otherwise = mapMaybe toDependency depPaths
+
+    -- Expands a workspace link stub (e.g. "node_modules/some-ws-name" with
+    -- "link": true and "resolved" pointing at the workspace's path) into the
+    -- linked workspace's own resolved prod/peer/optional dependencies, so a
+    -- selected workspace's dependency on a sibling workspace is attributed
+    -- to the sibling's real dependencies instead of a versionless link stub.
+    -- The visited set guards against mutually-dependent workspaces.
+    expandLinks :: Set PackagePath -> PackagePath -> [PackagePath]
+    expandLinks visited pkgPath = case linkTarget pkgPath of
+      Nothing -> [pkgPath]
+      Just linkedPath
+        | linkedPath `Set.member` visited -> []
+        | otherwise -> case (linkedPath, Map.lookup linkedPath (packages pkgLockV3)) of
+            (PackageLockV3WorkSpace workspacePath, Just workspaceMeta) ->
+              concatMap (expandLinks (Set.insert linkedPath visited)) $
+                map (vendoredPathElseTopLevelPath workspacePath) $
+                  concatMap
+                    Map.keys
+                    [ plV3PkgDependencies workspaceMeta
+                    , plV3PkgPeerDependencies workspaceMeta
+                    , plV3PkgOptionalDependencies workspaceMeta
+                    ]
+            _ -> []
+
+    -- Resolves a link stub to the entry it points at.
+    linkTarget :: PackagePath -> Maybe PackagePath
+    linkTarget pkgPath = case Map.lookup pkgPath (packages pkgLockV3) of
+      Just meta | plV3PkgLink meta -> parsePathKey <$> unNpmLockV3Resolved (plV3PkgResolved meta)
+      _ -> Nothing
+
+    isLinkEntry :: PackagePath -> Bool
+    isLinkEntry pkgPath = maybe False plV3PkgLink $ Map.lookup pkgPath $ packages pkgLockV3
+
     -- Prefer resolution path in following order of precedent:
     --
     --  1) {prefix}/node_modules/{pkgName}

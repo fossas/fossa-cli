@@ -222,7 +222,7 @@ analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> M
 analyzeNpmLock targets (Manifest npmLockFile) graph = do
   npmLockVersion <- detectNpmLockVersion npmLockFile
   result <- case npmLockVersion of
-    NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile
+    NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile targets
     NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
