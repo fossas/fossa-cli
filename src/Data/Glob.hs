@@ -14,6 +14,7 @@ module Data.Glob (
   (</>),
   prefixWith,
   toGlob,
+  normalize,
 
   -- * Types
 
@@ -67,6 +68,12 @@ matches path glob = unGlob glob Match.?== toString path
 -- | Append a filepath to an existing glob.
 append :: String -> Glob b -> Glob b
 append str glob = Glob $ unGlob glob FP.</> str
+
+-- | Normalize a glob's path so matching sees a canonical form. Collapses @./@
+-- and redundant @//@ separators. Glob metacharacters (@*@, @**@), pnpm negation
+-- (@!@), and @..@ segments are left unchanged.
+normalize :: Glob a -> Glob a
+normalize (Glob s) = Glob $ FP.normalise s
 
 -- | UNSAFE: Coerce any string to a relative glob.
 unsafeGlobRel :: String -> Glob Rel
