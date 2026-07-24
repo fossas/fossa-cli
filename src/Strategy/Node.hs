@@ -218,7 +218,7 @@ analyzeBunLock (Manifest bunLockFile) = do
   result <- BunLock.analyze bunLockFile
   pure $ DependencyResults result Complete [bunLockFile]
 
-analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
+analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
 analyzeNpmLock targets (Manifest npmLockFile) graph = do
   npmLockVersion <- detectNpmLockVersion npmLockFile
   result <- case npmLockVersion of

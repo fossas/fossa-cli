@@ -43,6 +43,7 @@ import DepTypes (
   VerConstraint (CEq),
  )
 import Effect.Grapher (direct, edge, evalGrapher, run)
+import Effect.Logger (Logger, logWarn, pretty)
 import Effect.ReadFS (ReadFS, readContentsJson)
 import Graphing (Graphing)
 import Graphing qualified
@@ -173,10 +174,48 @@ instance FromJSON NpmLockV3Resolved where
   parseJSON (Bool _) = pure $ NpmLockV3Resolved Nothing
   parseJSON _ = fail "Expected to contain string or boolean value for 'resolved' field!"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> FoundTargets -> m (Graphing Dependency)
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs File -> FoundTargets -> m (Graphing Dependency)
 analyze file targets = context "Analyzing Npm Lockfile (v3)" $ do
   packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
+  case (targets, scopedSelection targets packageLockJson) of
+    (FoundTargets targetNames, Just selected) ->
+      when (Set.null selected) $
+        logWarn . pretty $
+          "Target filter ("
+            <> Text.intercalate ", " (map unBuildTarget (Set.toList (NonEmptySet.toSet targetNames)))
+            <> ") did not match any root or workspace entry in the v3 lockfile; reporting an empty dependency graph."
+    _ -> pure ()
   context "Building dependency graph" $ pure $ buildGraph targets packageLockJson
+
+-- | Root/workspace entries selected for analysis, shared by 'analyze' and
+-- 'buildGraph'. @Nothing@ means the analysis is unscoped (all entries are
+-- selected), which must preserve pre-scoping output exactly: this happens
+-- when the project has no targets, or when the selection covers every
+-- root/workspace entry (the default when no target filter is applied). A
+-- selection matching no entry yields @Just Set.empty@: no entry marks its
+-- dependencies as direct, so pruning produces an empty graph ('analyze'
+-- warns when this happens).
+scopedSelection :: FoundTargets -> PackageLockV3 -> Maybe (Set PackagePath)
+scopedSelection foundTargets pkgLockV3 = case foundTargets of
+  ProjectWithoutTargets -> Nothing
+  FoundTargets targets ->
+    let targetNames :: Set Text
+        targetNames = Set.map unBuildTarget $ NonEmptySet.toSet targets
+
+        topLevelEntries :: Map PackagePath PackageLockV3Package
+        topLevelEntries = Map.filterWithKey (\k _ -> isTopLevelEntry k) (packages pkgLockV3)
+
+        selected :: Set PackagePath
+        selected = Map.keysSet $ Map.filter (maybe False (`Set.member` targetNames) . plV3PkgName) topLevelEntries
+     in if selected == Map.keysSet topLevelEntries
+          then Nothing
+          else Just selected
+  where
+    isTopLevelEntry :: PackagePath -> Bool
+    isTopLevelEntry = \case
+      PackageLockV3Root -> True
+      PackageLockV3WorkSpace _ -> True
+      PackageLockV3PathKey _ _ -> False
 
 -- | Builds a graph for package lock v3.
 --
@@ -232,9 +271,11 @@ analyze file targets = context "Analyzing Npm Lockfile (v3)" $ do
 --  --only-target / --exclude-target), only the selected root/workspace
 --  entries mark their dependencies as direct, and the graph is pruned to
 --  what is reachable from those directs. Selection matches build target
---  names against the "name" field of root/workspace entries. When all
---  targets are selected (the default), or no entry matches, the whole
---  unscoped graph is produced, preserving pre-scoping output exactly.
+--  names against the "name" field of root/workspace entries. Only when all
+--  targets are selected (the default) or the project has no targets is the
+--  whole unscoped graph produced, preserving pre-scoping output exactly. A
+--  selection matching no entry produces an empty graph ('analyze' warns
+--  when this happens, honoring the user's filter as v1/v2 scoping does).
 --
 --  --
 buildGraph :: FoundTargets -> PackageLockV3 -> Graphing Dependency
@@ -379,38 +420,14 @@ buildGraph foundTargets pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
           Just parentDep -> do
             for_ resolvedDeepDeps $ edge parentDep
   where
-    -- Root/workspace entries selected for analysis. @Nothing@ means the
-    -- analysis is unscoped (all entries are selected), which must preserve
-    -- pre-scoping output exactly. Falls back to unscoped when no entry
-    -- matches any target (e.g. entries missing a "name" field), so a bad
-    -- selection never silently produces an empty graph.
-    scopedSelection :: Maybe (Set PackagePath)
-    scopedSelection = case foundTargets of
-      ProjectWithoutTargets -> Nothing
-      FoundTargets targets ->
-        let targetNames :: Set Text
-            targetNames = Set.map unBuildTarget $ NonEmptySet.toSet targets
-
-            topLevelEntries :: Map PackagePath PackageLockV3Package
-            topLevelEntries = Map.filterWithKey (\k _ -> isTopLevelEntry k) (packages pkgLockV3)
-
-            selected :: Set PackagePath
-            selected = Map.keysSet $ Map.filter (maybe False (`Set.member` targetNames) . plV3PkgName) topLevelEntries
-         in if Set.null selected || selected == Map.keysSet topLevelEntries
-              then Nothing
-              else Just selected
-
-    isTopLevelEntry :: PackagePath -> Bool
-    isTopLevelEntry = \case
-      PackageLockV3Root -> True
-      PackageLockV3WorkSpace _ -> True
-      PackageLockV3PathKey _ _ -> False
+    selection :: Maybe (Set PackagePath)
+    selection = scopedSelection foundTargets pkgLockV3
 
     isScoped :: Bool
-    isScoped = isJust scopedSelection
+    isScoped = isJust selection
 
     isSelected :: PackagePath -> Bool
-    isSelected pkgPath = maybe True (Set.member pkgPath) scopedSelection
+    isSelected pkgPath = maybe True (Set.member pkgPath) selection
 
     pruneIfScoped :: Graphing Dependency -> Graphing Dependency
     pruneIfScoped = if isScoped then Graphing.pruneUnreachable else id

@@ -470,9 +470,9 @@ simplePackageLockScopingSpec pkgLockV3 = do
       buildGraph (mkTargets ["lockv3", "workspace-a-name"]) pkgLockV3
         `shouldBe` buildGraph ProjectWithoutTargets pkgLockV3
 
-    it "should fall back to the unscoped graph when no target matches a lockfile entry" $
+    it "should produce an empty graph when no target matches a lockfile entry" $
       buildGraph (mkTargets ["does-not-exist"]) pkgLockV3
-        `shouldBe` buildGraph ProjectWithoutTargets pkgLockV3
+        `shouldBe` Graphing.empty
 
 workspaceLinksGraphSpec :: PackageLockV3 -> Spec
 workspaceLinksGraphSpec pkgLockV3 = do
