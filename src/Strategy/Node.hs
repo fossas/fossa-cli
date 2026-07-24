@@ -327,7 +327,7 @@ resolveNpmV3WorkspacePaths (FoundTargets targets) graph@PkgJsonGraph{..} =
         namePathPairs :: [(Text, Text)]
         namePathPairs =
           mapMaybe
-            (\(Manifest m, pj) -> fmap (\name -> (name, manifestToWorkspacePath m)) (packageName pj))
+            (\(Manifest m, pj) -> fmap (,manifestToWorkspacePath m) (packageName pj))
             (Map.toList jsonLookup)
 
         manifestToWorkspacePath :: Path Abs File -> Text
