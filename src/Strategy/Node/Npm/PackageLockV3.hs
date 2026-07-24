@@ -33,7 +33,6 @@ import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Set.NonEmpty qualified as NonEmptySet
 import Data.Text (Text, breakOnEnd)
 import Data.Text qualified as Text
 import DepTypes (
@@ -52,7 +51,6 @@ import Path (
   File,
   Path,
  )
-import Types (FoundTargets (..), unBuildTarget)
 
 data PackageLockV3 = PackageLockV3
   { rootPackage :: PackageLockV3Package
@@ -141,8 +139,7 @@ instance FromJSON PackageName where
 
 -- | Describes package and it's dependencies.
 data PackageLockV3Package = PackageLockV3Package
-  { plV3PkgName :: Maybe Text
-  , plV3PkgVersion :: Maybe Text
+  { plV3PkgVersion :: Maybe Text
   , plV3PkgResolved :: NpmLockV3Resolved
   , plV3PkgDependencies :: Map PackageName Text
   , plV3PkgDevDependencies :: Map PackageName Text
@@ -156,8 +153,7 @@ data PackageLockV3Package = PackageLockV3Package
 instance FromJSON PackageLockV3Package where
   parseJSON = withObject "PackageLockV3Package" $ \obj ->
     PackageLockV3Package
-      <$> obj .:? "name"
-      <*> obj .:? "version"
+      <$> obj .:? "version"
       <*> obj .:? "resolved" .!= (NpmLockV3Resolved Nothing)
       <*> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
@@ -174,43 +170,47 @@ instance FromJSON NpmLockV3Resolved where
   parseJSON (Bool _) = pure $ NpmLockV3Resolved Nothing
   parseJSON _ = fail "Expected to contain string or boolean value for 'resolved' field!"
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs File -> FoundTargets -> m (Graphing Dependency)
-analyze file targets = context "Analyzing Npm Lockfile (v3)" $ do
+-- | Analyzes a v3 lockfile, optionally scoped to the given root-relative
+-- workspace paths (@""@ for the root project, @"packages/a"@ for a workspace
+-- member), as resolved from the selected build targets by
+-- 'Strategy.Node.resolveNpmV3WorkspacePaths'. @Nothing@ means no target
+-- filter is applied, so the whole unscoped graph is produced.
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Maybe (Set Text) -> Path Abs File -> m (Graphing Dependency)
+analyze selectedPaths file = context "Analyzing Npm Lockfile (v3)" $ do
   packageLockJson <- context "Parsing v3 compatible package-lock.json" $ readContentsJson @PackageLockV3 file
-  case (targets, scopedSelection targets packageLockJson) of
-    (FoundTargets targetNames, Just selected) ->
+  case (selectedPaths, scopedSelection selectedPaths packageLockJson) of
+    (Just paths, Just selected) ->
       when (Set.null selected) $
         logWarn . pretty $
-          "Target filter ("
-            <> Text.intercalate ", " (map unBuildTarget (Set.toList (NonEmptySet.toSet targetNames)))
+          "Target filter (resolved workspace paths: "
+            <> Text.intercalate ", " (Set.toList paths)
             <> ") did not match any root or workspace entry in the v3 lockfile; reporting an empty dependency graph."
     _ -> pure ()
-  context "Building dependency graph" $ pure $ buildGraph targets packageLockJson
+  context "Building dependency graph" $ pure $ buildGraph selectedPaths packageLockJson
 
 -- | Root/workspace entries selected for analysis, shared by 'analyze' and
--- 'buildGraph'. @Nothing@ means the analysis is unscoped (all entries are
--- selected), which must preserve pre-scoping output exactly: this happens
--- when the project has no targets, or when the selection covers every
--- root/workspace entry (the default when no target filter is applied). A
--- selection matching no entry yields @Just Set.empty@: no entry marks its
--- dependencies as direct, so pruning produces an empty graph ('analyze'
--- warns when this happens).
-scopedSelection :: FoundTargets -> PackageLockV3 -> Maybe (Set PackagePath)
-scopedSelection foundTargets pkgLockV3 = case foundTargets of
-  ProjectWithoutTargets -> Nothing
-  FoundTargets targets ->
-    let targetNames :: Set Text
-        targetNames = Set.map unBuildTarget $ NonEmptySet.toSet targets
-
-        topLevelEntries :: Map PackagePath PackageLockV3Package
-        topLevelEntries = Map.filterWithKey (\k _ -> isTopLevelEntry k) (packages pkgLockV3)
-
-        selected :: Set PackagePath
-        selected = Map.keysSet $ Map.filter (maybe False (`Set.member` targetNames) . plV3PkgName) topLevelEntries
-     in if selected == Map.keysSet topLevelEntries
-          then Nothing
-          else Just selected
+-- 'buildGraph'. The given root-relative workspace paths are parsed into the
+-- lockfile's top-level path keys ('PackageLockV3Root' / 'PackageLockV3WorkSpace')
+-- and intersected with the entries actually present in the lockfile.
+-- @Nothing@ means the analysis is unscoped (all entries are selected), which
+-- must preserve pre-scoping output exactly: this happens when no target
+-- filter is applied, or when the selection covers every root/workspace entry
+-- (the default when all targets are selected). A selection matching no entry
+-- yields @Just Set.empty@: no entry marks its dependencies as direct, so
+-- pruning produces an empty graph ('analyze' warns when this happens).
+scopedSelection :: Maybe (Set Text) -> PackageLockV3 -> Maybe (Set PackagePath)
+scopedSelection Nothing _ = Nothing
+scopedSelection (Just paths) pkgLockV3 =
+  if selected == topLevelEntries
+    then Nothing
+    else Just selected
   where
+    topLevelEntries :: Set PackagePath
+    topLevelEntries = Set.filter isTopLevelEntry (Map.keysSet (packages pkgLockV3))
+
+    selected :: Set PackagePath
+    selected = Set.map parsePathKey paths `Set.intersection` topLevelEntries
+
     isTopLevelEntry :: PackagePath -> Bool
     isTopLevelEntry = \case
       PackageLockV3Root -> True
@@ -270,16 +270,20 @@ scopedSelection foundTargets pkgLockV3 = case foundTargets of
 --  When a proper subset of the project's build targets is selected (via
 --  --only-target / --exclude-target), only the selected root/workspace
 --  entries mark their dependencies as direct, and the graph is pruned to
---  what is reachable from those directs. Selection matches build target
---  names against the "name" field of root/workspace entries. Only when all
---  targets are selected (the default) or the project has no targets is the
---  whole unscoped graph produced, preserving pre-scoping output exactly. A
---  selection matching no entry produces an empty graph ('analyze' warns
---  when this happens, honoring the user's filter as v1/v2 scoping does).
+--  what is reachable from those directs. Selected build target names are
+--  resolved to root-relative workspace paths via their package.json
+--  manifests (see 'Strategy.Node.resolveNpmV3WorkspacePaths'), and those
+--  paths are matched against the lockfile's top-level path keys, so
+--  selection works even when a lockfile entry omits its "name" field. Only
+--  when all targets are selected (the default) or the project has no
+--  targets is the whole unscoped graph produced, preserving pre-scoping
+--  output exactly. A selection matching no entry produces an empty graph
+--  ('analyze' warns when this happens, honoring the user's filter as v1/v2
+--  scoping does).
 --
 --  --
-buildGraph :: FoundTargets -> PackageLockV3 -> Graphing Dependency
-buildGraph foundTargets pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
+buildGraph :: Maybe (Set Text) -> PackageLockV3 -> Graphing Dependency
+buildGraph selectedPaths pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
   for_ (Map.toList $ packages pkgLockV3) $ \(pkgPathKey, pkgMetadata) -> do
     case pkgPathKey of
       -- For root package,
@@ -421,7 +425,7 @@ buildGraph foundTargets pkgLockV3 = pruneIfScoped . run . evalGrapher $ do
             for_ resolvedDeepDeps $ edge parentDep
   where
     selection :: Maybe (Set PackagePath)
-    selection = scopedSelection foundTargets pkgLockV3
+    selection = scopedSelection selectedPaths pkgLockV3
 
     isScoped :: Bool
     isScoped = isJust selection

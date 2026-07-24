@@ -13,7 +13,7 @@ import Data.Tagged (applyTag)
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps)
+import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, resolveNpmV3WorkspacePaths)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -57,6 +57,7 @@ spec = do
   npmLockAnalysisSpec currDir
   workspaceBuildTargetsSpec currDir
   extractDepListsForTargetsSpec currDir
+  resolveNpmV3WorkspacePathsSpec currDir
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =
@@ -237,6 +238,35 @@ extractDepListsForTargetsSpec currDir = describe "extractDepListsForTargets" $ d
             , NodePackage "husky" "^8.0.0"
             ]
     directDeps result `shouldBe` applyTag @Production expectedDirect
+
+resolveNpmV3WorkspacePathsSpec :: Path Abs Dir -> Spec
+resolveNpmV3WorkspacePathsSpec currDir = describe "resolveNpmV3WorkspacePaths" $ do
+  let graph = workspaceGraphWithDeps currDir
+      forTargets names =
+        resolveNpmV3WorkspacePaths
+          (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList (map BuildTarget names))
+          graph
+
+  it "returns Nothing when unscoped" $
+    resolveNpmV3WorkspacePaths ProjectWithoutTargets graph `shouldBe` Nothing
+
+  it "maps a workspace name to its root-relative lockfile path key" $
+    -- pkg-a lives at ./pkg-a, where the folder basename equals the package name,
+    -- so npm omits the lockfile "name"; resolving via package.json still finds it.
+    forTargets ["pkg-a"] `shouldBe` Just (Set.fromList ["pkg-a"])
+
+  it "maps the root target to the empty path key" $
+    forTargets ["workspace-test"] `shouldBe` Just (Set.fromList [""])
+
+  it "maps a nested workspace name to its nested path key" $
+    forTargets ["pkg-b"] `shouldBe` Just (Set.fromList ["nested/pkg-b"])
+
+  it "maps every selected target" $
+    forTargets ["workspace-test", "pkg-a", "pkg-b"]
+      `shouldBe` Just (Set.fromList ["", "pkg-a", "nested/pkg-b"])
+
+  it "resolves no paths when no target matches a manifest" $
+    forTargets ["does-not-exist"] `shouldBe` Just Set.empty
 
 -- | A workspace graph with actual dependencies for testing extractDepListsForTargets.
 workspaceGraphWithDeps :: Path Abs Dir -> PkgJsonGraph

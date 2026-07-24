@@ -7,8 +7,8 @@ module Node.PackageLockV3Spec (
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isNothing)
+import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.Set.NonEmpty qualified as NonEmptySet
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -42,7 +42,6 @@ import Strategy.Node.Npm.PackageLockV3 (
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
-import Types (BuildTarget (BuildTarget), FoundTargets (FoundTargets, ProjectWithoutTargets))
 
 fixtureSimplePackageLockPath :: Path Rel File
 fixtureSimplePackageLockPath = $(mkRelFile "simple-package-lock.json")
@@ -55,6 +54,9 @@ workspaceNestedModulePackageLockPath = $(mkRelFile "ws-nested-module-package-loc
 
 workspaceLinksPackageLockPath :: Path Rel File
 workspaceLinksPackageLockPath = $(mkRelFile "workspace-links-package-lock.json")
+
+namelessWorkspacePackageLockPath :: Path Rel File
+namelessWorkspacePackageLockPath = $(mkRelFile "nameless-workspace-package-lock.json")
 
 spec :: Spec
 spec = do
@@ -78,6 +80,7 @@ spec = do
   -- Target scoping
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockScopingSpec
   checkGraph (graphingFixtureDir </> workspaceLinksPackageLockPath) workspaceLinksGraphSpec
+  checkGraph (graphingFixtureDir </> namelessWorkspacePackageLockPath) namelessWorkspaceScopingSpec
 
 vendorPrefixesSpec :: Spec
 vendorPrefixesSpec = do
@@ -209,7 +212,7 @@ packageLockParseSpec testDir =
 simplePackageLockGraphSpec :: PackageLockV3 -> Spec
 simplePackageLockGraphSpec pkgLockV3 = do
   let graph :: Graphing Dependency
-      graph = buildGraph ProjectWithoutTargets pkgLockV3
+      graph = buildGraph Nothing pkgLockV3
 
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
@@ -367,7 +370,7 @@ simplePackageLockGraphSpec pkgLockV3 = do
 multiLevelVendorLockGraphSpec :: PackageLockV3 -> Spec
 multiLevelVendorLockGraphSpec pkgLockV3 = do
   let graph :: Graphing Dependency
-      graph = buildGraph ProjectWithoutTargets pkgLockV3
+      graph = buildGraph Nothing pkgLockV3
 
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
@@ -397,7 +400,7 @@ multiLevelVendorLockGraphSpec pkgLockV3 = do
 workspaceNestedModulePackageLockGraphSpec :: PackageLockV3 -> Spec
 workspaceNestedModulePackageLockGraphSpec pkgLockV3 = do
   let graph :: Graphing Dependency
-      graph = buildGraph ProjectWithoutTargets pkgLockV3
+      graph = buildGraph Nothing pkgLockV3
 
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
@@ -429,7 +432,7 @@ simplePackageLockScopingSpec :: PackageLockV3 -> Spec
 simplePackageLockScopingSpec pkgLockV3 = do
   describe "buildGraph with target scoping (simple fixture)" $ do
     it "should only include the selected workspace's dependencies" $ do
-      let graph = buildGraph (mkTargets ["workspace-a-name"]) pkgLockV3
+      let graph = buildGraph (scopeTo ["packages/a"]) pkgLockV3
 
       expectDirect
         [ mkProdDep "aws-sdk@1.0.0"
@@ -450,7 +453,7 @@ simplePackageLockScopingSpec pkgLockV3 = do
       expectEdge graph (mkProdDep "xml2js@0.2.4") (mkProdDep "sax@1.2.1")
 
     it "should only include the root package's dependencies when only the root is selected" $ do
-      let graph = buildGraph (mkTargets ["lockv3"]) pkgLockV3
+      let graph = buildGraph (scopeTo [""]) pkgLockV3
 
       expectDirect
         [ mkProdDep "3@2.1.0"
@@ -467,18 +470,22 @@ simplePackageLockScopingSpec pkgLockV3 = do
       shouldNotHaveDep (mkProdDep "xml2js@0.2.4") graph
 
     it "should produce the unscoped graph when all targets are selected" $
-      buildGraph (mkTargets ["lockv3", "workspace-a-name"]) pkgLockV3
-        `shouldBe` buildGraph ProjectWithoutTargets pkgLockV3
+      buildGraph (scopeTo ["", "packages/a"]) pkgLockV3
+        `shouldBe` buildGraph Nothing pkgLockV3
 
-    it "should produce an empty graph when no target matches a lockfile entry" $
-      buildGraph (mkTargets ["does-not-exist"]) pkgLockV3
+    it "should produce an empty graph when no resolved path matches a lockfile entry" $
+      buildGraph (scopeTo ["packages/does-not-exist"]) pkgLockV3
+        `shouldBe` Graphing.empty
+
+    it "should produce an empty graph when no target resolved to a workspace path" $
+      buildGraph (scopeTo []) pkgLockV3
         `shouldBe` Graphing.empty
 
 workspaceLinksGraphSpec :: PackageLockV3 -> Spec
 workspaceLinksGraphSpec pkgLockV3 = do
   describe "buildGraph with cross-workspace links" $ do
     it "should report link stubs as versionless deps when unscoped (pre-scoping behavior)" $ do
-      let graph = buildGraph ProjectWithoutTargets pkgLockV3
+      let graph = buildGraph Nothing pkgLockV3
 
       expectDirect
         [ mkProdDep "root-only@1.0.0"
@@ -491,7 +498,7 @@ workspaceLinksGraphSpec pkgLockV3 = do
         graph
 
     it "should attribute a linked sibling workspace's dependencies to the selected workspace" $ do
-      let graph = buildGraph (mkTargets ["@scope/ws-a"]) pkgLockV3
+      let graph = buildGraph (scopeTo ["packages/a"]) pkgLockV3
 
       expectDirect
         [ mkProdDep "external-a@1.0.0"
@@ -510,7 +517,7 @@ workspaceLinksGraphSpec pkgLockV3 = do
       expectNoVersionlessDeps graph
 
     it "should handle mutually-dependent workspaces without looping" $ do
-      let graph = buildGraph (mkTargets ["@scope/ws-b"]) pkgLockV3
+      let graph = buildGraph (scopeTo ["packages/b"]) pkgLockV3
 
       expectDirect
         [ mkProdDep "external-b@1.0.0"
@@ -528,23 +535,44 @@ workspaceLinksGraphSpec pkgLockV3 = do
       expectNoVersionlessDeps graph
 
     it "should not attribute sibling workspaces' dependencies to an unrelated workspace" $ do
-      let graph = buildGraph (mkTargets ["@scope/ws-c"]) pkgLockV3
+      let graph = buildGraph (scopeTo ["packages/c"]) pkgLockV3
 
       expectDirect [mkProdDep "external-c@1.0.0"] graph
       expectDeps [mkProdDep "external-c@1.0.0"] graph
 
     it "should scope to only the root package's dependencies" $ do
-      let graph = buildGraph (mkTargets ["monorepo-root"]) pkgLockV3
+      let graph = buildGraph (scopeTo [""]) pkgLockV3
 
       expectDirect [mkProdDep "root-only@1.0.0"] graph
       expectDeps [mkProdDep "root-only@1.0.0"] graph
 
     it "should produce the unscoped graph when all targets are selected" $
-      buildGraph (mkTargets ["monorepo-root", "@scope/ws-a", "@scope/ws-b", "@scope/ws-c"]) pkgLockV3
-        `shouldBe` buildGraph ProjectWithoutTargets pkgLockV3
+      buildGraph (scopeTo ["", "packages/a", "packages/b", "packages/c"]) pkgLockV3
+        `shouldBe` buildGraph Nothing pkgLockV3
 
-mkTargets :: [Text] -> FoundTargets
-mkTargets = maybe ProjectWithoutTargets FoundTargets . NonEmptySet.nonEmpty . Set.fromList . map BuildTarget
+-- | A workspace whose lockfile entry omits the "name" field, as npm does when
+-- the workspace's folder basename equals its package name. Path-based
+-- selection must still scope to it (name-based matching could not).
+namelessWorkspaceScopingSpec :: PackageLockV3 -> Spec
+namelessWorkspaceScopingSpec pkgLockV3 = do
+  describe "buildGraph with a workspace entry that has no name field" $ do
+    it "should scope to the workspace by its lockfile path" $ do
+      let graph = buildGraph (scopeTo ["packages/pkg-a"]) pkgLockV3
+
+      expectDirect [mkProdDep "ws-dep@1.0.0"] graph
+      expectDeps [mkProdDep "ws-dep@1.0.0"] graph
+
+    it "should exclude the nameless workspace's dependencies when only the root is selected" $ do
+      let graph = buildGraph (scopeTo [""]) pkgLockV3
+
+      expectDirect [mkProdDep "root-dep@1.0.0"] graph
+      expectDeps [mkProdDep "root-dep@1.0.0"] graph
+
+-- | Scope 'buildGraph' to the given root-relative workspace paths, as
+-- 'Strategy.Node.resolveNpmV3WorkspacePaths' resolves them from build
+-- target names.
+scopeTo :: [Text] -> Maybe (Set Text)
+scopeTo = Just . Set.fromList
 
 -- | The versionless dependency currently produced for a workspace link stub
 -- (e.g. @"node_modules/ws-name": { "resolved": "packages/a", "link": true }@)
