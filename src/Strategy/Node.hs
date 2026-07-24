@@ -327,17 +327,17 @@ resolveNpmV3WorkspacePaths (FoundTargets targets) graph@PkgJsonGraph{..} =
         namePathPairs :: [(Text, Text)]
         namePathPairs =
           mapMaybe
-            (\(Manifest m, pj) -> fmap (,manifestToWorkspacePath m) (packageName pj))
+            (\(Manifest m, pj) -> (,) <$> packageName pj <*> manifestToWorkspacePath m)
             (Map.toList jsonLookup)
 
-        manifestToWorkspacePath :: Path Abs File -> Text
+        manifestToWorkspacePath :: Path Abs File -> Maybe Text
         manifestToWorkspacePath m =
           let manifestDir = parent m
            in if manifestDir == rootDir
-                then ""
+                then Just ""
                 else -- npm keys workspaces with forward slashes on every OS, so
                 -- normalize the platform separator before matching.
-                  maybe "" (Text.replace "\\" "/" . toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
+                  fmap (Text.replace "\\" "/" . toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
 
 extractDepLists :: PkgJsonGraph -> FlatDeps
 extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
