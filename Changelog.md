@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Npm: Support target-level dependency scoping for v3 lockfiles (npm v9+ workspaces). ([#1732](https://github.com/fossas/fossa-cli/pull/1732))
+
 ## 3.17.14
 
 - Licensing: Detect Unicode 3.0 license. ([#1731](https://github.com/fossas/fossa-cli/pull/1731))

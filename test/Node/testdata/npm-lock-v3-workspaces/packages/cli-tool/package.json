@@ -1,0 +1,9 @@
+{
+  "name": "@fossa-test/cli-tool",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0"
+  }
+}

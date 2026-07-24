@@ -6,6 +6,8 @@ module Node.PackageLockV3Spec (
 
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Map.Strict qualified as Map
+import Data.Maybe (isNothing)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -19,10 +21,12 @@ import DepTypes (
 import Effect.ReadFS (readContentsJson)
 import GraphUtil (
   expectDep,
+  expectDeps,
   expectDirect,
   expectEdge,
  )
 import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Npm.PackageLockV3 (
@@ -48,6 +52,12 @@ multiLevelVendorLockPath = $(mkRelFile "multi-level-vendor-package-lock.json")
 workspaceNestedModulePackageLockPath :: Path Rel File
 workspaceNestedModulePackageLockPath = $(mkRelFile "ws-nested-module-package-lock.json")
 
+workspaceLinksPackageLockPath :: Path Rel File
+workspaceLinksPackageLockPath = $(mkRelFile "workspace-links-package-lock.json")
+
+namelessWorkspacePackageLockPath :: Path Rel File
+namelessWorkspacePackageLockPath = $(mkRelFile "nameless-workspace-package-lock.json")
+
 spec :: Spec
 spec = do
   currentDir <- runIO getCurrentDir
@@ -66,6 +76,11 @@ spec = do
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> workspaceNestedModulePackageLockPath) workspaceNestedModulePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> multiLevelVendorLockPath) multiLevelVendorLockGraphSpec
+
+  -- Target scoping
+  checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockScopingSpec
+  checkGraph (graphingFixtureDir </> workspaceLinksPackageLockPath) workspaceLinksGraphSpec
+  checkGraph (graphingFixtureDir </> namelessWorkspacePackageLockPath) namelessWorkspaceScopingSpec
 
 vendorPrefixesSpec :: Spec
 vendorPrefixesSpec = do
@@ -194,8 +209,11 @@ packageLockParseSpec testDir =
                 (packages pkgLockV3)
       foo `shouldBe'` Nothing
 
-simplePackageLockGraphSpec :: Graphing Dependency -> Spec
-simplePackageLockGraphSpec graph = do
+simplePackageLockGraphSpec :: PackageLockV3 -> Spec
+simplePackageLockGraphSpec pkgLockV3 = do
+  let graph :: Graphing Dependency
+      graph = buildGraph Nothing pkgLockV3
+
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
@@ -349,8 +367,11 @@ simplePackageLockGraphSpec graph = do
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "sax@1.2.1")
       hasEdge (mkProdDep "xml2js@0.4.19") (mkProdDep "xmlbuilder@9.0.7")
 
-multiLevelVendorLockGraphSpec :: Graphing Dependency -> Spec
-multiLevelVendorLockGraphSpec graph = do
+multiLevelVendorLockGraphSpec :: PackageLockV3 -> Spec
+multiLevelVendorLockGraphSpec pkgLockV3 = do
+  let graph :: Graphing Dependency
+      graph = buildGraph Nothing pkgLockV3
+
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
@@ -376,8 +397,11 @@ multiLevelVendorLockGraphSpec graph = do
       hasEdge (mkProdDep "log4js@6.7.0") (mkProdDep "debug@4.3.4")
       hasEdge (mkProdDep "debug@4.3.4") (mkProdDep "ms@2.1.2")
 
-workspaceNestedModulePackageLockGraphSpec :: Graphing Dependency -> Spec
-workspaceNestedModulePackageLockGraphSpec graph = do
+workspaceNestedModulePackageLockGraphSpec :: PackageLockV3 -> Spec
+workspaceNestedModulePackageLockGraphSpec pkgLockV3 = do
+  let graph :: Graphing Dependency
+      graph = buildGraph Nothing pkgLockV3
+
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
@@ -404,6 +428,171 @@ workspaceNestedModulePackageLockGraphSpec graph = do
       hasDep (mkProdDep "c@1.0.0")
       hasEdge (mkProdDep "b@2.0.0") (mkProdDep "c@1.0.0")
 
+simplePackageLockScopingSpec :: PackageLockV3 -> Spec
+simplePackageLockScopingSpec pkgLockV3 = do
+  describe "buildGraph with target scoping (simple fixture)" $ do
+    it "should only include the selected workspace's dependencies" $ do
+      let graph = buildGraph (scopeTo ["packages/a"]) pkgLockV3
+
+      expectDirect
+        [ mkProdDep "aws-sdk@1.0.0"
+        , mkProdDep "commander@9.2.0"
+        ]
+        graph
+
+      expectDeps
+        [ mkProdDep "aws-sdk@1.0.0"
+        , mkProdDep "commander@9.2.0"
+        , mkProdDep "xml2js@0.2.4"
+        , mkProdDep "xmlbuilder@9.0.7"
+        , mkProdDep "sax@1.2.1"
+        ]
+        graph
+
+      expectEdge graph (mkProdDep "aws-sdk@1.0.0") (mkProdDep "xml2js@0.2.4")
+      expectEdge graph (mkProdDep "xml2js@0.2.4") (mkProdDep "sax@1.2.1")
+
+    it "should only include the root package's dependencies when only the root is selected" $ do
+      let graph = buildGraph (scopeTo [""]) pkgLockV3
+
+      expectDirect
+        [ mkProdDep "3@2.1.0"
+        , mkProdDep "aws-sdk@2.1134.0"
+        , mkProdDep "react@18.1.0"
+        , mkProdDep "chalk@5.0.1"
+        , mkDevDep "mocha@10.0.0"
+        ]
+        graph
+
+      expectNoDepNamed "commander" graph
+      expectDep (mkProdDep "aws-sdk@2.1134.0") graph
+      shouldNotHaveDep (mkProdDep "aws-sdk@1.0.0") graph
+      shouldNotHaveDep (mkProdDep "xml2js@0.2.4") graph
+
+    it "should produce the unscoped graph when all targets are selected" $
+      buildGraph (scopeTo ["", "packages/a"]) pkgLockV3
+        `shouldBe` buildGraph Nothing pkgLockV3
+
+    it "should produce an empty graph when no resolved path matches a lockfile entry" $
+      buildGraph (scopeTo ["packages/does-not-exist"]) pkgLockV3
+        `shouldBe` Graphing.empty
+
+    it "should produce an empty graph when no target resolved to a workspace path" $
+      buildGraph (scopeTo []) pkgLockV3
+        `shouldBe` Graphing.empty
+
+workspaceLinksGraphSpec :: PackageLockV3 -> Spec
+workspaceLinksGraphSpec pkgLockV3 = do
+  describe "buildGraph with cross-workspace links" $ do
+    it "should report link stubs as versionless deps when unscoped (pre-scoping behavior)" $ do
+      let graph = buildGraph Nothing pkgLockV3
+
+      expectDirect
+        [ mkProdDep "root-only@1.0.0"
+        , mkProdDep "external-a@1.0.0"
+        , mkProdDep "external-b@1.0.0"
+        , mkProdDep "external-c@1.0.0"
+        , mkLinkStubDep "@scope/ws-a" "packages/a"
+        , mkLinkStubDep "@scope/ws-b" "packages/b"
+        ]
+        graph
+
+    it "should attribute a linked sibling workspace's dependencies to the selected workspace" $ do
+      let graph = buildGraph (scopeTo ["packages/a"]) pkgLockV3
+
+      expectDirect
+        [ mkProdDep "external-a@1.0.0"
+        , mkProdDep "external-b@1.0.0"
+        ]
+        graph
+
+      expectDeps
+        [ mkProdDep "external-a@1.0.0"
+        , mkProdDep "external-b@1.0.0"
+        , mkProdDep "transitive-b@2.0.0"
+        ]
+        graph
+
+      expectEdge graph (mkProdDep "external-b@1.0.0") (mkProdDep "transitive-b@2.0.0")
+      expectNoVersionlessDeps graph
+
+    it "should handle mutually-dependent workspaces without looping" $ do
+      let graph = buildGraph (scopeTo ["packages/b"]) pkgLockV3
+
+      expectDirect
+        [ mkProdDep "external-b@1.0.0"
+        , mkProdDep "external-a@1.0.0"
+        ]
+        graph
+
+      expectDeps
+        [ mkProdDep "external-a@1.0.0"
+        , mkProdDep "external-b@1.0.0"
+        , mkProdDep "transitive-b@2.0.0"
+        ]
+        graph
+
+      expectNoVersionlessDeps graph
+
+    it "should not attribute sibling workspaces' dependencies to an unrelated workspace" $ do
+      let graph = buildGraph (scopeTo ["packages/c"]) pkgLockV3
+
+      expectDirect [mkProdDep "external-c@1.0.0"] graph
+      expectDeps [mkProdDep "external-c@1.0.0"] graph
+
+    it "should scope to only the root package's dependencies" $ do
+      let graph = buildGraph (scopeTo [""]) pkgLockV3
+
+      expectDirect [mkProdDep "root-only@1.0.0"] graph
+      expectDeps [mkProdDep "root-only@1.0.0"] graph
+
+    it "should produce the unscoped graph when all targets are selected" $
+      buildGraph (scopeTo ["", "packages/a", "packages/b", "packages/c"]) pkgLockV3
+        `shouldBe` buildGraph Nothing pkgLockV3
+
+-- | A workspace whose lockfile entry omits the "name" field, as npm does when
+-- the workspace's folder basename equals its package name. Path-based
+-- selection must still scope to it (name-based matching could not).
+namelessWorkspaceScopingSpec :: PackageLockV3 -> Spec
+namelessWorkspaceScopingSpec pkgLockV3 = do
+  describe "buildGraph with a workspace entry that has no name field" $ do
+    it "should scope to the workspace by its lockfile path" $ do
+      let graph = buildGraph (scopeTo ["packages/pkg-a"]) pkgLockV3
+
+      expectDirect [mkProdDep "ws-dep@1.0.0"] graph
+      expectDeps [mkProdDep "ws-dep@1.0.0"] graph
+
+    it "should exclude the nameless workspace's dependencies when only the root is selected" $ do
+      let graph = buildGraph (scopeTo [""]) pkgLockV3
+
+      expectDirect [mkProdDep "root-dep@1.0.0"] graph
+      expectDeps [mkProdDep "root-dep@1.0.0"] graph
+
+-- | Scope 'buildGraph' to the given root-relative workspace paths, as
+-- 'Strategy.Node.resolveNpmV3WorkspacePaths' resolves them from build
+-- target names.
+scopeTo :: [Text] -> Maybe (Set Text)
+scopeTo = Just . Set.fromList
+
+-- | The versionless dependency currently produced for a workspace link stub
+-- (e.g. @"node_modules/ws-name": { "resolved": "packages/a", "link": true }@)
+-- by the unscoped analysis.
+mkLinkStubDep :: Text -> Text -> Dependency
+mkLinkStubDep name path =
+  Dependency NodeJSType name Nothing [path] (Set.singleton EnvProduction) mempty
+
+expectNoDepNamed :: Text -> Graphing Dependency -> Expectation
+expectNoDepNamed name graph =
+  filter ((== name) . dependencyName) (Graphing.vertexList graph) `shouldBe` []
+
+expectNoVersionlessDeps :: Graphing Dependency -> Expectation
+expectNoVersionlessDeps graph =
+  filter (isNothing . dependencyVersion) (Graphing.vertexList graph) `shouldBe` []
+
+shouldNotHaveDep :: Dependency -> Graphing Dependency -> Expectation
+shouldNotHaveDep dep graph =
+  filter (== dep) (Graphing.vertexList graph) `shouldBe` []
+
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
 
@@ -423,10 +612,10 @@ mkDep nameAtVersion env = do
     (maybe mempty Set.singleton env)
     mempty
 
-checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkGraph :: Path Abs File -> (PackageLockV3 -> Spec) -> Spec
 checkGraph pathToFixture buildGraphSpec = do
   maybePkgLockV3 <- runIO $ eitherDecodeFileStrict' (toString pathToFixture)
   case maybePkgLockV3 of
     Left errMsg -> describe "packageLockV3" $ it "should parse lockfile" (expectationFailure errMsg)
     Right pkgLockV3 -> do
-      buildGraphSpec (buildGraph pkgLockV3)
+      buildGraphSpec pkgLockV3
