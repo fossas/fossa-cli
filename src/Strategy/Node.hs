@@ -384,9 +384,11 @@ buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap
 
     -- Given a workspace pattern, find all matches in the list of known manifest files.
     -- When found, create edges between the root path and the matching children.
+    -- A manifest is never its own workspace child, so exclude it from its matches;
+    -- otherwise a whole-root glob (e.g. ".") would create a self-edge and look cyclic.
     findWorkspaceChildren :: Manifest -> Glob Rel -> AM.AdjacencyMap Manifest
     findWorkspaceChildren path glob =
-      manifestEdges path . filter (filterfunc path glob) $
+      manifestEdges path . filter (/= path) . filter (filterfunc path glob) $
         Map.keys manifestMap
 
     -- True if qualified glob pattern matches the given file.
@@ -402,8 +404,10 @@ buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap
 
     -- Yarn appends the filename to the glob, so we match that behavior
     -- https://github.com/yarnpkg/yarn/blob/master/src/config.js#L821
+    -- Normalize so a leading "./" in a workspace glob collapses before matching;
+    -- System.FilePattern treats "." as a literal segment and would match nothing.
     qualifyGlobPattern :: Manifest -> Glob Rel -> Glob Abs
-    qualifyGlobPattern (Manifest root) = Glob.append "package.json" . Glob.prefixWith (parent root)
+    qualifyGlobPattern (Manifest root) = Glob.normalize . Glob.append "package.json" . Glob.prefixWith (parent root)
 
     -- Create edges from a parent to its children
     manifestEdges :: Ord a => a -> [a] -> AM.AdjacencyMap a

@@ -1,0 +1,41 @@
+__metadata:
+  version: 8
+  cacheKey: 10c0
+
+"dotslash-root@workspace:.":
+  version: 0.0.0-use.local
+  resolution: "dotslash-root@workspace:."
+  dependencies:
+    dev-tool: "npm:1.0.0"
+  languageName: unknown
+  linkType: soft
+
+"pkg-a@workspace:pkg-a":
+  version: 0.0.0-use.local
+  resolution: "pkg-a@workspace:pkg-a"
+  dependencies:
+    prod-lib: "npm:1.0.0"
+  languageName: unknown
+  linkType: soft
+
+"prod-lib@npm:1.0.0":
+  version: 1.0.0
+  resolution: "prod-lib@npm:1.0.0"
+  dependencies:
+    shared: "npm:1.0.0"
+  languageName: node
+  linkType: hard
+
+"dev-tool@npm:1.0.0":
+  version: 1.0.0
+  resolution: "dev-tool@npm:1.0.0"
+  dependencies:
+    shared: "npm:1.0.0"
+  languageName: node
+  linkType: hard
+
+"shared@npm:1.0.0":
+  version: 1.0.0
+  resolution: "shared@npm:1.0.0"
+  languageName: node
+  linkType: hard

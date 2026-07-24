@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Node: Workspaces declared with a leading `./` (for example `./packages/*`) are now matched, so their members are analyzed and their production dependencies are no longer dropped from the results. ([#1733](https://github.com/fossas/fossa-cli/pull/1733))
+
 ## 3.17.14
 
 - Licensing: Detect Unicode 3.0 license. ([#1731](https://github.com/fossas/fossa-cli/pull/1731))
