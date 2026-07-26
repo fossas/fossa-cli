@@ -649,6 +649,7 @@ test-suite unit-tests
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
+    Data.GlobSpec
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
     Data.Text.JsoncSpec
