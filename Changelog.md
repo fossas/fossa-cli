@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#XXXX](https://github.com/fossas/fossa-cli/pull/XXXX))
+- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
 
 ## 3.17.15
 
