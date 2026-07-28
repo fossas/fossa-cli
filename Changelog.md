@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- nodejs: Bun now labels transitive devDependencies via graph hydration, so they are filtered from scan results. ([#1737](https://github.com/fossas/fossa-cli/pull/1737))
+
 ## 3.17.15
 
 - Node: Workspaces declared with a leading `./` (for example `./packages/*`) are now matched, so their members are analyzed and their production dependencies are no longer dropped from the results. ([#1733](https://github.com/fossas/fossa-cli/pull/1733))

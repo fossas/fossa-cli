@@ -1,0 +1,21 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "transitive-dev-test",
+      "dependencies": {
+        "prod-root": "^1.0.0",
+      },
+      "devDependencies": {
+        "dev-root": "^1.0.0",
+      },
+    },
+  },
+  "packages": {
+    "dev-root": ["dev-root@1.0.0", "", { "dependencies": { "dev-transitive": "^1.0.0", "shared": "^1.0.0" } }, "sha512-fake=="],
+    "dev-transitive": ["dev-transitive@1.0.0", "", {}, "sha512-fake=="],
+    "prod-root": ["prod-root@1.0.0", "", { "dependencies": { "prod-transitive": "^1.0.0", "shared": "^1.0.0" } }, "sha512-fake=="],
+    "prod-transitive": ["prod-transitive@1.0.0", "", {}, "sha512-fake=="],
+    "shared": ["shared@1.0.0", "", {}, "sha512-fake=="],
+  },
+}
