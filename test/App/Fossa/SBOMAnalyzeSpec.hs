@@ -1,17 +1,19 @@
 module App.Fossa.SBOMAnalyzeSpec (spec) where
 
-import App.Fossa.Config.SBOM.Analyze (SBOMAnalyzeConfig (..))
+import App.Fossa.Config.SBOM.Analyze (JsonOutput (JsonOutput), SBOMAnalyzeConfig (..), SBOMAnalyzeOptions (..), cliParser)
 import App.Fossa.Config.SBOM.Common (SBOMFile (..))
+import App.Fossa.Config.Utils (parseArgString)
 import App.Fossa.SBOM.Analyze (analyzeInternal)
 import App.Types (BaseDir (..), ComponentUploadFileType (..), DependencyRebuild (DependencyRebuildReuseCache), ProjectRevision (ProjectRevision))
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
+import Data.Flag (fromFlag, toFlag')
 import Effect.Logger (Severity (SevInfo))
 import Fossa.API.Types (Archive (..))
 import Path.IO (getCurrentDir)
-import Test.Effect (it')
+import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
 import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest, runMockApi)
@@ -23,7 +25,7 @@ spec = do
     it' "should upload a file" $ do
       let archive = Archive "somesbom" "1.2.3" Nothing Nothing
       let revision = ProjectRevision "somesbom" "1.2.3" Nothing
-      let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") DependencyRebuildReuseCache Nothing revision Nothing SevInfo
+      let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") DependencyRebuildReuseCache Nothing (toFlag' False) revision Nothing SevInfo
 
       GetApiOpts `alwaysReturns` Fixtures.apiOpts
       expectOrganization
@@ -32,6 +34,15 @@ spec = do
       expectQueueSBOMBuild archive
 
       ignoreDebug . withoutTelemetry . runMockApi $ analyzeInternal config
+
+  describe "SBOM Analyze cliParser" $ do
+    it' "should default --json off" $ do
+      opts <- parseArgString cliParser "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json"
+      fromFlag JsonOutput (jsonOutput opts) `shouldBe'` False
+
+    it' "should parse --json into the options" $ do
+      opts <- parseArgString cliParser "--json test/App/Fossa/SBOM/testdata/sampleCycloneDX.json"
+      fromFlag JsonOutput (jsonOutput opts) `shouldBe'` True
 
 expectOrganization :: Has MockApi sig m => m ()
 expectOrganization = GetOrganization `alwaysReturns` Fixtures.organization

@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
+- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#XXXX](https://github.com/fossas/fossa-cli/pull/XXXX))
 
 ## 3.20.13
 
