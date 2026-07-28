@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- nodejs: Bun now labels transitive devDependencies via graph hydration, so they are filtered from scan results. ([#XXXX](https://github.com/fossas/fossa-cli/pull/XXXX))
+- nodejs: Bun now labels transitive devDependencies via graph hydration, so they are filtered from scan results. ([#1737](https://github.com/fossas/fossa-cli/pull/1737))
 
 ## 3.17.15
 
