@@ -38,6 +38,7 @@ import DepTypes (
   DepType (GitType, NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
+  hydrateDepEnvs,
   insertEnvironment,
  )
 import Effect.Grapher (LabeledGrapher, deep, direct, edge, label, run, withLabeling)
@@ -198,19 +199,23 @@ analyze file = do
 -- | Build a dependency graph from a parsed bun lockfile.
 --
 -- Strategy:
---   1. Collect all dev dependency names across all workspaces.
---   2. For each workspace, mark its declared dependencies as direct
---      and label them with their environment.
---   3. For each supported package (npm, git), add it as a deep dependency,
---      label it with its inferred environment, and create edges to its
---      transitive dependencies.
+--   1. For each workspace, mark its declared dependencies as direct
+--      and label them with their environment (prod\/optional →
+--      'EnvProduction', dev → 'EnvDevelopment').
+--   2. For each supported package (npm, git), add it as a deep dependency
+--      and create edges to its transitive dependencies. Non-direct nodes
+--      carry no environment label of their own.
 --      Unsupported types (workspace, file, link, root, module) are excluded.
+--   3. Run 'hydrateDepEnvs' so the environments of the direct roots
+--      propagate to their transitive successors. A dep reachable only via
+--      dev deps becomes 'EnvDevelopment' (so it is filtered), while a dep
+--      also reachable from a prod dep keeps 'EnvProduction'.
 --
 -- Uses 'LabeledGrapher' so that vertices are environment-agnostic and
 -- environments accumulate as labels, avoiding duplicate vertices when
 -- the same package appears in both prod and dev across workspaces.
 buildGraph :: BunLockfile -> Graphing Dependency
-buildGraph lockfile = run . withLabeling vertexToDependency $ do
+buildGraph lockfile = hydrateDepEnvs . run . withLabeling vertexToDependency $ do
   for_ allWorkspaces $ \workspace -> do
     markDirectDeps EnvProduction workspace.wsDependencies
     markDirectDeps EnvDevelopment workspace.wsDevDependencies
@@ -218,10 +223,7 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
 
   for_ (packages lockfile) $ \pkg ->
     for_ (toVertex pkg) $ \parentVertex -> do
-      let (name, _) = parseResolution (pkgResolution pkg)
-          inferredEnv = if Set.member name devDepNames then EnvDevelopment else EnvProduction
       deep parentVertex
-      label parentVertex (BunDepEnv inferredEnv)
       for_ (transitiveDepNames pkg) $ \childName ->
         case Map.lookup childName (packages lockfile) of
           Nothing -> pure ()
@@ -231,9 +233,6 @@ buildGraph lockfile = run . withLabeling vertexToDependency $ do
   where
     allWorkspaces :: [BunWorkspace]
     allWorkspaces = Map.elems $ workspaces lockfile
-
-    devDepNames :: Set.Set PackageName
-    devDepNames = Set.fromList $ concatMap (Map.keys . wsDevDependencies) allWorkspaces
 
     markDirectDeps :: (Has (LabeledGrapher BunDepVertex BunDepLabel) sig m) => DepEnvironment -> Map PackageName VersionConstraint -> m ()
     markDirectDeps env deps =

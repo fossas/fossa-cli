@@ -45,6 +45,7 @@ spec = do
   let bunProjectPath = testdata </> $(mkRelFile "bun-project/bun.lock")
   let gitDepsPath = testdata </> $(mkRelFile "git-deps/bun.lock")
   let mixedEnvsPath = testdata </> $(mkRelFile "mixed-envs/bun.lock")
+  let transitiveDevPath = testdata </> $(mkRelFile "transitive-dev/bun.lock")
 
   parseResolutionSpec
   jsoncSpec jsoncPath
@@ -53,6 +54,7 @@ spec = do
   bunProjectSpec bunProjectPath
   gitDepsSpec gitDepsPath
   mixedEnvsSpec mixedEnvsPath
+  transitiveDevSpec transitiveDevPath
 
 parseResolutionSpec :: Spec
 parseResolutionSpec = describe "parseResolution" $ do
@@ -119,8 +121,10 @@ dependenciesSpec path =
           expectEdge graph (mkProdDep "express" "4.18.2") (mkProdDep "accepts" "1.3.8")
           expectEdge graph (mkProdDep "accepts" "1.3.8") (mkProdDep "mime-types" "2.1.35")
 
-        it "labels transitive deps of dev deps as production" $ do
-          expectEdge graph (mkDevDep "typescript" "5.3.3") (mkProdDep "semver" "7.6.0")
+        it "labels transitive deps of dev deps as development" $ do
+          -- semver is reachable only via typescript (a dev dependency), so
+          -- hydration propagates EnvDevelopment down to it (ANE-2836).
+          expectEdge graph (mkDevDep "typescript" "5.3.3") (mkDevDep "semver" "7.6.0")
 
 -- | Workspaces: multiple workspaces, workspace refs, and workspace
 -- package filtering from the final graph.
@@ -229,6 +233,25 @@ mixedEnvsSpec path =
         it "produces a single vertex for the package" $ do
           let lodashVertices = filter (\d -> dependencyName d == "lodash") (Graphing.vertexList graph)
           length lodashVertices `shouldBe` 1
+
+-- | Transitive dev deps: a devDependency pulls in a transitive package that
+-- is not declared as a direct dependency anywhere. Graph hydration must
+-- propagate the dev environment down to it so it is filtered out, while a
+-- transitive dep of a prod dependency stays production. A dep reachable from
+-- both a prod and a dev root keeps production (ANE-2836).
+transitiveDevSpec :: Path Abs File -> Spec
+transitiveDevSpec path =
+  describe "transitive-dev" $ do
+    describe "graph" $ do
+      checkGraph path $ \graph -> do
+        it "labels a transitive dep of a dev dep as development (ANE-2836)" $
+          Graphing.vertexList graph `shouldContainDep` mkDevDep "dev-transitive" "1.0.0"
+
+        it "keeps a transitive dep of a prod dep as production" $
+          Graphing.vertexList graph `shouldContainDep` mkProdDep "prod-transitive" "1.0.0"
+
+        it "keeps a dep reachable from both prod and dev roots as production" $
+          Graphing.vertexList graph `shouldContainDep` mkBothEnvsDep "shared" "1.0.0"
 
 -- | Parse a bun.lock in IO for graph tests (outside the effect stack).
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
