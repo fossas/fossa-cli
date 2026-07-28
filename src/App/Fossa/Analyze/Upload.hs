@@ -3,6 +3,7 @@
 module App.Fossa.Analyze.Upload (
   mergeSourceAndLicenseUnits,
   uploadSuccessfulAnalysis,
+  buildProjectSummary,
   emitBuildWarnings,
   ScanUnits (..),
 ) where

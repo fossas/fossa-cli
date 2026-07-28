@@ -59,6 +59,7 @@ data SBOMAnalyzeConfig = SBOMAnalyzeConfig
   , sbomPath :: SBOMFile
   , sbomRebuild :: DependencyRebuild
   , sbomTeam :: Maybe Text
+  , sbomOutputJson :: Flag JsonOutput
   , sbomRevision :: ProjectRevision
   , debugDir :: Maybe FilePath
   , severity :: Severity
@@ -72,6 +73,7 @@ data SBOMAnalyzeOptions = SBOMAnalyzeOptions
   { analyzeCommons :: App.Fossa.Config.Common.CommonOpts
   , team :: Maybe Text
   , forceRescan :: Flag ForceRescan
+  , jsonOutput :: Flag JsonOutput
   , sbomFile :: SBOMFile
   }
 
@@ -94,6 +96,7 @@ cliParser =
     <$> App.Fossa.Config.Common.commonOpts
     <*> optional (strOption (applyFossaStyle <> long "team" <> short 'T' <> stringToHelpDoc "This SBOM's team inside your organization"))
     <*> flagOpt ForceRescan (applyFossaStyle <> long "force-rescan" <> stringToHelpDoc "Force sbom file to be rescanned even if the revision has been previously analyzed by FOSSA.")
+    <*> flagOpt JsonOutput (applyFossaStyle <> long "json" <> stringToHelpDoc "Output project metadata as JSON to the console. This is useful for communicating with the FOSSA API.")
     <*> sbomFileArg
 
 mergeOpts ::
@@ -129,6 +132,7 @@ mergeOpts maybeDebugDir cfgfile envvars cliOpts@SBOMAnalyzeOptions{..} = do
       , severity = severity
       , sbomRebuild = forceRescans
       , sbomTeam = team
+      , sbomOutputJson = jsonOutput
       , sbomRevision = revision
       , debugDir = maybeDebugDir
       }
