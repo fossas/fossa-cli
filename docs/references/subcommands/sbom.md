@@ -25,6 +25,19 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | ------------------------------------- | ----- | ----------------------------------------------------------------------------------- |
 | `--team 'team name'` | `-T` | Specify a team within your FOSSA organization. If you only have team-scoped permissions, you must specify a team of which you are a member. |
 | `--force-rescan`  | | Force the SBOM file to be rescanned, even if this exact revision has been previously uploaded |
+| `--json` | | Output project metadata as JSON to the console after a successful upload. This is useful for communicating with the FOSSA API. |
+
+### Printing project metadata
+
+The `--json` flag prints project metadata to stdout after `fossa sbom analyze` uploads successfully, in the same schema as [`fossa analyze --json`](./analyze.md#printing-project-metadata). This metadata can be used to reference your project when integrating with the FOSSA API. SBOM projects use the `sbom` fetcher (not `custom`), so the locator is `sbom+<org-id>/<name>`.
+
+```sh
+fossa sbom analyze /path/to/sampleCycloneDX.json --json
+```
+
+```json
+{"branch":null, "id":"sbom+<org-id>/sampleCycloneDX$123", "project":"<org-id>/sampleCycloneDX", "projectId":"sbom+<org-id>/sampleCycloneDX", "revision":"123", "url":"https://app.fossa.com/projects/sbom%2b<org-id>%2fsampleCycloneDX/refs/branch/master/123"}
+```
 
 ### Team Permissions
 

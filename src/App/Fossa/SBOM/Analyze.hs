@@ -4,7 +4,9 @@ module App.Fossa.SBOM.Analyze (
 ) where
 
 import App.Fossa.API.BuildLink (getFossaBuildUrl)
+import App.Fossa.Analyze.Upload (buildProjectSummary)
 import App.Fossa.Config.SBOM
+import App.Fossa.Config.SBOM.Analyze (JsonOutput (JsonOutput))
 import App.Fossa.PreflightChecks (PreflightCommandChecks (..), preflightChecks)
 import App.Types (ComponentUploadFileType (..), ProjectMetadata (..), ProjectRevision (..))
 import Control.Carrier.Debug (Debug)
@@ -12,14 +14,17 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Carrier.Telemetry.Types (CountableCliFeature (SBOMAnalyzeUsage))
+import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Telemetry (Telemetry, trackUsage)
-import Control.Monad (void)
+import Control.Monad (void, when)
+import Data.Aeson qualified as Aeson
+import Data.Flag (fromFlag)
 import Data.Foldable (traverse_)
 import Data.String.Conversion (ConvertUtf8 (..), toString, toText)
 import Data.Text (Text)
-import Effect.Logger (Logger, logDebug, logInfo)
+import Effect.Logger (Logger, logDebug, logInfo, logStdout)
 import Fossa.API.Types
 import Prettyprinter (Pretty (pretty))
 import Srclib.Types (Locator (..))
@@ -45,6 +50,7 @@ analyzeInternal ::
   , Has StickyLogger sig m
   , Has Logger sig m
   , Has FossaApiClient sig m
+  , Has (Lift IO) sig m
   ) =>
   SBOMAnalyzeConfig ->
   m ()
@@ -74,6 +80,12 @@ analyzeInternal config = do
     , ""
     , "============================================================"
     ]
+
+  when (fromFlag JsonOutput $ sbomOutputJson config) $ do
+    summary <-
+      context "Analysis ran successfully, but the server returned invalid metadata" $
+        buildProjectSummary revision locator buildUrl
+    logStdout . decodeUtf8 $ Aeson.encode summary
 
 uploadSBOM ::
   ( Has StickyLogger sig m
