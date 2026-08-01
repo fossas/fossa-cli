@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.16
+
+- Container analysis: Stop the CLI from getting stuck for over an hour on container analysis with JARs
+
 ## 3.17.15
 
 - Node: Workspaces declared with a leading `./` (for example `./packages/*`) are now matched, so their members are analyzed and their production dependencies are no longer dropped from the results. ([#1733](https://github.com/fossas/fossa-cli/pull/1733))
