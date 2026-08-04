@@ -2,7 +2,7 @@
 
 ## 3.17.16
 
-- Container analysis: Stop the CLI from getting stuck for over an hour on container analysis with JARs
+- Container analysis: more robust timeouts for container analyses involving jar fingerprinting
 
 ## 3.17.15
 
