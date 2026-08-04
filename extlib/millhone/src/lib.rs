@@ -25,8 +25,4 @@
 
 use tracing::warn;
 
-mod ext;
-
-pub mod api;
-pub mod extract;
 pub mod url;
