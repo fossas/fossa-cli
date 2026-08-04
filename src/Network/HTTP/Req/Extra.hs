@@ -62,7 +62,7 @@ httpConfigRetryTimeouts =
 retryPolicy :: RetryPolicy
 retryPolicy = limitRetries numRetries <> constantDelay tenSeconds
   where
-    -- ten minutes
+    -- three retries
     numRetries :: Int
     numRetries = 3
 
