@@ -58,7 +58,7 @@ httpConfigRetryTimeouts =
   where
     statusCodeOf = statusCode . responseStatus
 
--- | Retry every 5 seconds 3 times at max
+-- | Retry every 10 seconds 3 times at max
 retryPolicy :: RetryPolicy
 retryPolicy = limitRetries numRetries <> constantDelay tenSeconds
   where
