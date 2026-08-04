@@ -5,7 +5,6 @@
 #![warn(rust_2018_idioms)]
 
 use clap::{Parser, Subcommand, ValueEnum};
-use millhone::url::BaseUrl;
 use stable_eyre::eyre::Context;
 use tap::Pipe;
 use traceconf::{Colors, Format, Level};
@@ -57,23 +56,6 @@ struct Application {
     /// Set where to log traces to.
     #[clap(long, default_value = "stdout")]
     log_to: TracingOutput,
-
-    /// The URL for the Millhone service.
-    ///
-    /// Note: In a future release we plan to move this to a reverse proxy through
-    /// FOSSA's backend, similar to VSI functionality.
-    /// At such time this argument will be hidden and only used for debugging,
-    /// replaced with `endpoint`.
-    #[clap(long, global = true)]
-    #[cfg_attr(
-        debug_assertions,
-        clap(default_value = "https://api.millhone-staging.sherlock.fossa.team")
-    )]
-    #[cfg_attr(
-        not(debug_assertions),
-        clap(default_value = "https://api.millhone-prod.sherlock.fossa.team")
-    )]
-    direct_endpoint: BaseUrl,
 
     /// Subcommands for the CLI.
     #[clap(subcommand)]
