@@ -159,7 +159,7 @@ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filt
       partitionByBaseLayer :: Map.Map LayerPath [a] -> ([a], [a])
       partitionByBaseLayer =
         bimap (join . Map.elems) (join . Map.elems)
-          -- If a base layer does not exist not exist, results will appear in "other" layers.
+          -- If a base layer does not exist, results will appear in "other" layers.
           . Map.partitionWithKey (\lp _ -> Just lp == baseLayerPath)
 
   (baseObservations, otherObservations) <-

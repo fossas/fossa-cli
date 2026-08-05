@@ -149,7 +149,7 @@ newtype JarObservation = JarObservation
   deriving (Eq, Ord, Show, Generic)
   deriving (ToJSON, FromJSON) via Value
 
--- | A Go module (path + version) parsed from a binary's embedded buildinfo.
+-- | A Go module parsed from a binary's embedded buildinfo.
 data GoModule = GoModule
   { goModulePath :: Text
   , goModuleVersion :: Text

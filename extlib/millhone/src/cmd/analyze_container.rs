@@ -108,7 +108,6 @@ pub fn main(opts: Subcommand) -> Result<()> {
 /// layer and path.
 #[tracing::instrument]
 fn jars_in_container(image_path: &PathBuf) -> Result<ContainerAnalysis> {
-    // Visit each layer and inspect the files within.
     info!("inspecting container");
     let layers = list_container_layers(image_path)?;
     let mut jar_discoveries = HashMap::new();
@@ -217,9 +216,8 @@ fn scan_layer_tar(reader: impl Read) -> Result<(Vec<DiscoveredJar>, Vec<Discover
 }
 
 /// Sniff a non-jar layer entry for an embedded Go buildinfo section.
-/// Returns `None` (without failing the scan) for anything that isn't a
-/// parseable Go binary: wrong entry type, out-of-bounds size, non-binary
-/// magic, unreadable content, or no (inline) buildinfo present.
+/// Anything that isn't a parseable Go binary returns `None` rather than
+/// failing the scan, so one unreadable entry can't sink the layer.
 fn maybe_go_binary(entry: &mut Entry<'_, impl Read>, path: &Path) -> Option<DiscoveredGoBinary> {
     if !entry.header().entry_type().is_file() {
         return None;
