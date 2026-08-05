@@ -161,7 +161,7 @@ fn scan_layer(
             Ok(0) => break,
             Ok(n) => filled += n,
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-            Err(e) => return Err(e).context("peek layer magic"),
+            Err(e) => return Err(e).context("detect layer compression"),
         }
     }
     let is_gzip = filled == 2 && magic == [0x1f, 0x8b];
