@@ -24,7 +24,7 @@ module Data.FileTree.IndexFileTree (
 ) where
 
 import Control.DeepSeq (NFData)
-import Data.Foldable (foldl')
+
 import Data.HashMap.Strict (HashMap)
 import Data.HashMap.Strict qualified as H
 import Data.Hashable (Hashable, hash)

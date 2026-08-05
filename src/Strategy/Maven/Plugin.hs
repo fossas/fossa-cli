@@ -29,7 +29,7 @@ import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
-import Data.Foldable (Foldable (fold), foldl')
+import Data.Foldable (Foldable (fold))
 import Data.Functor (void)
 import Data.List (nub)
 import Data.List.NonEmpty (NonEmpty (..))

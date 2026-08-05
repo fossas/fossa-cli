@@ -31,7 +31,7 @@ import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
 import Data.Aeson (FromJSON, FromJSONKey, Value, object, parseJSON, withObject, (.:))
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
-import Data.Foldable (foldl')
+
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
 import Data.Map qualified as Map
 import Data.Sequence (Seq)

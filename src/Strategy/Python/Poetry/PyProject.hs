@@ -21,7 +21,7 @@ module Strategy.Python.Poetry.PyProject (
 ) where
 
 import Control.Monad.Combinators.Expr (Operator (..), makeExprParser)
-import Data.Foldable (asum, foldl')
+import Data.Foldable (asum)
 import Data.Functor (void)
 import Data.Map (Map, insert, union, unions)
 import Data.Maybe (fromMaybe)
