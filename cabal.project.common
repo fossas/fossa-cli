@@ -85,6 +85,6 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/fossas/codec-rpm
-  tag: 55e6cc0c0b7906ca257cb7c6268b2d99592bb30f
+  tag: 
 
 index-state: hackage.haskell.org 2026-08-05T21:05:30Z
