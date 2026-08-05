@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::File,
-    io::{BufRead, BufReader, BufWriter, Read},
+    io::{BufReader, BufWriter, Read},
     path::{Path, PathBuf},
 };
 
@@ -153,10 +153,22 @@ fn scan_layer(
     entry: Entry<'_, impl Read>,
 ) -> Result<(Vec<DiscoveredJar>, Vec<DiscoveredGoBinary>)> {
     let mut reader = BufReader::new(entry);
-    let is_gzip = {
-        let peek = reader.fill_buf().context("peek layer magic")?;
-        peek.len() >= 2 && peek[0] == 0x1f && peek[1] == 0x8b
-    };
+    // Read exactly two bytes rather than trusting a single fill_buf to return
+    // that many, then stitch them back onto the front of the stream.
+    let mut magic = [0u8; 2];
+    let mut filled = 0;
+    while filled < magic.len() {
+        match reader.read(&mut magic[filled..]) {
+            Ok(0) => break,
+            Ok(n) => filled += n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e).context("peek layer magic"),
+        }
+    }
+    let is_gzip = filled == 2 && magic == [0x1f, 0x8b];
+    let reader = std::io::Cursor::new(magic)
+        .take(filled as u64)
+        .chain(reader);
     if is_gzip {
         scan_layer_tar(flate2::read::GzDecoder::new(reader))
     } else {
