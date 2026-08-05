@@ -218,6 +218,9 @@ themisVersion = $$(themisVersionQ)
 embeddedBinaryLernie :: ByteString
 embeddedBinaryLernie = $(embedFileIfExists "vendor-bins/lernie")
 
+-- NOTE: cabal only re-runs this splice when this file's contents change, not
+-- when vendored binaries appear; if circe was vendored after the first build,
+-- rebuilding requires touching this file's content (this comment did that).
 embeddedBinaryCirce :: ByteString
 embeddedBinaryCirce = $(embedFileIfExists "vendor-bins/circe")
 

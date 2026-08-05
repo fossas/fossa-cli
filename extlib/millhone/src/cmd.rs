@@ -22,6 +22,7 @@ use walkdir::DirEntry;
 pub mod analyze;
 pub mod analyze_container;
 pub mod commit;
+pub mod go_buildinfo;
 pub mod ingest;
 pub mod ping;
 

@@ -20,6 +20,10 @@ module Container.Types (
   JarObservation (..),
   DiscoveredJars (..),
 
+  -- * Go Binary Analysis Related Types
+  GoModule (..),
+  DiscoveredGoBinary (..),
+
   -- * helpers
   baseLayer,
   otherLayersSquashed,
@@ -29,7 +33,7 @@ module Container.Types (
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, Value, object, parseJSON, withObject, (.:))
+import Data.Aeson (FromJSON, FromJSONKey, Value, object, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
 import Data.Foldable (foldl')
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
@@ -145,11 +149,47 @@ newtype JarObservation = JarObservation
   deriving (Eq, Ord, Show, Generic)
   deriving (ToJSON, FromJSON) via Value
 
+-- | A Go module (path + version) parsed from a binary's embedded buildinfo.
+data GoModule = GoModule
+  { goModulePath :: Text
+  , goModuleVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON GoModule where
+  parseJSON = withObject "GoModule" $ \o ->
+    GoModule
+      <$> o .: "path"
+      <*> o .: "version"
+
+-- | A Go binary millhone discovered in a layer, with the module list parsed
+-- from its embedded buildinfo (the data @go version -m@ reads).
+data DiscoveredGoBinary = DiscoveredGoBinary
+  { goBinaryPath :: Text
+  , goBinaryGoVersion :: Text
+  , goBinaryMainModule :: Maybe GoModule
+  , goBinaryModules :: [GoModule]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON DiscoveredGoBinary where
+  parseJSON = withObject "DiscoveredGoBinary" $ \o ->
+    DiscoveredGoBinary
+      <$> o .: "path"
+      <*> o .: "go_version"
+      <*> o .:? "main_module"
+      <*> o .: "modules"
+
 -- | Output parse type for millhone.
-newtype DiscoveredJars = DiscoveredJars
+data DiscoveredJars = DiscoveredJars
   { discoveredJars :: Map.Map LayerPath [JarObservation]
+  , discoveredGoBinaries :: Map.Map LayerPath [DiscoveredGoBinary]
   }
   deriving (Eq, Ord, Show)
 
 instance FromJSON DiscoveredJars where
-  parseJSON = withObject "JarInput" $ \o -> DiscoveredJars <$> o .: "discovered_jars"
+  parseJSON = withObject "JarInput" $ \o ->
+    DiscoveredJars
+      <$> o .: "discovered_jars"
+      -- Tolerate output from millhone versions predating Go binary analysis.
+      <*> o .:? "discovered_go_binaries" .!= Map.empty
