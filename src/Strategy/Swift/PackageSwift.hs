@@ -19,7 +19,6 @@ import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp
 import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.Functor (($>))
-import Data.List (foldl')
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Set (Set, fromList, member)

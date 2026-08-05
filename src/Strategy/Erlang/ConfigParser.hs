@@ -24,7 +24,6 @@ import Control.Monad (void)
 import Data.Aeson.Types (ToJSON (toJSON))
 import Data.Char qualified as C
 import Data.Functor (($>))
-import Data.List (foldl')
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text

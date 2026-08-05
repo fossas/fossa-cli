@@ -16,7 +16,6 @@ import Control.Monad (join)
 import Control.Monad.Identity (Identity)
 import Data.Char qualified as C
 import Data.Foldable (asum, find, for_)
-import Data.List (foldl')
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toText)
 import Data.Text (Text)

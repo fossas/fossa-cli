@@ -28,7 +28,6 @@ import Data.Foldable (traverse_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.HashSet qualified as HashSet
 import Data.Hashable (Hashable)
-import Data.List (foldl')
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.SemVer qualified as SemVer

@@ -64,7 +64,6 @@ import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import Data.Bifunctor (bimap)
-import Data.List (foldl')
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Prelude hiding (filter)
