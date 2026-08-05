@@ -24,7 +24,7 @@ import Control.Carrier.Lift
 import Control.Effect.Diagnostics qualified as Diag (Diagnostics)
 import Control.Monad (join)
 import Data.Flag (fromFlag)
-import Data.Foldable (foldl', traverse_)
+import Data.Foldable (traverse_)
 import Data.Functor.Extra ((<$$>))
 import Data.List (sort)
 import Data.Maybe (catMaybes, fromMaybe, mapMaybe, maybeToList)
