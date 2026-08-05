@@ -91,6 +91,7 @@ leinDepsCmd =
     { cmdName = "lein"
     , cmdArgs = ["deps", ":tree-data"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 leinVersionCmd :: Command
@@ -99,6 +100,7 @@ leinVersionCmd =
     { cmdName = "lein"
     , cmdArgs = ["--version"]
     , cmdAllowErr = Always
+    , cmdEnvVars = Map.empty
     }
 
 discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]

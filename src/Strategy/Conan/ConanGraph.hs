@@ -81,6 +81,7 @@ conanV2GraphCmd extraArgs =
     { cmdName = "conan"
     , cmdArgs = ["install", ".", "-f", "json", "-c", "tools.build:download_source=True"] <> extraArgs
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 data ConanGraph = ConanGraph

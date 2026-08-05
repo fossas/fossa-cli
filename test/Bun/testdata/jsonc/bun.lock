@@ -1,0 +1,16 @@
+{
+  // Single-line comment
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "jsonc-test",
+      /* Block comment */
+      "dependencies": {
+        "lodash": "^4.17.21",
+      },
+    },
+  },
+  "packages": {
+    "lodash": ["lodash@4.17.21", "", {}, "sha512-fake=="],
+  },
+}

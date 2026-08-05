@@ -71,18 +71,41 @@ expectedSwiftPackage =
       , -- range
         gitDepWithRhsHalfOpenInterval "https://github.com/LeoNatan/LNPopupController.git" "2.5.0" "2.5.6"
       , gitDepWithClosedRange "https://github.com/Polidea/RxBluetoothKit.git" "3.0.5" "3.0.7"
+      , -- version constructor
+        gitDepFrom "https://github.com/example/example.git" "1.7.0-a.b+x.banana"
+      , gitDepUpToNextMinor "https://github.com/example/example2.git" "13.99.123+abcd"
+      , gitDepExactly "https://github.com/example/example3.git" "0.0.3-build.1"
+      , gitDepExactly "https://github.com/example/example4.git" "1.0.14"
+      , gitDepWithRhsHalfOpenInterval "https://github.com/example/example5.git" "1.0.14" "1.0.20"
       ]
       ++ [PathSource "../..", PathSource "../.."]
+
+expectedSwiftPackageNoDeps :: SwiftPackage
+expectedSwiftPackageNoDeps = SwiftPackage "6.0" []
 
 spec :: Spec
 spec = do
   packageDotSwiftFile <- runIO (TIO.readFile "test/Swift/testdata/Package.swift")
+  packageDotSwiftFullFile <- runIO (TIO.readFile "test/Swift/testdata/Package.full.swift")
+  packageDotSwiftNoDepsFile <- runIO (TIO.readFile "test/Swift/testdata/Package.no-deps.swift")
 
   describe "Parses Package.swift file" $ do
-    it "should parse swift-tools-version" $ do
+    it "should parse swift-tools-version and dependencies" $ do
       case runParser parsePackageSwiftFile "" packageDotSwiftFile of
         Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldBe` expectedSwiftPackage
+
+  describe "Parses Package.full.swift file" $ do
+    it "should parse swift-tools-version and dependencies" $ do
+      case runParser parsePackageSwiftFile "" packageDotSwiftFullFile of
+        Left failCode -> expectationFailure $ show failCode
+        Right result -> result `shouldBe` expectedSwiftPackage
+
+  describe "Parses Package.no-deps.swift file" $ do
+    it "should parse swift-tools-version and dependencies" $ do
+      case runParser parsePackageSwiftFile "" packageDotSwiftNoDepsFile of
+        Left failCode -> expectationFailure $ show failCode
+        Right result -> result `shouldBe` expectedSwiftPackageNoDeps
 
   describe "buildGraph, when no resolved content is discovered" $ do
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do

@@ -13,7 +13,7 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), DepType (GitType, PipType, URLType, UnresolvedPathType), Dependency (..), VerConstraint (..), hydrateDepEnvs)
 import Effect.Grapher (deep, direct, edge, evalGrapher, run)
 import Graphing (Graphing, gmap)
-import Strategy.Python.Util (Req (..))
+import Strategy.Python.Util (Req (..), reqName)
 import Toml.Schema qualified
 
 -- | Represents pdm lock file.
@@ -130,10 +130,6 @@ toDependency prodReqs devReqs pkg =
     isUrlReq :: Req -> Bool
     isUrlReq (UrlReq{}) = True
     isUrlReq _ = False
-
-reqName :: Req -> Text
-reqName (NameReq rname _ _ _) = rname
-reqName (UrlReq rname _ _ _) = rname
 
 buildGraph :: [Req] -> [Req] -> PdmLock -> Graphing Dependency
 buildGraph prodReqs devReqs pdmLock = hydrateDepEnvs $

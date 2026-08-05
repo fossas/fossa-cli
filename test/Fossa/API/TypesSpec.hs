@@ -1,8 +1,10 @@
 module Fossa.API.TypesSpec (spec) where
 
-import Data.Aeson (FromJSON, ToJSON, fromJSON, toJSON)
+import Data.Aeson (FromJSON, ToJSON, Value (Object), fromJSON, toJSON)
+import Data.Aeson qualified as Aeson
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Text (Text)
-import Fossa.API.Types (Issue (..), IssueRule (..), IssueSummaryRevision (..), IssueSummaryTarget (..), IssueType (..), Issues (..), IssuesSummary (..))
+import Fossa.API.Types (Issue (..), IssueRule (..), IssueSummaryRevision (..), IssueSummaryTarget (..), IssueType (..), Issues (..), IssuesSummary (..), Organization (..))
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
 import Test.Hspec
@@ -11,11 +13,42 @@ import Prelude
 
 spec :: Spec
 spec = do
+  organizationParsingSpec
   describe "Issues ToJSON/FromJSON instances" $ do
     it "are roundtrippable" $
       hedgehog $ do
         issues <- forAll genIssues
         roundtripJson issues
+
+organizationParsingSpec :: Spec
+organizationParsingSpec = describe "Organization JSON parsing" $ do
+  it "defaults supportsGitBackedCargoLocators to False when field is absent" $ do
+    let json = Object $ KeyMap.fromList [("organizationId", Aeson.Number 1)]
+    case fromJSON json of
+      Aeson.Success org -> orgSupportsGitBackedCargoLocators org `shouldBe` False
+      Aeson.Error err -> expectationFailure err
+
+  it "parses supportsGitBackedCargoLocators when explicitly True" $ do
+    let json =
+          Object $
+            KeyMap.fromList
+              [ ("organizationId", Aeson.Number 1)
+              , ("supportsGitBackedCargoLocators", Aeson.Bool True)
+              ]
+    case fromJSON json of
+      Aeson.Success org -> orgSupportsGitBackedCargoLocators org `shouldBe` True
+      Aeson.Error err -> expectationFailure err
+
+  it "parses supportsGitBackedCargoLocators when explicitly False" $ do
+    let json =
+          Object $
+            KeyMap.fromList
+              [ ("organizationId", Aeson.Number 1)
+              , ("supportsGitBackedCargoLocators", Aeson.Bool False)
+              ]
+    case fromJSON json of
+      Aeson.Success org -> orgSupportsGitBackedCargoLocators org `shouldBe` False
+      Aeson.Error err -> expectationFailure err
 
 genIssues :: Gen Issues
 genIssues =

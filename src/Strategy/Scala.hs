@@ -60,7 +60,7 @@ import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVe
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Strategy.Scala.Common (mkSbtCommand)
 import Strategy.Scala.Errors (FailedToListProjects (FailedToListProjects), MaybeWithoutDependencyTreeTask (..), MissingFullDependencyPlugin (..), sbtDepsGraphPluginUrl, scalaFossaDocUrl)
-import Strategy.Scala.Plugin (genTreeJson, hasDependencyPlugins)
+import Strategy.Scala.Plugin (DependencyPluginsDetected (..), genTreeJson, hasDependencyPlugins)
 import Strategy.Scala.SbtDependencyTree (SbtArtifact (SbtArtifact), analyze, sbtDepTreeCmd)
 import Strategy.Scala.SbtDependencyTreeJson qualified as TreeJson
 import Types (
@@ -161,10 +161,10 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           . context ("Listing sbt projects at " <> pathToText dir)
           $ genPoms dir
 
-      (miniDepPlugin, depPlugin) <- hasDependencyPlugins dir
-      case (projectsRes, miniDepPlugin, depPlugin) of
+      DependencyPluginsDetected{hasMiniDependencyTreePlugin, dependencyTreePlugin} <- hasDependencyPlugins dir
+      case (projectsRes, hasMiniDependencyTreePlugin, dependencyTreePlugin) of
         (Nothing, _, _) -> pure ([], WalkSkipAll)
-        (Just projects, False, False) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
+        (Just projects, False, Nothing) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
         (Just projects, True, _) -> do
           -- project is using miniature dependency tree plugin,
           -- which is included by default with sbt 1.4+
@@ -184,9 +184,13 @@ findProjects = walkWithFilters' $ \dir _ files -> do
             (True, _) -> pure ([SbtTargets Nothing [] projects], WalkSkipAll)
             (_, Just _) -> pure ([SbtTargets depTreeStdOut [] projects], WalkSkipAll)
             (_, _) -> pure ([], WalkSkipAll)
-        (Just projects, False, True) -> do
-          -- project is explicitly configured to use dependency-tree-plugin
-          treeJSONs <- recover $ genTreeJson dir
+        (Just projects, False, Just pluginKind) -> do
+          -- project is explicitly configured to use dependency-tree-plugin.
+          -- The casing of the dependencyBrowseTree task differs between the
+          -- modern (sbt 1.4+) DependencyTreePlugin and the legacy
+          -- net.virtualvoid sbt-dependency-graph plugin; pluginKind selects
+          -- the right one. See TKT-15490 / ANE-2718.
+          treeJSONs <- recover $ genTreeJson pluginKind dir
           pure ([SbtTargets Nothing (fromMaybe [] treeJSONs) projects], WalkSkipAll)
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
@@ -199,13 +203,13 @@ analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies
       }
 
 analyzeWithDepTreeJson :: (Has ReadFS sig m, Has Diagnostics sig m) => ScalaProject -> m DependencyResults
-analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependencyBrowseTreeHTML" $ do
+analyzeWithDepTreeJson (ScalaProject _ treeJson closure) = context "Analyzing sbt dependencies using dependency tree JSON" $ do
   treeJson' <-
     errCtx MissingFullDependencyPluginCtx $
       errHelp MissingFullDependencyPluginHelp $
         errDoc sbtDepsGraphPluginUrl $
           errDoc scalaFossaDocUrl $
-            fromMaybeText "Could not retrieve output from sbt dependencyBrowseTreeHTML" treeJson
+            fromMaybeText "Could not retrieve dependency tree JSON output from sbt" treeJson
   projectGraph <- TreeJson.analyze treeJson'
   pure $
     DependencyResults

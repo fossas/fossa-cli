@@ -154,6 +154,7 @@ stackJSONDepsCmd =
     { cmdName = "stack"
     , cmdArgs = ["ls", "dependencies", "json"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 doGraph :: Has (MappedGrapher PackageName StackDep) sig m => StackDep -> m ()

@@ -30,7 +30,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Lift (Lift)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Effect.Logger (Logger, Severity (SevDebug, SevInfo))
+import Effect.Logger (Logger, Severity (SevDebug, SevInfo), logWarn)
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (ApiOpts)
 import GHC.Generics (Generic)
@@ -63,6 +63,7 @@ mkSubCommand = SubCommand cmdName linkInfo cliParser loadConfig mergeOpts
 mergeOpts ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
+  , Has Logger sig m
   , Has ReadFS sig m
   ) =>
   Maybe FilePath ->
@@ -71,6 +72,16 @@ mergeOpts ::
   LinkUserBinsOpts ->
   m LinkUserBinsConfig
 mergeOpts _ cfgfile envvars LinkUserBinsOpts{..} = do
+  logWarn $
+    vsep
+      [ "DEPRECATION NOTICE"
+      , "========================"
+      , "The 'experimental-link-user-defined-dependency-binary' subcommand is deprecated and will be removed in a future release."
+      , ""
+      , "Multi-stage builds feature is being deprecated."
+      , ""
+      , "Please remove this command from your scripts."
+      ]
   let apiopts = collectApiOpts cfgfile envvars commons
       basedir = collectBaseDir assertionDir
       metadata = assertionMeta

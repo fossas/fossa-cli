@@ -31,6 +31,7 @@ rebar3TreeCmd =
     { cmdName = "rebar3"
     , cmdArgs = ["tree", "-v"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 analyze' :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency, GraphBreadth)

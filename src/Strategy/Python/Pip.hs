@@ -7,6 +7,7 @@ import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic, recover, warnOnErr
 import Data.Aeson (FromJSON, ToJSON)
 import Data.Functor (void)
 import Data.List (find)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -63,6 +64,7 @@ pythonPip args =
         ]
           <> args
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Executes pip list which will return a json data with name and version.

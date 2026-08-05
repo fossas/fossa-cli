@@ -7,6 +7,9 @@ module Strategy.Node (
   pkgGraph,
   NodeProject (..),
   getDeps,
+  findWorkspaceBuildTargets,
+  extractDepListsForTargets,
+  resolveNpmV3WorkspacePaths,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -36,7 +39,8 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (decodeUtf8, toString)
+import Data.Set.NonEmpty qualified as NonEmptySet
+import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Tagged (applyTag)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -70,9 +74,11 @@ import Path (
   Rel,
   mkRelFile,
   parent,
+  stripProperPrefix,
   toFilePath,
   (</>),
  )
+import Strategy.Node.Bun.BunLock qualified as BunLock
 import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.Npm.PackageLockV3 qualified as PackageLockV3
@@ -95,16 +101,19 @@ import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
 import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs))
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
+import System.FilePath qualified as FP
 import Types (
+  BuildTarget (BuildTarget),
   DependencyResults (DependencyResults),
   DiscoveredProject (..),
-  DiscoveredProjectType (NpmProjectType, PnpmProjectType, YarnProjectType),
-  FoundTargets (ProjectWithoutTargets),
+  DiscoveredProjectType (BunProjectType, NpmProjectType, PnpmProjectType, YarnProjectType),
+  FoundTargets (FoundTargets, ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
   License (License),
   LicenseResult (LicenseResult, licensesFound),
   LicenseType (LicenseURL, UnknownType),
   licenseFile,
+  unBuildTarget,
  )
 
 skipJsFolders :: WalkStep
@@ -118,7 +127,7 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType] $
+discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType] $
   context "NodeJS" $ do
     manifestList <- context "Finding nodejs/pnpm projects" $ collectManifests dir
     manifestMap <- context "Reading manifest files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
@@ -146,45 +155,78 @@ mkProject project = do
         Yarn _ g -> (g, YarnProjectType)
         NPMLock _ g -> (g, NpmProjectType)
         NPM g -> (g, NpmProjectType)
+        Bun _ g -> (g, BunProjectType)
         Pnpm _ g -> (g, PnpmProjectType)
+      -- Only expose build targets for project types whose getDeps actually
+      -- honors them. Otherwise users see per-package targets in list-targets
+      -- but filtering has no effect on analysis.
+      projectBuildTargets' = case project of
+        Yarn _ _ -> findWorkspaceBuildTargets graph
+        NPMLock _ _ -> findWorkspaceBuildTargets graph
+        _ -> ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
     DiscoveredProject
       { projectType = typename
       , projectPath = parent rootManifest
-      , projectBuildTargets = ProjectWithoutTargets
+      , projectBuildTargets = projectBuildTargets'
       , projectData = project
       }
 
-instance AnalyzeProject NodeProject where
-  analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps
+-- | Build targets from workspace package names (root + members).
+-- If the workspace graph has children (i.e., workspace members), each
+-- package name (including the root) becomes a 'BuildTarget'. If there
+-- are no workspace children (single-package project), returns
+-- 'ProjectWithoutTargets'.
+findWorkspaceBuildTargets :: PkgJsonGraph -> FoundTargets
+findWorkspaceBuildTargets graph@PkgJsonGraph{..} =
+  let WorkspacePackageNames childNames = findWorkspaceNames graph
+   in if Set.null childNames
+        then ProjectWithoutTargets
+        else
+          let rootName = findWorkspaceRootManifest graph >>= \m -> maybe (Left "no name") Right (packageName =<< Map.lookup m jsonLookup)
+           in case rootName of
+                -- If the root package.json has no name field, fall back to
+                -- ProjectWithoutTargets so its deps aren't silently dropped.
+                Left _ -> ProjectWithoutTargets
+                Right n ->
+                  let allNames = Set.insert n childNames
+                   in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
 
--- Since we don't natively support workspaces, we don't attempt to preserve them from this point on.
--- In the future, if you're adding generalized workspace support, start here.
+instance AnalyzeProject NodeProject where
+  analyzeProject = getDeps
+  analyzeProjectStaticOnly = getDeps
+
 getDeps ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
   ) =>
+  FoundTargets ->
   NodeProject ->
   m DependencyResults
-getDeps (Yarn yarnLockFile graph) = analyzeYarn yarnLockFile graph
-getDeps (NPMLock packageLockFile graph) = analyzeNpmLock packageLockFile graph
-getDeps (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
-getDeps (NPM graph) = analyzeNpm graph
+getDeps targets (Yarn yarnLockFile graph) = analyzeYarn targets yarnLockFile graph
+getDeps targets (NPMLock packageLockFile graph) = analyzeNpmLock targets packageLockFile graph
+getDeps _ (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
+getDeps _ (Bun bunLockFile _) = analyzeBunLock bunLockFile
+getDeps _ (NPM graph) = analyzeNpm graph
 
 analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => Manifest -> m DependencyResults
 analyzePnpmLock (Manifest pnpmLockFile) = do
   result <- PnpmLock.analyze pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
 
-analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> PkgJsonGraph -> m DependencyResults
-analyzeNpmLock (Manifest npmLockFile) graph = do
+analyzeBunLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
+analyzeBunLock (Manifest bunLockFile) = do
+  result <- BunLock.analyze bunLockFile
+  pure $ DependencyResults result Complete [bunLockFile]
+
+analyzeNpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
+analyzeNpmLock targets (Manifest npmLockFile) graph = do
   npmLockVersion <- detectNpmLockVersion npmLockFile
   result <- case npmLockVersion of
-    NpmLockV3Compatible -> PackageLockV3.analyze npmLockFile
-    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepLists graph) (findWorkspaceNames graph)
+    NpmLockV3Compatible -> PackageLockV3.analyze (resolveNpmV3WorkspacePaths targets graph) npmLockFile
+    NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
 analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
@@ -208,16 +250,17 @@ analyzeYarn ::
   ( Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
+  FoundTargets ->
   Manifest ->
   PkgJsonGraph ->
   m DependencyResults
-analyzeYarn (Manifest yarnLockFile) pkgJsonGraph = do
+analyzeYarn targets (Manifest yarnLockFile) pkgJsonGraph = do
   yarnVersion <- detectYarnVersion yarnLockFile
   let analyzeFunc = case yarnVersion of
         V1 -> V1.analyze
         V2Compatible -> V2.analyze
 
-  graph <- analyzeFunc yarnLockFile $ extractDepLists pkgJsonGraph
+  graph <- analyzeFunc yarnLockFile $ extractDepListsForTargets targets pkgJsonGraph
   pure . DependencyResults graph Complete $ yarnLockFile : pkgFileList pkgJsonGraph
 
 detectYarnVersion ::
@@ -267,9 +310,65 @@ findWorkspaceNames PkgJsonGraph{..} =
     workspaceNames :: [Text]
     workspaceNames = mapMaybe (packageName <=< flip Map.lookup jsonLookup) childManifests
 
+-- | Map selected build targets (workspace package names) to the root-relative
+-- path keys npm v3 lockfiles use: @""@ for the root, @"packages/a"@ for a
+-- member. 'Nothing' means no target filter, so no scoping is applied.
+resolveNpmV3WorkspacePaths :: FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
+resolveNpmV3WorkspacePaths ProjectWithoutTargets _ = Nothing
+resolveNpmV3WorkspacePaths (FoundTargets targets) graph@PkgJsonGraph{..} =
+  case findWorkspaceRootManifest graph of
+    Left _ -> Nothing
+    Right (Manifest rootManifest) ->
+      Just . Set.fromList . map snd $ filter ((`Set.member` targetNames) . fst) namePathPairs
+      where
+        rootDir = parent rootManifest
+        targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
+
+        namePathPairs :: [(Text, Text)]
+        namePathPairs =
+          mapMaybe
+            (\(Manifest m, pj) -> (,) <$> packageName pj <*> manifestToWorkspacePath m)
+            (Map.toList jsonLookup)
+
+        manifestToWorkspacePath :: Path Abs File -> Maybe Text
+        manifestToWorkspacePath m =
+          let manifestDir = parent m
+           in if manifestDir == rootDir
+                then Just ""
+                else -- npm keys workspaces with forward slashes on every OS, so
+                -- normalize the platform separator before matching.
+                  fmap (Text.replace "\\" "/" . toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
+
 extractDepLists :: PkgJsonGraph -> FlatDeps
 extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
   where
+    mapToSet :: Map Text Text -> Set NodePackage
+    mapToSet = Set.fromList . map (uncurry NodePackage) . Map.toList
+
+    extractSingle :: PackageJson -> FlatDeps
+    extractSingle PackageJson{..} =
+      FlatDeps
+        (applyTag @Production $ mapToSet (packageDeps `Map.union` packagePeerDeps))
+        (applyTag @Development $ mapToSet packageDevDeps)
+        (Map.keysSet jsonLookup)
+
+-- | Like 'extractDepLists', but scoped to the selected workspace targets.
+-- When 'ProjectWithoutTargets', includes all deps.
+-- When 'FoundTargets', only includes deps from packages whose
+-- package name matches a selected target (root or workspace member).
+extractDepListsForTargets :: FoundTargets -> PkgJsonGraph -> FlatDeps
+extractDepListsForTargets ProjectWithoutTargets graph = extractDepLists graph
+extractDepListsForTargets (FoundTargets targets) PkgJsonGraph{..} =
+  foldMap extractSingle selectedPackageJsons
+  where
+    targetNames :: Set Text
+    targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
+
+    selectedPackageJsons :: [PackageJson]
+    selectedPackageJsons =
+      filter (maybe False (`Set.member` targetNames) . packageName) $
+        Map.elems jsonLookup
+
     mapToSet :: Map Text Text -> Set NodePackage
     mapToSet = Set.fromList . map (uncurry NodePackage) . Map.toList
 
@@ -317,9 +416,11 @@ buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap
 
     -- Given a workspace pattern, find all matches in the list of known manifest files.
     -- When found, create edges between the root path and the matching children.
+    -- A manifest is never its own workspace child, so exclude it from its matches;
+    -- otherwise a whole-root glob (e.g. ".") would create a self-edge and look cyclic.
     findWorkspaceChildren :: Manifest -> Glob Rel -> AM.AdjacencyMap Manifest
     findWorkspaceChildren path glob =
-      manifestEdges path . filter (filterfunc path glob) $
+      manifestEdges path . filter (/= path) . filter (filterfunc path glob) $
         Map.keys manifestMap
 
     -- True if qualified glob pattern matches the given file.
@@ -335,8 +436,10 @@ buildManifestGraph manifestMap = PkgJsonGraph adjmap manifestMap
 
     -- Yarn appends the filename to the glob, so we match that behavior
     -- https://github.com/yarnpkg/yarn/blob/master/src/config.js#L821
+    -- Normalize so a leading "./" in a workspace glob collapses before matching;
+    -- System.FilePattern treats "." as a literal segment and would match nothing.
     qualifyGlobPattern :: Manifest -> Glob Rel -> Glob Abs
-    qualifyGlobPattern (Manifest root) = Glob.append "package.json" . Glob.prefixWith (parent root)
+    qualifyGlobPattern (Manifest root) = Glob.normalize . Glob.append "package.json" . Glob.prefixWith (parent root)
 
     -- Create edges from a parent to its children
     manifestEdges :: Ord a => a -> [a] -> AM.AdjacencyMap a
@@ -368,19 +471,23 @@ identifyProjectType graph = do
   let yarnFilePath = parent manifest Path.</> $(mkRelFile "yarn.lock")
       packageLockPath = parent manifest Path.</> $(mkRelFile "package-lock.json")
       pnpmLockPath = parent manifest Path.</> $(mkRelFile "pnpm-lock.yaml")
+      bunLockPath = parent manifest Path.</> $(mkRelFile "bun.lock")
   yarnExists <- doesFileExist yarnFilePath
   pkgLockExists <- doesFileExist packageLockPath
   pnpmLockExists <- doesFileExist pnpmLockPath
-  pure $ case (yarnExists, pkgLockExists, pnpmLockExists) of
-    (True, _, _) -> Yarn (Manifest yarnFilePath) graph
-    (_, True, _) -> NPMLock (Manifest packageLockPath) graph
-    (_, _, True) -> Pnpm (Manifest pnpmLockPath) graph
+  bunLockExists <- doesFileExist bunLockPath
+  pure $ case (yarnExists, pkgLockExists, pnpmLockExists, bunLockExists) of
+    (True, _, _, _) -> Yarn (Manifest yarnFilePath) graph
+    (_, True, _, _) -> NPMLock (Manifest packageLockPath) graph
+    (_, _, True, _) -> Pnpm (Manifest pnpmLockPath) graph
+    (_, _, _, True) -> Bun (Manifest bunLockPath) graph
     _ -> NPM graph
 
 data NodeProject
   = Yarn Manifest PkgJsonGraph
   | NPMLock Manifest PkgJsonGraph
   | NPM PkgJsonGraph
+  | Bun Manifest PkgJsonGraph
   | Pnpm Manifest PkgJsonGraph
   deriving (Eq, Ord, Show, Generic)
 
@@ -413,6 +520,7 @@ pkgGraph :: NodeProject -> PkgJsonGraph
 pkgGraph (Yarn _ pjg) = pjg
 pkgGraph (NPMLock _ pjg) = pjg
 pkgGraph (NPM pjg) = pjg
+pkgGraph (Bun _ pjg) = pjg
 pkgGraph (Pnpm _ pjg) = pjg
 
 findWorkspaceRootManifest :: PkgJsonGraph -> Either String Manifest

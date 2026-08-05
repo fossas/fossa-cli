@@ -9,9 +9,11 @@ module Strategy.Conda.CondaEnvCreate (
   -- exposed for testing
   parseCondaEnvDep,
   parseEnvCreateDeps,
+  condaEnvCmdYes,
+  condaEnvCmdForce,
 ) where
 
-import Control.Carrier.Diagnostics (Diagnostics, Has, warn)
+import Control.Carrier.Diagnostics (Diagnostics, Has, warn, (<||>))
 import Control.Monad.Combinators (some)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import Data.Either (partitionEithers)
@@ -31,11 +33,31 @@ import Types (
   VerConstraint (CEq),
  )
 
--- conda env create --json --file <filename.yml> --dry-run --force
+-- conda env create --json --file <filename.yml> --dry-run --yes
 -- runs conda and mocks the creation of an environment based on environment.yml.
 -- The command outputs json data, including the list of resolved packages.
-condaEnvCmd :: Path Abs File -> Command
-condaEnvCmd environmentYml =
+--
+-- --force was deprecated in conda 23.7.0 and removed in 24.3.0.
+-- We try --yes first (modern conda), falling back to --force (older conda).
+condaEnvCmdYes :: Path Abs File -> Command
+condaEnvCmdYes environmentYml =
+  Command
+    { cmdName = "conda"
+    , cmdArgs =
+        [ "env"
+        , "create"
+        , "--json"
+        , "--file"
+        , toText environmentYml
+        , "--dry-run"
+        , "--yes"
+        ]
+    , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
+    }
+
+condaEnvCmdForce :: Path Abs File -> Command
+condaEnvCmdForce environmentYml =
   Command
     { cmdName = "conda"
     , cmdArgs =
@@ -48,6 +70,7 @@ condaEnvCmd environmentYml =
         , "--force"
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 buildGraph :: [CondaEnvDep] -> Graphing Dependency
@@ -72,7 +95,8 @@ analyze ::
   Path Abs File ->
   m (Graphing Dependency)
 analyze dir file = do
-  buildGraph <$> (parseEnvCreateDeps =<< execJson @CondaEnvCreateOut dir (condaEnvCmd file))
+  let buildGraphWith cmd = buildGraph <$> (parseEnvCreateDeps =<< execJson @CondaEnvCreateOut dir (cmd file))
+  buildGraphWith condaEnvCmdYes <||> buildGraphWith condaEnvCmdForce
 
 parseEnvCreateDeps :: (Has Diagnostics sig m) => CondaEnvCreateOut -> m [CondaEnvDep]
 parseEnvCreateDeps CondaEnvCreateOut{dependencies = deps} = do

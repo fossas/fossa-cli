@@ -67,6 +67,7 @@ data DiscoveredProjectType
   = AlpineDatabaseProjectType
   | BerkeleyDBProjectType
   | BinaryDepsProjectType
+  | BunProjectType
   | BundlerProjectType
   | CabalProjectType
   | CargoProjectType
@@ -119,6 +120,7 @@ projectTypeToText = \case
   AlpineDatabaseProjectType -> "apkdb"
   BerkeleyDBProjectType -> "berkeleydb"
   BinaryDepsProjectType -> "binary-deps"
+  BunProjectType -> "bun"
   BundlerProjectType -> "bundler"
   CabalProjectType -> "cabal"
   CargoProjectType -> "cargo"

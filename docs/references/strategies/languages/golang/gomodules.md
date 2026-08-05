@@ -53,8 +53,7 @@ This should eliminate some false positives found by tactics in older versions of
 
 Currently, this strategy does not yet include path dependencies or their transitive deps from Go `replace` directives.
 
-This strategy was previously available only under the `--experimental-use-v3-go-resolver` flag but is now the default.
-For more information about this transition please see this [document](./v3-go-resolver-transition-qa.md).
+This strategy is the default Go analysis method. For historical context about this strategy's development, please see this [document](./v3-go-resolver-transition-qa.md).
 
 ### Experimental: Path dependencies
 

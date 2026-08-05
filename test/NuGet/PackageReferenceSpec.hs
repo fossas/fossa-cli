@@ -88,3 +88,22 @@ spec = do
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour] graph
       expectEdges [] graph
+
+    it "resolves missing versions from CPM version map" $ do
+      let versionMap = Map.fromList [("four", "4.0.0"), ("five", "5.0.0")]
+          graph = buildGraphWithCPM versionMap packageReference
+          dependencyFourResolved =
+            dependencyFour{dependencyVersion = Just (CEq "4.0.0")}
+      expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
+      expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
+      expectEdges [] graph
+
+    it "prefers inline version over CPM version" $ do
+      let versionMap = Map.fromList [("one", "9.9.9"), ("four", "4.0.0")]
+          graph = buildGraphWithCPM versionMap packageReference
+          dependencyFourResolved =
+            dependencyFour{dependencyVersion = Just (CEq "4.0.0")}
+      -- "one" keeps its inline version 1.0.0, not the CPM version 9.9.9
+      expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
+      expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
+      expectEdges [] graph

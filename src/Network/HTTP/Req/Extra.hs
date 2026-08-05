@@ -3,7 +3,7 @@ module Network.HTTP.Req.Extra (
 ) where
 
 import Control.Exception (SomeException, fromException)
-import Control.Retry (RetryPolicy, RetryStatus, constantDelay, limitRetriesByCumulativeDelay)
+import Control.Retry (RetryPolicy, RetryStatus, constantDelay, limitRetries)
 import Network.HTTP.Client (HttpException (HttpExceptionRequest), HttpExceptionContent (ConnectionTimeout, ResponseTimeout), Response (responseStatus))
 import Network.HTTP.Req (
   HttpConfig (
@@ -58,17 +58,17 @@ httpConfigRetryTimeouts =
   where
     statusCodeOf = statusCode . responseStatus
 
--- | Retry every 5 seconds for up to 10 minutes
+-- | Retry every 10 seconds 3 times at max
 retryPolicy :: RetryPolicy
-retryPolicy = limitRetriesByCumulativeDelay tenMinutes (constantDelay fiveSeconds)
+retryPolicy = limitRetries numRetries <> constantDelay tenSeconds
   where
-    -- ten minutes
-    tenMinutes :: Int
-    tenMinutes = 10 * 60 * 1_000_000
+    -- three retries
+    numRetries :: Int
+    numRetries = 3
 
-    -- five seconds
-    fiveSeconds :: Int
-    fiveSeconds = 5 * 1_000_000
+    -- ten seconds
+    tenSeconds :: Int
+    tenSeconds = 10 * 1_000_000
 
 -- | True if the exception represnts timeout, otherwise False.
 isTimeout :: RetryStatus -> SomeException -> Bool

@@ -56,6 +56,7 @@ gitLogCmd now =
     { cmdName = "git"
     , cmdArgs = ["log", "--since", sinceArg, "--date=short", "--format=%ae|%cd"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
   where
     sinceArg = toText . iso8601Show $ utctDay wayBack

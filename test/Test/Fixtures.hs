@@ -50,11 +50,13 @@ module Test.Fixtures (
   invalidCreateTeamProjectPermission,
   invalidEditProjectPermission,
   invalidCreateProjectPermission,
+  organizationWithGitBackedCargoLocators,
   organizationWithPreflightChecks,
   createReleaseGroupResponse,
   releaseGroup,
   release,
   releaseProject,
+  releaseGroupReleaseLookup,
   policy,
   team,
   excludePath,
@@ -63,7 +65,7 @@ module Test.Fixtures (
 )
 where
 
-import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), ExperimentalAnalyzeConfig (..), GoDynamicTactic (..), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (Any), AnalyzeConfig (AnalyzeConfig), IncludeAll (..), JsonOutput (JsonOutput), NoDiscoveryExclusion (..), ScanDestination (..), StrategyConfig (..), UnpackArchives (..), VSIModeOptions (..), VendoredDependencyOptions (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Analyze qualified as ANZ
 import App.Fossa.Config.Analyze qualified as VSI
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
@@ -142,8 +144,10 @@ organization =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = False
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 organizationWithPreflightChecks :: API.Organization
@@ -164,8 +168,10 @@ organizationWithPreflightChecks =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = True
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 organizationWithPremiumSubscription :: API.Organization
@@ -186,8 +192,34 @@ organizationWithPremiumSubscription =
     , orgCustomLicenseScanConfigs = []
     , orgSupportsReachability = False
     , orgSupportsPreflightChecks = True
+    , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Premium
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
+    }
+
+organizationWithGitBackedCargoLocators :: API.Organization
+organizationWithGitBackedCargoLocators =
+  Organization
+    { organizationId = (OrgId 42)
+    , orgUsesSAML = False
+    , orgCoreSupportsLocalLicenseScan = True
+    , orgSupportsAnalyzedRevisionsQuery = True
+    , orgDefaultVendoredDependencyScanType = CLILicenseScan
+    , orgSupportsIssueDiffs = True
+    , orgSupportsNativeContainerScan = True
+    , orgSupportsDependenciesCachePolling = True
+    , orgRequiresFullFileUploads = False
+    , orgDefaultsToFirstPartyScans = False
+    , orgSupportsPathDependencyScans = False
+    , orgSupportsFirstPartyScans = True
+    , orgCustomLicenseScanConfigs = []
+    , orgSupportsReachability = False
+    , orgSupportsPreflightChecks = False
+    , orgSupportsGitBackedCargoLocators = True
+    , orgSubscription = Free
+    , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 pushToken :: API.TokenTypeResponse
@@ -242,6 +274,13 @@ releaseProject =
     { CoreAPI.releaseProjectLocator = "custom+1/example"
     , CoreAPI.releaseProjectRevisionId = "custom+1/example$123"
     , CoreAPI.releaseProjectBranch = "main"
+    }
+
+releaseGroupReleaseLookup :: CoreAPI.ReleaseGroupReleaseLookup
+releaseGroupReleaseLookup =
+  CoreAPI.ReleaseGroupReleaseLookup
+    { CoreAPI.lookupReleaseGroupId = 1
+    , CoreAPI.lookupReleaseId = 2
     }
 
 policy :: CoreAPI.Policy
@@ -609,12 +648,12 @@ vsiOptions =
 filterSet :: AllFilters
 filterSet = mempty
 
-experimentalConfig :: ExperimentalAnalyzeConfig
-experimentalConfig =
-  ExperimentalAnalyzeConfig
+fixtureStrategyConfig :: StrategyConfig
+fixtureStrategyConfig =
+  StrategyConfig
     { allowedGradleConfigs = Nothing
-    , useV3GoResolver = GoModulesBasedTactic
     , resolvePathDependencies = False
+    , useGitBackedCargoLocators = ANZ.UseGitBackedCargoLocators True
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions
@@ -662,7 +701,7 @@ standardAnalyzeConfig =
     , ANZ.vsiOptions = vsiOptions
     , ANZ.filterSet = filterSet
     , ANZ.mavenScopeFilterSet = mavenScopeFilterSet
-    , ANZ.experimental = experimentalConfig
+    , ANZ.strategyConfig = fixtureStrategyConfig
     , ANZ.vendoredDeps = vendoredDepsOptions
     , ANZ.unpackArchives = toFlag UnpackArchives False
     , ANZ.jsonOutput = toFlag JsonOutput False

@@ -27,4 +27,4 @@ projectMain ::
   m ()
 projectMain (EditCfg config) = do
   logInfo "Running FOSSA project"
-  context "Add projects to release group" . runStickyLogger SevInfo . ignoreDebug . runFossaApiClient (Edit.apiOpts config) $ editMain config
+  context "Editing project" . runStickyLogger SevInfo . ignoreDebug . runFossaApiClient (Edit.apiOpts config) $ editMain config

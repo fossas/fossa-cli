@@ -14,12 +14,19 @@ module Strategy.Cargo (
   getDeps,
   mkProject,
   findProjects,
+
+  -- * for testing
+  Package (..),
+  extractGitCommitHash,
+  parseGitRepoUrl,
+  parsePkgId,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (
   LicenseAnalyzeProject (licenseAnalyzeProject),
  )
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrategyConfig (useGitBackedCargoLocators), UseGitBackedCargoLocators (..))
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -31,8 +38,8 @@ import Control.Effect.Diagnostics (
   run,
   warn,
  )
-import Control.Effect.Reader (Reader)
-import Control.Monad (unless)
+import Control.Effect.Reader (Reader, ask)
+import Control.Monad (guard, unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -45,9 +52,10 @@ import Data.Foldable (for_, traverse_)
 import Data.Functor (void)
 import Data.List.NonEmpty qualified as NonEmpty
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing)
 import Data.Set (Set)
-import Data.String.Conversion (toText)
+import Data.Set qualified as Set
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
@@ -67,7 +75,6 @@ import Effect.Exec (
   execThrow,
  )
 import Effect.Grapher (
-  LabeledGrapher,
   direct,
   edge,
   label,
@@ -77,6 +84,7 @@ import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, shrinkRoots)
+import Network.URI (parseURI, uriAuthority, uriPath, uriRegName)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
 import Text.Megaparsec (
   Parsec,
@@ -131,6 +139,7 @@ data Package = Package
   , pkgLicense :: Maybe Text.Text
   , pkgLicenseFile :: Maybe Text.Text
   , pkgDependencies :: [PackageDependency]
+  , pkgSourceUrl :: Maybe Text.Text
   }
   deriving (Eq, Ord, Show)
 
@@ -180,6 +189,7 @@ instance FromJSON Package where
       <*> obj .:? "license"
       <*> obj .:? "license_file"
       <*> obj .: "dependencies"
+      <*> obj .:? "source"
 
 instance FromJSON NodeDepKind where
   parseJSON = withObject "NodeDepKind" $ \obj ->
@@ -313,9 +323,10 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m) => CargoProject -> m DependencyResults
+getDeps :: (Has Exec sig m, Has Diagnostics sig m, Has ReadFS sig m, Has (Reader StrategyConfig) sig m) => CargoProject -> m DependencyResults
 getDeps project = do
-  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" . analyze $ project
+  strategyCfg <- ask @StrategyConfig
+  (graph, graphBreadth) <- context "Cargo" . context "Dynamic analysis" $ analyze (unUseGitBackedCargoLocators $ useGitBackedCargoLocators strategyCfg) project
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -329,6 +340,7 @@ cargoGenLockfileCmd =
     { cmdName = "cargo"
     , cmdArgs = ["generate-lockfile"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 cargoMetadataCmd :: Command
@@ -337,6 +349,7 @@ cargoMetadataCmd =
     { cmdName = "cargo"
     , cmdArgs = ["metadata"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 analyze ::
@@ -344,9 +357,10 @@ analyze ::
   , Has Diagnostics sig m
   , Has ReadFS sig m
   ) =>
+  Bool ->
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
-analyze (CargoProject manifestDir manifestFile) = do
+analyze emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
   exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
   unless exists $
     void $
@@ -354,7 +368,7 @@ analyze (CargoProject manifestDir manifestFile) = do
         errCtx (FailedToGenLockFile manifestFile) $
           execThrow manifestDir cargoGenLockfileCmd
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
-  graph <- context "Building dependency graph" $ pure (buildGraph meta)
+  graph <- context "Building dependency graph" $ pure (buildGraph emitGitBackedLocators meta)
   pure (graph, Complete)
 
 newtype FailedToGenLockFile = FailedToGenLockFile (Path Abs File)
@@ -372,14 +386,50 @@ instance ToDiagnostic FailedToRetrieveCargoMetadata where
 type PackageIdSourceKind = Text.Text
 type PackageIdSourceProtocol = Text.Text
 
-toDependency :: PackageId -> Set CargoLabel -> Dependency
-toDependency pkg =
+-- | Extract the git repository host+path from a cargo source URL.
+-- Input:  "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c..."
+-- Output: Just "github.com/fossas/locator-rs"
+parseGitRepoUrl :: Text -> Maybe Text
+parseGitRepoUrl src = do
+  stripped <- Text.stripPrefix "git+" src
+  uri <- parseURI (toString stripped)
+  auth <- uriAuthority uri
+  let host = toText (uriRegName auth)
+      rawPath = Text.dropWhile (== '/') (toText (uriPath uri))
+      cleanPath = fromMaybe rawPath (Text.stripSuffix ".git" rawPath)
+  guard (not (Text.null host) && not (Text.null cleanPath))
+  pure (host <> "/" <> cleanPath)
+
+-- | Extract the commit hash from a cargo package source URL.
+-- Input:  "git+https://github.com/fossas/foundation-libs#4bc3762e73f371717566fb075d02e1d25b21146e"
+-- Output: Just "4bc3762e73f371717566fb075d02e1d25b21146e"
+extractGitCommitHash :: Text -> Maybe Text
+extractGitCommitHash src = do
+  guard (Text.isPrefixOf "git+" src)
+  let (_, fragment) = breakOn "#" src
+  commit <- Text.stripPrefix "#" fragment
+  guard (not (Text.null commit))
+  pure commit
+
+-- | A map from PackageId to the package's source URL (which contains the commit hash for git deps).
+type PackageSourceMap = Map.Map PackageId Text
+
+-- | Build a lookup from package ID to source URL from the packages list.
+buildPackageSourceMap :: [Package] -> PackageSourceMap
+buildPackageSourceMap = Map.fromList . concatMap toEntry
+  where
+    toEntry pkg = case pkgSourceUrl pkg of
+      Just src -> [(pkgId pkg, src)]
+      Nothing -> []
+
+toDependency :: Bool -> PackageSourceMap -> PackageId -> Set CargoLabel -> Dependency
+toDependency emitGitBackedLocators sourceMap pkg =
   foldr
     applyLabel
     Dependency
       { dependencyType = depType
       , dependencyName = depName
-      , dependencyVersion = Just $ CEq $ pkgIdVersion pkg
+      , dependencyVersion = Just $ CEq depVersion
       , dependencyLocations = []
       , dependencyEnvironments = mempty
       , dependencyTags = Map.empty
@@ -407,40 +457,116 @@ toDependency pkg =
 
     -- For a path dependency, use the path as the package name. For example:
     -- path+file:///some/file/path -> /some/file/path
+    -- For a git dependency when the server supports it, use repo-url#crate-name. For example:
+    -- git+https://github.com/fossas/locator-rs?tag=v3.0.3#sha -> github.com/fossas/locator-rs#locator
+    -- When the server does not support git-backed locators, fall back to the plain crate name.
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of
             UnresolvedPathType -> sourceUrl
+            _
+              | emitGitBackedLocators
+              , Just repoUrl <- parseGitRepoUrl (pkgIdSource pkg) ->
+                  repoUrl <> "#" <> pkgIdName pkg
             _ -> pkgIdName pkg
 
--- Possible values here are "build", "dev", and null.
--- Null refers to productions, while dev and build refer to development-time dependencies
--- Cargo does not differentiate test dependencies and dev dependencies,
--- so we just simplify it to Development.
-kindToLabel :: Maybe Text.Text -> CargoLabel
-kindToLabel (Just _) = CargoDepKind EnvDevelopment
-kindToLabel Nothing = CargoDepKind EnvProduction
+    -- For git dependencies without a tag, use the commit hash from the package source URL.
+    -- For all other dependencies (including tagged git deps), use the crate version.
+    depVersion = case (emitGitBackedLocators, untaggedGitCommitHash) of
+      (True, Just commitHash) -> commitHash
+      _ -> pkgIdVersion pkg
 
-addLabel :: Has (LabeledGrapher PackageId CargoLabel) sig m => NodeDependency -> m ()
-addLabel dep = do
-  let packageId = nodePkg dep
-  traverse_ (label packageId . kindToLabel . nodeDepKind) $ nodeDepKinds dep
+    -- Look up the commit hash for an untagged git dependency.
+    -- Note: the `git+` here is from a URL like `git+https://github.com...`, not from a git+ locator.
+    untaggedGitCommitHash :: Maybe Text
+    untaggedGitCommitHash = case ("git+" `Text.isPrefixOf` pkgIdSource pkg, "?tag=" `Text.isInfixOf` pkgIdSource pkg) of
+      (True, False) -> do
+        sourceUrl <- Map.lookup pkg sourceMap
+        extractGitCommitHash sourceUrl
+      _ -> Nothing
 
-addEdge :: Has (LabeledGrapher PackageId CargoLabel) sig m => ResolveNode -> m ()
-addEdge node = do
-  let parentId = resolveNodeId node
-  for_ (resolveNodeDeps node) $ \dep -> do
-    addLabel dep
-    edge parentId $ nodePkg dep
+-- A Cargo edge's kind ("build", "dev", or null) reflects the parent's manifest
+-- declaration, not the path taken to reach the parent. We classify each package
+-- by which workspace-rooted paths can reach it:
+--
+--   * Production: reachable from a workspace member via a path of null-kind
+--     edges only. These packages are linked into the release artifact.
+--
+--   * Development: any package reachable (via any edge) from the target of a
+--     non-null-kind edge. A "build" or "dev" edge marks the start of a subtree
+--     that never ships in the release binary, and every descendant of that
+--     subtree inherits Development.
+--
+-- A package can carry both labels when it's reachable by both kinds of paths.
+--
+-- We do not need a separate "dev-deps of prod-deps" case: Cargo only resolves
+-- dev-dependencies for workspace members, so non-workspace edges with kind
+-- "dev" do not appear in 'cargo metadata' output. The only non-null kind we
+-- see on a non-workspace edge is "build".
+--
+-- Cargo is the only strategy with per-edge kinds; others (pnpm, yarn, poetry)
+-- label nodes and propagate with 'hydrateDepEnvs'. That helper walks from a
+-- labeled node to every dependency it declares, regardless of edge kind, so
+-- a Production label on a workspace member would flow through a "dev" or
+-- "build" edge and mislabel the dev/build subtree as Production. We roll our
+-- own edge-filtered reachability here rather than generalize the shared helper.
+buildGraph :: Bool -> CargoMetadata -> Graphing Dependency
+buildGraph emitGitBackedLocators meta = shrinkRoots $
+  run . withLabeling (toDependency emitGitBackedLocators sourceMap) $ do
+    traverse_ direct (metadataWorkspaceMembers meta)
+    for_ nodes $ \node ->
+      for_ (resolveNodeDeps node) $ \dep ->
+        edge (resolveNodeId node) (nodePkg dep)
+    for_ (Set.toList prodReachable) $ \pkg ->
+      label pkg (CargoDepKind EnvProduction)
+    for_ (Set.toList devReachable) $ \pkg ->
+      label pkg (CargoDepKind EnvDevelopment)
+  where
+    sourceMap = buildPackageSourceMap $ metadataPackages meta
+    nodes = resolvedNodes (metadataResolve meta)
+    workspaceMembers = Set.fromList (metadataWorkspaceMembers meta)
 
-buildGraph :: CargoMetadata -> Graphing Dependency
--- By construction, workspace members are the root nodes in the graph.
--- Use shrinkRoots to remove them and promote their direct dependencies to the
--- direct dependencies we report for the project.
-buildGraph meta = shrinkRoots $
-  run . withLabeling toDependency $ do
-    traverse_ direct $ metadataWorkspaceMembers meta
-    traverse_ addEdge $ resolvedNodes $ metadataResolve meta
+    -- These predicates are not mutually exclusive: a dep declared in both
+    -- [dependencies] and [dev-dependencies] on the same parent carries both
+    -- a null and a non-null kind, so the edge feeds prodAdj *and* devSeeds.
+    isProdEdge dep = any (isNothing . nodeDepKind) (nodeDepKinds dep)
+    isDevEdge dep = any (isJust . nodeDepKind) (nodeDepKinds dep)
+
+    -- Adjacency containing only edges whose parent declares the child as a
+    -- normal dependency (at least one kind is null). Production reachability
+    -- must only traverse these — a build or dev edge breaks the release chain.
+    prodAdj =
+      Map.fromList $
+        map
+          (\node -> (resolveNodeId node, map nodePkg . filter isProdEdge . resolveNodeDeps $ node))
+          nodes
+
+    -- Every edge in the metadata graph, for Development reachability.
+    allAdj =
+      Map.fromList $
+        map (\node -> (resolveNodeId node, map nodePkg (resolveNodeDeps node))) nodes
+
+    -- Targets of any non-null-kind edge. Each seeds a Development subtree:
+    -- the target and all its transitive descendants are never linked into
+    -- a release build.
+    devSeeds =
+      Set.fromList $
+        map nodePkg $
+          concatMap (filter isDevEdge . resolveNodeDeps) nodes
+
+    prodReachable = reachable prodAdj workspaceMembers
+    devReachable = reachable allAdj devSeeds
+
+reachable :: Map.Map PackageId [PackageId] -> Set PackageId -> Set PackageId
+reachable adj = go Set.empty . Set.toList
+  where
+    go visited [] = visited
+    go visited (x : xs) =
+      if Set.member x visited
+        then go visited xs
+        else
+          let children = fromMaybe [] (Map.lookup x adj)
+           in go (Set.insert x visited) (children ++ xs)
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
@@ -498,12 +624,14 @@ newPkgIdParser = eatSpaces (try longSpec <|> simplePkgSpec')
       -- In cases where we can't find a real name, use text after the last slash as a name.
       -- e.g. file:///path/to/my/project/bar#2.0.0 has the name 'bar'
       -- Cases of this are generally path dependencies.
+      -- Strip query parameters (e.g. ?tag=v0.3.6) before splitting, so that
+      -- git+https://github.com/fossas/broker?tag=v0.3.6#0.3.6 yields "broker", not "broker?tag=v0.3.6".
       let fallbackName =
             maybe pkgSource NonEmpty.last
               . NonEmpty.nonEmpty
               . filter (/= "")
               . Text.split (== '/')
-              $ sourceRemaining
+              $ Text.takeWhile (/= '?') sourceRemaining
 
       -- Parse (Optional): #adler@1.0.2
       nameVersion <- optional $ do

@@ -334,6 +334,28 @@ The list of paths to exclude from scanning in your directory.
 
 This section is intended to be used as the inverse to `paths.only`. If you have a certain directory such as `development` you wish to exclude, `paths.exclude` enables you to do this.
 
+#### Glob patterns
+
+Entries in `paths.only` and `paths.exclude` may also be glob patterns. An entry is treated as a glob if it contains `*`; other entries keep their existing semantics (match the directory and all of its children). Glob matching follows [`System.FilePattern`][filepattern] semantics: `*` matches any sequence of characters within a single path segment, and `**` matches any number of segments.
+
+Patterns use forward slashes (`/`) as path separators; backslashes are normalized so Windows-native patterns also work.
+
+```yaml
+paths:
+  exclude:
+    - "**/vendor/**"
+    - "**/node_modules/**"
+    - "build/generated/*"
+```
+
+Each example above excludes a different shape of directory:
+
+- `**/vendor/**` skips Go-style vendored trees at any depth, e.g. `services/billing/vendor/k8s.io/apimachinery/pkg/apis/meta/v1/`.
+- `**/node_modules/**` skips installed npm packages wherever they appear, e.g. `apps/web-frontend/node_modules/@babel/preset-env/lib/plugins/syntax-dynamic-import/`.
+- `build/generated/*` is anchored at the repo root and matches *direct* children of `build/generated/` only. `build/generated/proto-go/` matches; the walker then prunes its entire subtree (e.g. `build/generated/proto-go/v1/messagepb/`).
+
+[filepattern]: https://hackage.haskell.org/package/filepattern
+
 ### Analysis target configuration
 Analysis target configuration allows you to select a very specific subset of your directory for scanning. The `targets` and `paths` sections allow users to configure which targets and directories should be scanned. This is useful if you have a custom test directory or development projects within the root project.
 

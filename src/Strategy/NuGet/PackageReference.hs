@@ -2,7 +2,9 @@
 
 module Strategy.NuGet.PackageReference (
   buildGraph,
+  buildGraphWithCPM,
   analyze',
+  analyzeWithCPM,
   PackageReference (..),
   ItemGroup (..),
   Package (..),
@@ -10,8 +12,10 @@ module Strategy.NuGet.PackageReference (
 
 import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepType (NuGetType),
   Dependency (..),
@@ -28,9 +32,14 @@ import Types (
  )
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
-analyze' file = do
+analyze' = analyzeWithCPM Map.empty
+
+-- | Analyze a project file, resolving missing PackageReference versions from
+-- a CPM (Central Package Management) version map built from Directory.Packages.props.
+analyzeWithCPM :: (Has ReadFS sig m, Has Diagnostics sig m) => Map Text Text -> Path Abs File -> m DependencyResults
+analyzeWithCPM versionMap file = do
   ref <- readContentsXML @PackageReference file
-  graph <- context "Building dependency graph" $ pure (buildGraph ref)
+  graph <- context "Building dependency graph" $ pure (buildGraphWithCPM versionMap ref)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -71,14 +80,20 @@ instance FromXML Package where
       <*> optional (attr "Version" el <|> child "Version" el)
 
 buildGraph :: PackageReference -> Graphing Dependency
-buildGraph project = Graphing.fromList (map toDependency direct)
+buildGraph = buildGraphWithCPM Map.empty
+
+-- | Build a dependency graph, resolving missing versions from a CPM version map.
+-- When a PackageReference has no Version attribute, the version is looked up
+-- from the map (sourced from Directory.Packages.props).
+buildGraphWithCPM :: Map Text Text -> PackageReference -> Graphing Dependency
+buildGraphWithCPM versionMap project = Graphing.fromList (map toDependency direct)
   where
     direct = concatMap dependencies (groups project)
     toDependency Package{..} =
       Dependency
         { dependencyType = NuGetType
         , dependencyName = depID
-        , dependencyVersion = fmap CEq depVersion
+        , dependencyVersion = fmap CEq (depVersion <|> Map.lookup (Text.toCaseFold depID) versionMap)
         , dependencyLocations = []
         , dependencyEnvironments = mempty
         , dependencyTags = Map.empty

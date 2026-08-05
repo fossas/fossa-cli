@@ -16,7 +16,7 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic), WithoutDefaultFilters (..))
+import App.Fossa.Config.Analyze (StrategyConfig (StrategyConfig), UseGitBackedCargoLocators (..), WithoutDefaultFilters (..))
 import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery (GoBinaryDiscovery))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.GoBinary (goBinariesToSourceUnits)
@@ -101,13 +101,14 @@ analyzeFromDockerArchive ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  UseGitBackedCargoLocators ->
   Bool ->
   Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Path Abs File ->
   m ContainerScan
-analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters tarball = do
+analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
@@ -139,7 +140,7 @@ analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefault
 
   baseUnits <-
     context "Analyzing From Base Layer" $
-      analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo baseFs tarball
+      analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capabilities osInfo baseFs tarball
 
   let mkScan :: [ContainerScanImageLayer] -> ContainerScan
       mkScan layers =
@@ -190,7 +191,7 @@ analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefault
       let squashedDigest = layerDigest . otherLayersSquashed $ image
       otherUnits <-
         context "Analyzing from Other Layers" $
-          analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
+          analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capabilities osInfo fs tarball
 
       let scan =
             mkScan
@@ -207,6 +208,7 @@ analyzeLayer ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  UseGitBackedCargoLocators ->
   Bool ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
@@ -215,13 +217,13 @@ analyzeLayer ::
   SomeFileTree TarEntryOffset ->
   Path Abs File ->
   m [SourceUnit]
-analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo layerFs tarball = do
+analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capabilities osInfo layerFs tarball = do
   toSourceUnit
     <$> (runReader filters)
       ( do
           (projectResults, ()) <-
             runTarballReadFSIO layerFs tarball
-              . runReader noExperimental
+              . runReader noStrategyConfig
               . runReader noMavenScopeFilters
               . runReader NonStrict
               . Diag.context "discovery/analysis tasks"
@@ -237,12 +239,12 @@ analyzeLayer systemDepsOnly filters withoutDefaultFilters capabilities osInfo la
   where
     noMavenScopeFilters :: MavenScopeFilters
     noMavenScopeFilters = MavenScopeIncludeFilters mempty
-    noExperimental :: ExperimentalAnalyzeConfig
-    noExperimental =
-      ExperimentalAnalyzeConfig
+    noStrategyConfig :: StrategyConfig
+    noStrategyConfig =
+      StrategyConfig
         Nothing
-        GoModulesBasedTactic -- Discovery is the same for both module and package centric analysis.
         False -- Discovery has no consequence from path dependency analysis config
+        useGitBackedCargo
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)
@@ -276,7 +278,7 @@ runDependencyAnalysis ::
   , Has Logger sig m
   , Has ReadFS sig m
   , Has (Output DiscoveredProjectScan) sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   , Has (Reader MavenScopeFilters) sig m
   , Has (Reader Mode) sig m
   , Has (Reader AllFilters) sig m
@@ -393,10 +395,10 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
     . runReader
-      ( ExperimentalAnalyzeConfig
+      ( StrategyConfig
           Nothing
-          GoModulesBasedTactic -- Targets aren't different between package/module centric analysis for Go.
           False -- Targets are not impacted by path dependencies.
+          (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available
       )
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader NonStrict

@@ -51,6 +51,7 @@ module Control.Effect.FossaApiClient (
   createReleaseGroupRelease,
   getReleaseGroups,
   getReleaseGroupReleases,
+  resolveReleaseGroupRelease,
   updateReleaseGroupRelease,
   getProjectV2,
   updateProject,
@@ -177,6 +178,7 @@ data FossaApiClientF a where
   UpdateReleaseGroupRelease :: Int -> Int -> CoreTypes.UpdateReleaseRequest -> FossaApiClientF CoreTypes.ReleaseGroupRelease
   GetReleaseGroups :: FossaApiClientF [CoreTypes.ReleaseGroup]
   GetReleaseGroupReleases :: Int -> FossaApiClientF [CoreTypes.ReleaseGroupRelease]
+  ResolveReleaseGroupRelease :: Text -> Text -> FossaApiClientF CoreTypes.ReleaseGroupReleaseLookup
   GetProjectV2 :: Text -> FossaApiClientF CoreTypes.Project
   UpdateProject :: Text -> CoreTypes.UpdateProjectRequest -> FossaApiClientF CoreTypes.Project
   UpdateRevision :: Text -> CoreTypes.UpdateRevisionRequest -> FossaApiClientF CoreTypes.Revision
@@ -339,6 +341,9 @@ getReleaseGroups = sendSimple GetReleaseGroups
 
 getReleaseGroupReleases :: Has FossaApiClient sig m => Int -> m [CoreTypes.ReleaseGroupRelease]
 getReleaseGroupReleases releaseGroupId = sendSimple $ GetReleaseGroupReleases releaseGroupId
+
+resolveReleaseGroupRelease :: Has FossaApiClient sig m => Text -> Text -> m CoreTypes.ReleaseGroupReleaseLookup
+resolveReleaseGroupRelease releaseGroupTitle releaseTitle = sendSimple $ ResolveReleaseGroupRelease releaseGroupTitle releaseTitle
 
 getProjectV2 :: Has FossaApiClient sig m => Text -> m CoreTypes.Project
 getProjectV2 locator = sendSimple $ GetProjectV2 locator

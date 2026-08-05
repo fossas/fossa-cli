@@ -7,7 +7,7 @@ module App.Fossa.Container.Sources.Podman (
   revisionFromPodman,
 ) where
 
-import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
 import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
@@ -18,6 +18,7 @@ import Control.Effect.Path (withSystemTempDir)
 import Control.Effect.Telemetry (Telemetry)
 import Control.Monad (void)
 import Data.Flag (Flag)
+import Data.Map.Strict qualified as Map
 import Data.String.Conversion (ToText (toText), toString)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
@@ -34,6 +35,7 @@ podmanInspectImage img =
     { cmdName = "podman"
     , cmdArgs = ["image", "inspect", img]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Saves container image to a location in docker archive (tarball) format.
@@ -44,6 +46,7 @@ podmanExtractImage img dest =
     { cmdName = "podman"
     , cmdArgs = ["save", "--format", "docker-archive", img, "-o", toText . toFilePath $ dest]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 runFromPodman ::
@@ -76,13 +79,14 @@ analyzeFromPodman ::
   , Has Exec sig m
   , Has ReadFS sig m
   ) =>
+  UseGitBackedCargoLocators ->
   Bool ->
   Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
+analyzeFromPodman useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m

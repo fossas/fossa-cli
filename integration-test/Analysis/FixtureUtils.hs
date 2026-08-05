@@ -15,7 +15,7 @@ module Analysis.FixtureUtils (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (ExperimentalAnalyzeConfig), GoDynamicTactic (GoModulesBasedTactic))
+import App.Fossa.Config.Analyze (StrategyConfig (StrategyConfig), UseGitBackedCargoLocators (..))
 import App.Types (Mode (..), OverrideDynamicAnalysisBinary)
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
@@ -117,7 +117,7 @@ type TestC m =
     $ ReaderC OverrideDynamicAnalysisBinary
     $ ReaderC AllFilters
     $ ReaderC MavenScopeFilters
-    $ ReaderC ExperimentalAnalyzeConfig
+    $ ReaderC StrategyConfig
     $ ReaderC Mode
     $ FinallyC
     $ StackC
@@ -134,7 +134,7 @@ testRunner f env =
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
     & runReader (MavenScopeIncludeFilters mempty)
-    & runReader (ExperimentalAnalyzeConfig Nothing GoModulesBasedTactic False)
+    & runReader (StrategyConfig Nothing False (UseGitBackedCargoLocators False))
     & runReader NonStrict
     & runFinally
     & runStack
@@ -151,6 +151,7 @@ decorateCmdWith (NixEnv pkgs) cmd =
     { cmdName = "nix-shell"
     , cmdArgs = ["-p"] <> pkgs <> ["--run"] <> [cmdName cmd <> " " <> Text.intercalate " " (cmdArgs cmd)]
     , cmdAllowErr = cmdAllowErr cmd
+    , cmdEnvVars = cmdEnvVars cmd
     }
 
 -- --------------------------------

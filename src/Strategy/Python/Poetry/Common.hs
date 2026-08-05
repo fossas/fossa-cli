@@ -30,6 +30,7 @@ import Strategy.Python.Poetry.PyProject (
   PoetryDependency (..),
   PyProject (..),
   PyProjectBuildSystem (..),
+  PyProjectMetadata (..),
   PyProjectPoetry (..),
   PyProjectPoetryDetailedVersionDependency (..),
   PyProjectPoetryGitDependency (..),
@@ -41,6 +42,7 @@ import Strategy.Python.Poetry.PyProject (
   allPoetryNonProductionDeps,
   toDependencyVersion,
  )
+import Strategy.Python.Util (reqToDependency)
 
 -- | Gets build backend of pyproject.
 getPoetryBuildBackend :: PyProject -> Maybe Text
@@ -126,13 +128,27 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
       Just (PyProjectTool{pyprojectPoetry}) -> maybe Map.empty dependencies pyprojectPoetry
       _ -> mempty
 
+    -- PEP 621 [project].dependencies converted to Dependency with EnvProduction
+    pep621ProdDeps :: Map Text Dependency
+    pep621ProdDeps = case pyprojectProject project of
+      Just (PyProjectMetadata{pyprojectDependencies = Just reqs}) ->
+        Map.fromList $ map toNamedProdDep reqs
+      _ -> mempty
+      where
+        toNamedProdDep req =
+          let dep = (reqToDependency req){dependencyEnvironments = Set.singleton EnvProduction}
+           in (dependencyName dep, dep)
+
     toDependency :: [DepEnvironment] -> Map Text PoetryDependency -> Map Text Dependency
     toDependency depEnvs = Map.mapWithKey $ poetrytoDependency depEnvs
 
     allDeps :: [(Text, Dependency)]
     allDeps = Map.toList prodDeps ++ Map.toList devDeps
       where
-        prodDeps = toDependency [EnvProduction] supportedProdDeps
+        -- Poetry-style prod deps take precedence; PEP 621 fills in anything missing.
+        -- [tool.poetry.dependencies] can carry richer metadata (explicit source, git refs, etc.)
+        -- that PEP 621's PEP 508 strings can't express, so it's strictly more informative.
+        prodDeps = toDependency [EnvProduction] supportedProdDeps `Map.union` pep621ProdDeps
         devDeps = toDependency [EnvDevelopment] supportedDevDeps
 
 -- | Gets Dependency from `PoetryDependency` and it's `DepEnvironment`.

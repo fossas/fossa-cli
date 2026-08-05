@@ -168,6 +168,7 @@ nimbleDumpJsonCmd =
     { cmdName = "nimble"
     , cmdArgs = ["dump", "--json"]
     , cmdAllowErr = Always
+    , cmdEnvVars = Map.empty
     }
 
 -- | Represents content retrieved from @nimbleDumpJsonCmd@.

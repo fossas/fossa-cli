@@ -169,6 +169,7 @@ pipenvGraphCmd =
     { cmdName = "pipenv"
     , cmdArgs = ["graph", "--json-tree"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 buildGraph :: PipfileToml -> PipfileLock -> Maybe [PipenvGraphDep] -> Graphing Dependency

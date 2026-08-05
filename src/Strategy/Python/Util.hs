@@ -6,6 +6,7 @@ module Strategy.Python.Util (
   MarkerOp (..),
   Operator (..),
   Req (..),
+  reqName,
   requirementParser,
   reqToDependency,
   toConstraint,
@@ -36,15 +37,11 @@ pkgToReq :: PythonPackage -> Req
 pkgToReq p =
   NameReq (pkgName p) Nothing (Just [Version OpEq (pkgVersion p)]) Nothing
 
-depName :: Req -> Text
-depName (NameReq nm _ _ _) = nm
-depName (UrlReq nm _ _ _) = nm
-
 reqToDependency :: Req -> Dependency
 reqToDependency req =
   Dependency
     { dependencyType = PipType
-    , dependencyName = depName req
+    , dependencyName = reqName req
     , dependencyVersion = depVersion req
     , dependencyLocations = []
     , dependencyEnvironments = mempty
@@ -94,7 +91,7 @@ buildGraph maybePackages reqs = do
               Nothing -> pure ()
   where
     findParent :: Text -> Maybe Req
-    findParent packageName = find (\r -> Text.toLower (depName r) == Text.toLower (packageName)) reqs
+    findParent packageName = find (\r -> Text.toLower (reqName r) == Text.toLower (packageName)) reqs
 
 addChildren :: (Has (Grapher Req) sig m) => Req -> PythonPackage -> m ()
 addChildren parent pkg = do
@@ -173,6 +170,10 @@ data Req
   = NameReq Text (Maybe [Text]) (Maybe [Version]) (Maybe Marker) -- name, extras, ...
   | UrlReq Text (Maybe [Text]) URI.URI (Maybe Marker) -- name, extras, ...
   deriving (Eq, Ord, Show)
+
+reqName :: Req -> Text
+reqName (NameReq name _ _ _) = name
+reqName (UrlReq name _ _ _) = name
 
 instance Toml.Schema.FromValue Req where
   fromValue v = do

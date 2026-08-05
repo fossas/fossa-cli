@@ -43,7 +43,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
+import Effect.Exec (AllowErr (Never), Command (Command, cmdAllowErr, cmdArgs, cmdEnvVars, cmdName), Exec, ExecErr (CommandParseError), execThrow, renderCommand)
 import Effect.Grapher (Grapher, LabeledGrapherC, Labels, deep, direct, edge, label, runLabeledGrapher)
 import Errata (Errata (..), errataSimple)
 import GHC.Generics (Generic)
@@ -151,6 +151,7 @@ goListCmd =
         , "all" -- all packages
         ]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 analyze ::

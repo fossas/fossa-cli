@@ -236,10 +236,17 @@ With newer versions of gradle, some configurations are no longer supported (`com
 FOSSA classifies any dependencies originating from the following configurations as development dependencies:
 ```
 - compileOnly
+- spotbugs
+- spotbugsPlugins
+- spotbugsSlf4j
 ```
 
 FOSSA classifies any dependencies originating from the following configurations as test dependencies:
 ```
+- aggregateCodeCoverageReportResults
+- jacocoAgent
+- jacocoAggregation
+- jacocoAnt
 - testImplementation
 - testCompileOnly
 - testRuntimeOnly

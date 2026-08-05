@@ -8,14 +8,10 @@ module Strategy.Gomodules (
 where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (useV3GoResolver), GoDynamicTactic (..))
 import App.Util (guardStrictMode)
-import Control.Carrier.Diagnostics (warn)
 import Control.Effect.Diagnostics (Diagnostics, context, recover, (<||>))
-import Control.Effect.Reader (Reader, ask, asks)
-import Control.Monad (when)
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
-import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -57,7 +53,7 @@ data GomodulesProject = GomodulesProject
 instance ToJSON GomodulesProject
 
 instance AnalyzeProject GomodulesProject where
-  analyzeProject _ proj = asks useV3GoResolver >>= getDeps proj
+  analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ = staticAnalysis
 
 mkProject :: GomodulesProject -> DiscoveredProject GomodulesProject
@@ -69,8 +65,8 @@ mkProject project =
     , projectData = project
     }
 
-getDeps :: (GetDepsEffs sig m) => GomodulesProject -> GoDynamicTactic -> m DependencyResults
-getDeps project goDynamicTactic = do
+getDeps :: (GetDepsEffs sig m) => GomodulesProject -> m DependencyResults
+getDeps project = do
   mode <- ask
   (graph, graphBreadth) <-
     context "Gomodules" $
@@ -94,12 +90,7 @@ getDeps project goDynamicTactic = do
 
     dynamicAnalysis :: (Has Exec sig m, Has Diagnostics sig m) => m (Graphing Dependency, GraphBreadth)
     dynamicAnalysis =
-      context "Dynamic analysis" $ do
-        when (goDynamicTactic == GoPackagesBasedTactic) $
-          warn @Text
-            "--experimental-use-v3-go-resolver is now deprecated because the v3 resolver is the default. \
-            \This option will be removed in a future release and result in an error."
-
+      context "Dynamic analysis" $
         context "analysis using go list (V3 Resolver)" (GoListPackages.analyze (gomodulesDir project))
 
 staticAnalysis :: (Has Diagnostics sig m, Has ReadFS sig m) => GomodulesProject -> m DependencyResults

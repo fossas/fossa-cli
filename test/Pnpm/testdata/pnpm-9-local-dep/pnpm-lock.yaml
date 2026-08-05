@@ -1,0 +1,37 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+# Bug 2 regression: a local (file:) package is a direct production dep.
+# Its transitive deps (express, body-parser) must inherit EnvProduction
+# even though the local package node is removed from the final graph.
+importers:
+  .:
+    dependencies:
+      local-pkg:
+        specifier: file:packages/local-pkg
+        version: file:packages/local-pkg
+
+packages:
+  file:packages/local-pkg:
+    resolution: {directory: packages/local-pkg, type: directory}
+    name: local-pkg
+
+  express@4.18.2:
+    resolution: {integrity: sha512-xxxxxxxxxx==}
+
+  body-parser@1.20.1:
+    resolution: {integrity: sha512-xxxxxxxxxx==}
+
+snapshots:
+  file:packages/local-pkg:
+    dependencies:
+      express: 4.18.2
+
+  express@4.18.2:
+    dependencies:
+      body-parser: 1.20.1
+
+  body-parser@1.20.1: {}

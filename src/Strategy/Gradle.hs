@@ -20,7 +20,7 @@ module Strategy.Gradle (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import App.Fossa.Config.Analyze (ExperimentalAnalyzeConfig (allowedGradleConfigs))
+import App.Fossa.Config.Analyze (StrategyConfig (allowedGradleConfigs))
 import App.Support (reportDefectWithDebugBundle)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (
@@ -44,6 +44,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFile')
 import Data.Foldable (find, traverse_)
 import Data.List (isPrefixOf)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -81,6 +82,7 @@ gradleJsonDepsCmdTargets initScriptFilepath targets baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["-I", toText initScriptFilepath] ++ map (\target -> unBuildTarget target <> ":jsonDeps") (Set.toList targets)
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Run the init script on a root project.
@@ -90,6 +92,7 @@ gradleJsonDepsCmd initScriptFilepath baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["-I", toText initScriptFilepath, "jsonDeps"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 discover ::
@@ -182,6 +185,7 @@ gradleProjectsCmd baseCmd =
     { cmdName = baseCmd
     , cmdArgs = ["projects"]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- We use a single empty-string target when no subprojects exist. Gradle uses an
@@ -235,7 +239,7 @@ getDeps ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   ) =>
   FoundTargets ->
   GradleProject ->
@@ -261,7 +265,7 @@ analyze ::
   , Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
-  , Has (Reader ExperimentalAnalyzeConfig) sig m
+  , Has (Reader StrategyConfig) sig m
   ) =>
   FoundTargets ->
   Path Abs Dir ->

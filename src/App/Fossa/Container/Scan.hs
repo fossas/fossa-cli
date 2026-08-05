@@ -10,7 +10,7 @@ module App.Fossa.Container.Scan (
   ContainerImageSource (..),
 ) where
 
-import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
 import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery)
 import App.Fossa.Config.Container.Common (ImageText (unImageText))
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, revisionFromDockerArchive)
@@ -87,6 +87,7 @@ scanImage ::
   , Has Telemetry sig m
   , Has Debug sig m
   ) =>
+  UseGitBackedCargoLocators ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Bool ->
@@ -95,7 +96,7 @@ scanImage ::
   Text ->
   Text ->
   m ContainerScan
-scanImage filters withoutDefaultFilters systemDepsOnly goBinaryDiscovery imgText dockerHost imageArch = do
+scanImage useGitBackedCargo filters withoutDefaultFilters systemDepsOnly goBinaryDiscovery imgText dockerHost imageArch = do
   parsedSource <- runDockerEngineApi dockerHost $ parseContainerImageSource (unImageText imgText) imageArch
   circePoweredScan <- withSystemTempDir "fossa-container-export-tmp" $ \dir -> do
     tarball <- runWithCirceReexport imgText dir
@@ -103,19 +104,19 @@ scanImage filters withoutDefaultFilters systemDepsOnly goBinaryDiscovery imgText
     traverse (correctCirceSource parsedSource) scan
   maybe (legacyScan parsedSource) pure circePoweredScan
   where
-    analyzeTarball = context "Analyzing docker archive" . analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
+    analyzeTarball = context "Analyzing docker archive" . analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
     legacyScan src = do
       case src of
         DockerArchive tarball -> context "Analyzing tarball" $ analyzeTarball tarball
         DockerEngine imgTag ->
           context "Analyzing via Docker engine API" $
-            analyzeFromDockerEngine systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters dockerHost imgTag
+            analyzeFromDockerEngine useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters dockerHost imgTag
         Podman img ->
           context "Analyzing via podman" $
-            analyzeFromPodman systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img
+            analyzeFromPodman useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img
         Registry registrySrc ->
           context "Analyzing via registry" $
-            analyzeFromRegistry systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters registrySrc
+            analyzeFromRegistry useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters registrySrc
 
 scanImageNoAnalysis ::
   ( Has Diagnostics sig m

@@ -10,6 +10,7 @@ import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Monad (void)
 import Data.Char (isSpace)
 import Data.Foldable (traverse_)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
@@ -48,6 +49,7 @@ dpkgQueryFileCommand file =
     { cmdName = "dpkg"
     , cmdArgs = ["-S", toText file]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Parse @dpkg -S@ output.
@@ -71,6 +73,7 @@ dpkgQueryPackageInfoCommand packageName =
     { cmdName = "dpkg"
     , cmdArgs = ["-s", packageName]
     , cmdAllowErr = Never
+    , cmdEnvVars = Map.empty
     }
 
 -- | Parse @dpkg -s@ output.

@@ -67,6 +67,7 @@ goListCmd =
     { cmdName = "go"
     , cmdArgs = ["list", "-json", "all"]
     , cmdAllowErr = NonEmptyStdout
+    , cmdEnvVars = Map.empty
     }
 
 data Package a = Package

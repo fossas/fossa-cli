@@ -10,6 +10,7 @@ module Fossa.API.CoreTypes (
   ReleaseProject (..),
   UpdateReleaseProjectRequest (..),
   UpdateReleaseRequest (..),
+  ReleaseGroupReleaseLookup (..),
   CreateReleaseGroupRequest (..),
   CreateReleaseGroupResponse (..),
   UpdateProjectRequest (..),
@@ -27,11 +28,12 @@ import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
   ToJSON (toJSON),
-  Value (Null),
+  Value (Null, Object),
   object,
   withObject,
   withText,
   (.:),
+  (.?=),
  )
 import Data.Text (Text)
 
@@ -166,9 +168,6 @@ data UpdateReleaseProjectRequest = UpdateReleaseProjectRequest
   { updateReleaseProjectLocator :: Text
   , updateReleaseProjectRevisionId :: Text
   , updateReleaseProjectBranch :: Text
-  , -- Existence of this field signifies to core that the project exists and the release project just needs to be updated.
-    -- If this field is empty it means that we are adding a new project to the release.
-    targetReleaseGroupId :: Maybe Int
   }
   deriving (Eq, Ord, Show)
 
@@ -178,8 +177,23 @@ instance ToJSON UpdateReleaseProjectRequest where
       [ "projectId" .= updateReleaseProjectLocator
       , "revisionId" .= updateReleaseProjectRevisionId
       , "branch" .= updateReleaseProjectBranch
-      , "projectGroupReleaseId" .= maybe Null toJSON targetReleaseGroupId
       ]
+
+-- | Response from the CLI-specific release-group release lookup endpoint
+-- (@GET \/api\/cli\/project_group\/release_lookup@). Core resolves a release
+-- group title + release title to their numeric ids server-side so the CLI does
+-- not have to fetch and filter every group/release.
+data ReleaseGroupReleaseLookup = ReleaseGroupReleaseLookup
+  { lookupReleaseGroupId :: Int
+  , lookupReleaseId :: Int
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON ReleaseGroupReleaseLookup where
+  parseJSON = withObject "ReleaseGroupReleaseLookup" $ \obj ->
+    ReleaseGroupReleaseLookup
+      <$> obj .: "releaseGroupId"
+      <*> obj .: "releaseId"
 
 data CreateReleaseGroupRequest = CreateReleaseGroupRequest
   { title :: Text
@@ -246,13 +260,13 @@ data UpdateProjectRequest = UpdateProjectRequest
 
 instance ToJSON UpdateProjectRequest where
   toJSON UpdateProjectRequest{..} =
-    object
-      [ "title" .= maybe Null toJSON updateProjectTitle
-      , "url" .= maybe Null toJSON updateProjectUrl
-      , "issueTrackerProjectIds" .= maybe Null toJSON updateProjectIssueTrackerIds
-      , "labels" .= maybe Null toJSON updateProjectLabelIds
-      , "policyId" .= maybe Null toJSON updateProjectPolicyId
-      , "default_branch" .= maybe Null toJSON updateProjectDefaultBranch
+    Object . mconcat $
+      [ "title" .?= updateProjectTitle
+      , "url" .?= updateProjectUrl
+      , "issueTrackerProjectIds" .?= updateProjectIssueTrackerIds
+      , "labels" .?= updateProjectLabelIds
+      , "policyId" .?= updateProjectPolicyId
+      , "default_branch" .?= updateProjectDefaultBranch
       ]
 
 -- Revision

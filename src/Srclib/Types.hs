@@ -41,6 +41,7 @@ module Srclib.Types (
 ) where
 
 import Data.Aeson
+import Data.Char qualified as Char
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -497,7 +498,10 @@ instance ToText Locator where
 
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =
-  locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+  stripNonPrintable $
+    locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+  where
+    stripNonPrintable = Text.filter Char.isPrint
 
 -- The projectId is the full locator of the project. E.g. custom+123/someProject (<fetcher>+<orgId>/<project-name>)
 projectId :: Locator -> Text
