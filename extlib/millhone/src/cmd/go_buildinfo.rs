@@ -310,6 +310,32 @@ mod tests {
         assert!(info.modules.is_empty());
     }
 
+    /// Real buildinfo bytes carved from a released binary (see
+    /// testdata/go-buildinfo/README.md). The synthetic fixtures are encoded
+    /// by this test module itself, so they can't catch an assumption about
+    /// the format that the encoder and parser share; real linker output can.
+    #[test]
+    fn parses_real_buildinfo_fixture() {
+        let buf = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/testdata/go-buildinfo/gh-2.86.0-darwin-arm64.bin"
+        ));
+        let info = parse_go_buildinfo(buf).expect("should parse");
+        assert_eq!(info.go_version, "go1.25.6");
+        assert_eq!(
+            info.main_module,
+            Some(GoModule {
+                path: "github.com/cli/cli/v2".into(),
+                version: "(devel)".into()
+            })
+        );
+        assert_eq!(info.modules.len(), 161);
+        assert!(info.modules.contains(&GoModule {
+            path: "github.com/spf13/cobra".into(),
+            version: "v1.10.2".into()
+        }));
+    }
+
     #[test]
     fn detects_candidate_binaries() {
         assert!(is_candidate_binary(b"\x7fELF\x02\x01\x01"));

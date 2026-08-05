@@ -60,6 +60,10 @@ spec = do
       goModuleToLocator (GoModule "example.com/app" "(devel)") `shouldBe` Nothing
       goModuleToLocator (GoModule "example.com/app" "") `shouldBe` Nothing
 
+    it "strips build metadata from +incompatible versions" $
+      goModuleToLocator (GoModule "example.com/legacy/big" "v2.0.0+incompatible")
+        `shouldBe` Just (Locator "go" "example.com/legacy/big" (Just "v2.0.0"))
+
   describe "goBinariesToSourceUnits" $ do
     it "converts a discovered binary into a gobinary source unit" $ do
       let units = goBinariesToSourceUnits [expectedBinary]
@@ -74,6 +78,26 @@ spec = do
     it "emits no unit when no usable versions exist" $ do
       let develOnly = expectedBinary{goBinaryModules = [], goBinaryMainModule = Just (GoModule "example.com/app" "(devel)")}
       goBinariesToSourceUnits [develOnly] `shouldBe` []
+
+    it "includes a main module carrying a real version (go install case)" $ do
+      let installed =
+            expectedBinary
+              { goBinaryMainModule = Just (GoModule "example.com/tool" "v1.2.3")
+              , goBinaryModules = [GoModule "github.com/google/uuid" "v1.6.0"]
+              }
+          units = goBinariesToSourceUnits [installed]
+      (buildImports <$> (sourceUnitBuild =<< safeHead units))
+        `shouldBe` Just
+          [ Locator "go" "github.com/google/uuid" (Just "v1.6.0")
+          , Locator "go" "example.com/tool" (Just "v1.2.3")
+          ]
+
+    it "deduplicates a module repeated across dep list and main module" $ do
+      let dup = GoModule "github.com/google/uuid" "v1.6.0"
+          binary = expectedBinary{goBinaryMainModule = Just dup, goBinaryModules = [dup, dup]}
+          units = goBinariesToSourceUnits [binary]
+      (buildImports <$> (sourceUnitBuild =<< safeHead units))
+        `shouldBe` Just [Locator "go" "github.com/google/uuid" (Just "v1.6.0")]
   where
     safeHead :: [a] -> Maybe a
     safeHead (x : _) = Just x

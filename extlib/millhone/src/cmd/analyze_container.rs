@@ -541,4 +541,153 @@ mod tests {
             serde_json::from_str(&nested_jars_millhone_out).expect("Parse expected json");
         pretty_assertions::assert_eq!(expected, res);
     }
+
+    const BUILDINFO_FIXTURE: &[u8] = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/testdata/go-buildinfo/gh-2.86.0-darwin-arm64.bin"
+    ));
+
+    /// A fake ELF: candidate magic up front, the real buildinfo fixture at a
+    /// 16-byte-aligned offset, padded past MIN_GO_BINARY_SIZE.
+    fn fake_go_binary() -> Vec<u8> {
+        let mut buf = vec![0u8; 64];
+        buf[..4].copy_from_slice(b"\x7fELF");
+        buf.extend_from_slice(BUILDINFO_FIXTURE);
+        if buf.len() < MIN_GO_BINARY_SIZE as usize {
+            buf.resize(MIN_GO_BINARY_SIZE as usize, 0);
+        }
+        buf
+    }
+
+    fn tar_with(files: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut builder = tar::Builder::new(Vec::new());
+        for (path, contents) in files {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(contents.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, path, *contents)
+                .expect("append tar entry");
+        }
+        builder.into_inner().expect("finish tar")
+    }
+
+    fn gzip(data: &[u8]) -> Vec<u8> {
+        use std::io::Write;
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(data).expect("gzip write");
+        encoder.finish().expect("gzip finish")
+    }
+
+    /// Wrap a layer blob in an outer image tar and run scan_layer over it.
+    fn scan(layer: &[u8]) -> Result<(Vec<DiscoveredJar>, Vec<DiscoveredGoBinary>)> {
+        let outer = tar_with(&[("layer.tar", layer)]);
+        let mut archive = tar::Archive::new(std::io::Cursor::new(outer));
+        let entry = archive
+            .entries()
+            .expect("iterate outer tar")
+            .next()
+            .expect("outer tar has one entry")
+            .expect("read outer entry");
+        scan_layer(entry)
+    }
+
+    /// Run maybe_go_binary against the first entry of a tar built from `files`.
+    fn sniff_first(files: &[(&str, &[u8])]) -> Option<DiscoveredGoBinary> {
+        let data = tar_with(files);
+        let mut archive = tar::Archive::new(std::io::Cursor::new(data));
+        let mut entry = archive
+            .entries()
+            .expect("iterate tar")
+            .next()
+            .expect("tar has one entry")
+            .expect("read entry");
+        let path = entry.path().expect("entry path").to_path_buf();
+        maybe_go_binary(&mut entry, &path)
+    }
+
+    #[test]
+    fn scans_plain_and_gzipped_layers_identically() {
+        let binary = fake_go_binary();
+        let layer = tar_with(&[("usr/bin/app", &binary)]);
+        let (_, plain) = scan(&layer).expect("scan plain layer");
+        let (_, gzipped) = scan(&gzip(&layer)).expect("scan gzipped layer");
+        assert_eq!(plain.len(), 1);
+        assert_eq!(plain[0].path, PathBuf::from("usr/bin/app"));
+        assert_eq!(plain, gzipped);
+    }
+
+    #[test]
+    fn scans_empty_layer_without_error() {
+        let empty_tar = tar_with(&[]);
+        let (jars, go_binaries) = scan(&empty_tar).expect("scan empty tar layer");
+        assert!(jars.is_empty());
+        assert!(go_binaries.is_empty());
+
+        let (jars, go_binaries) = scan(&[]).expect("scan zero-byte layer");
+        assert!(jars.is_empty());
+        assert!(go_binaries.is_empty());
+    }
+
+    #[test]
+    fn skips_undersized_candidates() {
+        assert!(sniff_first(&[("bin", b"\x7fELF but far too small")]).is_none());
+    }
+
+    #[test]
+    fn skips_oversized_candidates() {
+        // Header claims a size over the limit; the gate must trip before any
+        // content is read, so no body bytes are needed.
+        let mut header = tar::Header::new_gnu();
+        header.set_path("huge").expect("set path");
+        header.set_size(MAX_GO_BINARY_SIZE + 1);
+        header.set_mode(0o644);
+        header.set_cksum();
+        let mut data = header.as_bytes().to_vec();
+        data.extend_from_slice(&[0u8; 1024]);
+        let mut archive = tar::Archive::new(std::io::Cursor::new(data));
+        let mut entry = archive
+            .entries()
+            .expect("iterate tar")
+            .next()
+            .expect("tar has one entry")
+            .expect("read entry");
+        assert!(maybe_go_binary(&mut entry, Path::new("huge")).is_none());
+    }
+
+    #[test]
+    fn skips_non_file_entries() {
+        let mut builder = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(tar::EntryType::Directory);
+        header.set_size(0);
+        header.set_mode(0o755);
+        header.set_cksum();
+        builder
+            .append_data(&mut header, "some-dir/", &[][..])
+            .expect("append dir entry");
+        let data = builder.into_inner().expect("finish tar");
+        let mut archive = tar::Archive::new(std::io::Cursor::new(data));
+        let mut entry = archive
+            .entries()
+            .expect("iterate tar")
+            .next()
+            .expect("tar has one entry")
+            .expect("read entry");
+        assert!(maybe_go_binary(&mut entry, Path::new("some-dir/")).is_none());
+    }
+
+    #[test]
+    fn skips_non_binary_files() {
+        let text = vec![b'a'; MIN_GO_BINARY_SIZE as usize];
+        assert!(sniff_first(&[("notes.txt", &text)]).is_none());
+    }
+
+    #[test]
+    fn skips_binaries_without_buildinfo() {
+        let mut elf = vec![0u8; MIN_GO_BINARY_SIZE as usize];
+        elf[..4].copy_from_slice(b"\x7fELF");
+        assert!(sniff_first(&[("bin", &elf)]).is_none());
+    }
 }
