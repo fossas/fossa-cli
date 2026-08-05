@@ -7,6 +7,7 @@ module App.Fossa.Container.Sources.DockerEngine (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.DockerEngineApi (runDockerEngineApi)
@@ -55,16 +56,17 @@ analyzeFromDockerEngine ::
   , Has Debug sig m
   ) =>
   Bool ->
+  Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   Text ->
   m ContainerScan
-analyzeFromDockerEngine systemDepsOnly filters withoutDefaultFilters engineHost imgTag =
+analyzeFromDockerEngine systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters engineHost imgTag =
   runFromDockerEngine
     engineHost
     imgTag
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
 
 listTargetsFromDockerEngine ::
   ( Has Diagnostics sig m

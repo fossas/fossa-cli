@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Container scanning: Add `--experimental-enable-go-binary-discovery` flag to `fossa container analyze`. When enabled, Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers are reported as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
+
 ## 3.15.6
 
 - Docs: Document `ALLOW_INVALID_CERTS` environment variable for TLS certificate errors ([#1639](https://github.com/fossas/fossa-cli/pull/1639))

@@ -8,6 +8,7 @@ module App.Fossa.Container.Sources.Registry (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery)
 import App.Fossa.Config.Container.Common (ImageText, unImageText)
 import App.Fossa.Container.Sources.Circe (circeReexportCommand)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
@@ -106,14 +107,15 @@ analyzeFromRegistry ::
   , Has ReadFS sig m
   ) =>
   Bool ->
+  Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   RegistryImageSource ->
   m ContainerScan
-analyzeFromRegistry systemDepsOnly filters withoutDefaultFilters img =
+analyzeFromRegistry systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img =
   runFromRegistry
     img
-    $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+    $ analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
 
 listTargetsFromRegistry ::
   ( Has Diagnostics sig m

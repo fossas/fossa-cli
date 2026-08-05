@@ -8,6 +8,7 @@ module App.Fossa.Container.Sources.Podman (
 ) where
 
 import App.Fossa.Config.Analyze (WithoutDefaultFilters)
+import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
@@ -76,11 +77,12 @@ analyzeFromPodman ::
   , Has ReadFS sig m
   ) =>
   Bool ->
+  Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly filters withoutDefaultFilters
+analyzeFromPodman systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m

@@ -3,6 +3,7 @@
 module App.Fossa.Config.Container.Analyze (
   NoUpload (..),
   JsonOutput (..),
+  GoBinaryDiscovery (..),
   ContainerAnalyzeConfig (..),
   ContainerAnalyzeOptions (..),
   cliParser,
@@ -66,6 +67,9 @@ import Style (applyFossaStyle, formatStringToDoc, stringToHelpDoc)
 data NoUpload = NoUpload
 data JsonOutput = JsonOutput deriving (Generic)
 
+-- | Discover Go module dependencies from Go binaries found in container image layers.
+data GoBinaryDiscovery = GoBinaryDiscovery deriving (Generic)
+
 data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   { scanDestination :: ScanDestination
   , revisionOverride :: OverrideProject
@@ -76,6 +80,7 @@ data ContainerAnalyzeConfig = ContainerAnalyzeConfig
   , dockerHost :: Text
   , arch :: Text
   , onlySystemDeps :: Bool
+  , goBinaryDiscoveryEnabled :: Flag GoBinaryDiscovery
   , filterSet :: AllFilters
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , debugDir :: Maybe FilePath
@@ -94,6 +99,7 @@ data ContainerAnalyzeOptions = ContainerAnalyzeOptions
   , containerAnalyzeImage :: ImageText
   , containerExperimentalScanner :: Bool
   , containerExperimentalOnlySysDependencies :: Bool
+  , containerExperimentalGoBinaryDiscovery :: Flag GoBinaryDiscovery
   , containerWithoutDefaultFilters :: Flag WithoutDefaultFilters
   }
 
@@ -126,6 +132,7 @@ cliParser =
     <*> imageTextArg
     <*> switch (applyFossaStyle <> long "experimental-scanner" <> stringToHelpDoc "Uses experimental fossa native container scanner" <> hidden)
     <*> switch (applyFossaStyle <> long "only-system-deps" <> stringToHelpDoc "Only analyzes system dependencies (e.g. apk, dep, rpm)")
+    <*> flagOpt GoBinaryDiscovery (applyFossaStyle <> long "experimental-enable-go-binary-discovery" <> stringToHelpDoc "Discover Go module dependencies embedded in Go binaries found in the container image")
     <*> withoutDefaultFilterParser fossaContainerAnalyzeDefaultFilterDocUrl
 
 mergeOpts ::
@@ -141,6 +148,7 @@ mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
       jsonOutput = containerJsonOutput
       arch = collectArch
       onlySystemDeps = containerExperimentalOnlySysDependencies
+      goBinaryDiscovery = containerExperimentalGoBinaryDiscovery
       scanFilters = collectFilters cfgfile
       withoutDefaultFilters = containerWithoutDefaultFilters
 
@@ -159,6 +167,7 @@ mergeOpts maybeDebugDir cfgfile envvars cliOpts@ContainerAnalyzeOptions{..} = do
     <*> collectDockerHost envvars
     <*> pure arch
     <*> pure onlySystemDeps
+    <*> pure goBinaryDiscovery
     <*> pure scanFilters
     <*> pure withoutDefaultFilters
     <*> pure maybeDebugDir

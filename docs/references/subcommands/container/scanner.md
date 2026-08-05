@@ -9,6 +9,7 @@
     - [3) From registries](#3-from-registries)
   - [Container image analysis](#container-image-analysis)
     - [Container JAR analysis](#container-jar-analysis)
+    - [Container Go binary analysis (experimental)](#container-go-binary-analysis-experimental)
     - [Distroless Containers](#distroless-containers)
     - [Supported Container Package Managers](#supported-container-package-managers)
     - [View detected projects](#view-detected-projects)
@@ -213,6 +214,36 @@ The container analyzer will also expand each Jar file that it encounters and rep
 This process relies on there being a back-end that can perform that analysis.
 SaaS customers should have this functionality available but on-prem customers may need to contact FOSSA support to have it enabled.
 
+### Container Go binary analysis (experimental)
+
+Go binaries compiled with Go 1.18 or later embed the list of Go modules they were built from
+(the same data reported by `go version -m`). This means Go dependency information is available
+even in images that contain no `go.mod` file — for example services shipped as a bare binary in
+`scratch`, distroless, or Chainguard images.
+
+When the `--experimental-enable-go-binary-discovery` flag is provided, the container analyzer
+inspects executable files in each layer and reports the Go modules embedded in any Go binaries
+it finds:
+
+```bash
+fossa container analyze <IMAGE> --experimental-enable-go-binary-discovery
+```
+
+Discovered modules are reported as regular Go dependencies, exactly as if they had been found by
+scanning a `go.mod` project: module pseudo-versions are normalized to their underlying commit
+hashes in the same way as go.mod analysis. No FOSSA back-end changes are required for these
+results to be processed.
+
+Limitations:
+
+- Only binaries built with Go >= 1.18 are supported. Older binaries, and binaries whose build
+  info has been removed or compressed (for example with UPX), are skipped. Run with `--debug`
+  to see which binaries were skipped.
+- The binary's own (main) module is only reported when it carries a real version — for example
+  binaries installed with `go install <module>@<version>`. Binaries built from a local checkout
+  record their main module version as `(devel)`, which is not reportable; their dependency
+  modules are still reported.
+
 ### Distroless Containers
 
 Container images where FOSSA cannot detect an operating system are supported but in a more limited way than images where FOSSA can.
@@ -240,6 +271,7 @@ The following package managers are supported in container scanning:
 | Dart (pub)                           | :warning:          | [Dart](./../../strategies/languages/dart/pub.md)                 |
 | Maven                                | :warning:          | [Maven](./../../strategies/languages/maven/maven.md)             |
 | Java Jar Files                       | :white_check_mark: | [Container Jar Analysis](#container-jar-analysis)               |
+| Go Binaries (experimental)           | :warning:          | [Container Go Binary Analysis](#container-go-binary-analysis-experimental) |
 | Golang (gomod)                       | :x:                | N/A                                                              |
 | Rust (cargo)                         | :x:                | N/A                                                              |
 | Haskell (cabal, stack)               | :x:                | N/A                                                              |
