@@ -15,7 +15,7 @@ import Control.Effect.Lift (Lift, sendIO)
 import Data.Default.Class (def)
 import Fossa.API.Types (ApiOpts)
 import Network.Connection (TLSSettings (TLSSettingsSimple, settingClientSupported))
-import Network.HTTP.Client (Manager, ManagerSettings, newManager)
+import Network.HTTP.Client (Manager, ManagerSettings (managerResponseTimeout), newManager, responseTimeoutMicro)
 import Network.HTTP.Client.TLS (mkManagerSettings)
 import Network.TLS (EMSMode (AllowEMS), Supported (supportedExtendedMainSecret))
 
@@ -53,7 +53,10 @@ runFossaApiClient apiOpts action = do
     $ action
   where
     allowEMSManager :: ManagerSettings
-    allowEMSManager = mkManagerSettings emsTLSSettings Nothing
+    allowEMSManager =
+      (mkManagerSettings emsTLSSettings Nothing)
+        { managerResponseTimeout = responseTimeoutMicro (60 * 1000000)
+        }
 
     interpreter =
       interpret
