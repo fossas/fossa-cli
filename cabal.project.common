@@ -24,6 +24,13 @@ allow-newer:
   , lzma-conduit:transformers
   , fused-effects-exceptions:transformers
 
+
+-- fused-effects-exceptions needs transformers 0.6 support.
+-- PR #22 is open upstream; using fork in the meantime.
+source-repository-package
+  type: git
+  location: https://github.com/fossas/fused-effects-exceptions.git
+  tag: 7577da71e1aa5dc812c3a10e2fed57c36a2f385d
 -- path-0.9.6 has a bug where os-string-compat doesn't declare os-string
 -- as a build-dependency. GHC 9.10 ships os-string-2.0.7 which is hidden
 -- by default, causing module-not-found errors. Patched to add the dep.
@@ -85,6 +92,6 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/fossas/codec-rpm
-  tag: 
+  tag: 7577da71e1aa5dc812c3a10e2fed57c36a2f385d
 
 index-state: hackage.haskell.org 2026-08-05T21:05:30Z
