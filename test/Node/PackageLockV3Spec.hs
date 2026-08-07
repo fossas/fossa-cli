@@ -6,7 +6,7 @@ module Node.PackageLockV3Spec (
 
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Map.Strict qualified as Map
-import Data.Maybe (isNothing)
+import Data.Maybe (fromJust, isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
@@ -40,6 +40,12 @@ import Strategy.Node.Npm.PackageLockV3 (
   parsePathKey,
   vendorPrefixes,
  )
+import Srclib.Converter (toSourceUnit)
+import Srclib.Types (
+  SourceUnit (sourceUnitBuild),
+  SourceUnitBuild (buildDependencies),
+ )
+import Types (DiscoveredProjectType (NpmProjectType), GraphBreadth (Complete))
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
 
@@ -567,6 +573,30 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
 
       expectDirect [mkProdDep "root-dep@1.0.0"] graph
       expectDeps [mkProdDep "root-dep@1.0.0"] graph
+
+  describe "toSourceUnit filters transitive devDeps after shrink" $ do
+    it "should remove transitive deps of devDeps that have no prod path" $ do
+      let makeDep :: Text -> DepEnvironment -> Dependency
+          makeDep name env =
+            Dependency
+              NodeJSType
+              name
+              (Just $ CEq "1.0.0")
+              ["https://registry.npmjs.org/" <> name <> "/-/" <> name <> "-1.0.0.tgz"]
+              (Set.singleton env)
+              mempty
+
+          devDep = makeDep "dev" EnvDevelopment
+          prodDep = makeDep "prod" EnvProduction
+          trans1 = makeDep "trans1" EnvProduction
+          trans2 = makeDep "trans2" EnvProduction
+
+          graph :: Graphing Dependency
+          graph = Graphing.directs [prodDep, devDep] <> Graphing.edges [(devDep, trans1), (trans1, trans2)]
+
+      let su = toSourceUnit False "test" graph NpmProjectType Complete []
+
+      length (buildDependencies (fromJust (sourceUnitBuild su))) `shouldBe` 1
 
 -- | Scope 'buildGraph' to the given root-relative workspace paths, as
 -- 'Strategy.Node.resolveNpmV3WorkspacePaths' resolves them from build

@@ -80,7 +80,11 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     }
   where
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff dependencies
+    -- Shrink out dev/non-publishable deps, then prune any nodes that become
+    -- unreachable (e.g. transitive deps of a devDep that had no other path to
+    -- the production dependency tree). Without this prune, those nodes
+    -- remain in the SBOM as orphaned entries with no parent edge.
+    filteredGraph = Graphing.pruneUnreachable (Graphing.shrinkWithoutPromotionToDirect ff dependencies)
       where
         ff =
           if leaveUnfiltered
