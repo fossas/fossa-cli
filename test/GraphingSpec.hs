@@ -263,22 +263,21 @@ shrinkingSpec = context "Shrinking" $ do
       expectDeps [1, 2] pruned       -- 4 is unreachable from Root, pruned
       expectEdges [(1, 2)] pruned
 
-    it "pruneUnreachable keeps nodes reachable via both prod and dev paths" $ do
-      -- When a transitive dep is reachable from a direct prod node AND also
-      -- from a shrunk devDep, it must survive — the prod path keeps it alive.
-      -- Graph: Root -> 1 (prod) -> 3, plus Root -> 2 (dev) -> 3
+    it "pruneUnreachable keeps nodes reachable via prod path, drops those reachable only via pruned path" $ do
+      -- Root -> 1 (prod) -> 3, plus Root -> 2 (dev) -> 3, plus Root -> 2 (dev) -> 4
+      -- Shrink 2: 3 stays (reachable from 1), 4 drops (only reachable from 2)
       let graph :: Graphing Int
-          graph = Graphing.directs [1, 2] <> Graphing.edges [(1, 3), (2, 3)]
+          graph = Graphing.directs [1, 2] <> Graphing.edges [(1, 3), (2, 3), (2, 4)]
 
           shrunk :: Graphing Int
-          shrunk = Graphing.shrinkWithoutPromotionToDirect (== 2) graph
+          shrunk = Graphing.shrinkWithoutPromotionToDirect (\(x :: Int) -> x /= 2) graph
 
           pruned :: Graphing Int
           pruned = Graphing.pruneUnreachable shrunk
 
-      expectDeps [1, 2, 3] shrunk   -- shrink removes node 2, 3 still reachable via 1
-      expectDirect [1] shrunk        -- only 1 is direct after shrink
-      expectDeps [1, 3] pruned       -- 3 survives: reachable from prod node 1
+      expectDeps [1, 3, 4] shrunk      -- 2 is shrunk; 3 survives via 1; 4 is orphan
+      expectDirect [1] shrunk           -- only 1 is direct (2 was shrunk)
+      expectDeps [1, 3] pruned          -- 3 stays, 4 pruned
       expectEdges [(1, 3)] pruned
 
 getRootsOfSpec :: Spec
