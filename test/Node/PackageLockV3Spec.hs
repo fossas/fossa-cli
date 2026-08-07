@@ -596,7 +596,9 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
 
       let su = toSourceUnit False "test" graph NpmProjectType Complete []
 
-      length (buildDependencies (fromJust (sourceUnitBuild su))) `shouldBe` 1
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 1
+        Nothing -> expectationFailure "expected a build with dependencies"
 
 -- | Scope 'buildGraph' to the given root-relative workspace paths, as
 -- 'Strategy.Node.resolveNpmV3WorkspacePaths' resolves them from build
