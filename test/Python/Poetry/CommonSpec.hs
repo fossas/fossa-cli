@@ -7,7 +7,7 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, makePackageToLockDependencyMap, pyProjectDeps, supportedPoetryLockDep, supportedPyProjectDep, toCanonicalName)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, makePackageToLockDependencyMap, pyProjectDeps, supportedPoetryLockDep, supportedPyProjectDep)
 import Strategy.Python.Poetry.PoetryLock (
   ObjectVersion (..),
   PackageName (..),
@@ -162,12 +162,6 @@ spec = do
   emptyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject2.toml")
   pep621Contents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621/pyproject.toml")
   pep621MixedContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621-mixed/pyproject.toml")
-
-  describe "toCanonicalName" $ do
-    it "should convert text to lowercase" $
-      toCanonicalName "GreatScore" `shouldBe` "greatscore"
-    it "should replace underscore (_) to hyphens (-)" $
-      toCanonicalName "my_oh_so_great_pkg" `shouldBe` "my-oh-so-great-pkg"
 
   describe "getDependencies" $ do
     it "should get all dependencies" $

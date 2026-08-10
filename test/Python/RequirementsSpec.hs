@@ -9,7 +9,7 @@ import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil (expectDeps)
 import Strategy.Python.ReqTxt (requirementsTxtParser)
-import Strategy.Python.Util (buildGraph, requirementParser)
+import Strategy.Python.Util (buildGraph, requirementParser, toCanonicalName)
 import Test.Hspec qualified as T
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
@@ -82,6 +82,20 @@ depFour =
 
 spec :: T.Spec
 spec = do
+  T.describe "toCanonicalName" $ do
+    T.it "should convert text to lowercase" $
+      toCanonicalName "GreatScore" `T.shouldBe` "greatscore"
+    T.it "should replace underscores and dots with hyphens" $ do
+      toCanonicalName "my_oh_so_great_pkg" `T.shouldBe` "my-oh-so-great-pkg"
+      toCanonicalName "zope.interface" `T.shouldBe` "zope-interface"
+    T.it "should collapse a run of separators into a single hyphen" $ do
+      -- PEP 503 normalizes on `[-_.]+`, so adjacent separators are one hyphen.
+      toCanonicalName "foo__bar" `T.shouldBe` "foo-bar"
+      toCanonicalName "foo._-bar" `T.shouldBe` "foo-bar"
+    T.it "should treat every spelling of a name as the same package" $ do
+      let spellings = ["Zope.Interface", "zope_interface", "zope-interface", "ZOPE.INTERFACE"]
+      map toCanonicalName spellings `T.shouldBe` replicate (length spellings) "zope-interface"
+
   T.describe "requirementParser" $
     T.it "can parse the edge case examples" $
       traverse_ (\input -> runParser requirementParser "" `shouldSucceedOn` input) examples
