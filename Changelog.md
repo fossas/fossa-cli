@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.18
+
+- Dependency versions: When a dependency declares a version range rather than a single version, the version reported no longer depends on the order the bounds were written in. `cryptography<60.0.0, >=46.0.3` and `cryptography>=46.0.3, <60.0.0` both now report `46.0.3`; previously the first reported `60.0.0`, a version the range excludes.
+
 ## 3.17.17
 
 - License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](https://github.com/fossas/fossa-cli/pull/1742))

@@ -14,7 +14,6 @@ import Prelude
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import App.Fossa.Analyze.Project (ProjectResult (..))
-import Control.Applicative ((<|>))
 import Data.Aeson qualified as Aeson
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
@@ -134,18 +133,57 @@ toLocator dep =
     , locatorRevision = verConstraintToRevision =<< dependencyVersion dep
     }
 
+-- | Choose the single revision that best stands in for a version constraint.
+--
+-- A locator carries one revision, but a constraint may describe a whole range,
+-- so something has to be discarded. 'bestRevision' ranks the candidates and
+-- keeps the best one rather than the leftmost, so that @>=1.0, <2.0@ and
+-- @<2.0, >=1.0@ produce the same answer. Picking the leftmost meant the
+-- reported version depended on the order the bounds happened to be written in,
+-- and an upper bound written first won --- reporting @<2.0@ as @2.0@, the one
+-- version the range explicitly excludes.
 verConstraintToRevision :: VerConstraint -> Maybe Text
-verConstraintToRevision = \case
-  CEq ver -> Just ver
+verConstraintToRevision = fmap fst . bestRevision
+
+-- | How faithfully a revision pulled out of a constraint represents that
+-- constraint. The derived 'Ord' instance follows constructor order, so
+-- constructors listed later are better candidates.
+data RevisionQuality
+  = -- | An exclusive upper bound, e.g. @<2.0@. Not a version the range admits,
+    -- and frequently not a version that was ever published.
+    ExclusiveUpper
+  | -- | An exclusive lower bound, e.g. @>1.0@. Also outside the range.
+    ExclusiveLower
+  | -- | An inclusive upper bound, e.g. @<=2.0@: the newest version allowed.
+    InclusiveUpper
+  | -- | An inclusive lower bound, e.g. @>=1.0@: the oldest version allowed.
+    InclusiveLower
+  | -- | The constraint named one version outright.
+    Exact
+  deriving (Eq, Ord)
+
+-- | Extract the best available revision from a constraint, tagged with how good
+-- a stand-in it is. Ties keep the left-hand candidate.
+bestRevision :: VerConstraint -> Maybe (Text, RevisionQuality)
+bestRevision = \case
+  CEq ver -> Just (ver, Exact)
+  -- ~=1.2 means >=1.2, ==1.*, so the version named is an inclusive lower bound.
+  CCompatible ver -> Just (ver, InclusiveLower)
+  CGreaterOrEq ver -> Just (ver, InclusiveLower)
+  CGreater ver -> Just (ver, ExclusiveLower)
+  CLessOrEq ver -> Just (ver, InclusiveUpper)
+  CLess ver -> Just (ver, ExclusiveUpper)
   CURI _ -> Nothing -- we can't represent this in a locator
-  CCompatible ver -> Just ver
-  CAnd a b -> verConstraintToRevision a <|> verConstraintToRevision b
-  COr a b -> verConstraintToRevision a <|> verConstraintToRevision b
-  CLess ver -> Just ver -- ugh
-  CLessOrEq ver -> Just ver -- ugh
-  CGreater ver -> Just ver -- ugh
-  CGreaterOrEq ver -> Just ver -- ugh
   CNot _ -> Nothing -- we can't represent this in a locator
+  CAnd a b -> better (bestRevision a) (bestRevision b)
+  -- For a disjunction the ranking is arbitrary rather than principled: the
+  -- branches are alternative ranges, and nothing in the constraint says which
+  -- one is installed. We reuse it so the result is at least order-independent.
+  COr a b -> better (bestRevision a) (bestRevision b)
+  where
+    better Nothing y = y
+    better x Nothing = x
+    better (Just x) (Just y) = Just $ if snd y > snd x then y else x
 
 depTypeToFetcher :: DepType -> Text
 depTypeToFetcher = \case
