@@ -2,7 +2,7 @@
 
 ## 3.17.17
 
-- License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](httis://github.com/fossas/fossa-cli/pull/1742))
+- License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](https://github.com/fossas/fossa-cli/pull/1742))
 
 ## 3.17.16
 
