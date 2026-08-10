@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.17.17
+
+- License Scanning: Detect an OFL-1.1 license notice correctly ([#1741](httis://github.com/fossas/fossa-cli/pull/1741))
+
 ## 3.17.16
 
 - Container analysis: more robust timeouts for container analyses involving jar fingerprinting
