@@ -734,6 +734,7 @@ test-suite unit-tests
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
     Sqlite.SqliteSpec
+    Srclib.ConverterSpec
     Srclib.TypesSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec

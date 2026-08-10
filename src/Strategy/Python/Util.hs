@@ -9,6 +9,7 @@ module Strategy.Python.Util (
   reqName,
   requirementParser,
   reqToDependency,
+  toCanonicalName,
   toConstraint,
 ) where
 
@@ -32,6 +33,22 @@ import Text.Megaparsec.Char
 import Text.URI qualified as URI
 import Toml qualified
 import Toml.Schema qualified
+
+-- | Normalize a Python package name per [PEP 503][pep-503]: collapse runs of
+-- @-@, @_@, and @.@ into a single @-@, then lowercase. @Zope.Interface@ and
+-- @zope_interface@ both become @zope-interface@.
+--
+-- Package names reach us from several sources that disagree on punctuation and
+-- case --- a requirements.txt line, a poetry.lock entry, @pip list@ output ---
+-- so they have to be normalized before they can be compared.
+--
+-- [pep-503]: https://peps.python.org/pep-0503/#normalized-names
+toCanonicalName :: Text -> Text
+toCanonicalName =
+  Text.toLower
+    . Text.intercalate "-"
+    . filter (not . Text.null)
+    . Text.split (\c -> c == '-' || c == '_' || c == '.')
 
 pkgToReq :: PythonPackage -> Req
 pkgToReq p =
@@ -66,11 +83,12 @@ buildGraphSetupFile maybePackages pyPackageName pyReqs cfgPackageName cfgReqs = 
   where
     addDeps :: [PythonPackage] -> Maybe Text -> [Req] -> GrapherC Req Identity ()
     addDeps packages maybeName reqs = do
+      let resolved = map (withInstalledVersion packages) reqs
       case maybeName of
-        Nothing -> for_ reqs direct
+        Nothing -> for_ resolved direct
         Just packageName ->
-          case (find (\p -> Text.toLower (pkgName p) == Text.toLower (packageName)) packages) of
-            Nothing -> for_ reqs direct
+          case (find (\p -> toCanonicalName (pkgName p) == toCanonicalName packageName) packages) of
+            Nothing -> for_ resolved direct
             Just pkg ->
               for_ (requires pkg) $ \c -> do
                 let r = pkgToReq c
@@ -83,15 +101,42 @@ buildGraph maybePackages reqs = do
     case maybePackages of
       Nothing -> Graphing.fromList reqs
       Just packages -> do
+        -- Resolve the whole list up front so that @direct@ below and the parent
+        -- looked up by @findParent@ are the same value. The grapher keys nodes
+        -- on 'Req', whose 'Eq' instance covers the version, so resolving in one
+        -- place and not the other would produce two nodes for the same package
+        -- --- one carrying the edges, one carrying the declared range.
+        let resolved = map (withInstalledVersion packages) reqs
         run . evalGrapher $ do
-          for_ reqs direct
+          for_ resolved direct
           for_ packages $ \p -> do
-            case findParent (pkgName p) of
+            case findParent resolved (pkgName p) of
               Just parent -> addChildren parent p
               Nothing -> pure ()
   where
-    findParent :: Text -> Maybe Req
-    findParent packageName = find (\r -> Text.toLower (reqName r) == Text.toLower (packageName)) reqs
+    findParent :: [Req] -> Text -> Maybe Req
+    findParent rs packageName = find (\r -> toCanonicalName (reqName r) == toCanonicalName packageName) rs
+
+-- | Replace a requirement's declared version constraint with the version that
+-- pip reports as installed, when the package is present in the environment.
+--
+-- A manifest records the versions a project /accepts/; pip records the version
+-- that is /there/. Only the latter can become a locator revision honestly,
+-- because a locator holds one revision and collapsing a range down to one is
+-- always a guess --- @cryptography>=46.0.3, <60.0.0@ gives us no way to know
+-- which release was installed.
+--
+-- Extras and the environment marker are carried through untouched: they
+-- describe the requirement, not the version it resolved to, and 'reqToDependency'
+-- turns the marker into the dependency's tags.
+withInstalledVersion :: [PythonPackage] -> Req -> Req
+withInstalledVersion packages = \case
+  -- A URL requirement names its source outright; there is no range to replace.
+  r@UrlReq{} -> r
+  r@(NameReq name extras _ marker) ->
+    case find (\p -> toCanonicalName (pkgName p) == toCanonicalName name) packages of
+      Nothing -> r
+      Just pkg -> NameReq name extras (Just [Version OpEq (pkgVersion pkg)]) marker
 
 addChildren :: (Has (Grapher Req) sig m) => Req -> PythonPackage -> m ()
 addChildren parent pkg = do
