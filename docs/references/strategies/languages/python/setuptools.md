@@ -37,6 +37,15 @@ Dependencies found in requirements.txt have a spec defined by
 markers (e.g. python version, OS, ...). The resulting graph contains packages
 tagged with environment markers.
 
+Where a dependency declares a version range rather than a single version, the
+CLI reports the version installed in the environment it is run in, which it
+reads from `python -m pip list` and `python -m pip show`. This is the same data
+used to find transitive dependencies, so running the CLI inside the project's
+virtual environment matters for versions as well as for edges. If neither
+`python` nor `pip` is available, the CLI falls back to reporting the lowest
+version the range allows: `cryptography>=46.0.3, <60.0.0` is reported as
+`46.0.3`.
+
 ## Analysis: setup.py
 
 ### Installed packages

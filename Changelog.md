@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## 3.17.18
+## Unreleased
 
 - Dependency versions: When a dependency declares a version range rather than a single version, the version reported no longer depends on the order the bounds were written in. `cryptography<60.0.0, >=46.0.3` and `cryptography>=46.0.3, <60.0.0` both now report `46.0.3`; previously the first reported `60.0.0`, a version the range excludes.
 - Python: `requirements.txt` and `setup.py` dependencies are now reported at the version installed in the environment, when `python` and `pip` are available. Previously a dependency declaring a range was reported at one of its bounds, and a dependency declaring no version at all was reported with no version, even though the CLI had already read the installed version from `pip show` to build the dependency graph.
