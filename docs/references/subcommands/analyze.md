@@ -109,6 +109,8 @@ With the `--unpack-archives` flag present, we unpack discovered archives to a te
 fossa analyze --unpack-archives
 ```
 
+Path filters are applied to an archive's path in your project, not to the temporary directory it is unpacked into. For example, excluding `third-party` also excludes projects found inside `third-party/lib.zip`.
+
 We support the following archive formats:
 
 - `.zip`
