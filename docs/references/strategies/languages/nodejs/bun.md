@@ -62,10 +62,7 @@ File, link, workspace, root, and module resolutions are excluded.
 
 - Dependencies declared in `devDependencies` of any workspace are labeled as development dependencies.
 - Dependencies declared in `dependencies` or `optionalDependencies` of any workspace are labeled as production dependencies.
-- Those labels propagate along the graph edges: a transitive dependency carries the
-  environments of every declared dependency it is reachable from. A package reachable
-  only through a `devDependencies` entry is labeled as a development dependency, and a
-  package reachable from both a production and a development declaration carries both.
+- Transitive dependencies inherit the environments of the dependencies that pull them in.
 - When the same package appears in both `dependencies` and `devDependencies` across
   different workspaces, both environments are recorded on a single graph vertex
   (environments accumulate rather than creating duplicate entries).
