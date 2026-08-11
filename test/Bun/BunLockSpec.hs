@@ -119,8 +119,16 @@ dependenciesSpec path =
           expectEdge graph (mkProdDep "express" "4.18.2") (mkProdDep "accepts" "1.3.8")
           expectEdge graph (mkProdDep "accepts" "1.3.8") (mkProdDep "mime-types" "2.1.35")
 
-        it "labels transitive deps of dev deps as production" $ do
-          expectEdge graph (mkDevDep "typescript" "5.3.3") (mkProdDep "semver" "7.6.0")
+        it "labels transitive deps of dev deps as development" $
+          expectEdge graph (mkDevDep "typescript" "5.3.3") (mkDevDep "semver" "7.6.0")
+
+        it "labels a dev-only chain as development at every depth" $ do
+          expectEdge graph (mkDevDep "semver" "7.6.0") (mkDevDep "lru-cache" "6.0.0")
+          expectEdge graph (mkDevDep "lru-cache" "6.0.0") (mkDevDep "yallist" "4.0.0")
+
+        it "labels a dep reached from both a production and a dev root with both environments" $ do
+          expectEdge graph (mkProdDep "mime-types" "2.1.35") (mkBothEnvsDep "ms" "2.1.3")
+          expectEdge graph (mkDevDep "semver" "7.6.0") (mkBothEnvsDep "ms" "2.1.3")
 
 -- | Workspaces: multiple workspaces, workspace refs, and workspace
 -- package filtering from the final graph.
