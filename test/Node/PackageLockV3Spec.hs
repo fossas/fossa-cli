@@ -600,6 +600,31 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
         Just bu -> length (buildDependencies bu) `shouldBe` 1
         Nothing -> expectationFailure "expected a build with dependencies"
 
+    it "should keep transitive deps of devDeps when leaveUnfiltered is True" $ do
+      let makeDep :: Text -> DepEnvironment -> Dependency
+          makeDep name env =
+            Dependency
+              NodeJSType
+              name
+              (Just $ CEq "1.0.0")
+              ["https://registry.npmjs.org/" <> name <> "/-/" <> name <> "-1.0.0.tgz"]
+              (Set.singleton env)
+              mempty
+
+          devDep = makeDep "dev" EnvDevelopment
+          prodDep = makeDep "prod" EnvProduction
+          trans1 = makeDep "trans1" EnvProduction
+          trans2 = makeDep "trans2" EnvProduction
+
+          graph :: Graphing Dependency
+          graph = Graphing.directs [prodDep, devDep] <> Graphing.edges [(devDep, trans1), (trans1, trans2)]
+
+      let su = toSourceUnit True "test" graph NpmProjectType Complete []
+
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 4
+        Nothing -> expectationFailure "expected a build with dependencies"
+
 -- | Scope 'buildGraph' to the given root-relative workspace paths, as
 -- 'Strategy.Node.resolveNpmV3WorkspacePaths' resolves them from build
 -- target names.
