@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Analysis: `--unpack-archives` now applies path filters to the archive's path in the scan ([#1745](https://github.com/fossas/fossa-cli/pull/1745))
+
 ## 3.17.17
 
 - License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](https://github.com/fossas/fossa-cli/pull/1742))

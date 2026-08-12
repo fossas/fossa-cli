@@ -277,7 +277,7 @@ runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredPr
   let hasNonProductionPath =
         not (fromFlag WithoutDefaultFilters withoutDefaultFilters) && isDefaultNonProductionPath basedir projectPath
 
-  case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
+  case (applyFiltersToProject basedir Nothing filters project, hasNonProductionPath) of
     (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi

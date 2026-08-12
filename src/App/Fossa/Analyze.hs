@@ -91,7 +91,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
-import App.Util (FileAncestry, ancestryDirect)
+import App.Util (FileAncestry (..), ancestryDirect)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -147,7 +147,8 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsGitBackedCargoLocators, orgSupportsReachability))
-import Path (Abs, Dir, Path, toFilePath)
+import Path (Abs, Dir, Path, Rel, toFilePath)
+import Path qualified as P
 import Path.IO (makeRelative)
 import Prettyprinter (
   Pretty (pretty),
@@ -247,7 +248,7 @@ runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTa
         not (fromFlag Config.WithoutDefaultFilters withoutDefaultFilters)
           && isDefaultNonProductionPath basedir projectPath
 
-  case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
+  case (applyFiltersToProject basedir pathPrefix filters project, hasNonProductionPath) of
     (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
@@ -267,15 +268,26 @@ runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTa
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project pathPrefix <$> graphResult)
 
-applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
-applyFiltersToProject basedir filters DiscoveredProject{..} =
+-- | Decide which of a discovered project's build targets survive the user's filters.
+--
+-- @basedir@ is the root the project was discovered under. For projects found
+-- inside an archive unpacked by @--unpack-archives@ that root is the temp
+-- directory the archive was extracted to, which no filter can name; the
+-- @pathPrefix@ carries the archive's own path relative to the scan root (e.g.
+-- @third-party/foo.zip/@), so prepending it evaluates filters against the path
+-- the user actually wrote.
+applyFiltersToProject :: Path Abs Dir -> Maybe FileAncestry -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
+applyFiltersToProject basedir pathPrefix filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
-    -- FIXME: this is required for --unpack-archives to continue to work.
-    -- archives are not unpacked relative to the scan basedir, so "makeRelative"
-    -- will always fail
+    -- Projects are always discovered by walking @basedir@, so this should not
+    -- happen. If that invariant is ever broken we have no path to filter on,
+    -- so keep the project rather than silently dropping it.
     Nothing -> Just projectBuildTargets
     Just rel -> do
-      applyFilters filters (toText projectType) rel projectBuildTargets
+      applyFilters filters (toText projectType) (withPathPrefix rel) projectBuildTargets
+  where
+    withPathPrefix :: Path Rel Dir -> Path Rel Dir
+    withPathPrefix rel = maybe rel ((P.</> rel) . fileAncestryPath) pathPrefix
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
