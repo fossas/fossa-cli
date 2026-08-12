@@ -6,7 +6,7 @@ module Node.PackageLockV3Spec (
 
 import Data.Aeson (eitherDecodeFileStrict')
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromJust, isNothing)
+import Data.Maybe (isNothing)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
