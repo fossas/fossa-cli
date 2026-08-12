@@ -1,5 +1,13 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
+
+## 3.17.17
+
+- License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](https://github.com/fossas/fossa-cli/pull/1742))
+
 ## 3.17.16
 
 - Container analysis: more robust timeouts for container analyses involving jar fingerprinting

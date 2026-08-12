@@ -24,9 +24,3 @@
 #![warn(rust_2018_idioms)]
 
 use tracing::warn;
-
-mod ext;
-
-pub mod api;
-pub mod extract;
-pub mod url;
