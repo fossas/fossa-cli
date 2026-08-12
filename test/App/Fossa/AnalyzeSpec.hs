@@ -7,17 +7,20 @@ import App.Fossa.Analyze (applyFiltersToProject)
 import App.Fossa.Analyze.Discover (DiscoverFunc, discoverFuncs)
 import App.Fossa.Config.Analyze (StrategyConfig)
 import App.Types (Mode, OverrideDynamicAnalysisBinary)
-import App.Util (FileAncestry (FileAncestry))
+import App.Util (FileAncestry (FileAncestry), ancestryDerived, ancestryDirect)
 import Control.Carrier.Debug (DebugC)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)
 import Control.Carrier.Stack (StackC)
 import Control.Carrier.Telemetry (TelemetryC)
+import Control.Effect.Diagnostics (Diagnostics, Has)
+import Discovery.Archive (convertArchiveToDir)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, comboExclude, comboInclude)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
-import Path (Abs, Dir, Path, Rel, mkAbsDir, mkRelDir, (</>))
+import Path (Abs, Dir, File, Path, Rel, mkAbsDir, mkRelDir, mkRelFile, (</>))
+import Test.Effect (it', shouldBe')
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Type.Operator (type ($))
 import Types (DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (ProjectWithoutTargets))
@@ -79,6 +82,44 @@ spec = do
       it "keeps nested archive contents when no filter matches" $
         applyFiltersToProject nestedUnpackedRoot (ancestry $(mkRelDir "vendor/outer.zip/nested/inner.zip")) (excluding $(mkRelDir "third-party")) (project nestedUnpackedProject) `shouldBe` Just ProjectWithoutTargets
 
+  -- The tests above hand 'applyFiltersToProject' an already-correct prefix.
+  -- These pin down the code that derives it, so that a regression there is not
+  -- invisible to this spec.
+  --
+  -- The scan is rooted at @<fsRoot>/third-party/user@ with the archive at
+  -- @<fsRoot>/third-party/user/project/archive.tar@, so @third-party@ and
+  -- @user@ sit above the scan root: the user cannot see them and no filter of
+  -- theirs may match on them.
+  describe "archive path prefix derivation" $ do
+    it' "is the archive's path relative to the scan basedir" $ do
+      prefix <- archivePrefix archiveScanRoot outerArchive
+      prefix `shouldBe'` $(mkRelDir "project/archive.tar")
+
+    it' "accumulates the inner archive's path onto the outer archive's prefix" $ do
+      outerPrefix <- archivePrefix archiveScanRoot outerArchive
+      prefix <- nestedArchivePrefix (FileAncestry outerPrefix) unpackedRoot innerArchive
+      prefix `shouldBe'` $(mkRelDir "project/archive.tar/nested/inner.zip")
+
+    it' "excludes archive contents via a directory between the basedir and the archive" $ do
+      prefix <- archivePrefix archiveScanRoot outerArchive
+      applyFiltersToProject unpackedRoot (ancestry prefix) (excluding $(mkRelDir "project")) (project unpackedProject) `shouldBe'` Nothing
+
+    it' "keeps archive contents when the excluded directory sits above the scan basedir" $ do
+      prefix <- archivePrefix archiveScanRoot outerArchive
+      applyFiltersToProject unpackedRoot (ancestry prefix) (excluding $(mkRelDir "third-party")) (project unpackedProject) `shouldBe'` Just ProjectWithoutTargets
+      applyFiltersToProject unpackedRoot (ancestry prefix) (excluding $(mkRelDir "user")) (project unpackedProject) `shouldBe'` Just ProjectWithoutTargets
+
+-- | The prefix 'Discovery.Archive.discover' builds for an archive found
+-- directly under the scan basedir, as assembled at its callsite in
+-- "App.Fossa.Analyze".
+archivePrefix :: Has Diagnostics sig m => Path Abs Dir -> Path Abs File -> m (Path Rel Dir)
+archivePrefix basedir archive = ancestryDirect basedir archive >>= convertArchiveToDir
+
+-- | The prefix 'Discovery.Archive.discover' builds for an archive found inside
+-- another archive's unpacked contents.
+nestedArchivePrefix :: Has Diagnostics sig m => FileAncestry -> Path Abs Dir -> Path Abs File -> m (Path Rel Dir)
+nestedArchivePrefix parent basedir archive = ancestryDerived parent basedir archive >>= convertArchiveToDir
+
 -- | The filesystem root every absolute path below is anchored to. Windows
 -- rejects absolute paths without a drive letter at compile time, so this is the
 -- only binding in the file that needs to be platform-specific; everything under
@@ -101,6 +142,22 @@ unpackedRoot = fsRoot </> $(mkRelDir "tmp/lib.zip-abc123")
 -- | The temp directory the inner archive of a nested archive is unpacked into.
 nestedUnpackedRoot :: Path Abs Dir
 nestedUnpackedRoot = fsRoot </> $(mkRelDir "tmp/inner.zip-def456")
+
+-- | The scan basedir for the prefix-derivation tests. @third-party@ and @user@
+-- are real directories on disk, but the scan is rooted at @user@, so they sit
+-- above the basedir and must never appear in a derived prefix.
+archiveScanRoot :: Path Abs Dir
+archiveScanRoot = fsRoot </> $(mkRelDir "third-party/user")
+
+-- | An archive one directory below 'archiveScanRoot'. The intervening
+-- @project@ directory must survive into the prefix.
+outerArchive :: Path Abs File
+outerArchive = archiveScanRoot </> $(mkRelFile "project/archive.tar")
+
+-- | An archive inside 'outerArchive', found by walking its unpacked contents
+-- at 'unpackedRoot'.
+innerArchive :: Path Abs File
+innerArchive = unpackedRoot </> $(mkRelFile "nested/inner.zip")
 
 -- | A project discovered directly under 'scanRoot'.
 inScan :: Path Rel Dir -> Path Abs Dir
