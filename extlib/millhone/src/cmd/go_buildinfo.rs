@@ -5,11 +5,19 @@
 //! the data is stored inline as varint-length-prefixed strings following a
 //! 16-byte-aligned magic header; this module supports only that inline format.
 //! Older binaries (Go < 1.18) use a pointer-based encoding and are skipped.
+//!
+//! The format has no standalone spec; it is defined by the Go toolchain itself.
+//! The reference reader (which this module mirrors) is
+//! <https://github.com/golang/go/blob/master/src/debug/buildinfo/buildinfo.go>,
+//! and the writer is the linker's `asmb` stage
+//! (`cmd/link/internal/ld/data.go`, `buildinfo`).
+
+use std::io::Read;
 
 use serde::Serialize;
 
 /// The 14-byte magic marking the start of the buildinfo header.
-const BUILDINFO_MAGIC: &[u8] = b"\xff Go buildinf:";
+static BUILDINFO_MAGIC: &[u8] = b"\xff Go buildinf:";
 
 /// The buildinfo header is always aligned to 16 bytes.
 const BUILDINFO_ALIGN: usize = 16;
@@ -19,6 +27,15 @@ const BUILDINFO_HEADER_SIZE: usize = 32;
 
 /// Flag bit: version and modinfo are stored inline (Go >= 1.18).
 const FLAG_INLINE_STRINGS: u8 = 0x2;
+
+/// How much of a stream `scan_go_buildinfo` holds while searching for the
+/// buildinfo magic. Must be a multiple of `BUILDINFO_ALIGN`.
+const SCAN_WINDOW_SIZE: usize = 64 * 1024;
+
+/// Upper bound on a single inline buildinfo string (go version or modinfo).
+/// Real modinfo is small text (a line per module); even enormous dependency
+/// lists stay far under this.
+const MAX_INLINE_STRING_LEN: u64 = 16 * 1024 * 1024;
 
 /// A single Go module (path + version) recorded in a binary's buildinfo.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -53,18 +70,68 @@ pub fn is_candidate_binary(header: &[u8]) -> bool {
         b"\x7fELF" => true,
         // Mach-O thin: feedface / feedfacf, both byte orders.
         [0xfe, 0xed, 0xfa, 0xce | 0xcf] | [0xce | 0xcf, 0xfa, 0xed, 0xfe] => true,
-        // Mach-O fat (universal): cafebabe / bebafeca.
-        [0xca, 0xfe, 0xba, 0xbe] | [0xbe, 0xba, 0xfe, 0xca] => true,
+        // Mach-O fat (universal): cafebabe / cafebabf (64-bit), both byte orders.
+        [0xca, 0xfe, 0xba, 0xbe | 0xbf] | [0xbe | 0xbf, 0xba, 0xfe, 0xca] => true,
         // PE starts with the DOS "MZ" stub.
         [b'M', b'Z', _, _] => true,
         _ => false,
     }
 }
 
-/// Scan a whole binary for the Go buildinfo header and parse the inline
-/// (Go >= 1.18) representation. Returns `None` when no buildinfo is present,
-/// or when the binary uses the older pointer-based encoding.
-pub fn parse_go_buildinfo(buf: &[u8]) -> Option<GoBuildInfo> {
+/// Scan a stream for the Go buildinfo header and parse the inline (Go >= 1.18)
+/// representation. Returns `None` when no buildinfo is present, when the
+/// binary uses the older pointer-based encoding, or on a read error.
+///
+/// `reader` must yield the binary's bytes starting at offset 0: the magic
+/// sits at a 16-byte-aligned offset relative to the start of the file, so a
+/// reader that begins mid-file misaligns the search.
+///
+/// Memory stays bounded regardless of binary size: a rolling
+/// `SCAN_WINDOW_SIZE` window while searching, then exactly the two inline
+/// strings (each capped at `MAX_INLINE_STRING_LEN`) once the magic is found.
+pub fn scan_go_buildinfo(mut reader: impl Read) -> Option<GoBuildInfo> {
+    let mut window: Vec<u8> = Vec::new();
+    loop {
+        let filled = match fill_to(&mut reader, &mut window, SCAN_WINDOW_SIZE) {
+            Ok(filled) => filled,
+            Err(e) => {
+                tracing::debug!("read error while scanning for buildinfo: {e:?}");
+                return None;
+            }
+        };
+
+        let mut offset = 0;
+        while offset + BUILDINFO_HEADER_SIZE <= window.len() {
+            if window[offset..].starts_with(BUILDINFO_MAGIC) {
+                // Commit to the first magic match: if its parse fails, give
+                // up rather than resuming the search. Go's debug/buildinfo
+                // behaves the same way, and a false positive (0xff-led,
+                // 16-byte-aligned) is vanishingly rare.
+                //
+                // Shift the header to the front and hand off to the bounded
+                // string reader; the magic is now at (aligned) offset zero.
+                window.drain(..offset);
+                return read_inline_buildinfo(&mut reader, window);
+            }
+            offset += BUILDINFO_ALIGN;
+        }
+
+        if !filled {
+            // EOF without finding the magic.
+            return None;
+        }
+        // Keep the aligned tail that couldn't fit a full header yet; the next
+        // chunk may complete a magic spanning the window boundary. Draining
+        // only multiples of BUILDINFO_ALIGN keeps the window's start on a
+        // file-aligned offset, so the stepped search stays valid after the
+        // shift.
+        window.drain(..offset);
+    }
+}
+
+/// Parse a whole in-memory binary. Equivalent to `scan_go_buildinfo` over the
+/// same bytes; callers with a stream should prefer that entry point.
+fn parse_go_buildinfo(buf: &[u8]) -> Option<GoBuildInfo> {
     let offset = find_aligned_magic(buf)?;
     let header = &buf[offset..];
     let flags = *header.get(BUILDINFO_MAGIC.len() + 1)?;
@@ -83,19 +150,77 @@ pub fn parse_go_buildinfo(buf: &[u8]) -> Option<GoBuildInfo> {
     let (modinfo, _) = read_varint_string(rest)?;
     let modinfo = strip_modinfo_sentinels(modinfo);
 
-    let mut info = GoBuildInfo {
-        go_version: String::from_utf8_lossy(go_version).into_owned(),
-        main_module: None,
-        modules: Vec::new(),
-    };
-    if info.go_version.is_empty() {
+    let go_version = String::from_utf8_lossy(go_version).into_owned();
+    if go_version.is_empty() {
         return None;
     }
 
-    if let Some(modinfo) = modinfo {
-        parse_modinfo(&String::from_utf8_lossy(modinfo), &mut info);
+    let (main_module, modules) = match modinfo {
+        Some(modinfo) => parse_modinfo(&String::from_utf8_lossy(modinfo)),
+        None => (None, Vec::new()),
+    };
+    Some(GoBuildInfo {
+        go_version,
+        main_module,
+        modules,
+    })
+}
+
+/// Given a buffer that starts with the buildinfo header (magic at offset 0)
+/// and holds at least `BUILDINFO_HEADER_SIZE` bytes, pull the two inline
+/// strings from the stream and parse them.
+fn read_inline_buildinfo(reader: &mut impl Read, mut buf: Vec<u8>) -> Option<GoBuildInfo> {
+    let flags = buf[BUILDINFO_MAGIC.len() + 1];
+    if flags & FLAG_INLINE_STRINGS == 0 {
+        // Go < 1.18 pointer-based encoding: out of scope.
+        tracing::debug!("buildinfo present but not inline format (go < 1.18); skipping");
+        return None;
     }
-    Some(info)
+
+    let version_end = read_inline_string_bounds(reader, &mut buf, BUILDINFO_HEADER_SIZE)?;
+    let modinfo_end = read_inline_string_bounds(reader, &mut buf, version_end)?;
+    buf.truncate(modinfo_end);
+    parse_go_buildinfo(&buf)
+}
+
+/// Ensure `buf` holds the complete varint-length-prefixed string that starts
+/// at `start`, reading more from `reader` on demand. Returns the string's end
+/// offset within `buf`.
+fn read_inline_string_bounds(
+    reader: &mut impl Read,
+    buf: &mut Vec<u8>,
+    start: usize,
+) -> Option<usize> {
+    // A uvarint is at most 10 bytes; EOF short of that is fine as long as the
+    // varint itself terminates in the bytes we do have.
+    fill_to(reader, buf, start.checked_add(10)?).ok()?;
+    let (len, consumed) = read_uvarint(buf.get(start..)?)?;
+    if len > MAX_INLINE_STRING_LEN {
+        tracing::debug!(len, "buildinfo string length exceeds sanity bound");
+        return None;
+    }
+    let end = start
+        .checked_add(consumed)?
+        .checked_add(usize::try_from(len).ok()?)?;
+    match fill_to(reader, buf, end) {
+        Ok(true) => Some(end),
+        _ => None,
+    }
+}
+
+/// Grow `buf` with bytes from `reader` until it holds at least `needed` bytes
+/// or the stream ends. Returns whether `needed` bytes are available.
+fn fill_to(reader: &mut impl Read, buf: &mut Vec<u8>, needed: usize) -> std::io::Result<bool> {
+    let mut chunk = [0u8; 8192];
+    while buf.len() < needed {
+        match reader.read(&mut chunk) {
+            Ok(0) => return Ok(false),
+            Ok(n) => buf.extend_from_slice(&chunk[..n]),
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(true)
 }
 
 /// Find the byte offset of the buildinfo magic, which the linker places at a
@@ -128,6 +253,11 @@ fn read_varint_string(buf: &[u8]) -> Option<(&[u8], &[u8])> {
 fn read_uvarint(buf: &[u8]) -> Option<(u64, usize)> {
     let mut value: u64 = 0;
     for (i, byte) in buf.iter().take(10).enumerate() {
+        // The tenth byte carries only the top two bits of a u64; anything
+        // above 1 would overflow (shifting it by 63 silently drops bits).
+        if i == 9 && *byte > 1 {
+            return None;
+        }
         value |= u64::from(byte & 0x7f) << (7 * i);
         if byte & 0x80 == 0 {
             return Some((value, i + 1));
@@ -153,7 +283,11 @@ fn strip_modinfo_sentinels(modinfo: &[u8]) -> Option<&[u8]> {
 ///   dep\t<path>\t<version>\t<hash?>   -> dependency
 ///   =>\t<path>\t<version>\t<hash?>    -> replacement for the preceding dep
 ///   path\t... / build\t...            -> ignored
-fn parse_modinfo(modinfo: &str, info: &mut GoBuildInfo) {
+///
+/// Returns the main module (if any) and the dependency modules.
+fn parse_modinfo(modinfo: &str) -> (Option<GoModule>, Vec<GoModule>) {
+    let mut main_module = None;
+    let mut modules = Vec::new();
     for line in modinfo.lines() {
         let mut fields = line.split('\t');
         let (directive, path, version) = match (fields.next(), fields.next(), fields.next()) {
@@ -165,18 +299,19 @@ fn parse_modinfo(modinfo: &str, info: &mut GoBuildInfo) {
             version: version.to_string(),
         };
         match directive {
-            "mod" => info.main_module = Some(module),
-            "dep" => info.modules.push(module),
+            "mod" => main_module = Some(module),
+            "dep" => modules.push(module),
             // A replacement line overrides the immediately preceding dep:
             // the replacement is what was actually linked into the binary.
             "=>" => {
-                if let Some(last) = info.modules.last_mut() {
+                if let Some(last) = modules.last_mut() {
                     *last = module;
                 }
             }
             _ => continue,
         }
     }
+    (main_module, modules)
 }
 
 #[cfg(test)]
@@ -342,9 +477,65 @@ mod tests {
         assert!(is_candidate_binary(&[0xfe, 0xed, 0xfa, 0xcf]));
         assert!(is_candidate_binary(&[0xcf, 0xfa, 0xed, 0xfe]));
         assert!(is_candidate_binary(&[0xca, 0xfe, 0xba, 0xbe]));
+        assert!(is_candidate_binary(&[0xca, 0xfe, 0xba, 0xbf]));
+        assert!(is_candidate_binary(&[0xbf, 0xba, 0xfe, 0xca]));
         assert!(is_candidate_binary(b"MZ\x90\x00"));
         assert!(!is_candidate_binary(b"#!/b"));
         assert!(!is_candidate_binary(b"MZ"));
+    }
+
+    #[test]
+    fn uvarint_ten_byte_values() {
+        // 1 << 63: nine continuation bytes then a terminating 0x01.
+        let buf = [0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01];
+        assert_eq!(read_uvarint(&buf), Some((1u64 << 63, 10)));
+        // A terminating zero tenth byte is valid (non-canonical but accepted).
+        let buf = [0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00];
+        assert_eq!(read_uvarint(&buf), Some((0, 10)));
+        // An overflowing tenth byte is rejected, not silently truncated.
+        let buf = [0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x02];
+        assert_eq!(read_uvarint(&buf), None);
+        // Unterminated after ten bytes is rejected.
+        assert_eq!(read_uvarint(&[0x80; 11]), None);
+    }
+
+    #[test]
+    fn streaming_scan_matches_whole_buffer_parse() {
+        let buf = synthetic_buildinfo(64, FLAG_INLINE_STRINGS, "go1.25.6", MODINFO);
+        let streamed = scan_go_buildinfo(std::io::Cursor::new(&buf)).expect("should parse");
+        let parsed = parse_go_buildinfo(&buf).expect("should parse");
+        assert_eq!(streamed, parsed);
+    }
+
+    #[test]
+    fn streaming_scan_finds_magic_past_first_window() {
+        // The magic sits beyond SCAN_WINDOW_SIZE, forcing the window to roll.
+        let buf = synthetic_buildinfo(
+            SCAN_WINDOW_SIZE + SCAN_WINDOW_SIZE / 2,
+            FLAG_INLINE_STRINGS,
+            "go1.25.6",
+            MODINFO,
+        );
+        let info = scan_go_buildinfo(std::io::Cursor::new(&buf)).expect("should parse");
+        assert_eq!(info.go_version, "go1.25.6");
+        assert_eq!(info.modules.len(), 2);
+    }
+
+    #[test]
+    fn streaming_scan_handles_magic_spanning_window_boundary() {
+        // Start the buildinfo just under the window edge so the magic bytes
+        // straddle the first and second reads.
+        let pad = SCAN_WINDOW_SIZE - BUILDINFO_ALIGN;
+        let buf = synthetic_buildinfo(pad, FLAG_INLINE_STRINGS, "go1.25.6", MODINFO);
+        let info = scan_go_buildinfo(std::io::Cursor::new(&buf)).expect("should parse");
+        assert_eq!(info.go_version, "go1.25.6");
+    }
+
+    #[test]
+    fn streaming_scan_rejects_truncated_stream() {
+        let mut buf = synthetic_buildinfo(0, FLAG_INLINE_STRINGS, "go1.25.6", MODINFO);
+        buf.truncate(BUILDINFO_HEADER_SIZE + 4);
+        assert!(scan_go_buildinfo(std::io::Cursor::new(&buf)).is_none());
     }
 
     #[test]

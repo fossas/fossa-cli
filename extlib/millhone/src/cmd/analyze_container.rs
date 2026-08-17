@@ -14,7 +14,7 @@ use tar::{Archive, Entry};
 use tracing::{debug, info, info_span, warn};
 use typed_builder::TypedBuilder;
 
-use super::go_buildinfo::{is_candidate_binary, parse_go_buildinfo, GoBuildInfo, GoModule};
+use super::go_buildinfo::{is_candidate_binary, scan_go_buildinfo, GoBuildInfo, GoModule};
 
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
@@ -28,10 +28,11 @@ const JAR_OBSERVATION: &str = "v1.discover.binary.jar";
 const GO_BINARY_OBSERVATION: &str = "v1.discover.binary.go";
 
 /// Only sniff regular files at least this large; Go binaries are never tiny.
+/// (u64 because that's what tar header sizes are.)
 const MIN_GO_BINARY_SIZE: u64 = 4096;
 
-/// Skip candidates larger than this rather than buffering them in memory.
-const MAX_GO_BINARY_SIZE: u64 = 512 * 1024 * 1024;
+/// Magic bytes identifying a gzip stream.
+const GZIP_MAGIC: [u8; 2] = [0x1f, 0x8b];
 
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct DiscoveredJar {
@@ -95,7 +96,7 @@ struct ContainerAnalysis {
 #[tracing::instrument]
 pub fn main(opts: Subcommand) -> Result<()> {
     let tar_filename = opts.image_tar_file();
-    let analysis = jars_in_container(opts.image_tar_file())
+    let analysis = binaries_in_container(opts.image_tar_file())
         .with_context(|| format!("analyze container: {:?}", tar_filename))?;
 
     let mut stdout = BufWriter::new(std::io::stdout());
@@ -107,7 +108,7 @@ pub fn main(opts: Subcommand) -> Result<()> {
 /// embedded buildinfo module list parsed. Everything is reported along with its
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<ContainerAnalysis> {
+fn binaries_in_container(image_path: &PathBuf) -> Result<ContainerAnalysis> {
     info!("inspecting container");
     let layers = list_container_layers(image_path)?;
     let mut jar_discoveries = HashMap::new();
@@ -152,9 +153,10 @@ fn scan_layer(
     entry: Entry<'_, impl Read>,
 ) -> Result<(Vec<DiscoveredJar>, Vec<DiscoveredGoBinary>)> {
     let mut reader = BufReader::new(entry);
-    // Read exactly two bytes rather than trusting a single fill_buf to return
-    // that many, then stitch them back onto the front of the stream.
-    let mut magic = [0u8; 2];
+    // A single `read` may legally return fewer bytes than requested even when
+    // more remain, so loop until both magic bytes (or EOF) arrive, then
+    // stitch them back onto the front of the stream.
+    let mut magic = [0u8; GZIP_MAGIC.len()];
     let mut filled = 0;
     while filled < magic.len() {
         match reader.read(&mut magic[filled..]) {
@@ -164,7 +166,7 @@ fn scan_layer(
             Err(e) => return Err(e).context("detect layer compression"),
         }
     }
-    let is_gzip = filled == 2 && magic == [0x1f, 0x8b];
+    let is_gzip = filled == magic.len() && magic == GZIP_MAGIC;
     let reader = std::io::Cursor::new(magic)
         .take(filled as u64)
         .chain(reader);
@@ -226,27 +228,22 @@ fn maybe_go_binary(entry: &mut Entry<'_, impl Read>, path: &Path) -> Option<Disc
     if size < MIN_GO_BINARY_SIZE {
         return None;
     }
-    if size > MAX_GO_BINARY_SIZE {
-        warn!(?path, size, "skipped: candidate binary exceeds size limit");
-        return None;
-    }
 
-    let mut header = [0u8; 64];
-    if let Err(e) = entry.read_exact(&mut header) {
-        debug!(?path, "skipped: failed to read header: {e:?}");
+    // Sniffing consumes the entry's leading bytes (an `Entry` is a forward-only
+    // reader), so stitch the prefix back onto the front of the stream: the
+    // buildinfo scan needs offsets relative to the start of the file.
+    let mut prefix = [0u8; 64];
+    if let Err(e) = entry.read_exact(&mut prefix) {
+        debug!(?path, "skipped: failed to read file prefix: {e:?}");
         return None;
     }
-    if !is_candidate_binary(&header) {
+    if !is_candidate_binary(&prefix) {
         return None;
     }
 
     debug!(?path, "candidate binary; scanning for Go buildinfo");
-    let mut contents = header.to_vec();
-    if let Err(e) = entry.read_to_end(&mut contents) {
-        warn!(?path, "failed to read candidate binary: {e:?}");
-        return None;
-    }
-    parse_go_buildinfo(&contents).map(|info| DiscoveredGoBinary::new(path.to_path_buf(), info))
+    let reader = std::io::Cursor::new(prefix).chain(entry);
+    scan_go_buildinfo(reader).map(|info| DiscoveredGoBinary::new(path.to_path_buf(), info))
 }
 
 const MAX_JAR_DEPTH: u32 = 100;
@@ -417,7 +414,7 @@ mod tests {
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/jar_test_container.tar");
 
-        let res = jars_in_container(&image_tar_file)
+        let res = binaries_in_container(&image_tar_file)
             .expect("Read jars out of container image.")
             .pipe(serde_json::to_value)
             .expect("encode as json");
@@ -432,7 +429,7 @@ mod tests {
     // We are also testing that the fingerprints from the nested jars are equal to the fingerprints when they are at top-level
     // See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
     #[test]
-    fn it_finds_nested_jars() {
+    fn it_analyzes_nested_jars_image() {
         let nested_jars_millhone_out: String = format!(
             r#"
         {{
@@ -533,7 +530,7 @@ mod tests {
         );
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
-        let res = jars_in_container(&image_tar_file)
+        let res = binaries_in_container(&image_tar_file)
             .expect("Read jars out of container image.")
             .pipe(serde_json::to_value)
             .expect("encode as json");
@@ -636,27 +633,6 @@ mod tests {
     }
 
     #[test]
-    fn skips_oversized_candidates() {
-        // Header claims a size over the limit; the gate must trip before any
-        // content is read, so no body bytes are needed.
-        let mut header = tar::Header::new_gnu();
-        header.set_path("huge").expect("set path");
-        header.set_size(MAX_GO_BINARY_SIZE + 1);
-        header.set_mode(0o644);
-        header.set_cksum();
-        let mut data = header.as_bytes().to_vec();
-        data.extend_from_slice(&[0u8; 1024]);
-        let mut archive = tar::Archive::new(std::io::Cursor::new(data));
-        let mut entry = archive
-            .entries()
-            .expect("iterate tar")
-            .next()
-            .expect("tar has one entry")
-            .expect("read entry");
-        assert!(maybe_go_binary(&mut entry, Path::new("huge")).is_none());
-    }
-
-    #[test]
     fn skips_non_file_entries() {
         let mut builder = tar::Builder::new(Vec::new());
         let mut header = tar::Header::new_gnu();
@@ -689,5 +665,17 @@ mod tests {
         let mut elf = vec![0u8; MIN_GO_BINARY_SIZE as usize];
         elf[..4].copy_from_slice(b"\x7fELF");
         assert!(sniff_first(&[("bin", &elf)]).is_none());
+    }
+
+    #[test]
+    fn finds_buildinfo_deep_in_a_large_binary() {
+        // Buildinfo placed past the streaming scan window, so the rolling
+        // search (not just the sniffed prefix) has to find it.
+        let mut buf = vec![0u8; 256 * 1024];
+        buf[..4].copy_from_slice(b"\x7fELF");
+        buf.extend_from_slice(BUILDINFO_FIXTURE);
+        let discovered = sniff_first(&[("usr/bin/big", &buf)]).expect("should discover");
+        assert_eq!(discovered.go_version, "go1.25.6");
+        assert_eq!(discovered.modules.len(), 161);
     }
 }
