@@ -95,6 +95,9 @@ isEndLine '\n' = True
 isEndLine '\r' = True
 isEndLine _ = False
 
+parseStringArray :: Parser [Text]
+parseStringArray = betweenSquareBrackets (sepEndBy parseQuotedText (symbol ","))
+
 -- | Represents https://developer.apple.com/documentation/packagedescription/version
 data SwiftVersion = SwiftVersion
   { parts :: [Text]
@@ -126,9 +129,6 @@ parseVersionConstructor = (symbol "Version") >> assembleParts <$> parseParts
         Just ("buildMetadataIdentifiers") -> (Just . BuildMetadataIdentifiers) <$> parseStringArray
         -- Unknown key -- Not reachable in practice, but consume the value of any unknown keys so the parser continues
         _ -> Nothing <$ (void parseStringArray <|> void parseQuotedText <|> void (some digitChar))
-
-    parseStringArray :: Parser [Text]
-    parseStringArray = betweenSquareBrackets (sepEndBy parseQuotedText (symbol ","))
 
     assembleParts :: [SwiftVersionPart] -> SwiftVersion
     assembleParts =
@@ -249,6 +249,8 @@ parsePackageDep = try parsePathDep <|> parseGitDep
               , ClosedInterval <$> parseRange "..."
               , RhsHalfOpenInterval <$> parseRange "..<"
               ]
+      _ <- maybeComma
+      _ <- optional $ parseKeyValue "traits" $ void parseStringArray
       _ <- symbol ")"
       pure $ GitSource $ SwiftPackageGitDep url (versionRequirement)
 
