@@ -100,6 +100,12 @@ analyze submodules dir plugin = do
 -- | Recover edges Maven resolved away as duplicates (see
 -- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd') and merge them into the
 -- parsed output. Best-effort: on failure the aggregate output is used as-is.
+--
+-- Note: 'execPluginVerboseGraph' is invoked with '-DoutputDirectory=<tempdir>',
+-- which causes the depgraph :graph goal to write a single aggregated verbose
+-- graph to that location (not one per submodule). 'parseVerboseGraphs' reads
+-- exactly that file, so all modules' duplicate-resolved edges are captured in
+-- a single pass.
 recoverDuplicateEdges ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m

@@ -12,16 +12,12 @@ module Strategy.Maven.Plugin (
   DepGraphPlugin (..),
   Edge (..),
   PluginOutput (..),
-  ReactorOutput (..),
-  ReactorArtifact (..),
   VerboseArtifact (..),
   VerboseEdge (..),
   VerboseGraph (..),
   augmentWithDuplicateEdges,
-  parseReactorOutput,
   textArtifactToPluginOutput,
   execPluginAggregate,
-  execPluginReactor,
   execPluginVerboseGraph,
   mavenCmdCandidates,
 ) where
@@ -134,11 +130,6 @@ execPluginAggregate dir outputdir plugin = do
   cmd <- mavenPluginDependenciesCmd dir outputdir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginReactor projectdir outputdir plugin = do
-  cmd <- mavenPluginReactorCmd projectdir outputdir plugin
-  execPlugin (const cmd) projectdir plugin
-
 execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
 execPluginVerboseGraph dir outputdir plugin = do
   cmd <- mavenPluginVerboseGraphCmd dir outputdir plugin
@@ -151,17 +142,12 @@ parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -
 parsePluginOutput outputdir =
   readContentsParser parseTextArtifact (outputdir </> outputFile) >>= textArtifactToPluginOutput
 
-reactorOutputFilename :: Path Rel File
-reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
-
-parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
-parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
-
 verboseGraphFileName :: Path Rel File
 verboseGraphFileName = $(mkRelFile "fossa-depgraph-verbose.json")
 
--- | Find and parse the output of 'execPluginVerboseGraph'. The @graph@ goal
--- runs per reactor module, writing into each module's build directory.
+-- | Parse the output of 'execPluginVerboseGraph'. The @graph@ goal with
+-- @-DoutputDirectory@ writes a single aggregated verbose graph to that
+-- directory, so we read exactly one file.
 parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
 parseVerboseGraphs outputdir =
   readContentsJson (outputdir </> verboseGraphFileName) >>= pure . pure
@@ -306,38 +292,6 @@ mavenPluginVerboseGraphCmd workdir outputdir plugin = do
       , "-DoutputFileName=" <> toText verboseGraphFileName
       , "-DoutputDirectory=" <> toText outputdir
       ]
-
--- | The reactor command is documented
---  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
---  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
---  overrides the build directory (See FDN-82 for more details)
-mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginReactorCmd workdir outputdir plugin = do
-  candidates <- mavenCmdCandidates workdir
-  mkAnalysisCommand candidates workdir args Never
-  where
-    args =
-      [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
-      , "-DgraphFormat=json"
-      , "-DoutputFileName=" <> toText reactorOutputFilename
-      , "-DoutputDirectory=" <> toText outputdir
-      ]
-
-newtype ReactorArtifact = ReactorArtifact
-  { reactorArtifactName :: Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReactorArtifact where
-  parseJSON = withObject "Reactor artifact" $
-    \o -> ReactorArtifact <$> o .: "artifactId"
-
-newtype ReactorOutput = ReactorOutput {reactorArtifacts :: [ReactorArtifact]}
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReactorOutput where
-  parseJSON = withObject "Reactor output" $
-    \o -> ReactorOutput <$> (o .:? "artifacts" .!= [])
 
 data PluginOutput = PluginOutput
   { outArtifacts :: [Artifact]
