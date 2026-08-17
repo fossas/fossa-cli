@@ -17,9 +17,12 @@
   "packages": {
     "express": ["express@4.18.2", "", { "dependencies": { "accepts": "~1.3.8" } }, "sha512-fake=="],
     "accepts": ["accepts@1.3.8", "", { "dependencies": { "mime-types": "~2.1.34" } }, "sha512-fake=="],
-    "mime-types": ["mime-types@2.1.35", "", {}, "sha512-fake=="],
+    "mime-types": ["mime-types@2.1.35", "", { "dependencies": { "ms": "^2.1.3" } }, "sha512-fake=="],
     "typescript": ["typescript@5.3.3", "", { "dependencies": { "semver": "^7.5.0" } }, "sha512-fake=="],
-    "semver": ["semver@7.6.0", "", {}, "sha512-fake=="],
+    "semver": ["semver@7.6.0", "", { "dependencies": { "lru-cache": "^6.0.0", "ms": "^2.1.3" } }, "sha512-fake=="],
+    "lru-cache": ["lru-cache@6.0.0", "", { "dependencies": { "yallist": "^4.0.0" } }, "sha512-fake=="],
+    "yallist": ["yallist@4.0.0", "", {}, "sha512-fake=="],
+    "ms": ["ms@2.1.3", "", {}, "sha512-fake=="],
     "fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-fake=="],
   },
 }

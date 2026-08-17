@@ -3,6 +3,11 @@
 ## Unreleased
 
 - Container scanning: Add `--experimental-enable-go-binary-discovery` flag to `fossa container analyze`. When enabled, Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers are reported as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
+- Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
+
+## 3.17.17
+
+- License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](https://github.com/fossas/fossa-cli/pull/1742))
 
 ## 3.17.16
 
