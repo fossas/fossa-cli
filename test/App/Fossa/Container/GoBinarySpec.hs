@@ -1,7 +1,7 @@
 module App.Fossa.Container.GoBinarySpec (spec) where
 
 import App.Fossa.Container.Sources.GoBinary (goBinariesToSourceUnits, goModuleToLocator)
-import Container.Types (DiscoveredGoBinary (..), DiscoveredBinaries (..), GoModule (..))
+import Container.Types (DiscoveredBinaries (..), DiscoveredGoBinary (..), GoModule (..))
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy (ByteString)
 import Data.Map qualified as Map
