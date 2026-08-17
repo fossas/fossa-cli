@@ -1,0 +1,22 @@
+{
+      "version": "1",
+      "frameworks": {
+            "net45": {
+                  "dependencies": {
+                        "one": "1.0.0",
+                        "two": "2.*"
+                  },
+                  "frameworkAssemblies": {
+                        "fake": ""
+                  }
+            },
+            "netstandard1.0": {
+                  "dependencies": {
+                        "three": {
+                              "version": "3.0.0",
+                              "type": "sometype"
+                        }
+                  }
+            }
+      }
+}

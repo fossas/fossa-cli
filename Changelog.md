@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
+- NuGet: `project.json` files without a top-level `dependencies` key no longer fail analysis with `key "dependencies" not found`, and dependencies declared per-framework under `frameworks` are now reported.
 
 ## 3.17.17
 

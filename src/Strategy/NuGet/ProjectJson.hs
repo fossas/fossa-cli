@@ -20,6 +20,7 @@ import Data.Aeson.Types (
   Value,
   withObject,
   withText,
+  (.!=),
   (.:),
   (.:?),
  )
@@ -104,9 +105,25 @@ data DependencyInfo = DependencyInfo
   }
   deriving (Show)
 
+-- | Framework-specific settings from the @frameworks@ section; dependencies may
+-- be declared per-framework instead of (or in addition to) top-level.
+newtype FrameworkInfo = FrameworkInfo
+  { frameworkDependencies :: Map Text DependencyInfo
+  }
+  deriving (Show)
+
+-- The "dependencies" key is optional, both top-level and per-framework: a
+-- project.json may declare dependencies in either place, or have none at all.
 instance FromJSON ProjectJson where
-  parseJSON = withObject "ProjectJson" $ \obj ->
-    ProjectJson <$> obj .: "dependencies"
+  parseJSON = withObject "ProjectJson" $ \obj -> do
+    topLevelDeps <- obj .:? "dependencies" .!= Map.empty
+    frameworks :: Map Text FrameworkInfo <- obj .:? "frameworks" .!= Map.empty
+    let frameworkDeps = Map.unions $ frameworkDependencies <$> Map.elems frameworks
+    pure . ProjectJson $ Map.union topLevelDeps frameworkDeps
+
+instance FromJSON FrameworkInfo where
+  parseJSON = withObject "FrameworkInfo" $ \obj ->
+    FrameworkInfo <$> obj .:? "dependencies" .!= Map.empty
 
 instance FromJSON DependencyInfo where
   parseJSON val = parseJSONObject val <|> parseJSONText val

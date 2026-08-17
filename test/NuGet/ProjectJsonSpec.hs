@@ -46,6 +46,8 @@ dependencyThree =
 spec :: Spec
 spec = do
   testFile <- runIO (BS.readFile "test/NuGet/testdata/project.json")
+  frameworkDepsFile <- runIO (BS.readFile "test/NuGet/testdata/project-framework-deps.json")
+  noDepsFile <- runIO (BS.readFile "test/NuGet/testdata/project-no-deps.json")
 
   describe "project.json analyzer" $ do
     it "reads a file and constructs an accurate graph" $ do
@@ -54,5 +56,23 @@ spec = do
           let graph = buildGraph res
           expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
+          expectEdges [] graph
+        Left _ -> expectationFailure "failed to parse"
+
+    it "reads dependencies declared per-framework instead of top-level" $ do
+      case eitherDecodeStrict frameworkDepsFile of
+        Right res -> do
+          let graph = buildGraph res
+          expectDeps [dependencyOne, dependencyTwo, dependencyThree] graph
+          expectDirect [dependencyOne, dependencyTwo, dependencyThree] graph
+          expectEdges [] graph
+        Left _ -> expectationFailure "failed to parse"
+
+    it "parses a project.json without any dependencies key" $ do
+      case eitherDecodeStrict noDepsFile of
+        Right res -> do
+          let graph = buildGraph res
+          expectDeps [] graph
+          expectDirect [] graph
           expectEdges [] graph
         Left _ -> expectationFailure "failed to parse"
