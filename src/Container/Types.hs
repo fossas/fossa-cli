@@ -18,7 +18,7 @@ module Container.Types (
 
   -- * Jar Analysis Related Types
   JarObservation (..),
-  DiscoveredJars (..),
+  DiscoveredBinaries (..),
 
   -- * Go Binary Analysis Related Types
   GoModule (..),
@@ -180,16 +180,17 @@ instance FromJSON DiscoveredGoBinary where
       <*> o .:? "main_module"
       <*> o .: "modules"
 
--- | Output parse type for millhone.
-data DiscoveredJars = DiscoveredJars
+-- | Output parse type for millhone: everything (jars and Go binaries) it
+-- discovered per layer.
+data DiscoveredBinaries = DiscoveredBinaries
   { discoveredJars :: Map.Map LayerPath [JarObservation]
   , discoveredGoBinaries :: Map.Map LayerPath [DiscoveredGoBinary]
   }
   deriving (Eq, Ord, Show)
 
-instance FromJSON DiscoveredJars where
-  parseJSON = withObject "JarInput" $ \o ->
-    DiscoveredJars
+instance FromJSON DiscoveredBinaries where
+  parseJSON = withObject "DiscoveredBinaries" $ \o ->
+    DiscoveredBinaries
       <$> o .: "discovered_jars"
       -- Tolerate output from millhone versions predating Go binary analysis.
       <*> o .:? "discovered_go_binaries" .!= Map.empty

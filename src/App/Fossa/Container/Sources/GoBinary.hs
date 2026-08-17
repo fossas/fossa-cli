@@ -77,9 +77,10 @@ goModuleToLocator (GoModule path version) = do
       }
 
 normalizeVersion :: Text -> Maybe Text
-normalizeVersion version
-  | Text.null version || version == "(devel)" = Nothing
-  | otherwise = case parseMaybe (parsePackageVersion id) version of
+normalizeVersion version =
+  if Text.null version || version == "(devel)"
+    then Nothing
+    else case parseMaybe (parsePackageVersion id) version of
       Just (Pseudo commitHash) -> Just commitHash
       Just (Semantic semver) -> Just ("v" <> SemVer.toText semver{_versionMeta = []})
       Just (NonCanonical v) -> Just v
