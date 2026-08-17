@@ -2,10 +2,13 @@
 
 module Maven.PluginSpec (spec) where
 
+import Control.Effect.Lift (sendIO)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Text (Text)
 import Data.Tree (Tree (..))
+import Path (parent, reldir, relfile, toFilePath, (</>))
+import Path.IO qualified as PIO
 import Strategy.Maven.Plugin (
   Artifact (..),
   Edge (..),
@@ -14,10 +17,19 @@ import Strategy.Maven.Plugin (
   VerboseEdge (..),
   VerboseGraph (..),
   augmentWithDuplicateEdges,
+  parseVerboseGraphs,
   textArtifactToPluginOutput,
  )
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
-import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldMatchList')
+import Test.Effect (
+  expectationFailure',
+  it',
+  itWithTempDir',
+  shouldBe',
+  shouldContain',
+  shouldMatchList',
+  shouldSatisfy',
+ )
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (parseMaybe)
 import Text.RawString.QQ (r)
@@ -27,6 +39,23 @@ spec = do
   textArtifactConversionSpec
   verboseGraphParsingSpec
   augmentWithDuplicateEdgesSpec
+  verboseGraphCollectionSpec
+
+-- | The @graph@ goal is not an aggregator: in a multi-module build it runs once
+-- per reactor module, writing into each module's own build directory.
+-- 'parseVerboseGraphs' must collect every such file, not just one at the root.
+verboseGraphCollectionSpec :: Spec
+verboseGraphCollectionSpec =
+  itWithTempDir' "collects one verbose graph per reactor module (per-module build dirs)" $ \tmpdir -> do
+    let fossaFile = [relfile|fossa-depgraph-verbose.json|]
+        modAFile = tmpdir </> [reldir|mod-a/target/|] </> fossaFile
+        modCFile = tmpdir </> [reldir|mod-c/target/|] </> fossaFile
+    sendIO $ PIO.createDirIfMissing True (parent modAFile)
+    sendIO $ BS.writeFile (toFilePath modAFile) verboseGraphJson
+    sendIO $ PIO.createDirIfMissing True (parent modCFile)
+    sendIO $ BS.writeFile (toFilePath modCFile) verboseGraphJson
+    graphs <- parseVerboseGraphs tmpdir
+    shouldSatisfy' graphs ((== 2) . length)
 
 singleTextArtifact :: TextArtifact
 singleTextArtifact =

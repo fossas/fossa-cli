@@ -297,7 +297,7 @@ spec = do
       let graph = shrinkRoots $ buildGraph Set.empty mavenMultiScopeOutput
       expectDeps [packageMultiScope] graph
 
-    let graph = shrinkRoots $ buildGraph (Set.singleton "packageThree") mavenCrossDependentSubModules
+    let graph = shrinkRoots $ buildGraph (Set.singleton "mygroup:packageThree") mavenCrossDependentSubModules
     it "Should mark top-level graph artifacts and known submodules as direct, then shrinkRoots" $ do
       expectDirect [packageTwo, packageFour] graph
 
@@ -309,7 +309,7 @@ spec = do
     -- the reactor output. Artifacts matching known submodule names are treated as
     -- direct dependencies, then shrinkRoots removes them from the final graph.
     it "Should treat artifacts matching known submodules as direct deps" $ do
-      let graph = shrinkRoots $ buildGraph (Set.fromList ["packageOne", "packageThree"]) mavenCrossDependentSubModules
+      let graph = shrinkRoots $ buildGraph (Set.fromList ["mygroup:packageOne", "mygroup:packageThree"]) mavenCrossDependentSubModules
       -- Both packageOne and packageThree are known submodules, so their children
       -- (packageTwo and packageFour) are promoted to direct after shrinking
       expectDirect [packageTwo, packageFour] graph
