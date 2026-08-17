@@ -1,9 +1,11 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Maven.Pom.Closure (
+  extractSubmoduleFromCoordinate,
   findProjects,
   MavenProjectClosure (..),
   buildProjectClosures,
+  submodulesFromCoordinate,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -65,11 +67,11 @@ buildProjectClosures basedir global = closures
     graphRoots :: [MavenCoordinate]
     graphRoots = sourceVertices (globalGraph global)
 
-    submodulesFromCoordinate :: Map MavenCoordinate a -> Set Text
-    submodulesFromCoordinate = Set.fromList . map extractSubmoduleFromCoordinate . Map.keys
+submodulesFromCoordinate :: Map MavenCoordinate a -> Set Text
+submodulesFromCoordinate = Set.fromList . map extractSubmoduleFromCoordinate . Map.keys
 
-    extractSubmoduleFromCoordinate :: MavenCoordinate -> Text
-    extractSubmoduleFromCoordinate (MavenCoordinate group artifact _) = group <> ":" <> artifact
+extractSubmoduleFromCoordinate :: MavenCoordinate -> Text
+extractSubmoduleFromCoordinate (MavenCoordinate group artifact _) = group <> ":" <> artifact
 
 -- Find reachable nodes both below (children, grandchildren, ...) and above (parents, grandparents) the node
 bidirectionalReachable :: Ord a => a -> AM.AdjacencyMap a -> Set.Set a

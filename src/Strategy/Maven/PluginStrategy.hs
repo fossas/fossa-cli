@@ -13,7 +13,6 @@ import Control.Effect.Diagnostics (
   errCtx,
   recover,
   warnOnErr,
-  (<||>),
  )
 import Control.Effect.Lift (Lift)
 import Control.Effect.Path (withSystemTempDir)
@@ -22,6 +21,7 @@ import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (
@@ -43,19 +43,14 @@ import Strategy.Maven.Plugin (
   DepGraphPlugin,
   Edge (..),
   PluginOutput (..),
-  ReactorOutput (ReactorOutput),
   augmentWithDuplicateEdges,
   depGraphPlugin,
   depGraphPluginLegacy,
   execPluginAggregate,
-  execPluginReactor,
   execPluginVerboseGraph,
   installPlugin,
   parsePluginOutput,
-  parseReactorOutput,
   parseVerboseGraphs,
-  reactorArtifactName,
-  reactorArtifacts,
   withUnpackedPlugin,
  )
 import Types (GraphBreadth (..))
@@ -65,51 +60,41 @@ analyze' ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Set Text ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze' dir = analyze dir depGraphPlugin
+analyze' submodules dir = analyze submodules dir depGraphPlugin
 
 analyzeLegacy' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Set Text ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyzeLegacy' dir = analyze dir depGraphPluginLegacy
-
-runReactor ::
-  ( CandidateCommandEffs sig m
-  , Has ReadFS sig m
-  , Has (Lift IO) sig m
-  ) =>
-  Path Abs Dir ->
-  DepGraphPlugin ->
-  m ReactorOutput
-runReactor dir plugin =
-  context "Running plugin to get submodule names" $
-    withSystemTempDir "fossa-temp" $ \tempdir -> do
-      warnOnErr MayIncludeSubmodule (execPluginReactor dir tempdir plugin >> parseReactorOutput tempdir)
-        <||> pure (ReactorOutput [])
+analyzeLegacy' submodules dir = analyze submodules dir depGraphPluginLegacy
 
 analyze ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Set Text ->
   Path Abs Dir ->
   DepGraphPlugin ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze dir plugin = do
+analyze submodules dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
-    reactorOutput <- runReactor dir plugin
-    context "Running plugin to get dependency graph" $
-      errCtx MvnPluginExecFailed $
-        execPluginAggregate dir plugin
-    pluginOutput <- parsePluginOutput dir
-    pluginOutput' <- recoverDuplicateEdges dir plugin pluginOutput
-    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput')
+    -- Use a temp output dir so we always read from a known location even when POM overrides build directory
+    withSystemTempDir "fossa-depgraph" $ \tempdir -> do
+      context "Running plugin to get dependency graph" $
+        errCtx MvnPluginExecFailed $
+          execPluginAggregate dir tempdir plugin
+      pluginOutput <- parsePluginOutput tempdir
+      pluginOutput' <- recoverDuplicateEdges dir tempdir plugin pluginOutput
+      context "Building dependency graph" $ pure (buildGraph submodules pluginOutput')
   pure (graph, Complete)
 
 -- | Recover edges Maven resolved away as duplicates (see
@@ -120,16 +105,17 @@ recoverDuplicateEdges ::
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
+  Path Abs Dir ->
   DepGraphPlugin ->
   PluginOutput ->
   m PluginOutput
-recoverDuplicateEdges dir plugin pluginOutput =
+recoverDuplicateEdges dir outputdir plugin pluginOutput =
   context "Running plugin to recover duplicate-resolved edges" $ do
     recovered <-
       recover $
         warnOnErr DuplicateEdgesNotRecovered $ do
-          execPluginVerboseGraph dir plugin
-          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs dir
+          execPluginVerboseGraph dir outputdir plugin
+          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs outputdir
     pure (fromMaybe pluginOutput recovered)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
@@ -148,12 +134,6 @@ data DuplicateEdgesNotRecovered = DuplicateEdgesNotRecovered
 instance ToDiagnostic DuplicateEdgesNotRecovered where
   renderDiagnostic DuplicateEdgesNotRecovered = do
     let header = "Failed to recover duplicate-resolved dependency edges; transitive dependencies shared between multiple parents may be attributed to only one of them."
-    Errata (Just header) [] Nothing
-
-data MayIncludeSubmodule = MayIncludeSubmodule
-instance ToDiagnostic MayIncludeSubmodule where
-  renderDiagnostic MayIncludeSubmodule = do
-    let header = "Failed to run reactor, submodules may be included in the output graph."
     Errata (Just header) [] Nothing
 
 -- | The graphs returned by the depgraph plugin look like this:
@@ -179,8 +159,8 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
-buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
-buildGraph reactorOutput PluginOutput{..} =
+buildGraph :: Set Text -> PluginOutput -> Graphing MavenDependency
+buildGraph knownSubmodules PluginOutput{..} =
   run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
@@ -189,8 +169,6 @@ buildGraph reactorOutput PluginOutput{..} =
 
     traverse_ (visitEdge depsByNumeric) outEdges
   where
-    knownSubmodules :: Set.Set Text
-    knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
 
     toBuildTag :: Text -> DepEnvironment
     toBuildTag = \case

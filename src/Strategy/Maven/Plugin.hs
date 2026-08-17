@@ -2,10 +2,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Maven.Plugin (
+  parseVerboseGraphs,
   withUnpackedPlugin,
   installPlugin,
   parsePluginOutput,
-  parseVerboseGraphs,
   depGraphPlugin,
   depGraphPluginLegacy,
   Artifact (..),
@@ -42,13 +42,13 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, isNothing, mapMaybe, maybeToList)
+import Data.Maybe (catMaybes, isNothing, mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
-import Discovery.Walk (WalkStep (WalkContinue), findFileInAncestor, findFileNamed, walk')
+import Discovery.Walk (findFileInAncestor)
 import Effect.Exec (
   AllowErr (Never),
   CandidateAnalysisCommands (..),
@@ -129,9 +129,9 @@ installPlugin dir path plugin = do
 execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
 execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
 
-execPluginAggregate :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginAggregate dir plugin = do
-  cmd <- mavenPluginDependenciesCmd dir plugin
+execPluginAggregate :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate dir outputdir plugin = do
+  cmd <- mavenPluginDependenciesCmd dir outputdir plugin
   execPlugin (const cmd) dir plugin
 
 execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
@@ -139,17 +139,17 @@ execPluginReactor projectdir outputdir plugin = do
   cmd <- mavenPluginReactorCmd projectdir outputdir plugin
   execPlugin (const cmd) projectdir plugin
 
-execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginVerboseGraph dir plugin = do
-  cmd <- mavenPluginVerboseGraphCmd dir plugin
+execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginVerboseGraph dir outputdir plugin = do
+  cmd <- mavenPluginVerboseGraphCmd dir outputdir plugin
   execPlugin (const cmd) dir plugin
 
 outputFile :: Path Rel File
 outputFile = $(mkRelFile "target/dependency-graph.txt")
 
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
-parsePluginOutput dir =
-  readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
+parsePluginOutput outputdir =
+  readContentsParser parseTextArtifact (outputdir </> outputFile) >>= textArtifactToPluginOutput
 
 reactorOutputFilename :: Path Rel File
 reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
@@ -157,15 +157,14 @@ reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
 parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
 parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
 
-verboseGraphFileName :: String
-verboseGraphFileName = "fossa-depgraph-verbose.json"
+verboseGraphFileName :: Path Rel File
+verboseGraphFileName = $(mkRelFile "fossa-depgraph-verbose.json")
 
 -- | Find and parse the output of 'execPluginVerboseGraph'. The @graph@ goal
 -- runs per reactor module, writing into each module's build directory.
 parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
-parseVerboseGraphs dir = do
-  outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) dir
-  traverse readContentsJson outputs
+parseVerboseGraphs outputdir =
+  readContentsJson (outputdir </> verboseGraphFileName) >>= pure . pure
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
@@ -262,8 +261,10 @@ mavenInstallPluginCmd workdir pluginFilePath plugin = do
 
 -- | The aggregate command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
-mavenPluginDependenciesCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginDependenciesCmd workdir plugin = do
+--  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
+--  overrides the build directory (See FDN-82 for more details)
+mavenPluginDependenciesCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginDependenciesCmd workdir outputdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
@@ -281,6 +282,7 @@ mavenPluginDependenciesCmd workdir plugin = do
         "-DshowOptional=true"
       , -- Repeat transitive deps for packages that appear multiple times
         "-DrepeatTransitiveDependenciesInTextGraph=true"
+      , "-DoutputDirectory=" <> toText outputdir
       ]
 
 -- | The @aggregate@ goal above cannot report edges Maven resolved away as
@@ -289,8 +291,8 @@ mavenPluginDependenciesCmd workdir plugin = do
 --  under only one of them. The non-aggregating
 --  [graph goal](https://ferstl.github.io/depgraph-maven-plugin/graph-mojo.html)
 --  with @showDuplicates@ reports those edges as @OMITTED_FOR_DUPLICATE@.
-mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginVerboseGraphCmd workdir plugin = do
+mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginVerboseGraphCmd workdir outputdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
@@ -302,6 +304,7 @@ mavenPluginVerboseGraphCmd workdir plugin = do
       , -- request Maven's verbose graph so duplicate-resolved edges are reported
         "-DshowDuplicates=true"
       , "-DoutputFileName=" <> toText verboseGraphFileName
+      , "-DoutputDirectory=" <> toText outputdir
       ]
 
 -- | The reactor command is documented
