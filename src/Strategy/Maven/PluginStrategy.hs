@@ -93,35 +93,33 @@ analyze submodules dir plugin = do
         errCtx MvnPluginExecFailed $
           execPluginAggregate dir tempdir plugin
       pluginOutput <- parsePluginOutput tempdir
-      pluginOutput' <- recoverDuplicateEdges dir tempdir plugin pluginOutput
+      pluginOutput' <- recoverDuplicateEdges dir plugin pluginOutput
       context "Building dependency graph" $ pure (buildGraph submodules pluginOutput')
   pure (graph, Complete)
 
--- | Recover edges Maven resolved away as duplicates (see
--- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd') and merge them into the
--- parsed output. Best-effort: on failure the aggregate output is used as-is.
+-- | Maven's dependency mediation attaches a package shared by several parents
+-- to a single winning parent; the aggregate goal only reports those winning
+-- edges, so a shared transitive dependency looks exclusive to one parent (see
+-- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd'). Recover the omitted
+-- edges with a second plugin run and merge them into the parsed output.
 --
--- Note: 'execPluginVerboseGraph' is invoked with '-DoutputDirectory=<tempdir>',
--- which causes the depgraph :graph goal to write a single aggregated verbose
--- graph to that location (not one per submodule). 'parseVerboseGraphs' reads
--- exactly that file, so all modules' duplicate-resolved edges are captured in
--- a single pass.
+-- Recovery is best-effort: on any failure the aggregate output is used as-is,
+-- which matches the behavior before this step existed.
 recoverDuplicateEdges ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m
   ) =>
   Path Abs Dir ->
-  Path Abs Dir ->
   DepGraphPlugin ->
   PluginOutput ->
   m PluginOutput
-recoverDuplicateEdges dir outputdir plugin pluginOutput =
+recoverDuplicateEdges dir plugin pluginOutput =
   context "Running plugin to recover duplicate-resolved edges" $ do
     recovered <-
       recover $
         warnOnErr DuplicateEdgesNotRecovered $ do
-          execPluginVerboseGraph dir outputdir plugin
-          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs outputdir
+          execPluginVerboseGraph dir plugin
+          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs dir
     pure (fromMaybe pluginOutput recovered)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
@@ -175,7 +173,6 @@ buildGraph knownSubmodules PluginOutput{..} =
 
     traverse_ (visitEdge depsByNumeric) outEdges
   where
-
     toBuildTag :: Text -> DepEnvironment
     toBuildTag = \case
       "compile" -> EnvProduction

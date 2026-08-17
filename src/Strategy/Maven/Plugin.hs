@@ -38,13 +38,13 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, isNothing, mapMaybe)
+import Data.Maybe (catMaybes, isNothing, mapMaybe, maybeToList)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
-import Discovery.Walk (findFileInAncestor)
+import Discovery.Walk (WalkStep (WalkContinue), findFileInAncestor, findFileNamed, walk')
 import Effect.Exec (
   AllowErr (Never),
   CandidateAnalysisCommands (..),
@@ -130,9 +130,9 @@ execPluginAggregate dir outputdir plugin = do
   cmd <- mavenPluginDependenciesCmd dir outputdir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginVerboseGraph dir outputdir plugin = do
-  cmd <- mavenPluginVerboseGraphCmd dir outputdir plugin
+execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginVerboseGraph dir plugin = do
+  cmd <- mavenPluginVerboseGraphCmd dir plugin
   execPlugin (const cmd) dir plugin
 
 outputFile :: Path Rel File
@@ -142,15 +142,18 @@ parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -
 parsePluginOutput outputdir =
   readContentsParser parseTextArtifact (outputdir </> outputFile) >>= textArtifactToPluginOutput
 
-verboseGraphFileName :: Path Rel File
-verboseGraphFileName = $(mkRelFile "fossa-depgraph-verbose.json")
+verboseGraphFileName :: String
+verboseGraphFileName = "fossa-depgraph-verbose.json"
 
--- | Parse the output of 'execPluginVerboseGraph'. The @graph@ goal with
--- @-DoutputDirectory@ writes a single aggregated verbose graph to that
--- directory, so we read exactly one file.
+-- | Find and parse the per-module output of 'execPluginVerboseGraph'.
+--
+-- The @graph@ goal is not an aggregator: in a multi-module build it runs once
+-- per reactor module and writes into each module's own build directory, so we
+-- walk the project tree to collect every output file.
 parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
-parseVerboseGraphs outputdir =
-  readContentsJson (outputdir </> verboseGraphFileName) >>= pure . pure
+parseVerboseGraphs dir = do
+  outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) dir
+  traverse readContentsJson outputs
 
 textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
 textArtifactToPluginOutput
@@ -277,8 +280,8 @@ mavenPluginDependenciesCmd workdir outputdir plugin = do
 --  under only one of them. The non-aggregating
 --  [graph goal](https://ferstl.github.io/depgraph-maven-plugin/graph-mojo.html)
 --  with @showDuplicates@ reports those edges as @OMITTED_FOR_DUPLICATE@.
-mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginVerboseGraphCmd workdir outputdir plugin = do
+mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginVerboseGraphCmd workdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
@@ -290,7 +293,6 @@ mavenPluginVerboseGraphCmd workdir outputdir plugin = do
       , -- request Maven's verbose graph so duplicate-resolved edges are reported
         "-DshowDuplicates=true"
       , "-DoutputFileName=" <> toText verboseGraphFileName
-      , "-DoutputDirectory=" <> toText outputdir
       ]
 
 data PluginOutput = PluginOutput
