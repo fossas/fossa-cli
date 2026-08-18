@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
+- Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
 
 ## 3.17.17
 

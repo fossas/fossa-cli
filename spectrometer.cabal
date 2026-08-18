@@ -659,6 +659,7 @@ test-suite unit-tests
     Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
+    Effect.ReadFSSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
