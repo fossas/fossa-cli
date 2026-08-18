@@ -4,10 +4,11 @@ module Effect.ReadFSSpec (
   spec,
 ) where
 
+import Data.ByteString qualified as BS
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Effect.ReadFS (readContentsJson)
+import Effect.ReadFS (readContentsBS, readContentsJson)
 import Path (mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Test.Effect (it', shouldBe')
@@ -30,3 +31,10 @@ spec = do
     it' "parses a JSON file with a leading UTF-8 byte order mark" $ do
       contents <- readContentsJson testdataBom
       contents `shouldBe'` expectedContents
+
+    -- The fixture must literally begin with EF BB BF. Those bytes are invisible
+    -- in a diff, so this assertion is the only thing standing between us and an
+    -- editor silently "cleaning up" the file.
+    it' "fixture actually begins with a UTF-8 BOM" $ do
+      raw <- readContentsBS testdataBom
+      BS.take 3 raw `shouldBe'` "\xEF\xBB\xBF"
