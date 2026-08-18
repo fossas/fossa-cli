@@ -17,7 +17,6 @@ import App.Fossa.Analyze.Types (
   DiscoveredProjectScan (..),
  )
 import App.Fossa.Config.Analyze (StrategyConfig (StrategyConfig), UseGitBackedCargoLocators (..), WithoutDefaultFilters (..))
-import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery (GoBinaryDiscovery))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.GoBinary (goBinariesToSourceUnits)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
@@ -60,7 +59,7 @@ import Control.Effect.Reader (Reader)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.TaskPool (TaskPool)
 import Control.Effect.Telemetry (Telemetry)
-import Control.Monad (join, unless, void, when)
+import Control.Monad (join, void, when)
 import Data.Bifunctor (bimap)
 import Data.ByteString.Lazy qualified as BS
 import Data.FileTree.IndexFileTree (SomeFileTree, fixedVfsRoot)
@@ -103,12 +102,11 @@ analyzeFromDockerArchive ::
   ) =>
   UseGitBackedCargoLocators ->
   Bool ->
-  Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Path Abs File ->
   m ContainerScan
-analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters tarball = do
+analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters tarball = do
   capabilities <- sendIO getNumCapabilities
   containerTarball <- sendIO . BS.readFile $ toString tarball
 
@@ -170,16 +168,10 @@ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filt
         logInfo "If you were expecting JAR analysis results, run with '--debug' for more info."
         pure ([], [])
 
-  let goBinaryDiscoveryEnabled = fromFlag GoBinaryDiscovery goBinaryDiscovery
-      (baseGoBinaries, otherGoBinaries) =
+  let (baseGoBinaries, otherGoBinaries) =
         maybe ([], []) (partitionByBaseLayer . discoveredGoBinaries) observations
       (baseGoUnits, otherGoUnits) =
-        if goBinaryDiscoveryEnabled
-          then (goBinariesToSourceUnits baseGoBinaries, goBinariesToSourceUnits otherGoBinaries)
-          else ([], [])
-
-  unless (goBinaryDiscoveryEnabled || (null baseGoBinaries && null otherGoBinaries)) $
-    logInfo "Go binaries were found in the image, but Go binary discovery is disabled. Run with '--experimental-enable-go-binary-discovery' to report their Go module dependencies."
+        (goBinariesToSourceUnits baseGoBinaries, goBinariesToSourceUnits otherGoBinaries)
 
   let baseScanImageLayer = ContainerScanImageLayer baseDigest (baseUnits <> baseGoUnits) baseObservations
 

@@ -32,7 +32,6 @@ registrySourceCfg =
     , onlySystemDeps = False
     , filterSet = mempty
     , withoutDefaultFilters = toFlag' False
-    , goBinaryDiscoveryEnabled = toFlag' False
     , debugDir = Nothing
     }
 

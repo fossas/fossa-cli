@@ -115,7 +115,7 @@ analyze cfg = do
     UploadScan (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
     OutputAndUpload (DestinationMeta (apiOpts, _)) -> fetchOrgSupportsGitBackedCargo apiOpts
 
-  scannedImage <- scanImage useGitBackedCargo (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (goBinaryDiscoveryEnabled cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
+  scannedImage <- scanImage useGitBackedCargo (filterSet cfg) (withoutDefaultFilters cfg) (onlySystemDeps cfg) (imageLocator cfg) (dockerHost cfg) (arch cfg)
   let revision = extractRevision (revisionOverride cfg) scannedImage
       logProjectInfo :: Has Logger sig m => m ()
       logProjectInfo = do

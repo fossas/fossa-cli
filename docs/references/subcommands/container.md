@@ -49,16 +49,11 @@ You can provide `--only-system-deps` to only analyze dependencies originating fr
 - rpm
 - alpine
 
-You can provide `--experimental-enable-go-binary-discovery` to also report Go module
-dependencies embedded in Go binaries found in the image (built with Go >= 1.18). This detects Go
-dependencies even in images with no package manager metadata at all, such as `scratch` or
-distroless images. See
-[container Go binary analysis](./container/scanner.md#container-go-binary-analysis-experimental)
-for details:
-
-```bash
-fossa container analyze <IMAGE> --experimental-enable-go-binary-discovery
-```
+FOSSA CLI also reports Go module dependencies embedded in Go binaries found in the image
+(built with Go >= 1.18). This detects Go dependencies even in images with no package manager
+metadata at all, such as `scratch` or distroless images. See
+[container Go binary analysis](./container/scanner.md#container-go-binary-analysis)
+for details.
 
 You can refer to [scanner](./container/scanner.md) documentation, to learn
 more about how FOSSA CLI performs scan on a container image.

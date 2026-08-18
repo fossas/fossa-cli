@@ -8,7 +8,6 @@ module App.Fossa.Container.Sources.Podman (
 ) where
 
 import App.Fossa.Config.Analyze (UseGitBackedCargoLocators, WithoutDefaultFilters)
-import App.Fossa.Config.Container.Analyze (GoBinaryDiscovery)
 import App.Fossa.Container.Sources.DockerArchive (analyzeFromDockerArchive, listTargetsFromDockerArchive, revisionFromDockerArchive)
 import Container.Types (ContainerScan)
 import Control.Carrier.Lift (Lift)
@@ -81,12 +80,11 @@ analyzeFromPodman ::
   ) =>
   UseGitBackedCargoLocators ->
   Bool ->
-  Flag GoBinaryDiscovery ->
   AllFilters ->
   Flag WithoutDefaultFilters ->
   Text ->
   m ContainerScan
-analyzeFromPodman useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly goBinaryDiscovery filters withoutDefaultFilters
+analyzeFromPodman useGitBackedCargo systemDepsOnly filters withoutDefaultFilters img = runFromPodman img $ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefaultFilters
 
 listTargetsFromPodman ::
   ( Has Diagnostics sig m
