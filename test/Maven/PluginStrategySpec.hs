@@ -309,8 +309,15 @@ spec = do
     -- the reactor output. Artifacts matching known submodule names are treated as
     -- direct dependencies, then shrinkRoots removes them from the final graph.
     it "Should treat artifacts matching known submodules as direct deps" $ do
-      let graph = shrinkRoots $ buildGraph (Set.fromList ["mygroup:packageOne", "mygroup:packageThree"]) mavenCrossDependentSubModules
+      let directsGraph = shrinkRoots $ buildGraph (Set.fromList ["mygroup:packageOne", "mygroup:packageThree"]) mavenCrossDependentSubModules
       -- Both packageOne and packageThree are known submodules, so their children
       -- (packageTwo and packageFour) are promoted to direct after shrinking
-      expectDirect [packageTwo, packageFour] graph
-      expectDeps [packageTwo, packageFour] graph
+      expectDirect [packageTwo, packageFour] directsGraph
+      expectDeps [packageTwo, packageFour] directsGraph
+
+    -- Documents the intentional strictness: closureSubmodules produces
+    -- "groupId:artifactId" coordinates, so bare artifact ids in
+    -- knownSubmodules match nothing. Keeps a bare-id input as live coverage.
+    let bareIdGraph = shrinkRoots $ buildGraph (Set.singleton "packageThree") mavenCrossDependentSubModules
+    it "Should not treat bare artifactIds as submodules (coordinate matching only)" $ do
+      expectDirect [packageTwo] bareIdGraph

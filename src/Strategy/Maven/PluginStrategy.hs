@@ -196,8 +196,13 @@ buildGraph knownSubmodules PluginOutput{..} =
           dependencyScopes = Set.fromList artifactScopes
           mavenDep = MavenDependency dep dependencyScopes mempty
 
+      -- closureSubmodules names use the reactor's "groupId:artifactId"
+      -- coordinate form, so matching must build that coordinate from the
+      -- artifact; bare artifact ids are intentionally not matched.
       when
-        (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
+        ( artifactIsDirect
+            || (artifactGroupId <> ":" <> artifactArtifactId) `Set.member` knownSubmodules
+        )
         (Grapher.direct mavenDep)
       pure mavenDep
 
