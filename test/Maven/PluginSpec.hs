@@ -66,15 +66,15 @@ verboseGraphCollectionSpec =
 parsePluginOutputSpec :: Spec
 parsePluginOutputSpec = do
   itWithTempDir' "parses the aggregate goal's text output (realistic format)" $ \tmpdir -> do
-    let graphFile = tmpdir </> [reldir|target/|] </> [relfile|dependency-graph.txt|]
-    sendIO $ PIO.createDirIfMissing True (tmpdir </> [reldir|target/|])
-    sendIO $ BS.writeFile (toFilePath graphFile) aggregateTextFixture
+    sendIO $ BS.writeFile (toFilePath (tmpdir </> [relfile|dependency-graph.txt|])) aggregateTextFixture
     out <- parsePluginOutput tmpdir
     out `shouldBe'` expectedAggregateOutput
+  itWithTempDir' "parses multi-module output with one root tree per module" $ \tmpdir -> do
+    sendIO $ BS.writeFile (toFilePath (tmpdir </> [relfile|dependency-graph.txt|])) multiModuleTextFixture
+    out <- parsePluginOutput tmpdir
+    out `shouldBe'` expectedMultiModuleOutput
   itWithTempDir' "raises a fatal parse error on malformed output" $ \tmpdir -> do
-    let graphFile = tmpdir </> [reldir|target/|] </> [relfile|dependency-graph.txt|]
-    sendIO $ PIO.createDirIfMissing True (tmpdir </> [reldir|target/|])
-    sendIO $ BS.writeFile (toFilePath graphFile) (BS.pack "@@not-a-dependency-graph@@")
+    sendIO $ BS.writeFile (toFilePath (tmpdir </> [relfile|dependency-graph.txt|])) (BS.pack "@@not-a-dependency-graph@@")
     expectFatal' (parsePluginOutput tmpdir)
 
 -- | Shape taken from the real plugin output documented in 'Strategy.Maven.PluginTree';
@@ -87,6 +87,100 @@ aggregateTextFixture =
 \- org.foo:bar:1.0.0:test/compile
    +- org.baz:buzz:1.0.0:test
    \- org.clojure:data.generators:1.0.0:test|]
+
+-- | Captured verbatim from the real plugin:
+-- 'mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:aggregate -DgraphFormat=text ...' on a
+-- 3-module reactor (identical output on 3.3.0). mod-b is folded into mod-a's tree; mod-c is a
+-- second top-level root; junit and hamcrest-core repeat under both roots.
+multiModuleTextFixture :: BS.ByteString
+multiModuleTextFixture =
+  BS.pack
+    [r|org.example:mod-a:1.0.0:compile
++- org.example:mod-b:1.0.0:compile
+\- junit:junit:4.13.2:compile
+   \- org.hamcrest:hamcrest-core:1.3:compile
+org.example:mod-c:1.0.0:compile
+\- junit:junit:4.13.2:compile
+   \- org.hamcrest:hamcrest-core:1.3:compile|]
+
+expectedMultiModuleOutput :: PluginOutput
+expectedMultiModuleOutput =
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 4
+            , artifactGroupId = "org.example"
+            , artifactArtifactId = "mod-a"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 3
+            , artifactGroupId = "org.example"
+            , artifactArtifactId = "mod-b"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "junit"
+            , artifactArtifactId = "junit"
+            , artifactVersion = "4.13.2"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "org.hamcrest"
+            , artifactArtifactId = "hamcrest-core"
+            , artifactVersion = "1.3"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 2
+            , artifactGroupId = "org.example"
+            , artifactArtifactId = "mod-c"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = True
+            }
+        , -- junit and hamcrest-core are visited once per root tree; both visits
+          -- resolve to the same numeric ids (per-visit emission is existing behavior)
+          Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "junit"
+            , artifactArtifactId = "junit"
+            , artifactVersion = "4.13.2"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "org.hamcrest"
+            , artifactArtifactId = "hamcrest-core"
+            , artifactVersion = "1.3"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        ]
+    , outEdges =
+        [ Edge 4 3
+        , Edge 4 1
+        , Edge 1 0
+        , Edge 2 1
+        , Edge 1 0
+        ]
+    }
 
 expectedAggregateOutput :: PluginOutput
 expectedAggregateOutput =
@@ -278,7 +372,7 @@ textArtifactConversionSpec :: Spec
 textArtifactConversionSpec =
   describe "Maven text artifact -> PluginOutput conversion" $ do
     it' "Converts a single TextArtifact correctly" $ do
-      pluginOutput <- textArtifactToPluginOutput (Node singleTextArtifact [])
+      pluginOutput <- textArtifactToPluginOutput [Node singleTextArtifact []]
       pluginOutput
         `shouldBe'` PluginOutput
           { outArtifacts = [simpleArtifact]
@@ -286,7 +380,7 @@ textArtifactConversionSpec =
           }
 
     it' "Converts a more complex TextArtifact correctly" $ do
-      PluginOutput{outArtifacts = resArts, outEdges = resEdges} <- textArtifactToPluginOutput complexTextArtifact
+      PluginOutput{outArtifacts = resArts, outEdges = resEdges} <- textArtifactToPluginOutput [complexTextArtifact]
       resArts `shouldMatchList'` (outArtifacts complexPluginOutputArtifacts)
       resEdges `shouldMatchList'` (outEdges complexPluginOutputArtifacts)
 
@@ -295,7 +389,7 @@ textArtifactConversionSpec =
       case maybeArtifactTree of
         Nothing -> expectationFailure' "could not parse raw tree output!"
         Just tree' -> do
-          PluginOutput{outArtifacts = resArts} <- textArtifactToPluginOutput tree'
+          PluginOutput{outArtifacts = resArts} <- textArtifactToPluginOutput [tree']
           resArts `shouldContain'` [kafkaClientCompile]
           resArts `shouldContain'` [kafkaClientTest]
 

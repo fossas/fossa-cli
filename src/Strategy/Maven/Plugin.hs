@@ -70,7 +70,7 @@ import Path (
   (</>),
  )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
-import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
+import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifacts)
 import System.FilePath qualified as FP
 import System.Info qualified as SysInfo
 
@@ -135,12 +135,15 @@ execPluginVerboseGraph dir plugin = do
   cmd <- mavenPluginVerboseGraphCmd dir plugin
   execPlugin (const cmd) dir plugin
 
+-- | The plugin writes the graph file directly into '-DoutputDirectory'; the
+-- @target/@ prefix here was a path bug that made the aggregate result unreadable.
+-- Pinned by 'Maven.PluginSpec.parsePluginOutputSpec'.
 outputFile :: Path Rel File
-outputFile = $(mkRelFile "target/dependency-graph.txt")
+outputFile = $(mkRelFile "dependency-graph.txt")
 
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
 parsePluginOutput outputdir =
-  readContentsParser parseTextArtifact (outputdir </> outputFile) >>= textArtifactToPluginOutput
+  readContentsParser parseTextArtifacts (outputdir </> outputFile) >>= textArtifactToPluginOutput
 
 verboseGraphFileName :: String
 verboseGraphFileName = "fossa-depgraph-verbose.json"
@@ -155,12 +158,20 @@ parseVerboseGraphs dir = do
   outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) dir
   traverse readContentsJson outputs
 
-textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
+-- | Convert the plugin's text-graph trees into a 'PluginOutput'. Multi-module
+-- builds yield one tree per root; numeric ids are assigned over the flattened,
+-- de-duplicated artifact list so edges from every tree join the same artifacts.
+textArtifactToPluginOutput :: Has Diagnostics sig m => [Tree TextArtifact] -> m PluginOutput
 textArtifactToPluginOutput
-  ta = buildPluginOutput ta
+  tas = fold <$> traverse buildPluginOutput tas
     where
+      labelsOf :: Tree TextArtifact -> [TextArtifact]
+      labelsOf (Node label subForests) = label : concatMap labelsOf subForests
+
       artifacts :: [TextArtifact]
-      artifacts = nub $ foldl' (flip (:)) mempty ta
+      -- Reversed pre-order, as in the single-tree behavior this generalizes:
+      -- leaf-first ids, roots last, with trees processed left to right.
+      artifacts = nub $ reverse (concat (map labelsOf tas))
 
       artifactToIds :: Map TextArtifact Int
       artifactToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifacts
