@@ -6,12 +6,13 @@ module Strategy.NuGet.ProjectJson (
   getDeps,
   mkProject,
   buildGraph,
+  looksLikeNuGetManifest,
   ProjectJson (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Diagnostics (Diagnostics, Has, recover)
 import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -60,7 +61,26 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([ProjectJsonProject file], WalkContinue)
+    Just file -> do
+      isManifest <- isNuGetManifest file
+      if isManifest
+        then pure ([ProjectJsonProject file], WalkContinue)
+        else pure ([], WalkContinue)
+
+-- | Other tools also name their configuration file @project.json@ (e.g. Nx),
+-- so only claim files that look like a NuGet manifest. A file that cannot be
+-- read as a JSON object is still claimed, so that a malformed NuGet manifest
+-- surfaces an analysis error rather than silently disappearing.
+isNuGetManifest :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
+isNuGetManifest file = do
+  probe <- recover $ readContentsJson @(Map Text Value) file
+  pure $ maybe True looksLikeNuGetManifest probe
+
+-- | The legacy NuGet @project.json@ schema has no required key, but a manifest
+-- always declares its packages under a top-level "dependencies" section, a
+-- per-framework one inside "frameworks", or both.
+looksLikeNuGetManifest :: Map Text Value -> Bool
+looksLikeNuGetManifest obj = Map.member "dependencies" obj || Map.member "frameworks" obj
 
 newtype ProjectJsonProject = ProjectJsonProject
   { projectJsonFile :: Path Abs File

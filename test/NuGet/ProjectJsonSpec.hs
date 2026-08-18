@@ -97,3 +97,14 @@ spec = do
           expectDirect [] graph
           expectEdges [] graph
         Left _ -> expectationFailure "failed to parse"
+
+  describe "looksLikeNuGetManifest" $ do
+    it "accepts manifests declaring top-level or per-framework dependencies" $ do
+      case traverse eitherDecodeStrict [testFile, frameworkDepsFile, conflictingDepsFile] of
+        Right objs -> objs `shouldSatisfy` all looksLikeNuGetManifest
+        Left _ -> expectationFailure "failed to parse"
+
+    it "rejects a project.json from another tool (e.g. Nx)" $ do
+      case eitherDecodeStrict noDepsFile of
+        Right obj -> obj `shouldNotSatisfy` looksLikeNuGetManifest
+        Left _ -> expectationFailure "failed to parse"
