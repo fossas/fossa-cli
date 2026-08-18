@@ -4,7 +4,9 @@
 
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
 - Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
-- NuGet: `project.json` files that are not NuGet manifests (e.g. Nx project configuration) are no longer claimed by the NuGet analyzer, so they no longer fail analysis with `key "dependencies" not found`; genuine manifests may omit the top-level `dependencies` key, and dependencies declared per-framework under `frameworks` are now reported.
+- NuGet: `project.json` files that are not NuGet manifests (e.g. Nx project configuration) are no longer claimed by the NuGet analyzer, so they no longer fail analysis with `key "dependencies" not found`.
+- NuGet: `project.json` manifests may omit the top-level `dependencies` key.
+- NuGet: `project.json` dependencies declared per-framework under `frameworks` are now reported.
 
 ## 3.17.17
 
