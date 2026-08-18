@@ -17,11 +17,13 @@ import Strategy.Maven.Plugin (
   VerboseEdge (..),
   VerboseGraph (..),
   augmentWithDuplicateEdges,
+  parsePluginOutput,
   parseVerboseGraphs,
   textArtifactToPluginOutput,
  )
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import Test.Effect (
+  expectFatal',
   expectationFailure',
   it',
   itWithTempDir',
@@ -40,6 +42,7 @@ spec = do
   verboseGraphParsingSpec
   augmentWithDuplicateEdgesSpec
   verboseGraphCollectionSpec
+  parsePluginOutputSpec
 
 -- | The @graph@ goal is not an aggregator: in a multi-module build it runs once
 -- per reactor module, writing into each module's own build directory.
@@ -56,6 +59,92 @@ verboseGraphCollectionSpec =
     sendIO $ BS.writeFile (toFilePath modCFile) verboseGraphJson
     graphs <- parseVerboseGraphs tmpdir
     shouldSatisfy' graphs ((== 2) . length)
+
+-- | 'parsePluginOutput' must keep reading exactly what the plugin's @aggregate@
+-- goal writes ('target/dependency-graph.txt' in text format); these tests pin
+-- that writer/reader contract so a format change on either side fails loudly.
+parsePluginOutputSpec :: Spec
+parsePluginOutputSpec = do
+  itWithTempDir' "parses the aggregate goal's text output (realistic format)" $ \tmpdir -> do
+    let graphFile = tmpdir </> [reldir|target/|] </> [relfile|dependency-graph.txt|]
+    sendIO $ PIO.createDirIfMissing True (tmpdir </> [reldir|target/|])
+    sendIO $ BS.writeFile (toFilePath graphFile) aggregateTextFixture
+    out <- parsePluginOutput tmpdir
+    out `shouldBe'` expectedAggregateOutput
+  itWithTempDir' "raises a fatal parse error on malformed output" $ \tmpdir -> do
+    let graphFile = tmpdir </> [reldir|target/|] </> [relfile|dependency-graph.txt|]
+    sendIO $ PIO.createDirIfMissing True (tmpdir </> [reldir|target/|])
+    sendIO $ BS.writeFile (toFilePath graphFile) (BS.pack "@@not-a-dependency-graph@@")
+    expectFatal' (parsePluginOutput tmpdir)
+
+-- | Shape taken from the real plugin output documented in 'Strategy.Maven.PluginTree';
+-- exercises multi-scope artifacts ('test/compile') and the '(optional)' marker.
+aggregateTextFixture :: BS.ByteString
+aggregateTextFixture =
+  BS.pack
+    [r|org.clojure:clojure:1.12.0:compile
++- org.fake:fake-pkg:1.0.0:compile (optional)
+\- org.foo:bar:1.0.0:test/compile
+   +- org.baz:buzz:1.0.0:test
+   \- org.clojure:data.generators:1.0.0:test|]
+
+expectedAggregateOutput :: PluginOutput
+expectedAggregateOutput =
+  PluginOutput
+    { outArtifacts =
+        [ Artifact
+            { artifactNumericId = 4
+            , artifactGroupId = "org.clojure"
+            , artifactArtifactId = "clojure"
+            , artifactVersion = "1.12.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = False
+            , artifactIsDirect = True
+            }
+        , Artifact
+            { artifactNumericId = 3
+            , artifactGroupId = "org.fake"
+            , artifactArtifactId = "fake-pkg"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["compile"]
+            , artifactOptional = True
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 2
+            , artifactGroupId = "org.foo"
+            , artifactArtifactId = "bar"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["test", "compile"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 1
+            , artifactGroupId = "org.baz"
+            , artifactArtifactId = "buzz"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["test"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        , Artifact
+            { artifactNumericId = 0
+            , artifactGroupId = "org.clojure"
+            , artifactArtifactId = "data.generators"
+            , artifactVersion = "1.0.0"
+            , artifactScopes = ["test"]
+            , artifactOptional = False
+            , artifactIsDirect = False
+            }
+        ]
+    , outEdges =
+        [ Edge 4 3
+        , Edge 4 2
+        , Edge 2 1
+        , Edge 2 0
+        ]
+    }
 
 singleTextArtifact :: TextArtifact
 singleTextArtifact =
