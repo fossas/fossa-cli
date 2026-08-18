@@ -26,6 +26,7 @@ import Data.Aeson.Types (
  )
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -95,7 +96,7 @@ analyze' file = do
       }
 
 newtype ProjectJson = ProjectJson
-  { dependencies :: Map Text DependencyInfo
+  { dependencies :: [(Text, DependencyInfo)]
   }
   deriving (Show)
 
@@ -103,7 +104,7 @@ data DependencyInfo = DependencyInfo
   { depVersion :: Text
   , depType :: Maybe Text
   }
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 -- | Framework-specific settings from the @frameworks@ section; dependencies may
 -- be declared per-framework instead of (or in addition to) top-level.
@@ -114,12 +115,15 @@ newtype FrameworkInfo = FrameworkInfo
 
 -- The "dependencies" key is optional, both top-level and per-framework: a
 -- project.json may declare dependencies in either place, or have none at all.
+-- A package may also appear in several places with different versions (e.g. a
+-- framework-specific override of a top-level entry); rather than picking one
+-- winner, every distinct name/version/type combination is reported.
 instance FromJSON ProjectJson where
   parseJSON = withObject "ProjectJson" $ \obj -> do
     topLevelDeps <- obj .:? "dependencies" .!= Map.empty
     frameworks :: Map Text FrameworkInfo <- obj .:? "frameworks" .!= Map.empty
-    let frameworkDeps = Map.unions $ frameworkDependencies <$> Map.elems frameworks
-    pure . ProjectJson $ Map.union topLevelDeps frameworkDeps
+    let frameworkDeps = concatMap (Map.toList . frameworkDependencies) (Map.elems frameworks)
+    pure . ProjectJson . Set.toList . Set.fromList $ Map.toList topLevelDeps <> frameworkDeps
 
 instance FromJSON FrameworkInfo where
   parseJSON = withObject "FrameworkInfo" $ \obj ->
@@ -148,7 +152,7 @@ data NuGetDependency = NuGetDependency
 buildGraph :: ProjectJson -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
   where
-    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> Map.toList (dependencies project)
+    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> dependencies project
     toDependency NuGetDependency{..} =
       Dependency
         { dependencyType = NuGetType
