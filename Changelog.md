@@ -4,6 +4,7 @@
 
 - Container scanning: `fossa container analyze` now reports Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
+- Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
 
 ## 3.17.17
 
