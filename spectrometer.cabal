@@ -239,6 +239,7 @@ library
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
+    App.Fossa.Container.Sources.GoBinary
     App.Fossa.Container.Sources.JarAnalysis
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
@@ -587,6 +588,7 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.Container.GoBinarySpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec

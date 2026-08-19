@@ -5,7 +5,7 @@ module App.Fossa.Container.Sources.JarAnalysis (
 ) where
 
 import App.Fossa.EmbeddedBinary (BinaryPaths, toPath, withMillhoneBinary)
-import Container.Types (DiscoveredJars)
+import Container.Types (DiscoveredBinaries)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, fatal)
 import Control.Effect.Lift (Lift)
@@ -37,7 +37,7 @@ millhoneJarAnalyzeCmd cmdPath imageTarFile =
     }
 
 -- | Analyze a container for Jar fingerprints using Millhone.
-analyzeContainerJars :: (Has Logger sig m, Has Exec sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m DiscoveredJars
+analyzeContainerJars :: (Has Logger sig m, Has Exec sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs File -> m DiscoveredBinaries
 analyzeContainerJars imagePath = withMillhoneBinary $ \binaryPaths ->
   context ("Searching for JARs in " <> toText imagePath) $ do
     result <- execReturningStderr (parent imagePath) (millhoneJarAnalyzeCmd binaryPaths imagePath)
@@ -51,4 +51,4 @@ analyzeContainerJars imagePath = withMillhoneBinary $ \binaryPaths ->
                 cmdSuccessStderr
           context "Millhone jar analyze output " $
             logDebug (pretty . decodeUtf8 @Text $ cmdSuccessStdout)
-          either fatal pure $ eitherDecode @DiscoveredJars cmdSuccessStdout
+          either fatal pure $ eitherDecode @DiscoveredBinaries cmdSuccessStdout
