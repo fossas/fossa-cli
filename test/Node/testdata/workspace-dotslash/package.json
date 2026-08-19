@@ -1,0 +1,10 @@
+{
+  "name": "dotslash-root",
+  "private": true,
+  "workspaces": [
+    "./pkg-a"
+  ],
+  "devDependencies": {
+    "dev-tool": "npm:1.0.0"
+  }
+}

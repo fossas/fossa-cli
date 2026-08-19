@@ -1,0 +1,8 @@
+{
+  "name": "selfloop-root",
+  "private": true,
+  "workspaces": [
+    "pkg-a",
+    "."
+  ]
+}

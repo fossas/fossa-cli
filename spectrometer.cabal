@@ -649,6 +649,7 @@ test-suite unit-tests
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
+    Data.GlobSpec
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
     Data.Text.JsoncSpec
@@ -658,6 +659,7 @@ test-suite unit-tests
     Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
+    Effect.ReadFSSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
@@ -777,6 +779,7 @@ test-suite integration-tests
     Analysis.GradleSpec
     Analysis.LicenseScannerSpec
     Analysis.MavenSpec
+    Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
     Analysis.Python.PipenvSpec

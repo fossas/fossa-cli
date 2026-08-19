@@ -1,12 +1,35 @@
 # FOSSA CLI Changelog
 
-## 3.17.14
+## 3.17.18
 
 - Maven: Recover dependency edges that Maven's resolution omits as duplicates, so transitive dependencies shared by multiple parents are attributed to all of them instead of a single winning parent. ([#1730](https://github.com/fossas/fossa-cli/pull/1730))
+- Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
+- Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
+- NuGet: `project.json` files that are not NuGet manifests (e.g. Nx project configuration) are no longer claimed by the NuGet analyzer, so they no longer fail analysis with `key "dependencies" not found`.
+- NuGet: `project.json` manifests may omit the top-level `dependencies` key.
+- NuGet: `project.json` dependencies declared per-framework under `frameworks` are now reported.
+
+## 3.17.17
+
+- License Scanning: Detect an OFL-1.1 license notice correctly ([#1742](https://github.com/fossas/fossa-cli/pull/1742))
+
+## 3.17.16
+
+- Container analysis: more robust timeouts for container analyses involving jar fingerprinting
+
+## 3.17.15
+
+- Node: Workspaces declared with a leading `./` (for example `./packages/*`) are now matched, so their members are analyzed and their production dependencies are no longer dropped from the results. ([#1733](https://github.com/fossas/fossa-cli/pull/1733))
+- Npm: Support target-level dependency scoping for v3 lockfiles (npm v9+ workspaces). ([#1732](https://github.com/fossas/fossa-cli/pull/1732))
+
+## 3.17.14
+
+- Licensing: Detect Unicode 3.0 license. ([#1731](https://github.com/fossas/fossa-cli/pull/1731))
 
 ## 3.17.13
 
 - Licensing: Detect the Lucky Penny Software RPL-1.5 dual-license notice (AutoMapper, MediatR), resolving it to `rpl-1.5 OR proprietary-license` instead of `unknown`. ([#1729](https://github.com/fossas/fossa-cli/pull/1729))
+- Release groups: `fossa release-group add-projects` resolves its target release with a single server-side lookup when the FOSSA instance supports it, avoiding timeouts for organizations with large numbers of release groups or releases. ([#1728](https://github.com/fossas/fossa-cli/pull/1728))
 
 ## 3.17.12
 

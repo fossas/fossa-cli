@@ -56,6 +56,7 @@ module Test.Fixtures (
   releaseGroup,
   release,
   releaseProject,
+  releaseGroupReleaseLookup,
   policy,
   team,
   excludePath,
@@ -146,6 +147,7 @@ organization =
     , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 organizationWithPreflightChecks :: API.Organization
@@ -169,6 +171,7 @@ organizationWithPreflightChecks =
     , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 organizationWithPremiumSubscription :: API.Organization
@@ -192,6 +195,7 @@ organizationWithPremiumSubscription =
     , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Premium
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 organizationWithGitBackedCargoLocators :: API.Organization
@@ -215,6 +219,7 @@ organizationWithGitBackedCargoLocators =
     , orgSupportsGitBackedCargoLocators = True
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 pushToken :: API.TokenTypeResponse
@@ -269,6 +274,13 @@ releaseProject =
     { CoreAPI.releaseProjectLocator = "custom+1/example"
     , CoreAPI.releaseProjectRevisionId = "custom+1/example$123"
     , CoreAPI.releaseProjectBranch = "main"
+    }
+
+releaseGroupReleaseLookup :: CoreAPI.ReleaseGroupReleaseLookup
+releaseGroupReleaseLookup =
+  CoreAPI.ReleaseGroupReleaseLookup
+    { CoreAPI.lookupReleaseGroupId = 1
+    , CoreAPI.lookupReleaseId = 2
     }
 
 policy :: CoreAPI.Policy
