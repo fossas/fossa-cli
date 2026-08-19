@@ -139,17 +139,18 @@ parseTextArtifact = parseTextArtifactAndChildren True <* eof
 parseTextArtifacts :: Parser [Tree TextArtifact]
 parseTextArtifacts = do
   first <- parseTextArtifactAndChildren True
-  -- Each following root block must start at column 0 after whitespace; the
-  -- 'try' rolls back the consumed separator when a block is not a valid root,
-  -- so trailing garbage still fails the final 'eof' instead of being dropped.
+  -- Each following root block starts after any whitespace (typically a
+  -- newline); the 'try' rolls back the consumed separator when a line is not
+  -- a valid artifact root, so trailing garbage still fails the final 'eof'
+  -- instead of being dropped.
   rest <- many $ try nextRootBlock
   void $ many (satisfy isSpace)
   eof
   pure (first : rest)
   where
     -- 'many', not 'some': the previous block's trailing lexeme has usually
-    -- already consumed the separating newline, leaving zero whitespace before
-    -- the next root starts at column 0.
+    -- already consumed the separating newline, so there may be zero whitespace
+    -- before the next root.
     nextRootBlock :: Parser (Tree TextArtifact)
     nextRootBlock = do
       void $ many (satisfy isSpace)
