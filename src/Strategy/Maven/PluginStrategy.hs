@@ -36,8 +36,10 @@ import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Graphing (Graphing)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Strategy.Maven.Common (MavenDependency (..))
+import Strategy.Maven.Pom.Closure (submodulesFromCoordinate)
+import Strategy.Maven.Pom.PomFile (MavenCoordinate, Pom)
 import Strategy.Maven.Plugin (
   Artifact (..),
   DepGraphPlugin,
@@ -60,31 +62,31 @@ analyze' ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Set Text ->
+  Map MavenCoordinate (Path Abs File, Pom) ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze' submodules dir = analyze submodules dir depGraphPlugin
+analyze' closurePoms dir = analyze closurePoms dir depGraphPlugin
 
 analyzeLegacy' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Set Text ->
+  Map MavenCoordinate (Path Abs File, Pom) ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyzeLegacy' submodules dir = analyze submodules dir depGraphPluginLegacy
+analyzeLegacy' closurePoms dir = analyze closurePoms dir depGraphPluginLegacy
 
 analyze ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Set Text ->
+  Map MavenCoordinate (Path Abs File, Pom) ->
   Path Abs Dir ->
   DepGraphPlugin ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze submodules dir plugin = do
+analyze closurePoms dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
     -- Use a temp output dir so we always read from a known location even when POM overrides build directory
@@ -93,8 +95,8 @@ analyze submodules dir plugin = do
         errCtx MvnPluginExecFailed $
           execPluginAggregate dir tempdir plugin
       pluginOutput <- parsePluginOutput tempdir
-      pluginOutput' <- recoverDuplicateEdges dir plugin pluginOutput
-      context "Building dependency graph" $ pure (buildGraph submodules pluginOutput')
+      pluginOutput' <- recoverDuplicateEdges closurePoms dir plugin pluginOutput
+      context "Building dependency graph" $ pure (buildGraph (submodulesFromCoordinate closurePoms) pluginOutput')
   pure (graph, Complete)
 
 -- | Maven's dependency mediation attaches a package shared by several parents
@@ -109,17 +111,18 @@ recoverDuplicateEdges ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m
   ) =>
+  Map MavenCoordinate (Path Abs File, Pom) ->
   Path Abs Dir ->
   DepGraphPlugin ->
   PluginOutput ->
   m PluginOutput
-recoverDuplicateEdges dir plugin pluginOutput =
+recoverDuplicateEdges closurePoms dir plugin pluginOutput =
   context "Running plugin to recover duplicate-resolved edges" $ do
     recovered <-
       recover $
         warnOnErr DuplicateEdgesNotRecovered $ do
           execPluginVerboseGraph dir plugin
-          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs dir
+          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs closurePoms dir
     pure (fromMaybe pluginOutput recovered)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed

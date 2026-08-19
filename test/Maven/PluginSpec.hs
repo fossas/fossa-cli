@@ -4,10 +4,11 @@ module Maven.PluginSpec (spec) where
 
 import Control.Effect.Lift (sendIO)
 import Data.Aeson (eitherDecode)
+import Data.Map qualified as Map
 import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Text (Text)
 import Data.Tree (Tree (..))
-import Path (parent, reldir, relfile, toFilePath, (</>))
+import Path (Abs, File, Path, absfile, parent, reldir, relfile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Strategy.Maven.Plugin (
   Artifact (..),
@@ -17,11 +18,13 @@ import Strategy.Maven.Plugin (
   VerboseEdge (..),
   VerboseGraph (..),
   augmentWithDuplicateEdges,
+  deriveVerboseGraphPaths,
   parsePluginOutput,
   parseVerboseGraphs,
   textArtifactToPluginOutput,
  )
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
+import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), PomBuild (..))
 import Test.Effect (
   expectFatal',
   expectationFailure',
@@ -42,23 +45,132 @@ spec = do
   verboseGraphParsingSpec
   augmentWithDuplicateEdgesSpec
   verboseGraphCollectionSpec
+  deriveVerboseGraphPathsSpec
   parsePluginOutputSpec
 
 -- | The @graph@ goal is not an aggregator: in a multi-module build it runs once
 -- per reactor module, writing into each module's own build directory.
--- 'parseVerboseGraphs' must collect every such file, not just one at the root.
+-- 'parseVerboseGraphs' must collect every such file — from derived locations
+-- when possible, via a tree-walk fallback only when derivation fails or an
+-- expected file is absent (the stray decoy proves whether the walk ran).
 verboseGraphCollectionSpec :: Spec
-verboseGraphCollectionSpec =
-  itWithTempDir' "collects one verbose graph per reactor module (per-module build dirs)" $ \tmpdir -> do
-    let fossaFile = [relfile|fossa-depgraph-verbose.json|]
-        modAFile = tmpdir </> [reldir|mod-a/target/|] </> fossaFile
-        modCFile = tmpdir </> [reldir|mod-c/target/|] </> fossaFile
-    sendIO $ PIO.createDirIfMissing True (parent modAFile)
-    sendIO $ BS.writeFile (toFilePath modAFile) verboseGraphJson
-    sendIO $ PIO.createDirIfMissing True (parent modCFile)
-    sendIO $ BS.writeFile (toFilePath modCFile) verboseGraphJson
-    graphs <- parseVerboseGraphs tmpdir
-    shouldSatisfy' graphs ((== 2) . length)
+verboseGraphCollectionSpec = do
+  let fossaFile = [relfile|fossa-depgraph-verbose.json|]
+      coordA = MavenCoordinate "g" "a" "1.0.0"
+      coordC = MavenCoordinate "g" "c" "1.0.0"
+      pomEntry coord' path builds =
+        (
+          path,
+          Pom
+            { pomCoord = coord'
+            , pomParentCoord = Nothing
+            , pomProperties = Map.empty
+            , pomDependencyManagement = Map.empty
+            , pomDependencies = Map.empty
+            , pomLicenses = []
+            , pomBuilds = builds
+            }
+        )
+      closurePoms tmpdir =
+        Map.fromList
+          [ (coordA, pomEntry coordA (tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|]) Map.empty)
+          , (coordC, pomEntry coordC (tmpdir </> [reldir|mod-c/|] </> [relfile|pom.xml|]) Map.empty)
+          ]
+      -- Lives where no closure module could write it: only the walk fallback can find it.
+      decoyFile tmpdir = tmpdir </> [reldir|stray/|] </> fossaFile
+      writeJson path contents = do
+        sendIO $ PIO.createDirIfMissing True (parent path)
+        sendIO $ BS.writeFile (toFilePath path) contents
+  describe "parseVerboseGraphs" $ do
+    itWithTempDir' "collects each module's graph from derived locations without walking the tree" $ \tmpdir -> do
+      writeJson (tmpdir </> [reldir|mod-a/target/|] </> fossaFile) verboseGraphJson
+      writeJson (tmpdir </> [reldir|mod-c/target/|] </> fossaFile) verboseGraphJson
+      writeJson (decoyFile tmpdir) decoyGraphJson
+      graphs <- parseVerboseGraphs (closurePoms tmpdir) tmpdir
+      shouldSatisfy' graphs ((== 2) . length)
+    itWithTempDir' "falls back to a tree walk when an expected file is missing" $ \tmpdir -> do
+      writeJson (tmpdir </> [reldir|mod-a/target/|] </> fossaFile) verboseGraphJson
+      -- mod-c's expected file deliberately absent
+      writeJson (decoyFile tmpdir) decoyGraphJson
+      graphs <- parseVerboseGraphs (closurePoms tmpdir) tmpdir
+      shouldSatisfy' graphs ((== 2) . length)
+      -- the walk found the stray file, so it really ran
+      shouldContain' graphs [decoyGraph]
+    itWithTempDir' "falls back to a tree walk when derivation is impossible (interpolated build dir)" $ \tmpdir -> do
+      writeJson (tmpdir </> [reldir|mod-a/target/|] </> fossaFile) verboseGraphJson
+      writeJson (tmpdir </> [reldir|mod-c/target/|] </> fossaFile) verboseGraphJson
+      writeJson (decoyFile tmpdir) decoyGraphJson
+      let badClosure =
+            Map.singleton
+              coordA
+              ( pomEntry
+                  coordA
+                  (tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|])
+                  (Map.singleton (("g", "a") :: (Text, Text)) (Just (PomBuild {pomBuildFinalName = Nothing, pomBuildOutputDirectory = Just "${build.dir}"})))
+              )
+      graphs <- parseVerboseGraphs badClosure tmpdir
+      shouldSatisfy' graphs ((== 3) . length)
+
+-- | The per-module verbose graph locations are derived from the closure poms:
+-- a declared literal '<build><directory>' wins, otherwise Maven's default
+-- 'target/' under the module; any unresolvable ('${...}') directory poisons
+-- the whole derivation so callers can fall back to a tree walk.
+deriveVerboseGraphPathsSpec :: Spec
+deriveVerboseGraphPathsSpec = do
+  let fossaJson = [relfile|fossa-depgraph-verbose.json|]
+      modAPath = [absfile|/proj/mod-a/pom.xml|]
+      modBPath = [absfile|/proj/mod-b/pom.xml|]
+      pomAtPath path coord' builds =
+        (
+          path,
+          Pom
+            { pomCoord = coord'
+            , pomParentCoord = Nothing
+            , pomProperties = Map.empty
+            , pomDependencyManagement = Map.empty
+            , pomDependencies = Map.empty
+            , pomLicenses = []
+            , pomBuilds = builds
+            }
+        )
+      coord g a = MavenCoordinate g a "1.0.0"
+      build :: Maybe Text -> PomBuild
+      build dir = PomBuild {pomBuildFinalName = Nothing, pomBuildOutputDirectory = dir}
+  describe "deriveVerboseGraphPaths" $ do
+    it "defaults to target/ under the module dir" $
+      deriveVerboseGraphPaths (Map.singleton (coord "g" "a") (pomAtPath modAPath (coord "g" "a") Map.empty))
+        `shouldBe` Just [parent modAPath </> [reldir|target/|] </> fossaJson]
+    it "honors a literal relative build directory" $
+      deriveVerboseGraphPaths
+        ( Map.singleton
+            (coord "g" "a")
+            (pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "out")))))
+        )
+        `shouldBe` Just [parent modAPath </> [reldir|out/|] </> fossaJson]
+    it "honors a nested build directory" $
+      deriveVerboseGraphPaths
+        ( Map.singleton
+            (coord "g" "a")
+            (pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "build/nested")))))
+        )
+        `shouldBe` Just [parent modAPath </> [reldir|build/nested/|] </> fossaJson]
+    it "returns Nothing when a build directory is property-interpolated" $
+      deriveVerboseGraphPaths
+        ( Map.singleton
+            (coord "g" "a")
+            (pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "${build.dir}")))))
+        )
+        `shouldBe` Nothing
+    it "returns Nothing if any module's directory is unresolvable" $
+      deriveVerboseGraphPaths
+        ( Map.fromList
+            [ ((coord "g" "a") :: MavenCoordinate, pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "out")))))
+            , (coord "g" "b", pomAtPath modBPath (coord "g" "b") (Map.singleton (("g", "b") :: (Text, Text)) (Just (build (Just "${build.dir}")))))
+            ]
+        )
+        `shouldBe` Nothing
+    it "handles an empty closure" $
+      deriveVerboseGraphPaths (Map.empty :: Map.Map MavenCoordinate (Path Abs File, Pom)) `shouldBe` Just []
 
 -- | 'parsePluginOutput' must keep reading exactly what the plugin's @aggregate@
 -- goal writes ('target/dependency-graph.txt' in text format); these tests pin
@@ -464,6 +576,27 @@ expectedVerboseGraph =
         , VerboseEdge "org.apache.poi:poi-ooxml:jar" "org.apache.logging.log4j:log4j-api:jar" "INCLUDED"
         , VerboseEdge "org.apache.logging.log4j:log4j-core:jar" "org.apache.logging.log4j:log4j-api:jar" "OMITTED_FOR_DUPLICATE"
         ]
+    }
+
+-- | A graph that no closure module is expected to produce; used to detect when
+-- the tree-walk fallback ran (it is the only thing that could find a file with
+-- this content in an unexpected location).
+decoyGraphJson :: BS.ByteString
+decoyGraphJson =
+  BS.pack
+    [r|{
+  "graphName": "decoy",
+  "artifacts": [
+    { "id": "org.decoy:stray:jar", "numericId": 1, "groupId": "org.decoy", "artifactId": "stray", "version": "0.0.1", "scopes": [], "types": ["jar"] }
+  ],
+  "dependencies": []
+}|]
+
+decoyGraph :: VerboseGraph
+decoyGraph =
+  VerboseGraph
+    { verboseArtifacts = [VerboseArtifact "org.decoy:stray:jar" "org.decoy" "stray" "0.0.1"]
+    , verboseEdges = []
     }
 
 verboseGraphParsingSpec :: Spec

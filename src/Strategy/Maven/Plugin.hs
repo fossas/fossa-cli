@@ -2,6 +2,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Maven.Plugin (
+  deriveVerboseGraphPaths,
   parseVerboseGraphs,
   withUnpackedPlugin,
   installPlugin,
@@ -31,15 +32,15 @@ import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
-import Data.Foldable (Foldable (fold), foldl')
+import Data.Foldable (Foldable (fold))
 import Data.Functor (void)
-import Data.List (nub)
+import Data.List (isInfixOf, nub)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing, mapMaybe, maybeToList)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
@@ -56,6 +57,7 @@ import Effect.Exec (
  )
 import Effect.ReadFS (
   ReadFS,
+  doesFileExist,
   readContentsJson,
   readContentsParser,
  )
@@ -66,11 +68,16 @@ import Path (
   Path,
   Rel,
   fromAbsDir,
+  mkRelDir,
   mkRelFile,
+  parent,
+  parseAbsDir,
+  parseRelDir,
   (</>),
  )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifacts)
+import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), PomBuild (pomBuildOutputDirectory))
 import System.FilePath qualified as FP
 import System.Info qualified as SysInfo
 
@@ -148,15 +155,100 @@ parsePluginOutput outputdir =
 verboseGraphFileName :: String
 verboseGraphFileName = "fossa-depgraph-verbose.json"
 
+-- Must stay in sync with 'verboseGraphFileName' (the splice needs a literal).
+verboseGraphFile :: Path Rel File
+verboseGraphFile = $(mkRelFile "fossa-depgraph-verbose.json")
+
+-- | Compute where 'execPluginVerboseGraph' should have written its output for
+-- every module of a closure, or 'Nothing' if any module's build directory
+-- cannot be derived.
+--
+-- The @graph@ goal is not an aggregator: it writes one verbose graph per
+-- reactor module into that module's Maven build directory — its declared
+-- '<build><directory>', or the default 'target/' under the module. Since the
+-- closure already holds each module's pom and path, the expected locations
+-- can be computed without walking the tree; callers fall back to a walk when
+-- this returns 'Nothing' or an expected file is missing.
+deriveVerboseGraphPaths :: Map MavenCoordinate (Path Abs File, Pom) -> Maybe [Path Abs File]
+deriveVerboseGraphPaths = traverse expectedVerboseGraphPath . Map.elems
+
+-- | The verbose graph path one closure module is expected to produce, or
+-- 'Nothing' when it cannot be derived.
+expectedVerboseGraphPath :: (Path Abs File, Pom) -> Maybe (Path Abs File)
+expectedVerboseGraphPath (pomPath, pom) = graphFile <$> outputDir
+  where
+    moduleDir :: Path Abs Dir
+    moduleDir = parent pomPath
+
+    defaultDir :: Path Abs Dir
+    defaultDir = moduleDir </> $(mkRelDir "target")
+
+    -- '<build>' entries are keyed by the pom's own coordinates and track only
+    -- what *this* pom declares; a directory supplied through an inherited
+    -- build or profile is not visible here. Such modules simply come up
+    -- missing, which the absence-triggered walk fallback covers.
+    declaredDir :: Maybe Text
+    declaredDir =
+      Map.lookup (coordGroup cp, coordArtifact cp) (pomBuilds pom) >>= \build ->
+        build >>= \buildData -> pomBuildOutputDirectory buildData
+      where
+        cp = pomCoord pom
+
+    -- Maven resolves a relative '<directory>' against the module's basedir.
+    dirFromText :: [Char] -> Maybe (Path Abs Dir)
+    dirFromText text =
+      if unresolvable text
+        then Nothing
+        else case parseRelDir text of
+          Right rel -> pure (moduleDir </> rel)
+          Left _err -> parseAbsDir text
+
+    -- Our pom model keeps '${...}' properties unresolved, so a declared
+    -- directory containing them cannot be located; report it rather than guess.
+    unresolvable :: [Char] -> Bool
+    unresolvable = isInfixOf "${"
+
+    outputDir :: Maybe (Path Abs Dir)
+    outputDir = case declaredDir of
+      Nothing -> pure defaultDir
+      Just text -> dirFromText (toString text)
+
+    graphFile :: Path Abs Dir -> Path Abs File
+    graphFile dir = dir </> verboseGraphFile
+
 -- | Find and parse the per-module output of 'execPluginVerboseGraph'.
 --
 -- The @graph@ goal is not an aggregator: in a multi-module build it runs once
--- per reactor module and writes into each module's own build directory, so we
--- walk the project tree to collect every output file.
-parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
-parseVerboseGraphs dir = do
-  outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) dir
-  traverse readContentsJson outputs
+-- per reactor module and writes into each module's own build directory. The
+-- expected locations are derived from the closure poms ('deriveVerboseGraphPaths');
+-- only when derivation fails or an expected file is absent (Maven resolved a
+-- build directory our raw pom model can't see — profiles, inherited builds —
+-- or a module produced no output) do we fall back to walking the project tree.
+--
+-- The fallback walk deliberately ignores discovery filters: it collects
+-- Fossa's own run artifacts for in-scope projects rather than discovering
+-- customer targets, and the verbose files live under 'target/' directories,
+-- which pom discovery skips by design.
+parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Map MavenCoordinate (Path Abs File, Pom) -> Path Abs Dir -> m [VerboseGraph]
+parseVerboseGraphs closurePoms dir = do
+  case deriveVerboseGraphPaths closurePoms of
+    Just candidates -> readDerivedCandidates (nub candidates)
+      -- two modules may declare the same build directory; read each file once
+    Nothing -> walkAndRead dir
+  where
+    -- If any expected file is missing, our model of Maven's output locations
+    -- is incomplete: trust the filesystem instead.
+    readDerivedCandidates :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m [VerboseGraph]
+    readDerivedCandidates paths = do
+      allPresent <- and <$> for paths doesFileExist
+      if allPresent
+        then traverse readContentsJson paths
+        else walkAndRead dir
+
+    walkAndRead :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
+    walkAndRead base = do
+      outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) base
+      traverse readContentsJson outputs
 
 -- | Convert the plugin's text-graph trees into a 'PluginOutput'. Multi-module
 -- builds yield one tree per root; numeric ids are assigned over the flattened,
@@ -419,8 +511,8 @@ augmentWithDuplicateEdges output@PluginOutput{outArtifacts, outEdges} verboseGra
           if verboseEdgeResolution /= "OMITTED_FOR_DUPLICATE"
             then Nothing
             else case (lookupAggregateId verboseEdgeFrom, lookupAggregateId verboseEdgeTo) of
-              (Just parent, Just child) ->
-                if parent == child
+              (Just fromId, Just child) ->
+                if fromId == child
                   then Nothing
-                  else Just (Edge parent child)
+                  else Just (Edge fromId child)
               _ -> Nothing
