@@ -39,7 +39,8 @@ spec = do
 
   describe "Setuptools analysis of a requirements.txt-only project" $ do
     it "should not warn when setup.py is absent" $
-      assertOnSuccess result $ \warnings _ -> length warnings `shouldBe` 0
+      assertOnSuccess result $
+        \warnings _ -> length warnings `shouldBe` 0
 
     it "should report dependencies from requirements.txt" $
       assertOnSuccess result $ \_ depResults -> do
