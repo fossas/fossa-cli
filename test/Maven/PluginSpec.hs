@@ -4,8 +4,8 @@ module Maven.PluginSpec (spec) where
 
 import Control.Effect.Lift (sendIO)
 import Data.Aeson (eitherDecode)
-import Data.Map qualified as Map
 import Data.ByteString.Lazy.Char8 qualified as BS
+import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Tree (Tree (..))
 import Path (Abs, File, Path, absfile, parent, reldir, relfile, toFilePath, (</>))
@@ -59,9 +59,8 @@ verboseGraphCollectionSpec = do
       coordA = MavenCoordinate "g" "a" "1.0.0"
       coordC = MavenCoordinate "g" "c" "1.0.0"
       pomEntry coord' path builds =
-        (
-          path,
-          Pom
+        ( path
+        , Pom
             { pomCoord = coord'
             , pomParentCoord = Nothing
             , pomProperties = Map.empty
@@ -106,7 +105,7 @@ verboseGraphCollectionSpec = do
               ( pomEntry
                   coordA
                   (tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|])
-                  (Map.singleton (("g", "a") :: (Text, Text)) (Just (PomBuild {pomBuildFinalName = Nothing, pomBuildOutputDirectory = Just "${build.dir}"})))
+                  (Map.singleton (("g", "a") :: (Text, Text)) (Just (PomBuild{pomBuildFinalName = Nothing, pomBuildOutputDirectory = Just "${build.dir}"})))
               )
       graphs <- parseVerboseGraphs badClosure tmpdir
       shouldSatisfy' graphs ((== 3) . length)
@@ -121,9 +120,8 @@ deriveVerboseGraphPathsSpec = do
       modAPath = [absfile|/proj/mod-a/pom.xml|]
       modBPath = [absfile|/proj/mod-b/pom.xml|]
       pomAtPath path coord' builds =
-        (
-          path,
-          Pom
+        ( path
+        , Pom
             { pomCoord = coord'
             , pomParentCoord = Nothing
             , pomProperties = Map.empty
@@ -135,7 +133,7 @@ deriveVerboseGraphPathsSpec = do
         )
       coord g a = MavenCoordinate g a "1.0.0"
       build :: Maybe Text -> PomBuild
-      build dir = PomBuild {pomBuildFinalName = Nothing, pomBuildOutputDirectory = dir}
+      build dir = PomBuild{pomBuildFinalName = Nothing, pomBuildOutputDirectory = dir}
   describe "deriveVerboseGraphPaths" $ do
     it "defaults to target/ under the module dir" $
       deriveVerboseGraphPaths (Map.singleton (coord "g" "a") (pomAtPath modAPath (coord "g" "a") Map.empty))

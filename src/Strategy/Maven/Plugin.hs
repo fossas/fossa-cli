@@ -233,7 +233,7 @@ parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Map MavenCoor
 parseVerboseGraphs closurePoms dir = do
   case deriveVerboseGraphPaths closurePoms of
     Just candidates -> readDerivedCandidates (nub candidates)
-      -- two modules may declare the same build directory; read each file once
+    -- two modules may declare the same build directory; read each file once
     Nothing -> walkAndRead dir
   where
     -- If any expected file is missing, our model of Maven's output locations
