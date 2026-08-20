@@ -204,6 +204,7 @@ library
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
     App.Fossa.BinaryDeps.Whl
+    App.Fossa.BinaryDeps.Nupkg
     App.Fossa.Config.Analyze
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile
