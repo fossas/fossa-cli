@@ -581,6 +581,7 @@ test-suite unit-tests
     App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.BinaryDeps.NupkgSpec
     App.Fossa.BinaryDeps.WhlSpec
     App.Fossa.CirceSpec
     App.Fossa.Config.AnalyzeSpec
