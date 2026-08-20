@@ -20,7 +20,7 @@ import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe qualified as Maybe
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
@@ -53,8 +53,8 @@ import Strategy.Maven.Plugin (
   parseVerboseGraphs,
   withUnpackedPlugin,
  )
-import Strategy.Maven.Pom.Closure (submodulesFromCoordinate)
-import Strategy.Maven.Pom.PomFile (MavenCoordinate, Pom)
+import Strategy.Maven.Pom.Closure qualified as Closure
+import Strategy.Maven.Pom.PomFile qualified as PomFile
 import Types (GraphBreadth (..))
 
 analyze' ::
@@ -62,7 +62,7 @@ analyze' ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Map MavenCoordinate (Path Abs File, Pom) ->
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
 analyze' closurePoms dir = analyze closurePoms dir depGraphPlugin
@@ -72,7 +72,7 @@ analyzeLegacy' ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Map MavenCoordinate (Path Abs File, Pom) ->
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
 analyzeLegacy' closurePoms dir = analyze closurePoms dir depGraphPluginLegacy
@@ -82,7 +82,7 @@ analyze ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
-  Map MavenCoordinate (Path Abs File, Pom) ->
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   DepGraphPlugin ->
   m (Graphing MavenDependency, GraphBreadth)
@@ -96,7 +96,7 @@ analyze closurePoms dir plugin = do
           execPluginAggregate dir tempdir plugin
       pluginOutput <- parsePluginOutput tempdir
       pluginOutput' <- recoverDuplicateEdges closurePoms dir plugin pluginOutput
-      context "Building dependency graph" $ pure (buildGraph (submodulesFromCoordinate closurePoms) pluginOutput')
+      context "Building dependency graph" $ pure (buildGraph (Closure.submodulesFromCoordinate closurePoms) pluginOutput')
   pure (graph, Complete)
 
 -- | Maven's dependency mediation attaches a package shared by several parents
@@ -111,7 +111,7 @@ recoverDuplicateEdges ::
   ( CandidateCommandEffs sig m
   , Has ReadFS sig m
   ) =>
-  Map MavenCoordinate (Path Abs File, Pom) ->
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   DepGraphPlugin ->
   PluginOutput ->
@@ -123,7 +123,7 @@ recoverDuplicateEdges closurePoms dir plugin pluginOutput =
         warnOnErr DuplicateEdgesNotRecovered $ do
           execPluginVerboseGraph dir plugin
           augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs closurePoms dir
-    pure (fromMaybe pluginOutput recovered)
+    pure (Maybe.fromMaybe pluginOutput recovered)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
 instance ToDiagnostic MvnPluginInstallFailed where

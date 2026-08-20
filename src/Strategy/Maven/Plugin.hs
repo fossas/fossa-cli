@@ -24,7 +24,7 @@ module Strategy.Maven.Plugin (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover, warn)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, recover, warn)
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -61,6 +61,7 @@ import Effect.ReadFS (
   readContentsJson,
   readContentsParser,
  )
+import Errata (Errata (..))
 import Path (
   Abs,
   Dir,
@@ -77,7 +78,7 @@ import Path (
  )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifacts)
-import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), PomBuild (pomBuildOutputDirectory))
+import Strategy.Maven.Pom.PomFile qualified as PomFile
 import System.FilePath qualified as FP
 import System.Info qualified as SysInfo
 
@@ -169,12 +170,12 @@ verboseGraphFile = $(mkRelFile "fossa-depgraph-verbose.json")
 -- closure already holds each module's pom and path, the expected locations
 -- can be computed without walking the tree; callers fall back to a walk when
 -- this returns 'Nothing' or an expected file is missing.
-deriveVerboseGraphPaths :: Map MavenCoordinate (Path Abs File, Pom) -> Maybe [Path Abs File]
+deriveVerboseGraphPaths :: Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) -> Maybe [Path Abs File]
 deriveVerboseGraphPaths = traverse expectedVerboseGraphPath . Map.elems
 
 -- | The verbose graph path one closure module is expected to produce, or
 -- 'Nothing' when it cannot be derived.
-expectedVerboseGraphPath :: (Path Abs File, Pom) -> Maybe (Path Abs File)
+expectedVerboseGraphPath :: (Path Abs File, PomFile.Pom) -> Maybe (Path Abs File)
 expectedVerboseGraphPath (pomPath, pom) = graphFile <$> outputDir
   where
     moduleDir :: Path Abs Dir
@@ -189,10 +190,10 @@ expectedVerboseGraphPath (pomPath, pom) = graphFile <$> outputDir
     -- missing, which the absence-triggered walk fallback covers.
     declaredDir :: Maybe Text
     declaredDir =
-      Map.lookup (coordGroup cp, coordArtifact cp) (pomBuilds pom) >>= \build ->
-        build >>= \buildData -> pomBuildOutputDirectory buildData
+      Map.lookup (PomFile.coordGroup cp, PomFile.coordArtifact cp) (PomFile.pomBuilds pom) >>= \build ->
+        build >>= \buildData -> PomFile.pomBuildOutputDirectory buildData
       where
-        cp = pomCoord pom
+        cp = PomFile.pomCoord pom
 
     -- Maven resolves a relative '<directory>' against the module's basedir.
     dirFromText :: [Char] -> Maybe (Path Abs Dir)
@@ -229,7 +230,11 @@ expectedVerboseGraphPath (pomPath, pom) = graphFile <$> outputDir
 -- Fossa's own run artifacts for in-scope projects rather than discovering
 -- customer targets, and the verbose files live under 'target/' directories,
 -- which pom discovery skips by design.
-parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Map MavenCoordinate (Path Abs File, Pom) -> Path Abs Dir -> m [VerboseGraph]
+--
+-- If the walk finds no verbose graph files at all for a non-empty closure,
+-- 'parseVerboseGraphs' raises a fatal diagnostic ('NoVerboseGraphFiles');
+-- callers treat that as a failed recovery and fall back to the aggregate output.
+parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) -> Path Abs Dir -> m [VerboseGraph]
 parseVerboseGraphs closurePoms dir = do
   case deriveVerboseGraphPaths closurePoms of
     Just candidates -> readDerivedCandidates (nub candidates)
@@ -248,7 +253,20 @@ parseVerboseGraphs closurePoms dir = do
     walkAndRead :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
     walkAndRead base = do
       outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) base
+      -- a successful 'graph' run writes one file per reactor module; finding
+      -- none for a non-empty closure means the recovery data is unusable
+      when (null outputs && not (Map.null closurePoms)) $ fatal NoVerboseGraphFiles
       traverse readContentsJson outputs
+
+-- | Raised by 'parseVerboseGraphs' when a successful plugin run left no
+-- per-module verbose graph files behind.
+data NoVerboseGraphFiles = NoVerboseGraphFiles
+
+instance ToDiagnostic NoVerboseGraphFiles where
+  renderDiagnostic NoVerboseGraphFiles = do
+    let header =
+          "The depgraph plugin's graph goal reported success but no per-module verbose graph files were found; duplicate-resolved dependency edges may be missing from the graph."
+    Errata (Just header) [] Nothing
 
 -- | Convert the plugin's text-graph trees into a 'PluginOutput'. Multi-module
 -- builds yield one tree per root; numeric ids are assigned over the flattened,
