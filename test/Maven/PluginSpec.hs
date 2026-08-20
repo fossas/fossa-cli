@@ -109,10 +109,12 @@ verboseGraphCollectionSpec = do
               )
       graphs <- parseVerboseGraphs badClosure tmpdir
       shouldSatisfy' graphs ((== 3) . length)
-    itWithTempDir' "raises a fatal when no verbose graph files are found for a non-empty closure" $ \tmpdir -> do
+    itWithTempDir' "warns and returns [] when no verbose graph files are found for a non-empty closure" $ \tmpdir -> do
       -- nothing written anywhere under tmpdir: both derived files absent,
-      -- the walk finds nothing, and the closure is non-empty
-      expectFatal' $ parseVerboseGraphs (closurePoms tmpdir) tmpdir
+      -- the walk finds nothing, and the closure is non-empty; recovery stays
+      -- non-fatal so analysis proceeds on the aggregate output alone
+      graphs <- parseVerboseGraphs (closurePoms tmpdir) tmpdir
+      shouldSatisfy' graphs null
 
 -- | The per-module verbose graph locations are derived from the closure poms:
 -- a declared literal '<build><directory>' wins, otherwise Maven's default

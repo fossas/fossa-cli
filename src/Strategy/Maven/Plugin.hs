@@ -24,7 +24,7 @@ module Strategy.Maven.Plugin (
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), fatal, recover, warn)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), recover, warn)
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -237,8 +237,9 @@ expectedVerboseGraphPath (pomPath, pom) = graphFile <$> outputDir
 -- which pom discovery skips by design.
 --
 -- If the walk finds no verbose graph files at all for a non-empty closure,
--- 'parseVerboseGraphs' raises a fatal diagnostic ('NoVerboseGraphFiles');
--- callers treat that as a failed recovery and fall back to the aggregate output.
+-- 'parseVerboseGraphs' warns ('NoVerboseGraphFiles') and returns an empty list,
+-- so the duplicate-edge merge becomes a no-op and callers keep the aggregate
+-- output as-is.
 parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) -> Path Abs Dir -> m [VerboseGraph]
 parseVerboseGraphs closurePoms dir = do
   case deriveVerboseGraphPaths closurePoms of
@@ -259,11 +260,12 @@ parseVerboseGraphs closurePoms dir = do
     walkAndRead base = do
       outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) base
       -- a successful 'graph' run writes one file per reactor module; finding
-      -- none for a non-empty closure means the recovery data is unusable
-      when (null outputs && not (Map.null closurePoms)) $ fatal NoVerboseGraphFiles
+      -- none for a non-empty closure means the recovery data is unusable.
+      -- This is non-fatal by design: analysis proceeds on the aggregate output.
+      when (null outputs && not (Map.null closurePoms)) $ warn NoVerboseGraphFiles
       traverse readContentsJson outputs
 
--- | Raised by 'parseVerboseGraphs' when a successful plugin run left no
+-- | Emitted by 'parseVerboseGraphs' when a successful plugin run left no
 -- per-module verbose graph files behind.
 data NoVerboseGraphFiles = NoVerboseGraphFiles
 
