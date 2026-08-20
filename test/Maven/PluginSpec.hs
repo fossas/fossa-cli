@@ -8,7 +8,7 @@ import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Tree (Tree (..))
-import Path (Abs, File, Path, absfile, parent, reldir, relfile, toFilePath, (</>))
+import Path (Abs, File, Path, parent, reldir, relfile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Strategy.Maven.Plugin (
   Artifact (..),
@@ -117,8 +117,8 @@ verboseGraphCollectionSpec = do
 deriveVerboseGraphPathsSpec :: Spec
 deriveVerboseGraphPathsSpec = do
   let fossaJson = [relfile|fossa-depgraph-verbose.json|]
-      modAPath = [absfile|/proj/mod-a/pom.xml|]
-      modBPath = [absfile|/proj/mod-b/pom.xml|]
+      -- Paths are built from a temp dir at runtime: compile-time absolute
+      -- literals ([absfile|/proj/...|]) are not valid on every platform.
       pomAtPath path coord' builds =
         ( path
         , Pom
@@ -135,38 +135,44 @@ deriveVerboseGraphPathsSpec = do
       build :: Maybe Text -> PomBuild
       build dir = PomBuild{pomBuildFinalName = Nothing, pomBuildOutputDirectory = dir}
   describe "deriveVerboseGraphPaths" $ do
-    it "defaults to target/ under the module dir" $
+    itWithTempDir' "defaults to target/ under the module dir" $ \tmpdir -> do
+      let modAPath = tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|]
       deriveVerboseGraphPaths (Map.singleton (coord "g" "a") (pomAtPath modAPath (coord "g" "a") Map.empty))
-        `shouldBe` Just [parent modAPath </> [reldir|target/|] </> fossaJson]
-    it "honors a literal relative build directory" $
+        `shouldBe'` Just [parent modAPath </> [reldir|target/|] </> fossaJson]
+    itWithTempDir' "honors a literal relative build directory" $ \tmpdir -> do
+      let modAPath = tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|]
       deriveVerboseGraphPaths
         ( Map.singleton
             (coord "g" "a")
             (pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "out")))))
         )
-        `shouldBe` Just [parent modAPath </> [reldir|out/|] </> fossaJson]
-    it "honors a nested build directory" $
+        `shouldBe'` Just [parent modAPath </> [reldir|out/|] </> fossaJson]
+    itWithTempDir' "honors a nested build directory" $ \tmpdir -> do
+      let modAPath = tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|]
       deriveVerboseGraphPaths
         ( Map.singleton
             (coord "g" "a")
             (pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "build/nested")))))
         )
-        `shouldBe` Just [parent modAPath </> [reldir|build/nested/|] </> fossaJson]
-    it "returns Nothing when a build directory is property-interpolated" $
+        `shouldBe'` Just [parent modAPath </> [reldir|build/nested/|] </> fossaJson]
+    itWithTempDir' "returns Nothing when a build directory is property-interpolated" $ \tmpdir -> do
+      let modAPath = tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|]
       deriveVerboseGraphPaths
         ( Map.singleton
             (coord "g" "a")
             (pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "${build.dir}")))))
         )
-        `shouldBe` Nothing
-    it "returns Nothing if any module's directory is unresolvable" $
+        `shouldBe'` Nothing
+    itWithTempDir' "returns Nothing if any module's directory is unresolvable" $ \tmpdir -> do
+      let modAPath = tmpdir </> [reldir|mod-a/|] </> [relfile|pom.xml|]
+          modBPath = tmpdir </> [reldir|mod-b/|] </> [relfile|pom.xml|]
       deriveVerboseGraphPaths
         ( Map.fromList
             [ ((coord "g" "a") :: MavenCoordinate, pomAtPath modAPath (coord "g" "a") (Map.singleton (("g", "a") :: (Text, Text)) (Just (build (Just "out")))))
             , (coord "g" "b", pomAtPath modBPath (coord "g" "b") (Map.singleton (("g", "b") :: (Text, Text)) (Just (build (Just "${build.dir}")))))
             ]
         )
-        `shouldBe` Nothing
+        `shouldBe'` Nothing
     it "handles an empty closure" $
       deriveVerboseGraphPaths (Map.empty :: Map.Map MavenCoordinate (Path Abs File, Pom)) `shouldBe` Just []
 
