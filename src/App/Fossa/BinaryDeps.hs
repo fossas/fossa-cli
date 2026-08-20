@@ -20,7 +20,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), combinedPaths)
 import Discovery.Walk (WalkStep (WalkContinue), walk')
-import Effect.Logger (Logger, logDebug, Pretty (pretty))
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
@@ -41,7 +41,6 @@ analyzeBinaryDeps dir filters = do
     else do
       resolvedBinaries <- traverse (analyzeSingleBinary dir) binaryPaths
       let unit = toSourceUnit (toProject dir) resolvedBinaries
-      logDebug $ "Source units found " <> pretty (show unit)
       pure . Just $ unit
 
 -- | Equivalent to @analyzeBinaryDeps@, but analyzes a specific binary instead of discovering and analyzing all binaries in a directory.
