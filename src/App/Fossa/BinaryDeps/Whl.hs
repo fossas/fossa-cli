@@ -22,7 +22,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
-import Data.Text (Text, isInfixOf)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (DepType (PipType))
 import Discovery.Archive (extractZip, withArchive)
@@ -32,6 +32,7 @@ import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, dirname, filename, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
 import Srclib.Types (BinaryDiscoveredDep (..), SourceUserDefDep (..))
+import System.FilePath (dropTrailingPathSeparator)
 
 data WhlMetadata = WhlMetadata
   { whlName :: Text
@@ -83,10 +84,10 @@ tacticMetadata archive = context ("Parse metadata for " <> toText archive) $ do
 findDistInfoFolder :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m (Path Abs Dir)
 findDistInfoFolder archive = do
   (dirs, _) <- listDir archive
-  logDebug $ "Listing folders in archive " <> viaShow (map (toText . dirname) dirs)
-  logDebug $ "Listing folder matching in archive " <> viaShow (map (isInfixOf ".dist-info" . (toText . dirname)) dirs)
+  logDebug $ "Listing folders in archive " <> viaShow (map (dropTrailingPathSeparator . toString . dirname) dirs)
+  logDebug $ "Listing folder matching in archive " <> viaShow (map (\d -> dirHasSuffix d [".dist-info"]) dirs)
   fromMaybeText "Could not find *.dist-info folder in whl archive" $
-    find (isInfixOf ".dist-info" . toText . dirname) dirs
+    find (\d -> dirHasSuffix d [".dist-info"]) dirs
 
 parseMetadata :: Text -> Map Text Text
 parseMetadata t = Map.fromList . map strip' . filter' $ map (Text.breakOn ":") (Text.lines t)
@@ -109,6 +110,9 @@ getLicenseFromMetadata metadata = do
 
 fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
+
+dirHasSuffix :: Path a Dir -> [String] -> Bool
+dirHasSuffix dir = any (\suffix -> suffix `isSuffixOf` dropTrailingPathSeparator (toString (dirname dir)))
 
 toBinaryDiscoveredDep :: Path Abs Dir -> Path Abs File -> WhlMetadata -> BinaryDiscoveredDep
 toBinaryDiscoveredDep root file WhlMetadata{..} = do
