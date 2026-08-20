@@ -29,6 +29,7 @@ import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, dirname, filename, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
 import Srclib.Types (SourceUserDefDep (..), BinaryDiscoveredDep (..))
+import DepTypes (DepType(PipType))
 
 data WhlMetadata = WhlMetadata
   { whlName :: Text,
@@ -105,4 +106,4 @@ fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file
 toBinaryDiscoveredDep :: Path Abs Dir -> Path Abs File -> WhlMetadata -> BinaryDiscoveredDep
 toBinaryDiscoveredDep root file WhlMetadata {..} = do
   let rel = tryMakeRelative root file
-  PipDep (SourceUserDefDep (toText rel) whlVersion whlLicense (Just whlName) Nothing (Just rel))
+  LocatorDep (PipType, SourceUserDefDep whlName whlVersion whlLicense (Just whlName) Nothing (Just rel))
