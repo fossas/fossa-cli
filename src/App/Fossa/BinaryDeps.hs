@@ -7,8 +7,8 @@ where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
-import App.Fossa.BinaryDeps.Whl (resolveWhl)
 import App.Fossa.BinaryDeps.Nupkg (resolveNupkg)
+import App.Fossa.BinaryDeps.Whl (resolveWhl)
 import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)

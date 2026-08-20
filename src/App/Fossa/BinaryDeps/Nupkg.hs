@@ -5,6 +5,7 @@
 module App.Fossa.BinaryDeps.Nupkg (resolveNupkg) where
 
 import Control.Algebra (Has)
+import Control.Applicative (optional)
 import Control.Carrier.Diagnostics (
   Diagnostics,
   ToDiagnostic (renderDiagnostic),
@@ -26,12 +27,11 @@ import Discovery.Archive (extractZip, withArchive)
 import Effect.Logger (Logger, logDebug, pretty, viaShow)
 import Effect.ReadFS (ReadFS, listDir, readContentsXML)
 import Errata (Errata (..))
+import Parse.XML (FromXML (..), child)
 import Path (Abs, Dir, File, Path, filename)
 import Path.Extra (renderRelative, tryMakeRelative)
 import Srclib.Types (BinaryDiscoveredDep (..), SourceUserDefDep (..))
 import Prelude hiding (id)
-import Parse.XML (FromXML (..), child)
-import Control.Applicative (optional)
 
 data NupkgMetadata = NupkgMetadata
   { nupkgName :: Text
@@ -76,8 +76,8 @@ instance FromXML Nuspec where
 
 data Nuspec = Nuspec
   { license :: Maybe Text
-    , id :: Maybe Text
-    , version :: Maybe Text
+  , id :: Maybe Text
+  , version :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
