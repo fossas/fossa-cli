@@ -8,7 +8,7 @@ module Srclib.Types (
   SourceUnitNoticeFile (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
-  BinaryDiscoveredDep(..),
+  BinaryDiscoveredDep (..),
   SourceRemoteDep (..),
   LocatorWithMetadata (..),
   Locator (..),
@@ -54,7 +54,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, Path, SomeBase (..), toFilePath)
 import Path.Extra (SomePath (..))
-import Types (GraphBreadth (..), DepType)
+import Types (DepType, GraphBreadth (..))
 
 data LicenseScanType = CliLicenseScanned
   deriving (Eq, Ord, Show)

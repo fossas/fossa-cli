@@ -12,10 +12,10 @@ import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
-import Srclib.Types
-    ( SourceUserDefDep(..),
-      BinaryDiscoveredDep,
-      BinaryDiscoveredDep(..) )
+import Srclib.Types (
+  BinaryDiscoveredDep (..),
+  SourceUserDefDep (..),
+ )
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec

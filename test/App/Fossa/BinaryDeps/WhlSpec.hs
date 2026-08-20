@@ -13,10 +13,10 @@ import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, mkRelDir, mkRelFile, (</>))
 import Path.Extra (tryMakeRelative)
 import Path.IO qualified as PIO
-import Srclib.Types
-  ( BinaryDiscoveredDep (..),
-    SourceUserDefDep (..),
-  )
+import Srclib.Types (
+  BinaryDiscoveredDep (..),
+  SourceUserDefDep (..),
+ )
 import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 spec :: Spec
@@ -53,8 +53,8 @@ expectedOlderThanTwoFour root = do
   let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "a4-0.2.7-py3-none-any.whl")
   let rel = tryMakeRelative root path
   LocatorDep
-    ( PipType,
-      SourceUserDefDep
+    ( PipType
+    , SourceUserDefDep
         (toText rel)
         "1.0"
         ""
@@ -68,8 +68,8 @@ expectedEqualToTwoFour root = do
   let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "markupsafe-3.0.3-cp314-cp314t-win_arm64.whl")
   let rel = tryMakeRelative root path
   LocatorDep
-    ( PipType,
-      SourceUserDefDep
+    ( PipType
+    , SourceUserDefDep
         (toText rel)
         "1.5.4"
         ""
