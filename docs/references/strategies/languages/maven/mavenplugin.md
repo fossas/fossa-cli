@@ -36,9 +36,11 @@ graph that excludes all of those submodules, but with their immediate deps marke
 as direct. This is because we don't want to include the users' projects in graphs,
 but do want to be able to analyze the things that they depend on.
 
-A second `:graph` (per-module) invocation is run to recover dependency edges that
-Maven resolved away as duplicates (the same artifact reachable via multiple paths
-in the reactor). These duplicate-resolved edges are merged back into the main graph.
+A second `:graph` (per-module) invocation is run with the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:graph -DgraphFormat=json -DmergeScopes -DshowDuplicates=true -DoutputFileName=fossa-depgraph-verbose.json`
+to recover dependency edges that Maven resolved away as duplicates (the same
+artifact reachable via multiple paths in the reactor). These duplicate-resolved
+edges are merged back into the main graph. If this pass fails, a warning is
+emitted and analysis continues with the aggregate result alone.
 
 For example:
 

@@ -40,6 +40,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, isNothing, mapMaybe, maybeToList)
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Traversable (for)
@@ -68,12 +69,14 @@ import Path (
   File,
   Path,
   Rel,
+  filename,
   fromAbsDir,
   mkRelDir,
   mkRelFile,
   parent,
   parseAbsDir,
   parseRelDir,
+  toFilePath,
   (</>),
  )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
@@ -153,12 +156,14 @@ parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -
 parsePluginOutput outputdir =
   readContentsParser parseTextArtifacts (outputdir </> outputFile) >>= textArtifactToPluginOutput
 
-verboseGraphFileName :: String
-verboseGraphFileName = "fossa-depgraph-verbose.json"
-
--- Must stay in sync with 'verboseGraphFileName' (the splice needs a literal).
+-- The compile-time splice requires a literal, so this is the single source
+-- of the verbose graph file name.
 verboseGraphFile :: Path Rel File
 verboseGraphFile = $(mkRelFile "fossa-depgraph-verbose.json")
+
+-- | The bare file name of 'verboseGraphFile', for 'findFileNamed'.
+verboseGraphFileName :: String
+verboseGraphFileName = toFilePath (filename verboseGraphFile)
 
 -- | Compute where 'execPluginVerboseGraph' should have written its output for
 -- every module of a closure, or 'Nothing' if any module's build directory
@@ -271,6 +276,18 @@ instance ToDiagnostic NoVerboseGraphFiles where
 -- | Convert the plugin's text-graph trees into a 'PluginOutput'. Multi-module
 -- builds yield one tree per root; numeric ids are assigned over the flattened,
 -- de-duplicated artifact list so edges from every tree join the same artifacts.
+-- | Order-preserving de-duplication in O(n log n); 'nub' is quadratic and the
+-- flattened artifact/edge lists grow with every repeated path in large
+-- reactors ('-DrepeatTransitiveDependenciesInTextGraph=true').
+nubOrd :: Ord a => [a] -> [a]
+nubOrd = go Set.empty
+  where
+    go _ [] = []
+    go seen (x : xs) =
+      if x `Set.member` seen
+        then go seen xs
+        else x : go (Set.insert x seen) xs
+
 textArtifactToPluginOutput :: Has Diagnostics sig m => [Tree TextArtifact] -> m PluginOutput
 textArtifactToPluginOutput
   tas = fold <$> traverse buildPluginOutput tas
@@ -281,7 +298,7 @@ textArtifactToPluginOutput
       artifacts :: [TextArtifact]
       -- Reversed pre-order, as in the single-tree behavior this generalizes:
       -- leaf-first ids, roots last, with trees processed left to right.
-      artifacts = nub $ reverse (concatMap labelsOf tas)
+      artifacts = nubOrd $ reverse (concatMap labelsOf tas)
 
       artifactToIds :: Map TextArtifact Int
       artifactToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifacts
@@ -504,7 +521,7 @@ instance FromJSON VerboseEdge where
 -- point at a losing version the build does not ship, so they are skipped.
 augmentWithDuplicateEdges :: PluginOutput -> [VerboseGraph] -> PluginOutput
 augmentWithDuplicateEdges output@PluginOutput{outArtifacts, outEdges} verboseGraphs =
-  output{outEdges = nub (outEdges <> concatMap duplicateEdges verboseGraphs)}
+  output{outEdges = nubOrd (outEdges <> concatMap duplicateEdges verboseGraphs)}
   where
     idByGav :: Map (Text, Text, Text) Int
     idByGav =

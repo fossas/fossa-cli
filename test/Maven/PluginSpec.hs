@@ -181,7 +181,8 @@ deriveVerboseGraphPathsSpec = do
       deriveVerboseGraphPaths (Map.empty :: Map.Map MavenCoordinate (Path Abs File, Pom)) `shouldBe` Just []
 
 -- | 'parsePluginOutput' must keep reading exactly what the plugin's @aggregate@
--- goal writes ('target/dependency-graph.txt' in text format); these tests pin
+-- goal writes ('dependency-graph.txt' in text format, inside @-DoutputDirectory@);
+-- these tests pin
 -- that writer/reader contract so a format change on either side fails loudly.
 parsePluginOutputSpec :: Spec
 parsePluginOutputSpec = do
