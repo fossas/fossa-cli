@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Setuptools: projects containing only requirements.txt files no longer emit a spurious `Failed to parse python file` / `No setup.py found in this project` warning; setup.py is only analyzed when it exists.
+
 ## 3.18.0
 
 - Container scanning: `fossa container analyze` now reports Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
