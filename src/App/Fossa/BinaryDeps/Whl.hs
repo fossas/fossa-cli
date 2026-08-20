@@ -1,3 +1,4 @@
+-- Reference: https://packaging.python.org/en/latest/specifications/core-metadata/
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -19,18 +20,18 @@ import Control.Monad (join)
 import Data.List (find, isSuffixOf)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
+import DepTypes (DepType (PipType))
 import Discovery.Archive (extractZip, withArchive)
 import Effect.Logger (Logger, logDebug, pretty, viaShow)
 import Effect.ReadFS (ReadFS, listDir, readContentsText)
 import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, dirname, filename, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
-import Srclib.Types (SourceUserDefDep (..), BinaryDiscoveredDep (..))
-import DepTypes (DepType(PipType))
-import Data.Maybe (fromMaybe)
+import Srclib.Types (BinaryDiscoveredDep (..), SourceUserDefDep (..))
 
 data WhlMetadata = WhlMetadata
   { whlName :: Text,
@@ -95,11 +96,16 @@ parseMetadata t = Map.fromList . map strip' . filter' $ map (Text.breakOn ":") (
     filter' = filter (not . null')
 
 metadataToWhlMeta :: (Has Diagnostics sig m) => Map Text Text -> m WhlMetadata
-metadataToWhlMeta manifest =
+metadataToWhlMeta metadata =
   WhlMetadata
-    <$> fromMaybeText "Missing whl name" (Map.lookup "Name" manifest)
-    <*> fromMaybeText "Missing whl version" (Map.lookup "Version" manifest)
-    <*> fromMaybeText "Missing whl license" (Just (fromMaybe "" (Map.lookup "License-Expression" manifest)))
+    <$> fromMaybeText "Missing whl name" (Map.lookup "Name" metadata)
+    <*> fromMaybeText "Missing whl version" (Map.lookup "Version" metadata)
+    <*> fromMaybeText "Missing whl license" (Just (getLicenseFromMetadata metadata))
+
+getLicenseFromMetadata :: Map Text Text -> Text
+getLicenseFromMetadata metadata = do 
+  let oldLicense = fromMaybe "" (Map.lookup "License" metadata)
+  fromMaybe oldLicense (Map.lookup "License-Expression" metadata)
 
 fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
