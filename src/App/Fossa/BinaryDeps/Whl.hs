@@ -28,7 +28,7 @@ import Effect.ReadFS (ReadFS, listDir, readContentsText)
 import Errata (Errata (..))
 import Path (Abs, Dir, File, Path, dirname, filename, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
-import Srclib.Types (SourceUserDefDep (..))
+import Srclib.Types (SourceUserDefDep (..), BinaryDiscoveredDep (..))
 
 data WhlMetadata = WhlMetadata
   { whlName :: Text,
@@ -40,7 +40,7 @@ data WhlMetadata = WhlMetadata
 -- The overall idea is to:
 --   1. Extract the whl to a temporary directory (it's a zip!)
 --   2. Search inside for a file named `*.dist-info/METADATA` parse it and return metadata derived from it.
-resolveWhl :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
+resolveWhl :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe BinaryDiscoveredDep)
 resolveWhl _ file | not $ fileHasSuffix file [".whl"] = pure Nothing
 resolveWhl root file = do
   let fileDescription = toText file
@@ -52,7 +52,7 @@ resolveWhl root file = do
     . runFinally
     $ withArchive extractZip file
     $ \dir -> tacticMetadata dir
-  pure $ fmap (toUserDefDep root file) (join result)
+  pure $ fmap (toBinaryDiscoveredDep root file) (join result)
 
 newtype FailedToResolveWhl = FailedToResolveWhl (Path Abs File)
 
@@ -102,7 +102,7 @@ metadataToWhlMeta manifest =
 fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
 
-toUserDefDep :: Path Abs Dir -> Path Abs File -> WhlMetadata -> SourceUserDefDep
-toUserDefDep root file WhlMetadata {..} = do
+toBinaryDiscoveredDep :: Path Abs Dir -> Path Abs File -> WhlMetadata -> BinaryDiscoveredDep
+toBinaryDiscoveredDep root file WhlMetadata {..} = do
   let rel = tryMakeRelative root file
-  SourceUserDefDep (toText rel) whlVersion whlLicense (Just whlName) Nothing (Just rel)
+  PipDep (SourceUserDefDep (toText rel) whlVersion whlLicense (Just whlName) Nothing (Just rel))

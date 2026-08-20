@@ -8,6 +8,7 @@ module Srclib.Types (
   SourceUnitNoticeFile (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
+  BinaryDiscoveredDep(..),
   SourceRemoteDep (..),
   LocatorWithMetadata (..),
   Locator (..),
@@ -441,6 +442,8 @@ data SourceRemoteDep = SourceRemoteDep
   , srcRemoteDepHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
+
+data BinaryDiscoveredDep = UserDep SourceUserDefDep | PipDep SourceUserDefDep deriving (Eq, Ord, Show)
 
 -- | Labels are side channel information about dependencies,
 -- used to communicate information about the dependency in some way.
