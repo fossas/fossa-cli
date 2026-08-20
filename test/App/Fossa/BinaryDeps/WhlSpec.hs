@@ -5,7 +5,6 @@ module App.Fossa.BinaryDeps.WhlSpec (spec) where
 import App.Fossa.BinaryDeps.Whl (resolveWhl)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
-import Data.String.Conversion (toText)
 import DepTypes (DepType (PipType))
 import Diag.Result (Result (Failure, Success))
 import Effect.Logger (Severity (SevError), withDefaultLogger)
@@ -43,22 +42,22 @@ testdataParentDir :: IO (Path Abs Dir)
 testdataParentDir = PIO.resolveDir' "test/App/Fossa/BinaryDeps"
 
 withOlderThanTwoFour :: IO (Path Abs File)
-withOlderThanTwoFour = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/a4-0.2.7-py3-none-any.whl"
+withOlderThanTwoFour = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/six-1.17.0-py2.py3-none-any.whl"
 
 withEqualToTwoFour :: IO (Path Abs File)
 withEqualToTwoFour = PIO.resolveFile' "test/App/Fossa/BinaryDeps/testdata/markupsafe-3.0.3-cp314-cp314t-win_arm64.whl"
 
 expectedOlderThanTwoFour :: Path Abs Dir -> BinaryDiscoveredDep
 expectedOlderThanTwoFour root = do
-  let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "a4-0.2.7-py3-none-any.whl")
+  let path = root </> $(mkRelDir "testdata") </> $(mkRelFile "six-1.17.0-py2.py3-none-any.whl")
   let rel = tryMakeRelative root path
   LocatorDep
     ( PipType
     , SourceUserDefDep
-        (toText rel)
-        "1.0"
-        ""
-        (Just "org.jruby:yecht")
+        "six"
+        "1.17.0"
+        "MIT"
+        (Just "six")
         Nothing
         (Just rel)
     )
@@ -70,10 +69,10 @@ expectedEqualToTwoFour root = do
   LocatorDep
     ( PipType
     , SourceUserDefDep
-        (toText rel)
-        "1.5.4"
-        ""
-        (Just "io.micrometer#micrometer-registry-prometheus;1.5.4")
+        "MarkupSafe"
+        "3.0.3"
+        "BSD-3-Clause"
+        (Just "MarkupSafe")
         Nothing
         (Just rel)
     )
