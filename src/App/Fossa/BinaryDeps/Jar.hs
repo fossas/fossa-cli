@@ -32,7 +32,7 @@ import Errata (Errata (..))
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
-import Srclib.Types (SourceUserDefDep (..))
+import Srclib.Types (SourceUserDefDep (..), BinaryDiscoveredDep (..))
 import Strategy.Maven.Pom.PomFile (
   MavenCoordinate (..),
   Pom (..),
@@ -53,7 +53,7 @@ data JarMetadata = JarMetadata
 --   2. Search inside for a file named `pom.xml`; if there are multiple pick the one with the shortest path.
 --      If a representative pom.xml was found, parse it and return metadata derived from it.
 --   3. Attempt to open `META-INF/MANIFEST.MF`, parse it, and return metadata derived from it.
-resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)
+resolveJar :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs File -> m (Maybe BinaryDiscoveredDep)
 resolveJar _ file | not $ fileHasSuffix file [".jar", ".aar"] = pure Nothing
 resolveJar root file = do
   let fileDescription = toText file
@@ -65,7 +65,7 @@ resolveJar root file = do
     . runFinally
     $ withArchive extractZip file
     $ \dir -> tacticPom dir <||> tacticMetaInf dir
-  pure $ fmap (toUserDefDep root file) (join result)
+  pure $ fmap (toBinaryDiscoveredDep root file) (join result)
 
 newtype FailedToResolveJar = FailedToResolveJar (Path Abs File)
 instance ToDiagnostic FailedToResolveJar where
@@ -123,7 +123,7 @@ parsePom file = context ("Parse pom file: " <> toText file) $ do
 
 pomToMeta :: Pom -> JarMetadata
 pomToMeta Pom{..} = do
-  let name = (coordGroup pomCoord) <> ":" <> (coordArtifact pomCoord)
+  let name = coordGroup pomCoord <> ":" <> coordArtifact pomCoord
   let license = Text.intercalate "\n" $ mapMaybe pomLicenseName pomLicenses
   JarMetadata name (coordVersion pomCoord) license
 
@@ -135,7 +135,7 @@ collectFilesNamed name _ _ files = case findFileNamed name files of
 fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
 
-toUserDefDep :: Path Abs Dir -> Path Abs File -> JarMetadata -> SourceUserDefDep
-toUserDefDep root file JarMetadata{..} = do
+toBinaryDiscoveredDep :: Path Abs Dir -> Path Abs File -> JarMetadata -> BinaryDiscoveredDep
+toBinaryDiscoveredDep root file JarMetadata{..} = do
   let rel = tryMakeRelative root file
-  SourceUserDefDep (toText rel) jarVersion jarLicense (Just jarName) Nothing (Just rel)
+  UserDep (SourceUserDefDep (toText rel) jarVersion jarLicense (Just jarName) Nothing (Just rel))
