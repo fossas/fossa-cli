@@ -263,7 +263,7 @@ textArtifactToPluginOutput
       artifacts :: [TextArtifact]
       -- Reversed pre-order, as in the single-tree behavior this generalizes:
       -- leaf-first ids, roots last, with trees processed left to right.
-      artifacts = nub $ reverse (concat (map labelsOf tas))
+      artifacts = nub $ reverse (concatMap labelsOf tas)
 
       artifactToIds :: Map TextArtifact Int
       artifactToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifacts
