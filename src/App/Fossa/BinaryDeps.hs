@@ -1,8 +1,8 @@
-module App.Fossa.BinaryDeps
-  ( analyzeBinaryDeps,
-    analyzeSingleBinary,
-    isAdditionalDep,
-  )
+module App.Fossa.BinaryDeps (
+  analyzeBinaryDeps,
+  analyzeSingleBinary,
+  isAdditionalDep,
+)
 where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
@@ -63,16 +63,16 @@ findBinaries filters = walk' $ \dir _ files -> do
 
 -- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
 data PathFilters = PathFilters
-  { include :: [Path Abs Dir],
-    exclude :: [Path Abs Dir]
+  { include :: [Path Abs Dir]
+  , exclude :: [Path Abs Dir]
   }
   deriving (Show)
 
 toPathFilters :: Path Abs Dir -> AllFilters -> PathFilters
 toPathFilters root filters =
   PathFilters
-    { include = map (root </>) (combinedPaths $ includeFilters filters),
-      exclude = map (root </>) (combinedPaths $ excludeFilters filters)
+    { include = map (root </>) (combinedPaths $ includeFilters filters)
+    , exclude = map (root </>) (combinedPaths $ excludeFilters filters)
     }
 
 shouldFingerprintDir :: Path Abs Dir -> PathFilters -> Bool
@@ -91,17 +91,17 @@ toSourceUnit project deps = do
   let additionalDeps = mapMaybe isAdditionalDep deps
   let sourceUnits = mapMaybe binaryDepToSourceUnitDependency deps
   let locators = mapMaybe binaryDepToLocator deps
-  
+
   unit
     { sourceUnitBuild =
         Just $
           SourceUnitBuild
-            { buildArtifact = "default",
-              buildSucceeded = True,
-              buildImports = locators,
-              buildDependencies = sourceUnits
-            },
-      additionalData = Just $ AdditionalDepData (Just additionalDeps) Nothing
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports = locators
+            , buildDependencies = sourceUnits
+            }
+    , additionalData = Just $ AdditionalDepData (Just additionalDeps) Nothing
     }
 
 isAdditionalDep :: BinaryDiscoveredDep -> Maybe SourceUserDefDep
@@ -112,9 +112,9 @@ binaryDepToSourceUnitDependency :: BinaryDiscoveredDep -> Maybe SourceUnitDepend
 binaryDepToSourceUnitDependency (LocatorDep (f, d)) =
   Just
     SourceUnitDependency
-      { sourceDepLocator = Locator (depTypeToFetcher f) (srcUserDepName d) (Just (srcUserDepVersion d)),
-        sourceDepImports = [],
-        sourceDepData = Aeson.Null
+      { sourceDepLocator = Locator (depTypeToFetcher f) (srcUserDepName d) (Just (srcUserDepVersion d))
+      , sourceDepImports = []
+      , sourceDepData = Aeson.Null
       }
 binaryDepToSourceUnitDependency _ = Nothing
 

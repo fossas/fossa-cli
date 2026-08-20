@@ -5,15 +5,15 @@
 module App.Fossa.BinaryDeps.Whl (resolveWhl) where
 
 import Control.Algebra (Has)
-import Control.Carrier.Diagnostics
-  ( Diagnostics,
-    ToDiagnostic (renderDiagnostic),
-    context,
-    errCtx,
-    fromMaybeText,
-    recover,
-    warnOnErr,
-  )
+import Control.Carrier.Diagnostics (
+  Diagnostics,
+  ToDiagnostic (renderDiagnostic),
+  context,
+  errCtx,
+  fromMaybeText,
+  recover,
+  warnOnErr,
+ )
 import Control.Carrier.Finally (runFinally)
 import Control.Effect.Lift (Lift)
 import Control.Monad (join)
@@ -34,9 +34,9 @@ import Path.Extra (renderRelative, tryMakeRelative)
 import Srclib.Types (BinaryDiscoveredDep (..), SourceUserDefDep (..))
 
 data WhlMetadata = WhlMetadata
-  { whlName :: Text,
-    whlVersion :: Text,
-    whlLicense :: Text
+  { whlName :: Text
+  , whlVersion :: Text
+  , whlLicense :: Text
   }
 
 -- | Implement .whl resolution using a similar method to Ant analysis in CLIv1.
@@ -103,7 +103,7 @@ metadataToWhlMeta metadata =
     <*> fromMaybeText "Missing whl license" (Just (getLicenseFromMetadata metadata))
 
 getLicenseFromMetadata :: Map Text Text -> Text
-getLicenseFromMetadata metadata = do 
+getLicenseFromMetadata metadata = do
   let oldLicense = fromMaybe "" (Map.lookup "License" metadata)
   fromMaybe oldLicense (Map.lookup "License-Expression" metadata)
 
@@ -111,6 +111,6 @@ fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
 
 toBinaryDiscoveredDep :: Path Abs Dir -> Path Abs File -> WhlMetadata -> BinaryDiscoveredDep
-toBinaryDiscoveredDep root file WhlMetadata {..} = do
+toBinaryDiscoveredDep root file WhlMetadata{..} = do
   let rel = tryMakeRelative root file
   LocatorDep (PipType, SourceUserDefDep whlName whlVersion whlLicense (Just whlName) Nothing (Just rel))
