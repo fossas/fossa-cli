@@ -5,6 +5,7 @@ module App.Fossa.BinaryDeps (
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
+import App.Fossa.BinaryDeps.Whl (resolveWhl)
 import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
@@ -69,10 +70,10 @@ toPathFilters root filters =
     }
 
 shouldFingerprintDir :: Path Abs Dir -> PathFilters -> Bool
-shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
+shouldFingerprintDir dir filters = not shouldExclude && shouldInclude
   where
-    shouldExclude = (isPrefixedOrEqual dir) `any` (exclude filters)
-    shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
+    shouldExclude = isPrefixedOrEqual dir `any` exclude filters
+    shouldInclude = null (include filters) || isPrefixedOrEqual dir `any` include filters
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
 toProject :: Path Abs Dir -> ProjectResult
@@ -91,7 +92,7 @@ renderFingerprint fingerprint = Text.take 12 $ toText fingerprint
 
 -- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
 -- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
-resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))] -> Path Abs Dir -> Path Abs File -> m SourceUserDefDep
+resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)] -> Path Abs Dir -> Path Abs File -> m SourceUserDefDep
 resolveBinary (resolve : remainingStrategies) = \root file -> do
   result <- resolve root file
   case result of
@@ -100,9 +101,9 @@ resolveBinary (resolve : remainingStrategies) = \root file -> do
 resolveBinary [] = strategyRawFingerprint
 
 -- | Functions which may be able to resolve a binary to a dependency.
-strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
+strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep)]
 strategies =
-  [resolveJar]
+  [resolveJar, resolveWhl]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
