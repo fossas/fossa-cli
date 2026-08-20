@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Setuptools: projects containing only requirements.txt files no longer emit a spurious `Failed to parse python file` / `No setup.py found in this project` warning; setup.py is only analyzed when it exists.
+- Binary discovery: Added binary discovery support for `.whl` files
 
 ## 3.18.0
 
