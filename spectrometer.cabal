@@ -203,6 +203,7 @@ library
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
+    App.Fossa.BinaryDeps.Whl
     App.Fossa.Config.Analyze
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile
