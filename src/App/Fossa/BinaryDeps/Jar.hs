@@ -32,7 +32,7 @@ import Errata (Errata (..))
 import GHC.Base ((<|>))
 import Path (Abs, Dir, File, Path, filename, mkRelDir, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
-import Srclib.Types (SourceUserDefDep (..), BinaryDiscoveredDep (..))
+import Srclib.Types (BinaryDiscoveredDep (..), SourceUserDefDep (..))
 import Strategy.Maven.Pom.PomFile (
   MavenCoordinate (..),
   Pom (..),
