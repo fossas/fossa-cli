@@ -1075,6 +1075,7 @@ dependencies = [
  "atty",
  "clap 4.5.38",
  "fingerprint",
+ "flate2",
  "getset",
  "pretty_assertions",
  "serde 1.0.228",

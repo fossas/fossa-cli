@@ -1,8 +1,12 @@
 # FOSSA CLI Changelog
 
-## 3.17.18
+## 3.18.1
 
 - Maven: Recover dependency edges that Maven's resolution omits as duplicates, so transitive dependencies shared by multiple parents are attributed to all of them instead of a single winning parent. ([#1730](https://github.com/fossas/fossa-cli/pull/1730))
+
+## 3.18.0
+
+- Container scanning: `fossa container analyze` now reports Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
 - Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
 - NuGet: `project.json` files that are not NuGet manifests (e.g. Nx project configuration) are no longer claimed by the NuGet analyzer, so they no longer fail analysis with `key "dependencies" not found`.
