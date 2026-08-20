@@ -21,7 +21,7 @@ import Control.Monad (join)
 import Data.List (find, isSuffixOf)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (ToString (toString), ToText (toText))
-import Data.Text (Text, isInfixOf)
+import Data.Text (Text)
 import DepTypes (DepType (NuGetType))
 import Discovery.Archive (extractZip, withArchive)
 import Effect.Logger (Logger, logDebug, pretty, viaShow)
@@ -91,15 +91,16 @@ tacticNuspec archive = context ("Parse metadata for " <> toText archive) $ do
   nuspecPath <- findNuspecFile archive
   do
     nuspec <- readContentsXML @Nuspec nuspecPath
-    logDebug $ "Parsing METADATA file: " <> pretty (renderRelative archive nuspecPath)
+    logDebug $ "Parsing Nuspec file: " <> pretty (renderRelative archive nuspecPath)
     nuspecToNupkgMeta nuspec
 
 findNuspecFile :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> m (Path Abs File)
 findNuspecFile archive = do
   (_, files) <- listDir archive
-  logDebug $ "Listing files in archive " <> viaShow (map (toText . filename) files)
+  logDebug $ "Listing files in archive " <> viaShow (map filename files)
+  logDebug $ "Listing files in archive " <> viaShow (map (\f -> fileHasSuffix (filename f) [".nuspec"]) files)
   fromMaybeText "Could not find nuspec file in nupkg archive" $
-    find (isInfixOf ".nuspec" . toText . filename) files
+    find (\f -> fileHasSuffix (filename f) [".nuspec"]) files
 
 nuspecToNupkgMeta :: (Has Diagnostics sig m) => Nuspec -> m NupkgMetadata
 nuspecToNupkgMeta nuspec =
