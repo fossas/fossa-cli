@@ -30,6 +30,7 @@ import Path (Abs, Dir, File, Path, dirname, filename, mkRelFile, (</>))
 import Path.Extra (renderRelative, tryMakeRelative)
 import Srclib.Types (SourceUserDefDep (..), BinaryDiscoveredDep (..))
 import DepTypes (DepType(PipType))
+import Data.Maybe (fromMaybe)
 
 data WhlMetadata = WhlMetadata
   { whlName :: Text,
@@ -98,7 +99,7 @@ metadataToWhlMeta manifest =
   WhlMetadata
     <$> fromMaybeText "Missing whl name" (Map.lookup "Name" manifest)
     <*> fromMaybeText "Missing whl version" (Map.lookup "Version" manifest)
-    <*> fromMaybeText "Missing whl license" (Map.lookup "License-Expression" manifest)
+    <*> fromMaybeText "Missing whl license" (Just (fromMaybe "" (Map.lookup "License-Expression" manifest)))
 
 fileHasSuffix :: Path a File -> [String] -> Bool
 fileHasSuffix file = any (\suffix -> suffix `isSuffixOf` toString (filename file))
