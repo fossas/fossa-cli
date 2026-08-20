@@ -1,8 +1,9 @@
-module App.Fossa.BinaryDeps (
-  analyzeBinaryDeps,
-  analyzeSingleBinary,
-  isAdditionalDep
-) where
+module App.Fossa.BinaryDeps
+  ( analyzeBinaryDeps,
+    analyzeSingleBinary,
+    isAdditionalDep,
+  )
+where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
@@ -12,19 +13,21 @@ import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
+import Data.Aeson qualified as Aeson
+import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Filters (AllFilters (..), combinedPaths)
 import Discovery.Walk (WalkStep (WalkContinue), walk')
-import Effect.Logger (Logger)
+import Effect.Logger (Logger, logDebug, Pretty (pretty))
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
+import Srclib.Converter (depTypeToFetcher)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..), BinaryDiscoveredDep (..))
+import Srclib.Types (AdditionalDepData (..), BinaryDiscoveredDep (..), Locator (..), SourceUnit (..), SourceUnitBuild (SourceUnitBuild, buildArtifact, buildDependencies, buildImports, buildSucceeded), SourceUnitDependency (SourceUnitDependency, sourceDepData, sourceDepImports, sourceDepLocator), SourceUserDefDep (..))
 import Types (DiscoveredProjectType (BinaryDepsProjectType), GraphBreadth (Complete))
-import Data.Maybe (mapMaybe)
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
 -- Instead, binary detection is run separately over the entire scan directory, outputting its own source unit.
@@ -37,7 +40,9 @@ analyzeBinaryDeps dir filters = do
     then pure Nothing
     else do
       resolvedBinaries <- traverse (analyzeSingleBinary dir) binaryPaths
-      pure . Just $ toSourceUnit (toProject dir) resolvedBinaries
+      let unit = toSourceUnit (toProject dir) resolvedBinaries
+      logDebug $ "Source units found " <> pretty (show unit)
+      pure . Just $ unit
 
 -- | Equivalent to @analyzeBinaryDeps@, but analyzes a specific binary instead of discovering and analyzing all binaries in a directory.
 --
@@ -59,16 +64,16 @@ findBinaries filters = walk' $ \dir _ files -> do
 
 -- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
 data PathFilters = PathFilters
-  { include :: [Path Abs Dir]
-  , exclude :: [Path Abs Dir]
+  { include :: [Path Abs Dir],
+    exclude :: [Path Abs Dir]
   }
   deriving (Show)
 
 toPathFilters :: Path Abs Dir -> AllFilters -> PathFilters
 toPathFilters root filters =
   PathFilters
-    { include = map (root </>) (combinedPaths $ includeFilters filters)
-    , exclude = map (root </>) (combinedPaths $ excludeFilters filters)
+    { include = map (root </>) (combinedPaths $ includeFilters filters),
+      exclude = map (root </>) (combinedPaths $ excludeFilters filters)
     }
 
 shouldFingerprintDir :: Path Abs Dir -> PathFilters -> Bool
@@ -85,11 +90,38 @@ toSourceUnit :: ProjectResult -> [BinaryDiscoveredDep] -> SourceUnit
 toSourceUnit project deps = do
   let unit = Srclib.projectToSourceUnit False project
   let additionalDeps = mapMaybe isAdditionalDep deps
-  unit{additionalData = Just $ AdditionalDepData (Just additionalDeps) Nothing}
+  let sourceUnits = mapMaybe binaryDepToSourceUnitDependency deps
+  let locators = mapMaybe binaryDepToLocator deps
+  
+  unit
+    { sourceUnitBuild =
+        Just $
+          SourceUnitBuild
+            { buildArtifact = "default",
+              buildSucceeded = True,
+              buildImports = locators,
+              buildDependencies = sourceUnits
+            },
+      additionalData = Just $ AdditionalDepData (Just additionalDeps) Nothing
+    }
 
 isAdditionalDep :: BinaryDiscoveredDep -> Maybe SourceUserDefDep
 isAdditionalDep (UserDep d) = Just d
 isAdditionalDep _ = Nothing
+
+binaryDepToSourceUnitDependency :: BinaryDiscoveredDep -> Maybe SourceUnitDependency
+binaryDepToSourceUnitDependency (LocatorDep (f, d)) =
+  Just
+    SourceUnitDependency
+      { sourceDepLocator = Locator (depTypeToFetcher f) (srcUserDepName d) (Just (srcUserDepVersion d)),
+        sourceDepImports = [],
+        sourceDepData = Aeson.Null
+      }
+binaryDepToSourceUnitDependency _ = Nothing
+
+binaryDepToLocator :: BinaryDiscoveredDep -> Maybe Locator
+binaryDepToLocator (LocatorDep (f, d)) = Just (Locator (depTypeToFetcher f) (srcUserDepName d) (Just (srcUserDepVersion d)))
+binaryDepToLocator _ = Nothing
 
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,

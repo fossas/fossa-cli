@@ -54,7 +54,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, Path, SomeBase (..), toFilePath)
 import Path.Extra (SomePath (..))
-import Types (GraphBreadth (..))
+import Types (GraphBreadth (..), DepType)
 
 data LicenseScanType = CliLicenseScanned
   deriving (Eq, Ord, Show)
@@ -443,7 +443,7 @@ data SourceRemoteDep = SourceRemoteDep
   }
   deriving (Eq, Ord, Show)
 
-data BinaryDiscoveredDep = UserDep SourceUserDefDep | PipDep SourceUserDefDep deriving (Eq, Ord, Show)
+data BinaryDiscoveredDep = UserDep SourceUserDefDep | LocatorDep (DepType, SourceUserDefDep) deriving (Eq, Ord, Show)
 
 -- | Labels are side channel information about dependencies,
 -- used to communicate information about the dependency in some way.
