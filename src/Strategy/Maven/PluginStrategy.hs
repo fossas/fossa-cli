@@ -166,13 +166,6 @@ instance ToDiagnostic DuplicateEdgesNotRecovered where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
---
--- TODO(#maven-parentless-modules): 'knownSubmodules' is derived from the POM
--- closure graph, which builds edges only from <parent> elements. A module
--- listed in <modules> but lacking a <parent> element (legal Maven) will not
--- appear here, so it won't be promoted to direct and its verbose-graph
--- duplicate edges may be dropped. This is a rare case; fixing it requires
--- seeding <modules> edges into the closure graph in Pom/Resolver.hs.
 buildGraph :: Set Text -> PluginOutput -> Graphing MavenDependency
 buildGraph knownSubmodules PluginOutput{..} =
   run . evalGrapher $ do
