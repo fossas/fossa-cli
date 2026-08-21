@@ -94,7 +94,9 @@ data PkgLockDependency = PkgLockDependency
 instance FromJSON PkgLockJson where
   parseJSON = withObject "PkgLockJson" $ \obj ->
     PkgLockJson
-      <$> obj .: "dependencies"
+      -- npm omits "dependencies" entirely when the project has no
+      -- dependencies, so a missing key means an empty dependency map.
+      <$> obj .:? "dependencies" .!= Map.empty
       <*> obj .:? "packages" .!= Map.empty
 
 newtype NpmResolved = NpmResolved {unNpmResolved :: Maybe Text}
