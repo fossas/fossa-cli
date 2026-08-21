@@ -557,6 +557,11 @@ packageLockParseSpec testDir =
       let foo = unNpmResolved . depResolved =<< Map.lookup "foo" packageDependencies
       foo `shouldBe'` Nothing
 
+    it' "Should parse a zero-dependency package-lock.json with no \"dependencies\" key" $ do
+      let packageLock = testDir </> $(mkRelFile "no-dependencies-package-lock.json")
+      PkgLockJson{lockDependencies = packageDependencies} <- readContentsJson packageLock
+      packageDependencies `shouldBe'` Map.empty
+
 spec :: Spec
 spec = do
   curdir <- runIO getCurrentDir

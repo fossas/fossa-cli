@@ -720,6 +720,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    Python.SetuptoolsSpec
     Python.UvSpec
     R.DescriptionSpec
     R.RenvSpec
