@@ -65,11 +65,11 @@ spec = do
           , "com.google.guava:guava"
           ]
   describe "findProjects (parentless <modules> children)" $ do
-    -- Pins the parentless-module regression: a module listed in an ancestor's
-    -- <modules> but with no <parent> element is legal Maven, but the closure
-    -- graph currently only seeds <parent> edges, so such a module is a
-    -- disconnected vertex and missing from the aggregator's closure until
-    -- <modules> edges are seeded into buildClosure.
+    -- A module listed in an ancestor's <modules> but with no <parent> element is
+    -- legal Maven. These tests pin that the closure graph carries <modules> edges:
+    -- without them such a module is a disconnected vertex, missing from the
+    -- aggregator's closureSubmodules, discovered as its own standalone project,
+    -- and it leaks into the reported dependency graph as a fake external package.
     itWithTempDir' "includes parentless <module> children in the aggregator's closureSubmodules" $ \dir -> do
       createParentlessFixture dir
       closures <- findProjects dir
@@ -82,10 +82,10 @@ spec = do
     itWithTempDir' "discovers a single project closure for a tree with a parentless module" $ \dir -> do
       createParentlessFixture dir
       closures <- findProjects dir
-      -- Once <modules> edges are seeded, the parentless module folds into the
-      -- aggregator's closure and is no longer a standalone source vertex, so
-      -- exactly one project closure should be discovered for this tree (today
-      -- it is its own separate MavenProjectClosure, giving two).
+      -- The parentless module belongs to the aggregator's closure rather than
+      -- being its own standalone source vertex, so exactly one project closure
+      -- is discovered for this tree; a second root here means <modules> edges
+      -- are missing.
       sort (map closureRootCoord closures) `shouldBe'` [rootCoord]
     itWithTempDir' "does not leak the parentless module into the final dependency graph" $ \dir -> do
       createParentlessFixture dir

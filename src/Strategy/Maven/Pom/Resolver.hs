@@ -66,6 +66,15 @@ buildGlobalClosure files = do
     -- "However, the group ID, artifact ID and version are still required, and must match the file in the location given or it will revert to the repository for the POM."
     --
     -- Because the group/artifact/version are required to match, we can just build edges between _coordinates_, rather than between _pom files_
+    --
+    -- The graph contains both kinds of POM-to-POM build relation Maven has, each
+    -- in the form it is declared: <parent> edges derive from coordinates the child
+    -- declares (so they survive even when the parent pom file was never loaded),
+    -- while <modules> edges derive from (aggregator, child) path pairs resolved at
+    -- load time ('LoadState'). A module listed only via <modules>, with no <parent>
+    -- of its own, is legal Maven; without a <modules> edge it would stay a
+    -- disconnected vertex and leak into the reported graph as a fake external
+    -- dependency instead of belonging to the aggregator's closure.
     buildClosure :: Map (Path Abs File) Pom -> [(Path Abs File, Path Abs File)] -> GlobalClosure
     buildClosure cache moduleEdges =
       GlobalClosure
@@ -82,10 +91,6 @@ buildGlobalClosure files = do
           , Just parentCoord <- [pomParentCoord pom]
           ]
 
-        -- A module listed in an ancestor's <modules> but with no <parent> of its
-        -- own is legal Maven. Without seeding an aggregator -> child edge it would
-        -- remain a disconnected vertex and leak into the reported graph as a fake
-        -- external dependency instead of belonging to the aggregator's closure.
         -- Pairs missing either endpoint (no validated pom, hence no coordinate)
         -- are skipped, same treatment as parent edges.
         moduleEdgeCoords :: [(MavenCoordinate, MavenCoordinate)]
@@ -130,11 +135,9 @@ recursiveLoadPom path = do
       -- "The relative path of the parent <code>pom.xml</code> file within the check out. If not specified, it defaults to <code>../pom.xml</code>"
       Just mvnParent -> recurseRelative (fromMaybe "../pom.xml" (rawParentRelativePath mvnParent))
 
-    -- A <module> listed in an aggregator but with no <parent> element of its own
-    -- is legal Maven, so record each resolved (aggregator, child) pair; 'buildClosure'
-    -- turns them into edges. Without this such a module would stay a disconnected
-    -- vertex and leak into the reported graph as a fake external dependency.
-    -- Duplicate <module> entries may duplicate pairs; AM.edges dedupes them.
+    -- Record each resolved (aggregator, child) pair so 'buildClosure' can turn it
+    -- into a <modules> edge (see there for why). Duplicate <module> entries may
+    -- duplicate pairs; AM.edges dedupes them.
     loadSubmodules :: RawPom -> m ()
     loadSubmodules raw = traverse_ recurseModule (rawPomModules raw)
 
