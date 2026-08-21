@@ -7,6 +7,7 @@ where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
+import App.Fossa.BinaryDeps.Nupkg (resolveNupkg)
 import App.Fossa.BinaryDeps.Whl (resolveWhl)
 import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
@@ -141,7 +142,7 @@ resolveBinary [] = strategyRawFingerprint
 -- | Functions which may be able to resolve a binary to a dependency.
 strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [Path Abs Dir -> Path Abs File -> m (Maybe BinaryDiscoveredDep)]
 strategies =
-  [resolveJar, resolveWhl]
+  [resolveJar, resolveWhl, resolveNupkg]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
