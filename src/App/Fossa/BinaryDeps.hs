@@ -1,15 +1,20 @@
 module App.Fossa.BinaryDeps (
   analyzeBinaryDeps,
   analyzeSingleBinary,
-) where
+  isAdditionalDep,
+)
+where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
+import App.Fossa.BinaryDeps.Whl (resolveWhl)
 import App.Fossa.VSI.Fingerprint (Fingerprint, fingerprintRaw)
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Lift (Lift)
 import Control.Monad (filterM)
+import Data.Aeson qualified as Aeson
+import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -19,8 +24,9 @@ import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import Path (Abs, Dir, File, Path, isProperPrefixOf, (</>))
 import Path.Extra (tryMakeRelative)
+import Srclib.Converter (depTypeToFetcher)
 import Srclib.Converter qualified as Srclib
-import Srclib.Types (AdditionalDepData (..), SourceUnit (..), SourceUserDefDep (..))
+import Srclib.Types (AdditionalDepData (..), BinaryDiscoveredDep (..), Locator (..), SourceUnit (..), SourceUnitBuild (SourceUnitBuild, buildArtifact, buildDependencies, buildImports, buildSucceeded), SourceUnitDependency (SourceUnitDependency, sourceDepData, sourceDepImports, sourceDepLocator), SourceUserDefDep (..))
 import Types (DiscoveredProjectType (BinaryDepsProjectType), GraphBreadth (Complete))
 
 -- | Binary detection is sufficiently different from other analysis types that it cannot be just another strategy.
@@ -34,7 +40,8 @@ analyzeBinaryDeps dir filters = do
     then pure Nothing
     else do
       resolvedBinaries <- traverse (analyzeSingleBinary dir) binaryPaths
-      pure . Just $ toSourceUnit (toProject dir) resolvedBinaries
+      let unit = toSourceUnit (toProject dir) resolvedBinaries
+      pure . Just $ unit
 
 -- | Equivalent to @analyzeBinaryDeps@, but analyzes a specific binary instead of discovering and analyzing all binaries in a directory.
 --
@@ -43,7 +50,7 @@ analyzeBinaryDeps dir filters = do
 -- The @Path Abs Dir@ provided is used to render the name of the resulting dependency:
 -- if we fallback to a plain "unknown binary" strategy its name is reported as the relative path between the provided @Path Abs Dir@ and the @Path Abs File@.
 -- If the path can't be made relative, the dependency name is the absolute path of the binary.
-analyzeSingleBinary :: (Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
+analyzeSingleBinary :: (Has (Lift IO) sig m, Has Logger sig m, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m BinaryDiscoveredDep
 analyzeSingleBinary root file = context ("Analyzing " <> toText file) $ resolveBinary strategies root file
 
 findBinaries :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has ReadFS sig m) => PathFilters -> Path Abs Dir -> m [Path Abs File]
@@ -69,19 +76,51 @@ toPathFilters root filters =
     }
 
 shouldFingerprintDir :: Path Abs Dir -> PathFilters -> Bool
-shouldFingerprintDir dir filters = (not shouldExclude) && shouldInclude
+shouldFingerprintDir dir filters = not shouldExclude && shouldInclude
   where
-    shouldExclude = (isPrefixedOrEqual dir) `any` (exclude filters)
-    shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
+    shouldExclude = isPrefixedOrEqual dir `any` exclude filters
+    shouldInclude = null (include filters) || isPrefixedOrEqual dir `any` include filters
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
 toProject :: Path Abs Dir -> ProjectResult
 toProject dir = ProjectResult BinaryDepsProjectType dir mempty Complete []
 
-toSourceUnit :: ProjectResult -> [SourceUserDefDep] -> SourceUnit
+toSourceUnit :: ProjectResult -> [BinaryDiscoveredDep] -> SourceUnit
 toSourceUnit project deps = do
   let unit = Srclib.projectToSourceUnit False project
-  unit{additionalData = Just $ AdditionalDepData (Just deps) Nothing}
+  let additionalDeps = mapMaybe isAdditionalDep deps
+  let sourceUnits = mapMaybe binaryDepToSourceUnitDependency deps
+  let locators = mapMaybe binaryDepToLocator deps
+
+  unit
+    { sourceUnitBuild =
+        Just $
+          SourceUnitBuild
+            { buildArtifact = "default"
+            , buildSucceeded = True
+            , buildImports = locators
+            , buildDependencies = sourceUnits
+            }
+    , additionalData = Just $ AdditionalDepData (Just additionalDeps) Nothing
+    }
+
+isAdditionalDep :: BinaryDiscoveredDep -> Maybe SourceUserDefDep
+isAdditionalDep (UserDep d) = Just d
+isAdditionalDep _ = Nothing
+
+binaryDepToSourceUnitDependency :: BinaryDiscoveredDep -> Maybe SourceUnitDependency
+binaryDepToSourceUnitDependency (LocatorDep (f, d)) =
+  Just
+    SourceUnitDependency
+      { sourceDepLocator = Locator (depTypeToFetcher f) (srcUserDepName d) (Just (srcUserDepVersion d))
+      , sourceDepImports = []
+      , sourceDepData = Aeson.Null
+      }
+binaryDepToSourceUnitDependency _ = Nothing
+
+binaryDepToLocator :: BinaryDiscoveredDep -> Maybe Locator
+binaryDepToLocator (LocatorDep (f, d)) = Just (Locator (depTypeToFetcher f) (srcUserDepName d) (Just (srcUserDepVersion d)))
+binaryDepToLocator _ = Nothing
 
 -- | Just render the first few characters of the fingerprint.
 -- The goal is to provide a high confidence that future binaries with the same name won't collide,
@@ -91,7 +130,7 @@ renderFingerprint fingerprint = Text.take 12 $ toText fingerprint
 
 -- | Try the next strategy in the list. If successful, evaluate to its result; if not move down the list of strategies and try again.
 -- Eventually falls back to strategyRawFingerprint if no other strategy succeeds.
-resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))] -> Path Abs Dir -> Path Abs File -> m SourceUserDefDep
+resolveBinary :: (Has (Lift IO) sig m, Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs Dir -> Path Abs File -> m (Maybe BinaryDiscoveredDep)] -> Path Abs Dir -> Path Abs File -> m BinaryDiscoveredDep
 resolveBinary (resolve : remainingStrategies) = \root file -> do
   result <- resolve root file
   case result of
@@ -100,14 +139,14 @@ resolveBinary (resolve : remainingStrategies) = \root file -> do
 resolveBinary [] = strategyRawFingerprint
 
 -- | Functions which may be able to resolve a binary to a dependency.
-strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [(Path Abs Dir -> Path Abs File -> m (Maybe SourceUserDefDep))]
+strategies :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => [Path Abs Dir -> Path Abs File -> m (Maybe BinaryDiscoveredDep)]
 strategies =
-  [resolveJar]
+  [resolveJar, resolveWhl]
 
 -- | Fallback strategy: resolve to a user defined dependency for the binary, where the name is the relative path and the version is the fingerprint.
 -- This strategy is used if no other strategy succeeds at resolving the binary.
-strategyRawFingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m SourceUserDefDep
+strategyRawFingerprint :: (Has ReadFS sig m, Has (Lift IO) sig m, Has Diagnostics sig m) => Path Abs Dir -> Path Abs File -> m BinaryDiscoveredDep
 strategyRawFingerprint root file = do
   fp <- fingerprintRaw file
   let rel = tryMakeRelative root file
-  pure $ SourceUserDefDep (toText rel) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing (Just rel)
+  pure $ UserDep (Srclib.Types.SourceUserDefDep (toText rel) (renderFingerprint fp) "" (Just "Binary discovered in source tree") Nothing (Just rel))
