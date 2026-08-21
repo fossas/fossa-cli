@@ -21,6 +21,7 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Monad (unless)
+import Data.Bifunctor (first, second)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -121,7 +122,7 @@ recursiveLoadPom path = do
     Just _ -> pure ()
     Nothing -> do
       (res :: Maybe RawPom) <- recover (readContentsXML path)
-      modify @LoadState (\(r, e) -> (Map.insert path res r, e))
+      modify @LoadState (first (Map.insert path res))
       traverse_ loadAdjacent res
   where
     loadAdjacent :: RawPom -> m ()
@@ -147,7 +148,7 @@ recursiveLoadPom path = do
       case resolvedPath of
         Nothing -> pure ()
         Just childPath -> do
-          modify @LoadState (\(r, e) -> (r, (path, childPath) : e))
+          modify @LoadState (second ((path, childPath) :))
           recursiveLoadPom childPath
 
     recurseRelative :: Text {- relative filepath -} -> m ()
