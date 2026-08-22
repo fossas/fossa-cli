@@ -4,11 +4,11 @@ module Pnpm.PnpmLockSpec (
   spec,
 ) where
 
+import Data.ByteString qualified as BS
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Yaml (decodeFileEither, prettyPrintParseException)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType),
@@ -23,7 +23,7 @@ import GraphUtil (
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (buildGraph)
+import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile)
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
 
 mkProdDep :: Text -> Dependency
@@ -90,12 +90,12 @@ lodash =
 
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
 checkGraph pathToFixture buildGraphSpec = do
-  eitherDecodedLockFile <- runIO $ decodeFileEither (toString pathToFixture)
-  case eitherDecodedLockFile of
+  lockFileContents <- runIO $ BS.readFile (toString pathToFixture)
+  case parsePnpmLockfile lockFileContents of
     Right pnpmLock -> buildGraphSpec (buildGraph pnpmLock)
     Left err ->
       describe "pnpm-lock" $
-        it "should parse lockfile" (expectationFailure $ prettyPrintParseException err)
+        it "should parse lockfile" (expectationFailure $ toString err)
 
 spec :: Spec
 spec = do
@@ -136,6 +136,12 @@ spec = do
     describe "local dep env propagation" $ checkGraph pnpmLockV9LocalDep pnpmLockV9LocalDepSpec
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
+
+  -- pnpm v11 can emit a multi-document lockfile: a metadata document
+  -- (pnpmfile checksum, config dependencies) precedes the lockfile document.
+  let pnpmLockV11MultiDoc = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-multi-doc/pnpm-lock.yaml")
+  describe "works with pnpm v11 multi-document lockfile" $
+    checkGraph pnpmLockV11MultiDoc pnpmLockV9LocalDepSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
