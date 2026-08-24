@@ -235,10 +235,14 @@ buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase 
 
 -- | Parse the contents of a pnpm-lock.yaml file.
 --
--- pnpm v11 can write the lockfile as a multi-document YAML stream: a metadata
--- document (pnpmfile checksum, config dependency integrity, etc.) precedes the
--- actual lockfile document. Use the first document that parses as a lockfile
--- instead of rejecting the stream with "Multiple YAML documents encountered".
+-- pnpm v11 can write the lockfile as a multi-document YAML stream. In practice
+-- the stream is exactly two documents: a metadata front-document (pnpmfile
+-- checksum, config dependency integrity, etc. — no dependency data) followed by
+-- the lockfile document, which still carries all of the importers\/packages\/
+-- snapshots data. Only the lockfile document parses as a 'PnpmLockfile' (the
+-- metadata document has no @lockfileVersion@), so selecting the first document
+-- that parses as a lockfile analyzes the full dependency data rather than
+-- rejecting the stream with "Multiple YAML documents encountered".
 parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err
