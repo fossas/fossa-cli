@@ -496,6 +496,10 @@
                 }
             }
         },
+        "enableGoBinaryAnalysis": {
+            "type": "boolean",
+            "description": "Report Go module dependencies read from the buildinfo embedded in compiled Go binaries. Combine with --unpack-archives to reach binaries inside archives."
+        },
         "ignoreOrgWideCustomLicenseScanConfigs": {
             "type": "boolean",
             "default": false,

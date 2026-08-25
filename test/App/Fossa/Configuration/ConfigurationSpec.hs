@@ -56,6 +56,7 @@ expectedConfigFile path =
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = path
     , configReachability = Nothing
+    , configEnableGoBinaryAnalysis = Nothing
     }
 
 expectedReleaseGroup :: ConfigReleaseGroup

@@ -45,6 +45,7 @@ configFile path =
     , configConfigFilePath = path
     , configMavenScope = Nothing
     , configReachability = Nothing
+    , configEnableGoBinaryAnalysis = Nothing
     }
 
 fixtureDir :: Path Rel Dir

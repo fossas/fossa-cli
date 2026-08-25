@@ -96,7 +96,7 @@ import Control.Monad (void, when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -243,6 +243,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeBaseDir :: FilePath
   , analyzeDeprecatedUseV3GoResolver :: Flag DeprecatedUseV3GoResolver
   , analyzePathDependencies :: Bool
+  , analyzeGoBinaryAnalysis :: Bool
   , analyzeForceFirstPartyScans :: Flag ForceFirstPartyScans
   , analyzeForceNoFirstPartyScans :: Flag ForceNoFirstPartyScans
   , analyzeIgnoreOrgWideCustomLicenseScanConfigs :: Flag IgnoreOrgWideCustomLicenseScanConfigs
@@ -310,6 +311,10 @@ data StrategyConfig = StrategyConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , resolvePathDependencies :: Bool
   , useGitBackedCargoLocators :: UseGitBackedCargoLocators
+  , -- | Read Go module lists from the buildinfo embedded in compiled Go
+    -- binaries. Opt-in: @fossa analyze@ otherwise reports only what package
+    -- managers declare.
+    enableGoBinaryAnalysis :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -364,6 +369,7 @@ cliParser =
     <*> baseDirArg
     <*> experimentalUseV3GoResolver
     <*> experimentalAnalyzePathDependencies
+    <*> enableGoBinaryAnalysisParser
     <*> flagOpt ForceFirstPartyScans (applyFossaStyle <> long "experimental-force-first-party-scans" <> stringToHelpDoc "Force first party scans")
     <*> flagOpt ForceNoFirstPartyScans (applyFossaStyle <> long "experimental-block-first-party-scans" <> stringToHelpDoc "Block first party scans. This can be used to forcibly turn off first-party scans if your organization defaults to first-party scans.")
     <*> flagOpt IgnoreOrgWideCustomLicenseScanConfigs (applyFossaStyle <> long "ignore-org-wide-custom-license-scan-configs" <> stringToHelpDoc "Ignore custom-license scan configurations for your organization. These configurations are defined in the `Integrations` section of the Admin settings in the FOSSA web app")
@@ -404,6 +410,13 @@ withoutDefaultFilterParser docsUrl = flagOpt WithoutDefaultFilters (applyFossaSt
 
 experimentalUseV3GoResolver :: Parser (Flag DeprecatedUseV3GoResolver)
 experimentalUseV3GoResolver = flagOpt DeprecatedUseV3GoResolver (applyFossaStyle <> long "experimental-use-v3-go-resolver" <> hidden)
+
+enableGoBinaryAnalysisParser :: Parser Bool
+enableGoBinaryAnalysisParser =
+  switch $
+    long "enable-go-binary-analysis"
+      <> applyFossaStyle
+      <> stringToHelpDoc "Report Go modules read from the buildinfo embedded in compiled Go binaries. Combine with --unpack-archives to reach binaries inside archives."
 
 experimentalAnalyzePathDependencies :: Parser Bool
 experimentalAnalyzePathDependencies =
@@ -684,7 +697,7 @@ collectCLIFilters AnalyzeCliOpts{..} =
     (comboExclude analyzeExcludeTargets analyzeExcludePaths)
 
 collectStrategyConfig :: Maybe ConfigFile -> AnalyzeCliOpts -> StrategyConfig
-collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies} =
+collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAnalyzePathDependencies, analyzeGoBinaryAnalysis} =
   StrategyConfig
     ( fmap
         gradleConfigsOnly
@@ -692,6 +705,13 @@ collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAn
     )
     shouldAnalyzePathDependencies
     (UseGitBackedCargoLocators True)
+    goBinaryAnalysis
+  where
+    -- The flag turns it on; the config file can do the same for CI setups
+    -- that would rather not edit their pipeline arguments.
+    goBinaryAnalysis =
+      analyzeGoBinaryAnalysis
+        || fromMaybe False (maybeCfg >>= configEnableGoBinaryAnalysis)
 
 collectVendoredDeps ::
   (Has Diagnostics sig m) =>

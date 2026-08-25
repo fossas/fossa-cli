@@ -12,9 +12,16 @@
 //! and the writer is the linker's `asmb` stage
 //! (`cmd/link/internal/ld/data.go`, `buildinfo`).
 
-use std::io::Read;
+use std::{
+    fs::File,
+    io::{BufWriter, Read},
+    path::{Path, PathBuf},
+};
 
+use clap::Parser;
 use serde::Serialize;
+use stable_eyre::{eyre::Context, Result};
+use tracing::debug;
 
 /// The 14-byte magic marking the start of the buildinfo header.
 static BUILDINFO_MAGIC: &[u8] = b"\xff Go buildinf:";
@@ -314,9 +321,194 @@ fn parse_modinfo(modinfo: &str) -> (Option<GoModule>, Vec<GoModule>) {
     (main_module, modules)
 }
 
+/// Observation kind reported for a Go binary, shared by every discovery path.
+pub const GO_BINARY_OBSERVATION: &str = "v1.discover.binary.go";
+
+/// Only sniff regular files at least this large; Go binaries are never tiny.
+pub const MIN_GO_BINARY_SIZE: u64 = 4096;
+
+/// How many leading bytes are read to decide whether a file is a candidate
+/// binary. `is_candidate_binary` needs only 4, but reading a slightly larger
+/// prefix lets tar callers stitch it back onto a forward-only stream cheaply.
+pub const BINARY_PREFIX_LEN: usize = 64;
+
+/// A Go binary discovered somewhere (a container layer, or the filesystem),
+/// with the module list parsed from its embedded buildinfo.
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
+pub struct DiscoveredGoBinary {
+    pub kind: &'static str,
+    pub path: PathBuf,
+    pub go_version: String,
+    pub main_module: Option<GoModule>,
+    pub modules: Vec<GoModule>,
+}
+
+impl DiscoveredGoBinary {
+    pub fn new(path: PathBuf, info: GoBuildInfo) -> Self {
+        DiscoveredGoBinary {
+            kind: GO_BINARY_OBSERVATION,
+            path,
+            go_version: info.go_version,
+            main_module: info.main_module,
+            modules: info.modules,
+        }
+    }
+}
+
+/// Sniff a file on disk for embedded Go buildinfo.
+///
+/// Anything that isn't a parseable Go binary - too small, wrong magic,
+/// unreadable, or built by Go < 1.18 - returns `None` rather than failing, so
+/// one bad file can't sink a whole scan.
+pub fn scan_file(path: &Path) -> Option<DiscoveredGoBinary> {
+    let metadata = match path.metadata() {
+        Ok(metadata) => metadata,
+        Err(e) => {
+            debug!(?path, "skipped: failed to stat: {e:?}");
+            return None;
+        }
+    };
+    if !metadata.is_file() || metadata.len() < MIN_GO_BINARY_SIZE {
+        return None;
+    }
+
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(e) => {
+            debug!(?path, "skipped: failed to open: {e:?}");
+            return None;
+        }
+    };
+
+    let mut prefix = [0u8; BINARY_PREFIX_LEN];
+    if let Err(e) = file.read_exact(&mut prefix) {
+        debug!(?path, "skipped: failed to read file prefix: {e:?}");
+        return None;
+    }
+    if !is_candidate_binary(&prefix) {
+        return None;
+    }
+
+    debug!(?path, "candidate binary; scanning for Go buildinfo");
+    // The scan needs offsets relative to the start of the file, so put the
+    // already-consumed prefix back in front of the remaining stream.
+    let reader = std::io::Cursor::new(prefix).chain(file);
+    scan_go_buildinfo(reader).map(|info| DiscoveredGoBinary::new(path.to_path_buf(), info))
+}
+
+/// Scan the given paths, keeping only those that are Go binaries carrying
+/// buildinfo. Order follows the input.
+pub fn scan_files<'a>(paths: impl IntoIterator<Item = &'a Path>) -> Vec<DiscoveredGoBinary> {
+    paths.into_iter().filter_map(scan_file).collect()
+}
+
+#[derive(Debug, Parser)]
+pub struct Subcommand {
+    /// Files to scan. When empty, paths are read from stdin, one per line.
+    ///
+    /// Callers with many candidates should prefer stdin: a large repository can
+    /// blow past the platform argument-length limit.
+    files: Vec<PathBuf>,
+}
+
+#[tracing::instrument]
+pub fn main(opts: Subcommand) -> Result<()> {
+    let paths = if opts.files.is_empty() {
+        read_paths_from_stdin().context("read paths from stdin")?
+    } else {
+        opts.files
+    };
+
+    let discovered = scan_files(paths.iter().map(PathBuf::as_path));
+    let mut stdout = BufWriter::new(std::io::stdout());
+    serde_json::to_writer(&mut stdout, &discovered).context("serialize results")
+}
+
+/// Read newline-delimited paths from stdin, ignoring blank lines.
+fn read_paths_from_stdin() -> std::io::Result<Vec<PathBuf>> {
+    let mut buf = String::new();
+    std::io::stdin().read_to_string(&mut buf)?;
+    Ok(buf
+        .lines()
+        .map(str::trim_end)
+        .filter(|line| !line.is_empty())
+        .map(PathBuf::from)
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The real buildinfo region carved out of a Go binary.
+    const SCAN_FILE_FIXTURE: &[u8] = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/testdata/go-buildinfo/gh-2.86.0-darwin-arm64.bin"
+    ));
+
+    /// A fake ELF: candidate magic up front, the real buildinfo fixture at a
+    /// 16-byte-aligned offset, padded past MIN_GO_BINARY_SIZE.
+    fn fake_elf_with_buildinfo() -> Vec<u8> {
+        let mut buf = vec![0u8; BUILDINFO_ALIGN];
+        buf[..4].copy_from_slice(b"\x7fELF");
+        buf.extend_from_slice(SCAN_FILE_FIXTURE);
+        if buf.len() < MIN_GO_BINARY_SIZE as usize {
+            buf.resize(MIN_GO_BINARY_SIZE as usize, 0);
+        }
+        buf
+    }
+
+    /// Write bytes to a uniquely-named file under the system temp dir.
+    fn write_temp(name: &str, bytes: &[u8]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("millhone-scan-file-{name}"));
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+        let path = dir.join(name);
+        std::fs::write(&path, bytes).expect("write temp file");
+        path
+    }
+
+    #[test]
+    fn scan_file_reads_go_binary_on_disk() {
+        let path = write_temp("go-binary", &fake_elf_with_buildinfo());
+        let discovered = scan_file(&path).expect("scan fake Go binary");
+
+        assert_eq!(discovered.kind, GO_BINARY_OBSERVATION);
+        assert_eq!(discovered.path, path);
+        assert_eq!(discovered.go_version, "go1.25.6");
+        assert!(
+            !discovered.modules.is_empty(),
+            "expected dependency modules, got none"
+        );
+    }
+
+    #[test]
+    fn scan_file_skips_files_that_are_not_go_binaries() {
+        // Big enough, but no candidate-binary magic.
+        let text = write_temp("not-a-binary", &vec![b'a'; MIN_GO_BINARY_SIZE as usize]);
+        assert_eq!(scan_file(&text), None, "plain text should be skipped");
+
+        // Right magic, but below the size floor.
+        let tiny = write_temp("tiny-elf", b"\x7fELF and nothing else");
+        assert_eq!(scan_file(&tiny), None, "tiny file should be skipped");
+
+        // A directory is not a file.
+        let dir = std::env::temp_dir().join("millhone-scan-file-dir");
+        std::fs::create_dir_all(&dir).expect("create temp dir");
+        assert_eq!(scan_file(&dir), None, "directory should be skipped");
+
+        // A path that does not exist at all.
+        assert_eq!(scan_file(&dir.join("missing")), None, "missing file");
+    }
+
+    #[test]
+    fn scan_files_keeps_only_go_binaries() {
+        let go_binary = write_temp("batch-go-binary", &fake_elf_with_buildinfo());
+        let text = write_temp("batch-text", &vec![b'a'; MIN_GO_BINARY_SIZE as usize]);
+
+        let discovered = scan_files([go_binary.as_path(), text.as_path()]);
+        assert_eq!(discovered.len(), 1, "only the Go binary should be reported");
+        assert_eq!(discovered[0].path, go_binary);
+    }
 
     /// Build a synthetic buildinfo blob: padding to 16-byte alignment, magic,
     /// ptrSize+flags, then inline go version + sentinel-wrapped modinfo.

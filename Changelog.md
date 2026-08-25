@@ -2,6 +2,7 @@
 
 ## 3.18.0
 
+- Go: `fossa analyze` can now report Go module dependencies read from the buildinfo embedded in compiled Go binaries (built with Go >= 1.18), so Go code shipped as a binary with no `go.mod` alongside it is no longer invisible to analysis. Opt in with `--enable-go-binary-analysis` (or `enableGoBinaryAnalysis: true` in `.fossa.yml`); it is off by default because `fossa analyze` otherwise reports only what package managers declare. To reach binaries nested inside an archive (for example a `.so` inside an AAR or JAR), combine it with `--unpack-archives`.
 - Container scanning: `fossa container analyze` now reports Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
 - Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
