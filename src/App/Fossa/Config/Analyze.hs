@@ -311,10 +311,10 @@ data StrategyConfig = StrategyConfig
   { allowedGradleConfigs :: Maybe (Set Text)
   , resolvePathDependencies :: Bool
   , useGitBackedCargoLocators :: UseGitBackedCargoLocators
-  , -- | Read Go module lists from the buildinfo embedded in compiled Go
-    -- binaries. Opt-in: @fossa analyze@ otherwise reports only what package
-    -- managers declare.
-    enableGoBinaryAnalysis :: Bool
+  , enableGoBinaryAnalysis :: Bool
+  -- ^ Read Go module lists from the buildinfo embedded in compiled Go
+  -- binaries. Opt-in: @fossa analyze@ otherwise reports only what package
+  -- managers declare.
   }
   deriving (Eq, Ord, Show, Generic)
 

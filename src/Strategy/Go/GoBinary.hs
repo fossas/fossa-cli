@@ -123,6 +123,7 @@ instance ToJSON GoBinaryProject
 
 instance AnalyzeProject GoBinaryProject where
   analyzeProject _ = getDeps
+
   -- Reading bytes already on disk; no build tool is invoked.
   analyzeProjectStaticOnly _ = getDeps
 
@@ -186,9 +187,9 @@ toProjects candidates discovered = map toProject . Map.toAscList $ Map.fromListW
     byDir =
       [ (parent path, (NE.singleton path, deps))
       | binary <- discovered
-      , Just path <- [Map.lookup (goBinaryPath binary) byPath]
       , let deps = goBinaryDependencies binary
       , not (null deps)
+      , Just path <- [Map.lookup (goBinaryPath binary) byPath]
       ]
 
     -- 'Map.fromListWith' applies the later entry first; flip so paths and

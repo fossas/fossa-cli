@@ -11,7 +11,6 @@ import Container.Types (DiscoveredGoBinary (..), GoModule (..))
 import Data.Aeson qualified as Aeson
 import Data.List (nub)
 import Data.Maybe (mapMaybe, maybeToList)
-import Data.Text (Text)
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), textToOriginPath)
 import Strategy.Go.GoBinary (normalizeVersion)
 import Types (GraphBreadth (..))

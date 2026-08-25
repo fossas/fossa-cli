@@ -112,14 +112,14 @@ spec = do
               }
       toProjects [toolA, toolB] [binA, binB]
         `shouldBe` [ GoBinaryProject
-                      { goBinaryProjectDir = $(mkAbsDir "/src/tools/")
-                      , goBinaryProjectFiles = [toolA, toolB]
-                      , goBinaryProjectDeps =
-                          [ mkDep "github.com/google/uuid" "v1.6.0"
-                          , mkDep "golang.org/x/sys" "c0bba94af5f8"
-                          , mkDep "github.com/urfave/cli/v3" "v3.3.3"
-                          ]
-                      }
+                       { goBinaryProjectDir = $(mkAbsDir "/src/tools/")
+                       , goBinaryProjectFiles = [toolA, toolB]
+                       , goBinaryProjectDeps =
+                           [ mkDep "github.com/google/uuid" "v1.6.0"
+                           , mkDep "golang.org/x/sys" "c0bba94af5f8"
+                           , mkDep "github.com/urfave/cli/v3" "v3.3.3"
+                           ]
+                       }
                    ]
 
     it "keeps binaries in different directories as separate projects" $ do

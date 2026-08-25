@@ -21,6 +21,7 @@ module Container.Types (
   DiscoveredBinaries (..),
 
   -- * Go Binary Analysis Related Types
+
   -- Defined alongside the filesystem discovery strategy that shares them.
   GoModule (..),
   DiscoveredGoBinary (..),
