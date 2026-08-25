@@ -57,11 +57,10 @@ instance FromXML PackageVersionEntry where
 buildVersionMap :: DirectoryPackagesProps -> Map Text Text
 buildVersionMap props =
   Map.fromList
-    . mapMaybe toPair
-    . concatMap packageVersions
+    . concatMap (mapMaybe toPair . packageVersions)
     $ packageVersionGroups props
   where
-    toPair pv = (,) <$> (Text.toCaseFold <$> pvName pv) <*> pvVersion pv
+    toPair pv = (,) . Text.toCaseFold <$> pvName pv <*> pvVersion pv
 
 -- | Search for Directory.Packages.props starting from the given directory,
 -- walking up parent directories. If found, parse it and return the version map.
