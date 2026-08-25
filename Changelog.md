@@ -8,7 +8,6 @@
 - Binary discovery: Added binary discovery support for `.whl` files
 - Binary discovery: Added binary discovery support for `.nupkg` files
 - Swift: Add support for packages with a `traits` argument
-- Binary discovery: Added binary discovery support for `.whl` files
 
 ## 3.18.0
 
