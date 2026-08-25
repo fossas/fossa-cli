@@ -7,6 +7,7 @@ module App.Fossa.VendoredDependency (
   vendoredDepToLocator,
   forceVendoredToArchive,
   compressFile,
+  safeSeparators,
   hashFile,
   hashBs,
   dedupVendoredDeps,
@@ -50,7 +51,8 @@ import Fossa.API.Types (
 import Path (Abs, Dir, Path)
 import Prettyprinter (Pretty (pretty), vsep)
 import Srclib.Types (Locator (..), ProvidedPackageLabel)
-import System.FilePath.Posix (splitDirectories, (</>))
+import System.FilePath (dropDrive, splitDirectories)
+import System.FilePath.Posix ((</>))
 
 data VendoredDependency = VendoredDependency
   { vendoredName :: Text
@@ -197,8 +199,11 @@ hashFile fileToHash = do
   fileContent <- BS.readFile fileToHash
   pure . toText . show $ md5 fileContent
 
+-- Flatten a path into a single filename component. We use `dropDrive` to
+-- ensure the result is relative, since callers join it with `(</>)`, which
+-- discards the LHS when the RHS is absolute.
 safeSeparators :: FilePath -> FilePath
-safeSeparators = intercalate "_" . splitDirectories
+safeSeparators = intercalate "_" . splitDirectories . dropDrive
 
 skippedDepsDebugLog :: NeedScanningDeps -> SkippableDeps -> VendoredDependencyScanMode -> SkippedDepsLogMsg
 skippedDepsDebugLog needScanningDeps skippedDeps scanMode =

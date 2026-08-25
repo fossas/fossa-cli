@@ -5,6 +5,7 @@ module Discovery.Walk (
   walkWithFilters',
   WalkStep (..),
   findFileInAncestor,
+  enumeratePrunedSubtrees,
 
   -- * Helpers
   fileName,
@@ -144,6 +145,27 @@ walkWithFilters' f root = do
   filters <- ask
   let f' dir subdirs files = pathFilterIntercept filters root dir subdirs $ f dir subdirs files
   walk' f' root
+
+-- | Return the relative-to-root paths of every directory pruned by the
+-- 'AllFilters' include/exclude path rules. Useful for surfacing pruned dirs
+-- to the user once at startup, before any per-strategy walks (which would
+-- otherwise emit one log per strategy that reaches the same prune).
+enumeratePrunedSubtrees ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  AllFilters ->
+  Path Abs Dir ->
+  m [Path Rel Dir]
+enumeratePrunedSubtrees filters root = walk' visit root
+  where
+    visit _dir subdirs _files = do
+      let pruned = do
+            subdir <- subdirs
+            stripped <- maybe [] pure (stripProperPrefix root subdir)
+            if pathAllowed filters stripped then [] else [stripped]
+          skipNames = map (toText . toFilePath . dirname) pruned
+      pure (pruned, WalkSkipSome skipNames)
 
 -- | Search upwards in the directory tree for the existence of the supplied file.
 findFileInAncestor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Text -> m (Path Abs File)

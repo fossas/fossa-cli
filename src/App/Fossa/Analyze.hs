@@ -121,7 +121,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
-import Data.Foldable (traverse_)
+import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
@@ -132,8 +132,9 @@ import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters, MavenScopeFilters, applyFilters, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
+import Discovery.Walk (enumeratePrunedSubtrees)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -297,6 +298,32 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
+-- | Walk the tree once at startup and surface every directory the path
+-- filters will prune. Each prune is logged once at info level here, instead
+-- of emitting per-strategy duplicates from inside the walker (~28 strategies
+-- would otherwise each report the same prune). Short-circuits when no path
+-- filters are configured so the extra walk is only paid for when it can
+-- produce output.
+logPrunedSubtrees ::
+  ( Has Logger sig m
+  , Has ReadFS sig m
+  , Has Diag.Diagnostics sig m
+  ) =>
+  AllFilters ->
+  Path Abs Dir ->
+  m ()
+logPrunedSubtrees filters basedir =
+  unless (noPathFilters filters) $ do
+    pruned <- enumeratePrunedSubtrees filters basedir
+    for_ pruned $ \p ->
+      logInfo $ "Skipping path " <> viaShow p <> " (excluded by paths filter)"
+  where
+    noPathFilters AllFilters{includeFilters = i, excludeFilters = e} =
+      null (combinedPaths i)
+        && null (combinedPathGlobs i)
+        && null (combinedPaths e)
+        && null (combinedPathGlobs e)
+
 analyze ::
   ( Has Debug sig m
   , Has Diag.Diagnostics sig m
@@ -331,6 +358,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.snippetScan cfg
       enableVendetta = Config.xVendetta cfg
+      -- Discovery runs with `mempty` when `--no-discovery-exclusion` is set
+      -- (see definition further down). Log against the same filter set so the
+      -- startup output matches what discovery actually applies.
+      discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
+
+  logPrunedSubtrees discoveryFilters basedir
 
   manualDepsResult <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -434,7 +467,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           pure Nothing
         else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
-  let discoveryFilters = if fromFlag NoDiscoveryExclusion noDiscoveryExclusion then mempty else filters
   let strategyCfg =
         (Config.strategyConfig cfg)
           { Config.useGitBackedCargoLocators = Config.UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators orgInfo

@@ -46,7 +46,7 @@ testServiceStackForPkgReferences =
   aroundAll (withAnalysisOf NonStrict $ serviceStack NuGet.discover) $ do
     describe "ServiceStack" $ do
       it "should find targets" $ \(result, _) -> do
-        length result `shouldBe` 64
+        length result `shouldBe` 92
 
 testServiceStackForPkgConfig :: Spec
 testServiceStackForPkgConfig =

@@ -8,6 +8,7 @@ module Srclib.Types (
   SourceUnitNoticeFile (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
+  BinaryDiscoveredDep (..),
   SourceRemoteDep (..),
   LocatorWithMetadata (..),
   Locator (..),
@@ -41,6 +42,7 @@ module Srclib.Types (
 ) where
 
 import Data.Aeson
+import Data.Char qualified as Char
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -52,7 +54,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, Path, SomeBase (..), toFilePath)
 import Path.Extra (SomePath (..))
-import Types (GraphBreadth (..))
+import Types (DepType, GraphBreadth (..))
 
 data LicenseScanType = CliLicenseScanned
   deriving (Eq, Ord, Show)
@@ -441,6 +443,8 @@ data SourceRemoteDep = SourceRemoteDep
   }
   deriving (Eq, Ord, Show)
 
+data BinaryDiscoveredDep = UserDep SourceUserDefDep | LocatorDep (DepType, SourceUserDefDep) deriving (Eq, Ord, Show)
+
 -- | Labels are side channel information about dependencies,
 -- used to communicate information about the dependency in some way.
 newtype ProvidedPackageLabels = ProvidedPackageLabels
@@ -497,7 +501,10 @@ instance ToText Locator where
 
 renderLocator :: Locator -> Text
 renderLocator Locator{..} =
-  locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+  stripNonPrintable $
+    locatorFetcher <> "+" <> locatorProject <> "$" <> fromMaybe "" locatorRevision
+  where
+    stripNonPrintable = Text.filter Char.isPrint
 
 -- The projectId is the full locator of the project. E.g. custom+123/someProject (<fetcher>+<orgId>/<project-name>)
 projectId :: Locator -> Text

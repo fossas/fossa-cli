@@ -7,6 +7,7 @@ import Srclib.Types (
   SourceUnit (..),
   SourceUnitBuild (..),
   SourceUnitDependency (..),
+  renderLocator,
   toProjectLocator,
   translateSourceUnitLocators,
  )
@@ -15,6 +16,11 @@ import Types (GraphBreadth (Complete))
 
 spec :: Spec
 spec = do
+  describe "renderLocator" $ do
+    it "should strip non-printable characters such as NUL bytes" $ do
+      let locator = Locator "go" "github.com/gin-gonic\NUL/gin" (Just "v1.\t9.1\DEL")
+      renderLocator locator `shouldBe` "go+github.com/gin-gonic/gin$v1.9.1"
+
   describe "translateSourceUnitLocators" $ do
     -- Helper to create a simple translation function from a map (for backward compatibility in tests)
     let simpleTranslate translationMap loc =

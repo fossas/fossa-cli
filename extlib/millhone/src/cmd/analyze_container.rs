@@ -1,7 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::File,
-    io::{BufWriter, Read},
+    io::{BufReader, BufWriter, Read},
     path::{Path, PathBuf},
 };
 
@@ -14,6 +14,8 @@ use tar::{Archive, Entry};
 use tracing::{debug, info, info_span, warn};
 use typed_builder::TypedBuilder;
 
+use super::go_buildinfo::{is_candidate_binary, scan_go_buildinfo, GoBuildInfo, GoModule};
+
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
 #[clap(version)]
@@ -23,6 +25,14 @@ pub struct Subcommand {
 }
 
 const JAR_OBSERVATION: &str = "v1.discover.binary.jar";
+const GO_BINARY_OBSERVATION: &str = "v1.discover.binary.go";
+
+/// Only sniff regular files at least this large; Go binaries are never tiny.
+/// (u64 because that's what tar header sizes are.)
+const MIN_GO_BINARY_SIZE: u64 = 4096;
+
+/// Magic bytes identifying a gzip stream.
+const GZIP_MAGIC: [u8; 2] = [0x1f, 0x8b];
 
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct DiscoveredJar {
@@ -51,31 +61,58 @@ struct OciManifest {
 #[derive(Debug, PartialEq, Eq, Serialize, Hash)]
 struct LayerPath(PathBuf);
 
+/// A Go binary discovered in a layer, with the module list parsed from its
+/// embedded buildinfo.
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
+struct DiscoveredGoBinary {
+    kind: &'static str,
+    path: PathBuf,
+    go_version: String,
+    main_module: Option<GoModule>,
+    modules: Vec<GoModule>,
+}
+
+impl DiscoveredGoBinary {
+    fn new(path: PathBuf, info: GoBuildInfo) -> Self {
+        DiscoveredGoBinary {
+            kind: GO_BINARY_OBSERVATION,
+            path,
+            go_version: info.go_version,
+            main_module: info.main_module,
+            modules: info.modules,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
-struct JarAnalysis {
+struct ContainerAnalysis {
     /// Jars and fingerprints associated with each layer in a jar file.
     discovered_jars: HashMap<LayerPath, Vec<DiscoveredJar>>,
+
+    /// Go binaries (with their embedded module lists) per layer.
+    discovered_go_binaries: HashMap<LayerPath, Vec<DiscoveredGoBinary>>,
 }
 
 #[tracing::instrument]
 pub fn main(opts: Subcommand) -> Result<()> {
     let tar_filename = opts.image_tar_file();
-    let jar_analysis = jars_in_container(opts.image_tar_file())
+    let analysis = binaries_in_container(opts.image_tar_file())
         .with_context(|| format!("analyze container: {:?}", tar_filename))?;
 
     let mut stdout = BufWriter::new(std::io::stdout());
-    serde_json::to_writer(&mut stdout, &jar_analysis).context("Serialize Results")
+    serde_json::to_writer(&mut stdout, &analysis).context("Serialize Results")
 }
 
-/// Extracts the container (saved via `docker save`) and finds JAR files inside any layer.
-/// For each one found, fingerprints it and reports all those fingerprints along with their
+/// Extracts the container (saved via `docker save`) and finds JAR files and Go
+/// binaries inside any layer. JARs are fingerprinted; Go binaries have their
+/// embedded buildinfo module list parsed. Everything is reported along with its
 /// layer and path.
 #[tracing::instrument]
-fn jars_in_container(image_path: &PathBuf) -> Result<JarAnalysis> {
-    // Visit each layer and fingerprint the JARs within.
+fn binaries_in_container(image_path: &PathBuf) -> Result<ContainerAnalysis> {
     info!("inspecting container");
     let layers = list_container_layers(image_path)?;
-    let mut discoveries = HashMap::new();
+    let mut jar_discoveries = HashMap::new();
+    let mut go_discoveries = HashMap::new();
 
     let mut image = unpack(image_path)?;
     for entry in image.entries().context("iterate entries")? {
@@ -88,13 +125,15 @@ fn jars_in_container(image_path: &PathBuf) -> Result<JarAnalysis> {
 
         let layer = path.to_path_buf();
         // Layers should have a form like blob
-        let layer_discoveries =
-            jars_in_layer(entry).with_context(|| format!("read layer '{layer:?}'"))?;
-        discoveries.insert(LayerPath(layer), layer_discoveries);
+        let (layer_jars, layer_go_binaries) =
+            scan_layer(entry).with_context(|| format!("read layer '{layer:?}'"))?;
+        jar_discoveries.insert(LayerPath(layer.clone()), layer_jars);
+        go_discoveries.insert(LayerPath(layer), layer_go_binaries);
     }
 
-    Ok(JarAnalysis {
-        discovered_jars: discoveries,
+    Ok(ContainerAnalysis {
+        discovered_jars: jar_discoveries,
+        discovered_go_binaries: go_discoveries,
     })
 }
 
@@ -106,16 +145,52 @@ fn unpack(path: &PathBuf) -> Result<Archive<File>> {
     Ok(tar::Archive::new(file))
 }
 
+/// Layer blobs are plain tars in the legacy `docker save` layout, but gzipped
+/// tars in the OCI layout modern Docker emits. Peek at the magic bytes and
+/// transparently decompress when needed.
 #[tracing::instrument(skip(entry))]
-fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
-    let mut discoveries = Vec::new();
+fn scan_layer(
+    entry: Entry<'_, impl Read>,
+) -> Result<(Vec<DiscoveredJar>, Vec<DiscoveredGoBinary>)> {
+    let mut reader = BufReader::new(entry);
+    // A single `read` may legally return fewer bytes than requested even when
+    // more remain, so loop until both magic bytes (or EOF) arrive, then
+    // stitch them back onto the front of the stream.
+    let mut magic = [0u8; GZIP_MAGIC.len()];
+    let mut filled = 0;
+    while filled < magic.len() {
+        match reader.read(&mut magic[filled..]) {
+            Ok(0) => break,
+            Ok(n) => filled += n,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e).context("detect layer compression"),
+        }
+    }
+    let is_gzip = filled == magic.len() && magic == GZIP_MAGIC;
+    let reader = std::io::Cursor::new(magic)
+        .take(filled as u64)
+        .chain(reader);
+    if is_gzip {
+        scan_layer_tar(flate2::read::GzDecoder::new(reader))
+    } else {
+        scan_layer_tar(reader)
+    }
+}
 
-    let mut entry_archive = tar::Archive::new(entry);
+fn scan_layer_tar(reader: impl Read) -> Result<(Vec<DiscoveredJar>, Vec<DiscoveredGoBinary>)> {
+    let mut discoveries = Vec::new();
+    let mut go_discoveries = Vec::new();
+
+    let mut entry_archive = tar::Archive::new(reader);
     for entry in entry_archive.entries().context("list entries in layer")? {
-        let entry = entry.context("read entry")?;
+        let mut entry = entry.context("read entry")?;
         let path = entry.path().context("read path")?;
         if !path.to_string_lossy().ends_with(".jar") {
-            debug!(?path, "skipped: not a jar file");
+            let path = path.to_path_buf();
+            match maybe_go_binary(&mut entry, &path) {
+                Some(discovered) => go_discoveries.push(discovered),
+                None => debug!(?path, "skipped: not a jar file or Go binary"),
+            }
             continue;
         }
 
@@ -139,7 +214,36 @@ fn jars_in_layer(entry: Entry<'_, impl Read>) -> Result<Vec<DiscoveredJar>> {
         })?;
     }
 
-    Ok(discoveries)
+    Ok((discoveries, go_discoveries))
+}
+
+/// Sniff a non-jar layer entry for an embedded Go buildinfo section.
+/// Anything that isn't a parseable Go binary returns `None` rather than
+/// failing the scan, so one unreadable entry can't sink the layer.
+fn maybe_go_binary(entry: &mut Entry<'_, impl Read>, path: &Path) -> Option<DiscoveredGoBinary> {
+    if !entry.header().entry_type().is_file() {
+        return None;
+    }
+    let size = entry.header().size().unwrap_or(0);
+    if size < MIN_GO_BINARY_SIZE {
+        return None;
+    }
+
+    // Sniffing consumes the entry's leading bytes (an `Entry` is a forward-only
+    // reader), so stitch the prefix back onto the front of the stream: the
+    // buildinfo scan needs offsets relative to the start of the file.
+    let mut prefix = [0u8; 64];
+    if let Err(e) = entry.read_exact(&mut prefix) {
+        debug!(?path, "skipped: failed to read file prefix: {e:?}");
+        return None;
+    }
+    if !is_candidate_binary(&prefix) {
+        return None;
+    }
+
+    debug!(?path, "candidate binary; scanning for Go buildinfo");
+    let reader = std::io::Cursor::new(prefix).chain(entry);
+    scan_go_buildinfo(reader).map(|info| DiscoveredGoBinary::new(path.to_path_buf(), info))
 }
 
 const MAX_JAR_DEPTH: u32 = 100;
@@ -295,6 +399,12 @@ mod tests {
         }
       }
     ]
+  },
+  "discovered_go_binaries": {
+    "blobs/sha256/61aed1a8baa251dee118b9ab203c1e420f0eda0a9b3f9322d67d235dd27a12ee": [],
+    "blobs/sha256/0e4613a3c620a37d93aca05039001fb5a6063c9d9cfb0935e3aa984025f31198": [],
+    "blobs/sha256/632e84390ad558f9db0524f5e38a0af3e79c623a46bdce8a5e6a1761041b9850": [],
+    "blobs/sha256/054f94aa7ce72b59cd6abac5462f77f0645b2f1a7b17e55d8f847a6da58c90db": []
   }
 }
 "#;
@@ -304,7 +414,7 @@ mod tests {
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/jar_test_container.tar");
 
-        let res = jars_in_container(&image_tar_file)
+        let res = binaries_in_container(&image_tar_file)
             .expect("Read jars out of container image.")
             .pipe(serde_json::to_value)
             .expect("encode as json");
@@ -319,7 +429,7 @@ mod tests {
     // We are also testing that the fingerprints from the nested jars are equal to the fingerprints when they are at top-level
     // See test/App/Fossa/Container/testdata/nested-jar/README.md for info on how nested_jars.tar was made
     #[test]
-    fn it_finds_nested_jars() {
+    fn it_analyzes_nested_jars_image() {
         let nested_jars_millhone_out: String = format!(
             r#"
         {{
@@ -404,6 +514,15 @@ mod tests {
                 }}
               }}
             ]
+          }},
+          "discovered_go_binaries": {{
+            "88a896b18358cbccbf66cc1c3dcd0d2d61504c5bf41284c551e47f230675534f/layer.tar": [],
+            "2cd0dec90e9f3f920397ed6bf0ba740493620a99bb20b79d2c4c8159948439e4/layer.tar": [],
+            "5a99cb0cd20c916ca7444b625ff06e3afe6a1b4349c44c3ba11eb054daf5fda4/layer.tar": [],
+            "9fea496e8349f2c33fe177df27e4369f08cff62ad40168183493d9de3d6832e5/layer.tar": [],
+            "c65b9197c11847b3f36c822b9c57f417af6f721ae6719f8eb3bd334c3516796e/layer.tar": [],
+            "792ccfdf114be140500ea1d6b99ae7ff0cae6a19b247f886328d4b8a01b8869c/layer.tar": [],
+            "d8abb0d1e8708fb1b5b79bcdd098898becfe22019d6b70781974743a90415724/layer.tar": []
           }}
         }}
         "#,
@@ -411,12 +530,152 @@ mod tests {
         );
         let image_tar_file =
             PathBuf::from("../../test/App/Fossa/Container/testdata/nested_jars.tar");
-        let res = jars_in_container(&image_tar_file)
+        let res = binaries_in_container(&image_tar_file)
             .expect("Read jars out of container image.")
             .pipe(serde_json::to_value)
             .expect("encode as json");
         let expected: Value =
             serde_json::from_str(&nested_jars_millhone_out).expect("Parse expected json");
         pretty_assertions::assert_eq!(expected, res);
+    }
+
+    const BUILDINFO_FIXTURE: &[u8] = include_bytes!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/testdata/go-buildinfo/gh-2.86.0-darwin-arm64.bin"
+    ));
+
+    /// A fake ELF: candidate magic up front, the real buildinfo fixture at a
+    /// 16-byte-aligned offset, padded past MIN_GO_BINARY_SIZE.
+    fn fake_go_binary() -> Vec<u8> {
+        let mut buf = vec![0u8; 64];
+        buf[..4].copy_from_slice(b"\x7fELF");
+        buf.extend_from_slice(BUILDINFO_FIXTURE);
+        if buf.len() < MIN_GO_BINARY_SIZE as usize {
+            buf.resize(MIN_GO_BINARY_SIZE as usize, 0);
+        }
+        buf
+    }
+
+    fn tar_with(files: &[(&str, &[u8])]) -> Vec<u8> {
+        let mut builder = tar::Builder::new(Vec::new());
+        for (path, contents) in files {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(contents.len() as u64);
+            header.set_mode(0o644);
+            header.set_cksum();
+            builder
+                .append_data(&mut header, path, *contents)
+                .expect("append tar entry");
+        }
+        builder.into_inner().expect("finish tar")
+    }
+
+    fn gzip(data: &[u8]) -> Vec<u8> {
+        use std::io::Write;
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(data).expect("gzip write");
+        encoder.finish().expect("gzip finish")
+    }
+
+    /// Wrap a layer blob in an outer image tar and run scan_layer over it.
+    fn scan(layer: &[u8]) -> Result<(Vec<DiscoveredJar>, Vec<DiscoveredGoBinary>)> {
+        let outer = tar_with(&[("layer.tar", layer)]);
+        let mut archive = tar::Archive::new(std::io::Cursor::new(outer));
+        let entry = archive
+            .entries()
+            .expect("iterate outer tar")
+            .next()
+            .expect("outer tar has one entry")
+            .expect("read outer entry");
+        scan_layer(entry)
+    }
+
+    /// Run maybe_go_binary against the first entry of a tar built from `files`.
+    fn sniff_first(files: &[(&str, &[u8])]) -> Option<DiscoveredGoBinary> {
+        let data = tar_with(files);
+        let mut archive = tar::Archive::new(std::io::Cursor::new(data));
+        let mut entry = archive
+            .entries()
+            .expect("iterate tar")
+            .next()
+            .expect("tar has one entry")
+            .expect("read entry");
+        let path = entry.path().expect("entry path").to_path_buf();
+        maybe_go_binary(&mut entry, &path)
+    }
+
+    #[test]
+    fn scans_plain_and_gzipped_layers_identically() {
+        let binary = fake_go_binary();
+        let layer = tar_with(&[("usr/bin/app", &binary)]);
+        let (_, plain) = scan(&layer).expect("scan plain layer");
+        let (_, gzipped) = scan(&gzip(&layer)).expect("scan gzipped layer");
+        assert_eq!(plain.len(), 1);
+        assert_eq!(plain[0].path, PathBuf::from("usr/bin/app"));
+        assert_eq!(plain, gzipped);
+    }
+
+    #[test]
+    fn scans_empty_layer_without_error() {
+        let empty_tar = tar_with(&[]);
+        let (jars, go_binaries) = scan(&empty_tar).expect("scan empty tar layer");
+        assert!(jars.is_empty());
+        assert!(go_binaries.is_empty());
+
+        let (jars, go_binaries) = scan(&[]).expect("scan zero-byte layer");
+        assert!(jars.is_empty());
+        assert!(go_binaries.is_empty());
+    }
+
+    #[test]
+    fn skips_undersized_candidates() {
+        assert!(sniff_first(&[("bin", b"\x7fELF but far too small")]).is_none());
+    }
+
+    #[test]
+    fn skips_non_file_entries() {
+        let mut builder = tar::Builder::new(Vec::new());
+        let mut header = tar::Header::new_gnu();
+        header.set_entry_type(tar::EntryType::Directory);
+        header.set_size(0);
+        header.set_mode(0o755);
+        header.set_cksum();
+        builder
+            .append_data(&mut header, "some-dir/", &[][..])
+            .expect("append dir entry");
+        let data = builder.into_inner().expect("finish tar");
+        let mut archive = tar::Archive::new(std::io::Cursor::new(data));
+        let mut entry = archive
+            .entries()
+            .expect("iterate tar")
+            .next()
+            .expect("tar has one entry")
+            .expect("read entry");
+        assert!(maybe_go_binary(&mut entry, Path::new("some-dir/")).is_none());
+    }
+
+    #[test]
+    fn skips_non_binary_files() {
+        let text = vec![b'a'; MIN_GO_BINARY_SIZE as usize];
+        assert!(sniff_first(&[("notes.txt", &text)]).is_none());
+    }
+
+    #[test]
+    fn skips_binaries_without_buildinfo() {
+        let mut elf = vec![0u8; MIN_GO_BINARY_SIZE as usize];
+        elf[..4].copy_from_slice(b"\x7fELF");
+        assert!(sniff_first(&[("bin", &elf)]).is_none());
+    }
+
+    #[test]
+    fn finds_buildinfo_deep_in_a_large_binary() {
+        // Buildinfo placed past the streaming scan window, so the rolling
+        // search (not just the sniffed prefix) has to find it.
+        let mut buf = vec![0u8; 256 * 1024];
+        buf[..4].copy_from_slice(b"\x7fELF");
+        buf.extend_from_slice(BUILDINFO_FIXTURE);
+        let discovered = sniff_first(&[("usr/bin/big", &buf)]).expect("should discover");
+        assert_eq!(discovered.go_version, "go1.25.6");
+        assert_eq!(discovered.modules.len(), 161);
     }
 }

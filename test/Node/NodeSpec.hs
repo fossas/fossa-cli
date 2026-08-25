@@ -10,10 +10,11 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.Tagged (applyTag)
+import DepTypes (DepEnvironment (EnvProduction), Dependency (dependencyEnvironments, dependencyName))
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps)
+import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -34,7 +35,7 @@ import Strategy.Node.PackageJson (
   PkgJsonWorkspaces (PkgJsonWorkspaces, unWorkspaces),
   Production,
  )
-import Test.Effect (it', shouldBe')
+import Test.Effect (expectationFailure', it', shouldBe', shouldSatisfy')
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Types (
   BuildTarget (BuildTarget),
@@ -54,9 +55,12 @@ spec :: Spec
 spec = do
   currDir <- runIO getCurrentDir
   pkgJsonWorkspaceSpec currDir
+  dotslashWorkspaceSpec currDir
+  selfLoopWorkspaceSpec currDir
   npmLockAnalysisSpec currDir
   workspaceBuildTargetsSpec currDir
   extractDepListsForTargetsSpec currDir
+  resolveNpmV3WorkspacePathsSpec currDir
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =
@@ -155,6 +159,46 @@ pkgJsonWorkspaceSpec currDir = describe "NPM workspace detection" $ do
     discoveredProjects <- discover workspaceDir
     discoveredProjects `shouldBe'` [discoveredWorkSpaceProj currDir]
 
+dotslashWorkspaceSpec :: Path Abs Dir -> Spec
+dotslashWorkspaceSpec currDir = describe "Workspace globs with a leading ./" $ do
+  let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-dotslash")
+  it' "Links a ./-prefixed workspace member to its root" $ do
+    discoveredProjects <- discover workspaceDir
+    case discoveredProjects of
+      [DiscoveredProject{..}] ->
+        findWorkspaceBuildTargets (pkgGraph projectData)
+          `shouldBe'` targetSet [BuildTarget "dotslash-root", BuildTarget "pkg-a"]
+      _ ->
+        expectationFailure' $
+          "expected a single workspace project, got " <> show (length discoveredProjects)
+
+  -- "shared" is a transitive of the member's production dep and of the root's
+  -- dev tool. If the ./-linked member is severed it is only reachable through
+  -- the dev tool, so it loses its production environment and the default filter
+  -- drops it.
+  it' "Keeps a ./-linked member's production transitive in the production environment" $ do
+    discoveredProjects <- discover workspaceDir
+    graphs <- traverse (\DiscoveredProject{..} -> dependencyGraph <$> getDeps projectBuildTargets projectData) discoveredProjects
+    let sharedEnvs =
+          foldMap (foldMap dependencyEnvironments . filter ((== "shared") . dependencyName) . Graphing.vertexList) graphs
+    sharedEnvs `shouldSatisfy'` Set.member EnvProduction
+
+selfLoopWorkspaceSpec :: Path Abs Dir -> Spec
+selfLoopWorkspaceSpec currDir = describe "Whole-root workspace globs" $ do
+  let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-selfloop")
+  it' "Does not treat a '.' workspace glob as a cycle" $ do
+    discoveredProjects <- discover workspaceDir
+    case discoveredProjects of
+      [DiscoveredProject{..}] ->
+        findWorkspaceBuildTargets (pkgGraph projectData)
+          `shouldBe'` targetSet [BuildTarget "selfloop-root", BuildTarget "pkg-a"]
+      _ ->
+        expectationFailure' $
+          "expected a single workspace project, got " <> show (length discoveredProjects)
+
+targetSet :: [BuildTarget] -> FoundTargets
+targetSet = maybe ProjectWithoutTargets FoundTargets . nonEmpty . Set.fromList
+
 npmLockAnalysisSpec :: Path Abs Dir -> Spec
 npmLockAnalysisSpec currDir = do
   let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
@@ -237,6 +281,35 @@ extractDepListsForTargetsSpec currDir = describe "extractDepListsForTargets" $ d
             , NodePackage "husky" "^8.0.0"
             ]
     directDeps result `shouldBe` applyTag @Production expectedDirect
+
+resolveNpmV3WorkspacePathsSpec :: Path Abs Dir -> Spec
+resolveNpmV3WorkspacePathsSpec currDir = describe "resolveNpmV3WorkspacePaths" $ do
+  let graph = workspaceGraphWithDeps currDir
+      forTargets names =
+        resolveNpmV3WorkspacePaths
+          (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList (map BuildTarget names))
+          graph
+
+  it "returns Nothing when unscoped" $
+    resolveNpmV3WorkspacePaths ProjectWithoutTargets graph `shouldBe` Nothing
+
+  it "maps a workspace name to its root-relative lockfile path key" $
+    -- pkg-a lives at ./pkg-a, where the folder basename equals the package name,
+    -- so npm omits the lockfile "name"; resolving via package.json still finds it.
+    forTargets ["pkg-a"] `shouldBe` Just (Set.fromList ["pkg-a"])
+
+  it "maps the root target to the empty path key" $
+    forTargets ["workspace-test"] `shouldBe` Just (Set.fromList [""])
+
+  it "maps a nested workspace name to its nested path key" $
+    forTargets ["pkg-b"] `shouldBe` Just (Set.fromList ["nested/pkg-b"])
+
+  it "maps every selected target" $
+    forTargets ["workspace-test", "pkg-a", "pkg-b"]
+      `shouldBe` Just (Set.fromList ["", "pkg-a", "nested/pkg-b"])
+
+  it "resolves no paths when no target matches a manifest" $
+    forTargets ["does-not-exist"] `shouldBe` Just Set.empty
 
 -- | A workspace graph with actual dependencies for testing extractDepListsForTargets.
 workspaceGraphWithDeps :: Path Abs Dir -> PkgJsonGraph

@@ -5,7 +5,6 @@
 #![warn(rust_2018_idioms)]
 
 use clap::{Parser, Subcommand, ValueEnum};
-use millhone::url::BaseUrl;
 use stable_eyre::eyre::Context;
 use tap::Pipe;
 use traceconf::{Colors, Format, Level};
@@ -58,23 +57,6 @@ struct Application {
     #[clap(long, default_value = "stdout")]
     log_to: TracingOutput,
 
-    /// The URL for the Millhone service.
-    ///
-    /// Note: In a future release we plan to move this to a reverse proxy through
-    /// FOSSA's backend, similar to VSI functionality.
-    /// At such time this argument will be hidden and only used for debugging,
-    /// replaced with `endpoint`.
-    #[clap(long, global = true)]
-    #[cfg_attr(
-        debug_assertions,
-        clap(default_value = "https://api.millhone-staging.sherlock.fossa.team")
-    )]
-    #[cfg_attr(
-        not(debug_assertions),
-        clap(default_value = "https://api.millhone-prod.sherlock.fossa.team")
-    )]
-    direct_endpoint: BaseUrl,
-
     /// Subcommands for the CLI.
     #[clap(subcommand)]
     commands: Commands,
@@ -98,19 +80,6 @@ impl Application {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Ping the Millhone backend.
-    Ping,
-
-    /// Ingest snippets to the Millhone backend.
-    // Boxed to reduce size difference between variants, a clippy lint.
-    Ingest(cmd::ingest::Subcommand),
-
-    /// Analyze a local project for matches.
-    Analyze(cmd::analyze::Subcommand),
-
-    /// Commit matches discovered during analyze into a fossa-deps file.
-    Commit(cmd::commit::Subcommand),
-
     /// Find and fingerprint JAR files.
     AnalyzeContainer(cmd::analyze_container::Subcommand),
 }
@@ -151,10 +120,6 @@ fn main() -> stable_eyre::Result<()> {
 
     // And then dispatch to the subcommand.
     match app.commands {
-        Commands::Ping => cmd::ping::main(&app.direct_endpoint),
-        Commands::Ingest(opts) => cmd::ingest::main(&app.direct_endpoint, opts),
-        Commands::Analyze(opts) => cmd::analyze::main(&app.direct_endpoint, opts),
-        Commands::Commit(opts) => cmd::commit::main(opts),
         Commands::AnalyzeContainer(opts) => cmd::analyze_container::main(opts),
     }
 }

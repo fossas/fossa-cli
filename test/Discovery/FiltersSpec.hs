@@ -6,7 +6,9 @@ module Discovery.FiltersSpec (
 
 import Control.Carrier.Reader (run, runReader)
 import Control.Monad (when)
+import Data.Aeson qualified as Aeson
 import Data.Foldable (traverse_)
+import Data.Glob qualified as Glob
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.String.Conversion (ToText (toText))
@@ -16,9 +18,13 @@ import Discovery.Filters (
   Exclude,
   FilterCombination,
   Include,
+  PathFilter (..),
   applyFilters,
   comboExclude,
+  comboExcludeWithGlobs,
   comboInclude,
+  comboIncludeWithGlobs,
+  partitionPathFilters,
   pathAllowed,
   toolAllowed,
   withToolFilter,
@@ -260,6 +266,146 @@ spec = do
         pathAllowed bigFilters $(mkRelDir "a/b/c") `shouldBe` False
         pathAllowed bigFilters $(mkRelDir "a/b/d") `shouldBe` True
 
+    describe "Glob-based matching" $ do
+      it "excludes paths matching a '**/name/**' glob" $ do
+        let filters = excludeGlob "**/vendor/**"
+        pathAllowed filters $(mkRelDir "foo/vendor/bar") `shouldBe` False
+        pathAllowed filters $(mkRelDir "a/b/vendor/c") `shouldBe` False
+        pathAllowed filters $(mkRelDir "foo/bar") `shouldBe` True
+
+      it "excludes paths matching a single-segment wildcard glob" $ do
+        let filters = excludeGlob "node_modules/*"
+        pathAllowed filters $(mkRelDir "node_modules/react") `shouldBe` False
+        pathAllowed filters $(mkRelDir "node_modules/@scope") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/node_modules/react") `shouldBe` True
+
+      it "still excludes the subtree when the walker reaches the glob-matched dir" $ do
+        -- When the tree walker reaches foo/vendor/, that dir matches
+        -- `**/vendor/**` (the final ** matches an empty tail in
+        -- System.FilePattern), so the walker prunes the subtree and never
+        -- descends. Covers the documented expectation.
+        let filters = excludeGlob "**/vendor/**"
+        pathAllowed filters $(mkRelDir "foo/vendor") `shouldBe` False
+
+      it "combines glob excludes with concrete path excludes" $ do
+        let filters =
+              excludePath $(mkRelDir "build")
+                <> excludeGlob "**/*.test"
+        pathAllowed filters $(mkRelDir "build") `shouldBe` False
+        pathAllowed filters $(mkRelDir "build/artifacts") `shouldBe` False
+        pathAllowed filters $(mkRelDir "foo/x.test") `shouldBe` False
+        pathAllowed filters $(mkRelDir "foo/bar") `shouldBe` True
+
+      it "rejects an include-glob miss" $ do
+        let filters = includeGlob "src/**"
+        pathAllowed filters $(mkRelDir "src/lib") `shouldBe` True
+        pathAllowed filters $(mkRelDir "test/lib") `shouldBe` False
+
+      it "lets the walker reach an include-glob's matches via ancestors" $ do
+        -- `apps/*` matches @apps/X@, not the bare @apps/@. Without ancestor
+        -- handling the walker would refuse to descend into @apps/@ and every
+        -- project under it would be silently dropped. Cover the parent dir
+        -- (must be allowed so the walker descends), the matched dirs (must
+        -- be allowed because the glob matches), and an unrelated sibling
+        -- (must still be rejected).
+        let filters = includeGlob "apps/*"
+        pathAllowed filters $(mkRelDir "apps") `shouldBe` True
+        pathAllowed filters $(mkRelDir "apps/foo") `shouldBe` True
+        pathAllowed filters $(mkRelDir "apps/foo/src") `shouldBe` True
+        pathAllowed filters $(mkRelDir "lib") `shouldBe` False
+
+      it "should include all parents of glob matches" $ do
+        -- pathAllowed is what determines if the walker should traverse the
+        -- directory. For this test, we're asserting that `**/` should traverse
+        -- every directory, so all lines should be true. The previous block of
+        -- `apps/*` is asserting on a false example.
+        let filters = includeGlob "**/service/**"
+        pathAllowed filters $(mkRelDir "anywhere") `shouldBe` True
+        pathAllowed filters $(mkRelDir "anywhere/else") `shouldBe` True
+        pathAllowed filters $(mkRelDir "deep/nested/service/foo") `shouldBe` True
+
+      it "prefers exclude over include when both globs match" $ do
+        let filters = includeGlob "src/**" <> excludeGlob "src/**"
+        pathAllowed filters $(mkRelDir "src/lib") `shouldBe` False
+
+      it "normalizes the trailing slash on Path Rel Dir for glob matching" $ do
+        -- Regression guard: `Path.toString` on a `Path Rel Dir` appends '/',
+        -- which would otherwise cause `System.FilePattern` to reject single-
+        -- segment patterns like `node_modules/*`. `globMatchesDir` strips the
+        -- trailing slash before matching; this test fails if that
+        -- normalization regresses.
+        let filters = excludeGlob "node_modules/*"
+        pathAllowed filters $(mkRelDir "node_modules/react") `shouldBe` False
+        pathAllowed filters $(mkRelDir "node_modules/lodash") `shouldBe` False
+
+      it "anchors root-level globs to the repo root" $ do
+        let filters = excludeGlob "build*"
+        pathAllowed filters $(mkRelDir "build") `shouldBe` False
+        pathAllowed filters $(mkRelDir "build123") `shouldBe` False
+        -- A nested `build` directory must not be matched by a root-anchored
+        -- single-segment glob.
+        pathAllowed filters $(mkRelDir "src/build") `shouldBe` True
+        pathAllowed filters $(mkRelDir "a/b/build123") `shouldBe` True
+
+      it "anchors root-level extension globs to the repo root" $ do
+        let filters = excludeGlob "*.lock"
+        pathAllowed filters $(mkRelDir "package.lock") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/package.lock") `shouldBe` True
+
+      it "applies a four-way mix of include/exclude globs and concrete paths" $ do
+        -- Include: concrete `src` plus glob `lib/**`.
+        -- Exclude: concrete `src/build` plus glob `**/vendor/**`.
+        let filters =
+              AllFilters
+                ( comboIncludeWithGlobs
+                    mempty
+                    [$(mkRelDir "src")]
+                    [Glob.unsafeGlobRel "lib/**"]
+                )
+                ( comboExcludeWithGlobs
+                    mempty
+                    [$(mkRelDir "src/build")]
+                    [Glob.unsafeGlobRel "**/vendor/**"]
+                )
+        -- Concrete include: `src` and its children are accepted.
+        pathAllowed filters $(mkRelDir "src") `shouldBe` True
+        pathAllowed filters $(mkRelDir "src/app") `shouldBe` True
+        -- Concrete exclude wins over the concrete include.
+        pathAllowed filters $(mkRelDir "src/build") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/build/out") `shouldBe` False
+        -- Glob include: `lib` and its descendants are accepted.
+        pathAllowed filters $(mkRelDir "lib") `shouldBe` True
+        pathAllowed filters $(mkRelDir "lib/foo/bar") `shouldBe` True
+        -- Glob exclude wins over both kinds of include.
+        pathAllowed filters $(mkRelDir "lib/foo/vendor/x") `shouldBe` False
+        pathAllowed filters $(mkRelDir "src/app/vendor/x") `shouldBe` False
+        -- Paths matched by neither include are rejected.
+        pathAllowed filters $(mkRelDir "test") `shouldBe` False
+        pathAllowed filters $(mkRelDir "other/dir") `shouldBe` False
+
+    describe "PathFilter parsing" $ do
+      it "partitions concrete paths from glob patterns" $ do
+        let mixed =
+              [ PathFilterDir $(mkRelDir "vendor")
+              , PathFilterGlob (Glob.unsafeGlobRel "**/node_modules/**")
+              , PathFilterDir $(mkRelDir "build")
+              , PathFilterGlob (Glob.unsafeGlobRel "*.test")
+              ]
+            (paths, globs) = partitionPathFilters mixed
+        paths `shouldBe` [$(mkRelDir "vendor"), $(mkRelDir "build")]
+        map Glob.unGlob globs `shouldBe` ["**/node_modules/**", "*.test"]
+
+      it "normalizes backslashes in glob patterns to forward slashes" $ do
+        -- A Windows user typing `node_modules\*` in `.fossa.yml` should get
+        -- the same glob as the forward-slash form, because System.FilePattern
+        -- only treats `/` as a segment separator.
+        let parse :: String -> Maybe PathFilter
+            parse s = case Aeson.fromJSON (Aeson.String (toText s)) :: Aeson.Result PathFilter of
+              Aeson.Success p -> Just p
+              Aeson.Error _ -> Nothing
+        parse "node_modules\\*" `shouldBe` parse "node_modules/*"
+        parse "**\\vendor\\**" `shouldBe` parse "**/vendor/**"
+
   describe "tool filtering helpers" $ do
     it "should return an empty list when the tool is not allowed" $ do
       let filters = excludeTool CargoProjectType
@@ -300,3 +446,13 @@ includeTool :: DiscoveredProjectType -> AllFilters
 includeTool tool = AllFilters include mempty
   where
     include = comboInclude [TypeTarget $ toText tool] mempty
+
+includeGlob :: String -> AllFilters
+includeGlob glob = AllFilters include mempty
+  where
+    include = comboIncludeWithGlobs mempty mempty [Glob.unsafeGlobRel glob]
+
+excludeGlob :: String -> AllFilters
+excludeGlob glob = AllFilters mempty exclude
+  where
+    exclude = comboExcludeWithGlobs mempty mempty [Glob.unsafeGlobRel glob]

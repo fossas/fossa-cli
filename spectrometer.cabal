@@ -203,6 +203,8 @@ library
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
+    App.Fossa.BinaryDeps.Nupkg
+    App.Fossa.BinaryDeps.Whl
     App.Fossa.Config.Analyze
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile
@@ -239,6 +241,7 @@ library
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
+    App.Fossa.Container.Sources.GoBinary
     App.Fossa.Container.Sources.JarAnalysis
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
@@ -487,6 +490,9 @@ library
     Strategy.Node.Npm.PackageLockV3
     Strategy.Node.PackageJson
     Strategy.Node.Pnpm.PnpmLock
+    Strategy.Node.Pnpm.Types
+    Strategy.Node.Pnpm.V4_8
+    Strategy.Node.Pnpm.V9
     Strategy.Node.Pnpm.Workspace
     Strategy.Node.YarnV1.YarnLock
     Strategy.Node.YarnV2.Lockfile
@@ -575,6 +581,8 @@ test-suite unit-tests
     App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.BinaryDeps.NupkgSpec
+    App.Fossa.BinaryDeps.WhlSpec
     App.Fossa.CirceSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.ReleaseGroup.CreateSpec
@@ -584,6 +592,7 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.Container.GoBinarySpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec
@@ -646,6 +655,7 @@ test-suite unit-tests
     Dart.PubDepsSpec
     Dart.PubSpecLockSpec
     Dart.PubSpecSpec
+    Data.GlobSpec
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
     Data.Text.JsoncSpec
@@ -655,6 +665,7 @@ test-suite unit-tests
     Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
+    Effect.ReadFSSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
@@ -692,6 +703,7 @@ test-suite unit-tests
     Node.PackageLockSpec
     Node.PackageLockV3Spec
     NuGet.DirectoryPackagesPropsSpec
+    NuGet.NuGetSpec
     NuGet.NuspecSpec
     NuGet.PackageReferenceSpec
     NuGet.PackagesConfigSpec
@@ -711,6 +723,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    Python.SetuptoolsSpec
     Python.UvSpec
     R.DescriptionSpec
     R.RenvSpec
@@ -772,6 +785,7 @@ test-suite integration-tests
     Analysis.GradleSpec
     Analysis.LicenseScannerSpec
     Analysis.MavenSpec
+    Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
     Analysis.Python.PipenvSpec

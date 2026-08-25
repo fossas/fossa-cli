@@ -12,7 +12,10 @@ module Discovery.Filters (
   filterIsVSIOnly,
   comboInclude,
   comboExclude,
+  comboIncludeWithGlobs,
+  comboExcludeWithGlobs,
   combinedPaths,
+  combinedPathGlobs,
   combinedTargets,
   Include,
   Exclude,
@@ -27,12 +30,16 @@ module Discovery.Filters (
   setInclude,
   setExclude,
   mavenScopeFilterSet,
+  PathFilter (..),
+  partitionPathFilters,
 ) where
 
 import Control.Effect.Reader (Has, Reader, ask)
 import Control.Monad ((<=<))
-import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
-import Data.List (isInfixOf, stripPrefix, (\\))
+import Data.Aeson (FromJSON, ToJSON (toEncoding), defaultOptions, genericToEncoding, pairs, parseJSON, withText, (.=))
+import Data.Glob (Glob, unGlob)
+import Data.Glob qualified as Glob
+import Data.List (isInfixOf, isPrefixOf, stripPrefix, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -41,11 +48,12 @@ import Data.Semigroup (sconcat)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path, Rel, fromAbsDir, isProperPrefixOf, parseRelDir)
+import Path (Abs, Dir, Path, Rel, fromAbsDir, isProperPrefixOf, parseRelDir, toFilePath)
+import System.FilePattern qualified as FilePattern
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
@@ -86,11 +94,56 @@ instance Monoid AllFilters where
 data FilterCombination a = FilterCombination
   { _combinedTargets :: [TargetFilter]
   , _combinedPaths :: [Path Rel Dir]
+  , _combinedPathGlobs :: [Glob Rel]
   }
   deriving (Eq, Ord, Show, Generic)
 
+-- | Hand-written so the new @_combinedPathGlobs@ field is omitted when it's
+-- empty. Otherwise every serialized 'FilterCombination' would gain a
+-- @"_combinedPathGlobs":[]@ key compared to pre-glob-support encodings — even
+-- in runs that don't configure any globs — which would break consumers that
+-- pin on the JSON shape (telemetry, debug bundles).
 instance ToJSON (FilterCombination a) where
-  toEncoding = genericToEncoding defaultOptions
+  toEncoding fc =
+    pairs $
+      "_combinedTargets" .= _combinedTargets fc
+        <> "_combinedPaths" .= _combinedPaths fc
+        <> if null (_combinedPathGlobs fc) then mempty else "_combinedPathGlobs" .= _combinedPathGlobs fc
+
+-- | A user-supplied path filter entry from `.fossa.yml`. Strings containing
+-- `*` are parsed as 'Glob' patterns; all other strings are parsed as relative
+-- directory paths, preserving the existing "match this directory and its
+-- children" semantics.
+data PathFilter
+  = PathFilterDir (Path Rel Dir)
+  | PathFilterGlob (Glob Rel)
+  deriving (Eq, Ord, Show, Generic)
+
+instance FromJSON PathFilter where
+  parseJSON = withText "PathFilter" $ \txt ->
+    let s = toString txt
+     in if '*' `elem` s
+          then pure . PathFilterGlob . Glob.unsafeGlobRel $ normalizeSlashes s
+          else case parseRelDir s of
+            Left err -> fail (show err)
+            Right p -> pure $ PathFilterDir p
+
+-- | Normalize backslashes to forward slashes. 'System.FilePattern' only treats
+-- @/@ as a segment separator, so any user-supplied pattern or path containing
+-- backslashes must be normalized before glob matching.
+normalizeSlashes :: String -> String
+normalizeSlashes = map toForwardSlash
+  where
+    toForwardSlash '\\' = '/'
+    toForwardSlash c = c
+
+-- | Split a list of user-supplied path filter entries into concrete directory
+-- paths and glob patterns.
+partitionPathFilters :: [PathFilter] -> ([Path Rel Dir], [Glob Rel])
+partitionPathFilters = foldr go ([], [])
+  where
+    go (PathFilterDir p) (ps, gs) = (p : ps, gs)
+    go (PathFilterGlob g) (ps, gs) = (ps, g : gs)
 
 data MavenScopeFilters = MavenScopeIncludeFilters (FilterSet Include) | MavenScopeExcludeFilters (FilterSet Exclude)
   deriving (Eq, Ord, Show, Generic)
@@ -119,10 +172,11 @@ data Include
 data Exclude
 
 instance Semigroup (FilterCombination a) where
-  (FilterCombination a1 b1) <> (FilterCombination a2 b2) = FilterCombination (a1 <> a2) (b1 <> b2)
+  (FilterCombination a1 b1 c1) <> (FilterCombination a2 b2 c2) =
+    FilterCombination (a1 <> a2) (b1 <> b2) (c1 <> c2)
 
 instance Monoid (FilterCombination a) where
-  mempty = FilterCombination mempty mempty
+  mempty = FilterCombination mempty mempty mempty
 
 mavenScopeFilterSet :: MavenScopeFilters -> Set Text
 mavenScopeFilterSet (MavenScopeIncludeFilters filterSet) = scopes filterSet
@@ -177,22 +231,50 @@ extractPureTool = \case
 -- * If a path is included, we allow that path and all of its parents and children.
 -- * If no paths are specifically included, we only reject explicitly excluded paths and their children.
 -- * If a path is excluded and included, it is rejected.
+-- * Glob patterns (e.g. @**\/vendor\/**@) may appear alongside concrete paths.
+--   A path is excluded if any exclusion glob matches it. Because tree walkers
+--   skip excluded directories before descending, a glob like @**\/vendor@
+--   prunes the entire @vendor@ subtree even if the glob itself does not match
+--   every descendant.
 -- TODO: Is it possible to allow conflicted items?  If so, is it possible without creating multiple versions of this function?
 pathAllowed :: AllFilters -> Path Rel Dir -> Bool
 pathAllowed AllFilters{..} path = isIncluded && not isExcluded
   where
-    includeIsEmpty = null includedPaths
-    isExcluded = isExcludedMember || isChildOfExcludeMember
+    includeIsEmpty = null includedPaths && null includedGlobs
+    isExcluded = isExcludedMember || isChildOfExcludeMember || isExcludedByGlob
     -- We include parents because our directory scanner will never make it to the included path without the parents
     -- We include children because our analysis filtering allows children of included members
-    isIncluded = includeIsEmpty || isParentOfIncludeMember || isIncludeMember || isChildOfIncludeMember
+    isIncluded =
+      includeIsEmpty
+        || isParentOfIncludeMember
+        || isIncludeMember
+        || isChildOfIncludeMember
+        || isIncludedByGlob
+        || isParentOfIncludedGlob
+        || isChildOfIncludedGlob
     isIncludeMember = path `elem` includedPaths
     isExcludedMember = path `elem` excludedPaths
     isChildOfIncludeMember = any (`isProperPrefixOf` path) includedPaths
     isChildOfExcludeMember = any (`isProperPrefixOf` path) excludedPaths
     isParentOfIncludeMember = any (path `isProperPrefixOf`) includedPaths
+    isExcludedByGlob = any (`globMatchesDir` path) excludedGlobs
+    isIncludedByGlob = any (`globMatchesDir` path) includedGlobs
+    -- A glob like @apps/*@ literally matches @apps/X@; if the walker is at
+    -- @apps/@, @isIncludedByGlob@ is False (the glob requires one segment past
+    -- @apps@), and without this branch the walker would refuse to descend and
+    -- silently drop every project under @apps/@. Allow @path@ when its
+    -- segments are a prefix of the glob's literal directory prefix
+    -- (everything before the first wildcard); a glob whose first segment is
+    -- @**@ has an empty literal prefix, so any path is a candidate ancestor.
+    isParentOfIncludedGlob = any (pathSegmentsPrefixOf (pathSegments path)) includedGlobs
+    -- Once an ancestor of @path@ matched an include glob, the walker should
+    -- descend into all of @path@'s descendants — same semantics as
+    -- @isChildOfIncludeMember@ for concrete includes.
+    isChildOfIncludedGlob = any (\g -> any (g `globMatchesDir`) (properAncestors path)) includedGlobs
     includedPaths = combinedPaths includeFilters
     excludedPaths = combinedPaths excludeFilters
+    includedGlobs = combinedPathGlobs includeFilters
+    excludedGlobs = combinedPathGlobs excludeFilters
 
 isDefaultNonProductionPath :: Path Abs Dir -> Path Abs Dir -> Bool
 isDefaultNonProductionPath baseDir projPath =
@@ -231,10 +313,16 @@ ignoredPaths =
   ]
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
-comboInclude = FilterCombination
+comboInclude ts ps = FilterCombination ts ps []
 
 comboExclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Exclude
-comboExclude = FilterCombination
+comboExclude ts ps = FilterCombination ts ps []
+
+comboIncludeWithGlobs :: [TargetFilter] -> [Path Rel Dir] -> [Glob Rel] -> FilterCombination Include
+comboIncludeWithGlobs = FilterCombination
+
+comboExcludeWithGlobs :: [TargetFilter] -> [Path Rel Dir] -> [Glob Rel] -> FilterCombination Exclude
+comboExcludeWithGlobs = FilterCombination
 
 setInclude :: (Set Text) -> FilterSet Include
 setInclude = FilterSet
@@ -247,6 +335,9 @@ combinedTargets = _combinedTargets
 
 combinedPaths :: FilterCombination a -> [Path Rel Dir]
 combinedPaths = _combinedPaths
+
+combinedPathGlobs :: FilterCombination a -> [Glob Rel]
+combinedPathGlobs = _combinedPathGlobs
 
 -- applyFilters determines if legacy filters are present and if they need to converted to `TargetFilters` for filtering.
 applyFilters :: AllFilters -> Text -> Path Rel Dir -> FoundTargets -> Maybe FoundTargets
@@ -274,13 +365,16 @@ apply include exclude buildtool dir =
 -- Nothing = "Unknown" -- i.e., there were no filters that matched the buildtool + directories.
 applyComb :: FilterCombination a -> Text -> Path Rel Dir -> Maybe FilterMatch
 applyComb comb buildtool dir =
-  buildTargetFiltersResult <> pathFiltersResult
+  buildTargetFiltersResult <> pathFiltersResult <> globFiltersResult
   where
     buildTargetFiltersResult :: Maybe FilterMatch
     buildTargetFiltersResult = foldMap' (\t -> applyTarget t buildtool dir) (combinedTargets comb)
 
     pathFiltersResult :: Maybe FilterMatch
     pathFiltersResult = foldMap' (`applyPath` dir) (combinedPaths comb)
+
+    globFiltersResult :: Maybe FilterMatch
+    globFiltersResult = foldMap' (`applyGlob` dir) (combinedPathGlobs comb)
 
 applyTarget :: TargetFilter -> Text -> Path Rel Dir -> FilterMatch
 applyTarget (TypeTarget t) u _ = if t == u then MatchAll else MatchNone
@@ -290,6 +384,83 @@ applyTarget (TypeDirTargetTarget t p target) u q = if t == u && p == q then Matc
 -- (parent path) (child path)
 applyPath :: Path Rel Dir -> Path Rel Dir -> FilterMatch
 applyPath t u = if isProperPrefixOf t u || t == u then MatchAll else MatchNone
+
+-- | Apply a glob pattern to a relative directory. Returns 'MatchAll' if the
+-- glob matches the directory, else 'MatchNone'.
+applyGlob :: Glob Rel -> Path Rel Dir -> FilterMatch
+applyGlob g dir = if g `globMatchesDir` dir then MatchAll else MatchNone
+
+-- | Match a glob against a relative directory path. Normalizes the path so
+-- glob matching is portable: strips the trailing slash that 'toString' appends
+-- to a 'Path Rel Dir' (so @node_modules/*@ matches @node_modules/foo/@), and
+-- converts backslashes to forward slashes so user-supplied forward-slash
+-- patterns match the backslash-separated paths produced on Windows.
+globMatchesDir :: Glob Rel -> Path Rel Dir -> Bool
+globMatchesDir glob dir = unGlob glob FilePattern.?== normalize (toString dir)
+  where
+    normalize :: String -> String
+    normalize = trimTrailingSlash . normalizeSlashes
+
+    trimTrailingSlash :: String -> String
+    trimTrailingSlash s = case unsnoc s of
+      Just (initSegs, '/') -> initSegs
+      _ -> s
+
+    -- Matches @Data.List.unsnoc@ from base-4.19 (GHC 9.8), which we can't
+    -- import directly because the project supports @base >= 4.15@.
+    unsnoc :: [a] -> Maybe ([a], a)
+    unsnoc = foldr go Nothing
+      where
+        go x Nothing = Just ([], x)
+        go x (Just (xs, y)) = Just (x : xs, y)
+
+-- | Path components, in walk order. @"a/b/c/" -> ["a","b","c"]@. The trailing
+-- empty segment that 'splitOn' would produce on a directory's @toFilePath@
+-- result is dropped.
+pathSegments :: Path Rel Dir -> [String]
+pathSegments p =
+  filter (not . null) $ goSplit (normalizeSlashes (toFilePath p))
+  where
+    goSplit :: String -> [String]
+    goSplit s = case break (== '/') s of
+      (h, []) -> [h]
+      (h, _ : t) -> h : goSplit t
+
+-- | True if @segs@ is a (possibly empty) prefix of @glob@'s literal directory
+-- prefix — i.e. the segments before the first segment containing a wildcard.
+-- A glob whose very first segment is wildcarded (e.g. @**\/foo@) has an empty
+-- literal prefix and matches any input @segs@, because the @**@ can stand for
+-- arbitrary ancestor directories.
+pathSegmentsPrefixOf :: [String] -> Glob Rel -> Bool
+pathSegmentsPrefixOf segs g =
+  let prefix = takeWhile (notElem '*') (filter (not . null) (splitSlash (normalizeSlashes (unGlob g))))
+   in -- An empty literal prefix means the glob's first segment is wildcarded
+      -- (e.g. @**/service/**@, @*/foo@). The wildcard can stand for any
+      -- ancestor segments, so any path is a candidate parent — let the walker
+      -- descend, the actual match check ('isIncludedByGlob') will fire when
+      -- it reaches a real match. Otherwise require @segs@ to be a prefix of
+      -- the literal directory part.
+      null prefix || segs `isPrefixOf` prefix
+  where
+    splitSlash :: String -> [String]
+    splitSlash s = case break (== '/') s of
+      (h, []) -> [h]
+      (h, _ : t) -> h : splitSlash t
+
+-- | Strict ancestors of a relative directory, ordered shallow-first. Excludes
+-- both the repository root (which would be an empty 'Path Rel Dir' that
+-- 'parseRelDir' won't accept anyway) and the directory itself.
+properAncestors :: Path Rel Dir -> [Path Rel Dir]
+properAncestors p =
+  let segs = pathSegments p
+      -- Strict, non-empty prefixes: e.g. ["a","b","c"] -> [["a"], ["a","b"]].
+      properPrefixes = map (`take` segs) [1 .. length segs - 1]
+   in mapMaybe (parseRelDir . joinSegments) properPrefixes
+  where
+    joinSegments :: [String] -> String
+    joinSegments [] = ""
+    joinSegments [x] = x <> "/"
+    joinSegments (x : rest) = x <> "/" <> joinSegments rest
 
 -- MatchNone <> MatchAll = MatchAll is the reason for this order
 -- (MatchSome <> MatchAll) and (MatchAll <> MatchSome) outputs the results in MatchSome.

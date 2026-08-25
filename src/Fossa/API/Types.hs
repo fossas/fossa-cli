@@ -511,6 +511,10 @@ data Organization = Organization
   , orgSupportsGitBackedCargoLocators :: Bool
   , orgSubscription :: Subscription
   , orgSnippetScanSourceCodeRetentionDays :: Maybe Int
+  , orgSupportsFasterReleaseGroupAddProjects :: Bool
+  -- ^ True if Core exposes the faster CLI release-group lookup endpoint
+  -- (@GET \/api\/cli\/project_group\/release_lookup@). When false, the CLI
+  -- falls back to listing all groups/releases and filtering client-side.
   }
   deriving (Eq, Ord, Show)
 
@@ -539,6 +543,7 @@ blankOrganization =
     , orgSupportsGitBackedCargoLocators = False
     , orgSubscription = Free
     , orgSnippetScanSourceCodeRetentionDays = Nothing
+    , orgSupportsFasterReleaseGroupAddProjects = False
     }
 
 instance FromJSON Organization where
@@ -562,6 +567,7 @@ instance FromJSON Organization where
       <*> obj .:? "supportsGitBackedCargoLocators" .!= False
       <*> obj .:? "subscription" .!= Free
       <*> obj .:? "snippetScanSourceCodeRetentionDays" .!= Nothing
+      <*> obj .:? "supportsFasterRGAddProject" .!= False
 
 data TokenType
   = Push

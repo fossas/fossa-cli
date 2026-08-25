@@ -10,15 +10,17 @@ import App.Fossa.VendoredDependency (
   SkippedDepsLogMsg (..),
   VendoredDependencyScanMode (..),
   compressFile,
+  safeSeparators,
   skippedDepsDebugLog,
  )
 import Control.Carrier.Lift (sendIO)
 import Control.Effect.Path (withSystemTempDir)
-import Path (Abs, Dir, Path, mkRelDir, (</>))
+import Path (Abs, Dir, Path, mkRelDir, toFilePath, (</>))
 import Path.IO (getCurrentDir)
+import System.FilePath (isPathSeparator)
 import Test.Effect (it', shouldContain')
 import Test.Fixtures qualified as Fixtures
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldSatisfy)
 
 flippedCompressFile :: Path Abs Dir -> FilePath -> Path Abs Dir -> IO FilePath
 flippedCompressFile directory fileToTar outputDir = compressFile outputDir directory fileToTar
@@ -41,6 +43,14 @@ spec = do
         let specDir = currDir </> $(mkRelDir "test/ArchiveUploader/normal")
         compressedFilePath <- sendIO $ withSystemTempDir "fossa-temp" (flippedCompressFile specDir fileToTar)
         compressedFilePath `shouldContain'` fileToTar
+
+  describe "safeSeparators" $ do
+    it "joins relative path components with underscores" $
+      safeSeparators "foo/bar" `shouldBe` "foo_bar"
+    it "leaves bare filenames untouched" $
+      safeSeparators "foo" `shouldBe` "foo"
+    it "strips path separators from an OS-native absolute path" $
+      safeSeparators (toFilePath currDir) `shouldSatisfy` (not . any isPathSeparator)
 
   describe "skippedDepsDebugLog" $ do
     it "should return SkippingUnsupportedMsg when skipping is not supported" $
