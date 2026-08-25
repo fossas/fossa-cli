@@ -2,22 +2,15 @@
 
 module Maven.PomClosureSpec (spec) where
 
-import Algebra.Graph.AdjacencyMap qualified as AM
-import Control.Carrier.State.Strict qualified as S (execState, modify)
 import Control.Effect.Lift (sendIO)
-import Control.Exception (SomeException, try)
 import Data.ByteString.Char8 qualified as BS
-import Data.Foldable (traverse_)
-import Data.List (find, isSuffixOf, sort)
+import Data.List (find, sort)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Discovery.Walk (WalkStep (WalkSkipSome), fileName, walkWithFilters')
-import Effect.ReadFS (doesFileExist)
 import GraphUtil (expectDeps')
 import Graphing (shrinkRoots)
-import Path (Abs, Dir, File, Path, Rel, reldir, relfile, toFilePath, (</>))
+import Path (Abs, Dir, Path, reldir, relfile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Strategy.Maven.Plugin (Artifact (..), Edge (Edge), PluginOutput (..))
 import Strategy.Maven.PluginStrategy (buildGraph)
@@ -28,7 +21,6 @@ import Strategy.Maven.Pom.Closure (
   submodulesFromCoordinate,
  )
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..))
-import Strategy.Maven.Pom.Resolver (buildGlobalClosure, globalGraph, globalPoms)
 import Test.Effect (EffectStack, itWithTempDir', shouldBe')
 import Test.Hspec
 
@@ -72,72 +64,6 @@ spec = do
           , "org.apache.logging.log4j:log4j-core"
           , "com.google.guava:guava"
           ]
-  -- TEMPORARY DIAGNOSTIC (remove once the Windows CI failure is localized):
-  -- one fixture, staged assertions. On Windows the first failing stage tells
-  -- us exactly where discovery diverges from Linux.
-  itWithTempDir' "DIAG staged closure discovery (temporary)" $ \dir -> do
-    createParentlessFixture dir
-    let poms = fixturePomPaths dir
-        expectedCoords = [rootCoord, childParentedCoord, childParentlessCoord]
-
-    -- Stage 1: everything we wrote is readable back from the same paths
-    exists <- traverse doesFileExist poms
-    shouldBe'
-      (zip (map toFilePath poms) exists)
-      (zip (map toFilePath poms) [True, True, True])
-
-    -- Stage 2: the discovery walk finds exactly the three fixture poms
-    -- (mirrors findPomFiles, including filters and the target/ skip)
-    walked :: [Path Abs File] <-
-      S.execState [] $ flip walkWithFilters' dir $ \_ _ files -> do
-        let found = filter (\f -> "pom.xml" `isSuffixOf` fileName f || ".pom" `isSuffixOf` fileName f) files
-        traverse_ (S.modify . (:)) found
-        pure ((), WalkSkipSome ["target"])
-    shouldBe' (sort walked) (sort poms)
-
-    -- Stage 3: every pom loads and both edge kinds are present in the graph
-    closure <- buildGlobalClosure walked
-    shouldBe' (Map.size (globalPoms closure)) 3
-    shouldBe' (sort (AM.vertexList (globalGraph closure))) (sort expectedCoords)
-    shouldBe'
-      (sort (AM.edgeList (globalGraph closure)))
-      [ (rootCoord, childParentedCoord) -- <parent> edge
-      , (rootCoord, childParentlessCoord) -- <modules> edge
-      ]
-
-    -- Stage 3b: determineProjectRoots keeps a root only if PIO.makeRelative
-    -- succeeds for its pom (it throws otherwise; string-based under the hood).
-    -- Assert per-pom so a failure shows which path failed and why.
-    rels :: [(String, String)] <-
-      mapM
-        ( \p ->
-            sendIO $ do
-              r <- try (PIO.makeRelative dir p) :: IO (Either SomeException (Path Rel File))
-              pure (toFilePath p, either (("threw: " ++) . show) (const "ok") r)
-        )
-        walked
-    shouldBe' rels [(toFilePath p, "ok") | p <- walked]
-
-    -- Stage 3c: determineProjectRoots actually compares the basedir against the
-    -- paths stored in globalPoms. loadParent/loadSubmodules re-resolve poms via
-    -- resolveFile (OS canonicalization), so a coordinate may be stored under a
-    -- string-different path than the walked one; assert each stored path still
-    -- relativizes under dir.
-    let storedPaths :: [Path Abs File]
-        storedPaths = mapMaybe (\c -> fst <$> Map.lookup c (globalPoms closure)) expectedCoords
-    storedRels :: [(String, String)] <-
-      mapM
-        ( \p ->
-            sendIO $ do
-              r <- try (PIO.makeRelative dir p) :: IO (Either SomeException (Path Rel File))
-              pure ("dir=" ++ toFilePath dir ++ " pom=" ++ toFilePath p, either (("threw: " ++) . show) (const "ok") r)
-        )
-        storedPaths
-    shouldBe' storedRels [("dir=" ++ toFilePath dir ++ " pom=" ++ s, "ok") | s <- map toFilePath storedPaths]
-
-    -- Stage 4: project-root selection keeps exactly the aggregator
-    closures <- findProjects dir
-    shouldBe' (sort (map closureRootCoord closures)) [rootCoord]
   describe "findProjects (parentless <modules> children)" $ do
     -- A module listed in an ancestor's <modules> but with no <parent> element is
     -- legal Maven. These tests pin that the closure graph carries <modules> edges:
@@ -183,12 +109,6 @@ spec = do
 rootCoord :: MavenCoordinate
 rootCoord = MavenCoordinate "com.example" "root-a" "1.0"
 
-childParentedCoord :: MavenCoordinate
-childParentedCoord = MavenCoordinate "com.example" "child-parented" "1.0"
-
-childParentlessCoord :: MavenCoordinate
-childParentlessCoord = MavenCoordinate "com.example" "child-parentless" "1.0"
-
 -- | The closureSubmodules of the project closure rooted at @rootCoord@.
 -- Falls back to empty if that closure is absent, so each test's primary
 -- assertion reports what it expected instead of erroring during lookup.
@@ -228,20 +148,13 @@ childParentlessArtifact =
 --   child-parented/pom.xml -- has <parent> pointing at root-a
 --   child-parentless/pom.xml -- NO <parent> element (legal Maven)
 -- @
--- | The three fixture pom locations.
-fixturePomPaths :: Path Abs Dir -> [Path Abs File]
-fixturePomPaths dir =
-  [ dir </> [relfile|pom.xml|]
-  , dir </> [reldir|child-parented|] </> [relfile|pom.xml|]
-  , dir </> [reldir|child-parentless|] </> [relfile|pom.xml|]
-  ]
-
 createParentlessFixture :: Path Abs Dir -> EffectStack ()
 createParentlessFixture dir = do
   sendIO $ PIO.createDirIfMissing True (dir </> [reldir|child-parented|])
   sendIO $ PIO.createDirIfMissing True (dir </> [reldir|child-parentless|])
-  traverse_ (\(path, contents) -> sendIO (BS.writeFile (toFilePath path) contents)) $
-    zip (fixturePomPaths dir) [rootPom, parentedChildPom, parentlessChildPom]
+  sendIO $ BS.writeFile (toFilePath (dir </> [relfile|pom.xml|])) rootPom
+  sendIO $ BS.writeFile (toFilePath (dir </> [reldir|child-parented|] </> [relfile|pom.xml|])) parentedChildPom
+  sendIO $ BS.writeFile (toFilePath (dir </> [reldir|child-parentless|] </> [relfile|pom.xml|])) parentlessChildPom
 
 -- | Concatenates lines of an XML document.
 packLines :: [String] -> BS.ByteString
