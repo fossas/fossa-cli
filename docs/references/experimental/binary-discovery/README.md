@@ -19,6 +19,7 @@ meaning that for any matching file extension we try strategies in the order list
 | `.jar` or `.aar` | Read `pom.xml`                 |
 | `.jar` or `.aar` | Read `MANIFEST.MF`             |
 | `.whl`           | Read `*.dist-info/METADATA`    |
+| `.nupkg`         | Read `*.nuspec`                |
 | Anything else    | Create user-defined dependency |
 
 ### Analyzing jar and aar dependencies
@@ -53,6 +54,17 @@ From that file we read:
 - `Version` is used for the dependency version.
 
 Using those values, we create a `pip` dependency.
+
+#### Read `*.nuspec`
+
+We unpack the archive and search inside for a `*.nuspec` file.
+
+From that file we read:
+
+- `id` is used for the dependency name.
+- `version` is used for the dependency version.
+
+Using those values, we create a `nuget` dependency.
 
 ### Creating user-defined binary dependencies
 
