@@ -5,15 +5,16 @@ module Strategy.NuGet.DirectoryPackagesProps (
   buildVersionMap,
 ) where
 
-import Control.Applicative ((<|>))
+import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, warnOnErr)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (ReadFS, doesFileExist, readContentsXML, resolveFile')
-import Parse.XML (FromXML (..), attr, children)
+import Parse.XML (FromXML (..), attr, child, children)
 import Path (Abs, Dir, File, Path, parent, toFilePath)
 
 -- | Represents a parsed Directory.Packages.props file.
@@ -28,9 +29,15 @@ newtype PackageVersionGroup = PackageVersionGroup
   }
   deriving (Eq, Ord, Show)
 
+-- | A single @\<PackageVersion\>@ item. MSBuild allows shapes beyond
+-- @\<PackageVersion Include="..." Version="..." /\>@: the @Version@ metadata
+-- may appear as a child element instead of an attribute, and items like
+-- @\<PackageVersion Remove="..." /\>@ carry no version at all. Entries missing
+-- a name or version are kept as 'Nothing' and skipped by 'buildVersionMap'
+-- rather than failing the parse of the whole file.
 data PackageVersionEntry = PackageVersionEntry
-  { pvName :: Text
-  , pvVersion :: Text
+  { pvName :: Maybe Text
+  , pvVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -43,16 +50,17 @@ instance FromXML PackageVersionGroup where
 instance FromXML PackageVersionEntry where
   parseElement el =
     PackageVersionEntry
-      <$> (attr "Include" el <|> attr "Update" el)
-      <*> (attr "Version" el)
+      <$> optional (attr "Include" el <|> attr "Update" el)
+      <*> optional (attr "Version" el <|> child "Version" el)
 
 -- | Build a map from package name to version from a parsed Directory.Packages.props.
 buildVersionMap :: DirectoryPackagesProps -> Map Text Text
 buildVersionMap props =
   Map.fromList
-    . map (\pv -> (Text.toCaseFold (pvName pv), pvVersion pv))
-    . concatMap packageVersions
+    . concatMap (mapMaybe toPair . packageVersions)
     $ packageVersionGroups props
+  where
+    toPair pv = (,) . Text.toCaseFold <$> pvName pv <*> pvVersion pv
 
 -- | Search for Directory.Packages.props starting from the given directory,
 -- walking up parent directories. If found, parse it and return the version map.

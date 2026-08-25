@@ -3,6 +3,7 @@
 ## 3.18.2
 
 - Maven: Recover dependency edges that Maven's resolution omits as duplicates, so transitive dependencies shared by multiple parents are attributed to all of them instead of a single winning parent. ([#1730](https://github.com/fossas/fossa-cli/pull/1730))
+- NuGet: `Directory.Packages.props` files with `<PackageVersion>` items that have no `Version` attribute (e.g. `<PackageVersion Remove="..." />`, or the version declared as a child `<Version>` element) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageVersion]; attrName: Version`.
 
 ## 3.18.1
 
