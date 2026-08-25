@@ -271,4 +271,4 @@ genPoms projectDir = do
     Just paths -> do
       globalClosure <- buildGlobalClosure paths
 
-      pure $ buildProjectClosures projectDir globalClosure
+      buildProjectClosures projectDir globalClosure
