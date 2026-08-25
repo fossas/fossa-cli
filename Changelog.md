@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- NuGet: `Directory.Packages.props` files with `<PackageVersion>` items that have no `Version` attribute (e.g. `<PackageVersion Remove="..." />`, or the version declared as a child `<Version>` element) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageVersion]; attrName: Version`.
+
 ## 3.18.1
 
 - Pnpm: multi-document `pnpm-lock.yaml` files no longer fail analysis with `Multiple YAML documents encountered`. pnpm v11 writes exactly two documents — a metadata front-document with no dependency data, then the full lockfile document — and analysis now reads the lockfile document, so no dependency data is skipped.
