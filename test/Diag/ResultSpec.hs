@@ -16,12 +16,18 @@ import Diag.Result (
  )
 import Effect.Logger (renderIt)
 import Errata (Errata (Errata))
+import Prettyprinter (Doc, unAnnotate)
+import Prettyprinter.Render.Terminal (AnsiStyle)
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 newtype TestMsg = TestMsg Text
 
 instance ToDiagnostic TestMsg where
   renderDiagnostic (TestMsg t) = Errata (Just t) [] Nothing
+
+-- Renders without ANSI color annotations, the way the raw logger does.
+renderPlain :: Doc AnsiStyle -> Text
+renderPlain = renderIt . unAnnotate
 
 -- Counts lines that consist of exactly the traceback header. A traceback
 -- header glued onto the end of an error message (the regression this spec
@@ -36,12 +42,12 @@ spec = describe "renderErrs" $ do
       errs = NE.fromList [errA, errB]
 
   it "renders each error's traceback header on its own line in failures" $ do
-    let rendered = renderIt $ renderFailure [] (ErrGroup [] [] [] [] [] errs) "An issue occurred"
+    let rendered = renderPlain $ renderFailure [] (ErrGroup [] [] [] [] [] errs) "An issue occurred"
     Text.isInfixOf "second errorTraceback:" rendered `shouldBe` False
     tracebackHeaderCount rendered `shouldBe` 2
 
   it "renders each error's traceback header on its own line in warnings" $ do
     let warned = WarnOnErrGroup (NE.fromList [SomeWarn (TestMsg "some warning")]) [] [] [] [] errs
-        rendered = maybe "" renderIt (renderSuccess [warned] "An issue occurred")
+        rendered = maybe "" renderPlain (renderSuccess [warned] "An issue occurred")
     Text.isInfixOf "second errorTraceback:" rendered `shouldBe` False
     tracebackHeaderCount rendered `shouldBe` 2
