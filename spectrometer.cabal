@@ -659,6 +659,7 @@ test-suite unit-tests
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
     Data.Text.JsoncSpec
+    Diag.ResultSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
