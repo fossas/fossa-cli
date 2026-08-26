@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## 3.18.2
+
+- Maven: Recover dependency edges that Maven's resolution omits as duplicates, so transitive dependencies shared by multiple parents are attributed to all of them instead of a single winning parent. ([#1730](https://github.com/fossas/fossa-cli/pull/1730))
+- NuGet: `Directory.Packages.props` files with `<PackageVersion>` items that have no `Version` attribute (e.g. `<PackageVersion Remove="..." />`, or the version declared as a child `<Version>` element) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageVersion]; attrName: Version`.
+
 ## 3.18.1
 
 - Pnpm: multi-document `pnpm-lock.yaml` files no longer fail analysis with `Multiple YAML documents encountered`. pnpm v11 writes exactly two documents — a metadata front-document with no dependency data, then the full lockfile document — and analysis now reads the lockfile document, so no dependency data is skipped.

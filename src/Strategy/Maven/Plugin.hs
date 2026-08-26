@@ -2,6 +2,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Maven.Plugin (
+  deriveVerboseGraphPaths,
+  parseVerboseGraphs,
   withUnpackedPlugin,
   installPlugin,
   parsePluginOutput,
@@ -11,17 +13,18 @@ module Strategy.Maven.Plugin (
   DepGraphPlugin (..),
   Edge (..),
   PluginOutput (..),
-  ReactorOutput (..),
-  ReactorArtifact (..),
-  parseReactorOutput,
+  VerboseArtifact (..),
+  VerboseEdge (..),
+  VerboseGraph (..),
+  augmentWithDuplicateEdges,
   textArtifactToPluginOutput,
   execPluginAggregate,
-  execPluginReactor,
+  execPluginVerboseGraph,
   mavenCmdCandidates,
 ) where
 
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, recover, warn)
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), recover, warn)
 import Control.Effect.Exception (Lift, bracket)
 import Control.Effect.Lift (sendIO)
 import Control.Monad (when)
@@ -29,20 +32,21 @@ import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.FileEmbed.Extra (embedFile')
-import Data.Foldable (Foldable (fold), foldl')
+import Data.Foldable (Foldable (fold))
 import Data.Functor (void)
-import Data.List (nub)
+import Data.List (isInfixOf, nub)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, isNothing)
-import Data.String.Conversion (toText)
+import Data.Maybe (catMaybes, isNothing, mapMaybe, maybeToList)
+import Data.Set qualified as Set
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Traversable (for)
 import Data.Tree (Tree (..))
 import DepTypes (DepType (MavenType))
-import Discovery.Walk (findFileInAncestor)
+import Discovery.Walk (WalkStep (WalkContinue), findFileInAncestor, findFileNamed, walk')
 import Effect.Exec (
   AllowErr (Never),
   CandidateAnalysisCommands (..),
@@ -54,21 +58,30 @@ import Effect.Exec (
  )
 import Effect.ReadFS (
   ReadFS,
+  doesFileExist,
   readContentsJson,
   readContentsParser,
  )
+import Errata (Errata (..))
 import Path (
   Abs,
   Dir,
   File,
   Path,
   Rel,
+  filename,
   fromAbsDir,
+  mkRelDir,
   mkRelFile,
+  parent,
+  parseAbsDir,
+  parseRelDir,
+  toFilePath,
   (</>),
  )
 import Path.IO (createTempDir, getTempDir, removeDirRecur)
-import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
+import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifacts)
+import Strategy.Maven.Pom.PomFile qualified as PomFile
 import System.FilePath qualified as FP
 import System.Info qualified as SysInfo
 
@@ -123,35 +136,171 @@ installPlugin dir path plugin = do
 execPlugin :: (Has Exec sig m, Has Diagnostics sig m) => (DepGraphPlugin -> Command) -> Path Abs Dir -> DepGraphPlugin -> m ()
 execPlugin pluginToCmd dir plugin = void $ execThrow dir $ pluginToCmd plugin
 
-execPluginAggregate :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginAggregate dir plugin = do
-  cmd <- mavenPluginDependenciesCmd dir plugin
+execPluginAggregate :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginAggregate dir outputdir plugin = do
+  cmd <- mavenPluginDependenciesCmd dir outputdir plugin
   execPlugin (const cmd) dir plugin
 
-execPluginReactor :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m ()
-execPluginReactor projectdir outputdir plugin = do
-  cmd <- mavenPluginReactorCmd projectdir outputdir plugin
-  execPlugin (const cmd) projectdir plugin
+execPluginVerboseGraph :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m ()
+execPluginVerboseGraph dir plugin = do
+  cmd <- mavenPluginVerboseGraphCmd dir plugin
+  execPlugin (const cmd) dir plugin
 
+-- | The plugin writes the graph file directly into '-DoutputDirectory'; the
+-- @target/@ prefix here was a path bug that made the aggregate result unreadable.
+-- Pinned by 'Maven.PluginSpec.parsePluginOutputSpec'.
 outputFile :: Path Rel File
-outputFile = $(mkRelFile "target/dependency-graph.txt")
+outputFile = $(mkRelFile "dependency-graph.txt")
 
 parsePluginOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m PluginOutput
-parsePluginOutput dir =
-  readContentsParser parseTextArtifact (dir </> outputFile) >>= textArtifactToPluginOutput
+parsePluginOutput outputdir =
+  readContentsParser parseTextArtifacts (outputdir </> outputFile) >>= textArtifactToPluginOutput
 
-reactorOutputFilename :: Path Rel File
-reactorOutputFilename = $(mkRelFile "fossa-reactor-graph.json")
+-- The compile-time splice requires a literal, so this is the single source
+-- of the verbose graph file name.
+verboseGraphFile :: Path Rel File
+verboseGraphFile = $(mkRelFile "fossa-depgraph-verbose.json")
 
-parseReactorOutput :: (Has ReadFS sig m, Has Diagnostics sig m) => (Path Abs Dir) -> m ReactorOutput
-parseReactorOutput dir = readContentsJson $ dir </> reactorOutputFilename
+-- | The bare file name of 'verboseGraphFile', for 'findFileNamed'.
+verboseGraphFileName :: String
+verboseGraphFileName = toFilePath (filename verboseGraphFile)
 
-textArtifactToPluginOutput :: Has Diagnostics sig m => Tree TextArtifact -> m PluginOutput
+-- | Compute where 'execPluginVerboseGraph' should have written its output for
+-- every module of a closure, or 'Nothing' if any module's build directory
+-- cannot be derived.
+--
+-- The @graph@ goal is not an aggregator: it writes one verbose graph per
+-- reactor module into that module's Maven build directory — its declared
+-- '<build><directory>', or the default 'target/' under the module. Since the
+-- closure already holds each module's pom and path, the expected locations
+-- can be computed without walking the tree; callers fall back to a walk when
+-- this returns 'Nothing' or an expected file is missing.
+deriveVerboseGraphPaths :: Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) -> Maybe [Path Abs File]
+deriveVerboseGraphPaths = traverse expectedVerboseGraphPath . Map.elems
+
+-- | The verbose graph path one closure module is expected to produce, or
+-- 'Nothing' when it cannot be derived.
+expectedVerboseGraphPath :: (Path Abs File, PomFile.Pom) -> Maybe (Path Abs File)
+expectedVerboseGraphPath (pomPath, pom) = graphFile <$> outputDir
+  where
+    moduleDir :: Path Abs Dir
+    moduleDir = parent pomPath
+
+    defaultDir :: Path Abs Dir
+    defaultDir = moduleDir </> $(mkRelDir "target")
+
+    -- '<build>' entries are keyed by the pom's own coordinates and track only
+    -- what *this* pom declares; a directory supplied through an inherited
+    -- build or profile is not visible here. Such modules simply come up
+    -- missing, which the absence-triggered walk fallback covers.
+    declaredDir :: Maybe Text
+    declaredDir =
+      Map.lookup (PomFile.coordGroup cp, PomFile.coordArtifact cp) (PomFile.pomBuilds pom) >>= \build ->
+        build >>= \buildData -> PomFile.pomBuildOutputDirectory buildData
+      where
+        cp = PomFile.pomCoord pom
+
+    -- Maven resolves a relative '<directory>' against the module's basedir.
+    dirFromText :: [Char] -> Maybe (Path Abs Dir)
+    dirFromText text =
+      if unresolvable text
+        then Nothing
+        else case parseRelDir text of
+          Right rel -> pure (moduleDir </> rel)
+          Left _err -> parseAbsDir text
+
+    -- Our pom model keeps '${...}' properties unresolved, so a declared
+    -- directory containing them cannot be located; report it rather than guess.
+    unresolvable :: [Char] -> Bool
+    unresolvable = isInfixOf "${"
+
+    outputDir :: Maybe (Path Abs Dir)
+    outputDir = case declaredDir of
+      Nothing -> pure defaultDir
+      Just text -> dirFromText (toString text)
+
+    graphFile :: Path Abs Dir -> Path Abs File
+    graphFile dir = dir </> verboseGraphFile
+
+-- | Find and parse the per-module output of 'execPluginVerboseGraph'.
+--
+-- The @graph@ goal is not an aggregator: in a multi-module build it runs once
+-- per reactor module and writes into each module's own build directory. The
+-- expected locations are derived from the closure poms ('deriveVerboseGraphPaths');
+-- only when derivation fails or an expected file is absent (Maven resolved a
+-- build directory our raw pom model can't see — profiles, inherited builds —
+-- or a module produced no output) do we fall back to walking the project tree.
+--
+-- The fallback walk deliberately ignores discovery filters: it collects
+-- Fossa's own run artifacts for in-scope projects rather than discovering
+-- customer targets, and the verbose files live under 'target/' directories,
+-- which pom discovery skips by design.
+--
+-- If the walk finds no verbose graph files at all for a non-empty closure,
+-- 'parseVerboseGraphs' warns ('NoVerboseGraphFiles') and returns an empty list,
+-- so the duplicate-edge merge becomes a no-op and callers keep the aggregate
+-- output as-is.
+parseVerboseGraphs :: (Has ReadFS sig m, Has Diagnostics sig m) => Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) -> Path Abs Dir -> m [VerboseGraph]
+parseVerboseGraphs closurePoms dir = do
+  case deriveVerboseGraphPaths closurePoms of
+    Just candidates -> readDerivedCandidates (nub candidates)
+    -- two modules may declare the same build directory; read each file once
+    Nothing -> walkAndRead dir
+  where
+    -- If any expected file is missing, our model of Maven's output locations
+    -- is incomplete: trust the filesystem instead.
+    readDerivedCandidates :: (Has ReadFS sig m, Has Diagnostics sig m) => [Path Abs File] -> m [VerboseGraph]
+    readDerivedCandidates paths = do
+      allPresent <- and <$> for paths doesFileExist
+      if allPresent
+        then traverse readContentsJson paths
+        else walkAndRead dir
+
+    walkAndRead :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m [VerboseGraph]
+    walkAndRead base = do
+      outputs <- walk' (\_ _ files -> pure (maybeToList (findFileNamed verboseGraphFileName files), WalkContinue)) base
+      -- a successful 'graph' run writes one file per reactor module; finding
+      -- none for a non-empty closure means the recovery data is unusable.
+      -- This is non-fatal by design: analysis proceeds on the aggregate output.
+      when (null outputs && not (Map.null closurePoms)) $ warn NoVerboseGraphFiles
+      traverse readContentsJson outputs
+
+-- | Emitted by 'parseVerboseGraphs' when a successful plugin run left no
+-- per-module verbose graph files behind.
+data NoVerboseGraphFiles = NoVerboseGraphFiles
+
+instance ToDiagnostic NoVerboseGraphFiles where
+  renderDiagnostic NoVerboseGraphFiles = do
+    let header =
+          "The depgraph plugin's graph goal reported success but no per-module verbose graph files were found; duplicate-resolved dependency edges may be missing from the graph."
+    Errata (Just header) [] Nothing
+
+-- | Convert the plugin's text-graph trees into a 'PluginOutput'. Multi-module
+-- builds yield one tree per root; numeric ids are assigned over the flattened,
+-- de-duplicated artifact list so edges from every tree join the same artifacts.
+-- | Order-preserving de-duplication in O(n log n); 'nub' is quadratic and the
+-- flattened artifact/edge lists grow with every repeated path in large
+-- reactors ('-DrepeatTransitiveDependenciesInTextGraph=true').
+nubOrd :: Ord a => [a] -> [a]
+nubOrd = go Set.empty
+  where
+    go _ [] = []
+    go seen (x : xs) =
+      if x `Set.member` seen
+        then go seen xs
+        else x : go (Set.insert x seen) xs
+
+textArtifactToPluginOutput :: Has Diagnostics sig m => [Tree TextArtifact] -> m PluginOutput
 textArtifactToPluginOutput
-  ta = buildPluginOutput ta
+  tas = fold <$> traverse buildPluginOutput tas
     where
+      labelsOf :: Tree TextArtifact -> [TextArtifact]
+      labelsOf (Node label subForests) = label : concatMap labelsOf subForests
+
       artifacts :: [TextArtifact]
-      artifacts = nub $ foldl' (flip (:)) mempty ta
+      -- Reversed pre-order, as in the single-tree behavior this generalizes:
+      -- leaf-first ids, roots last, with trees processed left to right.
+      artifacts = nubOrd $ reverse (concatMap labelsOf tas)
 
       artifactToIds :: Map TextArtifact Int
       artifactToIds = Map.fromList . (\ns -> zip ns [0 ..]) $ artifacts
@@ -241,8 +390,10 @@ mavenInstallPluginCmd workdir pluginFilePath plugin = do
 
 -- | The aggregate command is documented
 --  [here.](https://ferstl.github.io/depgraph-maven-plugin/aggregate-mojo.html)
-mavenPluginDependenciesCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginDependenciesCmd workdir plugin = do
+--  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
+--  overrides the build directory (See FDN-82 for more details)
+mavenPluginDependenciesCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginDependenciesCmd workdir outputdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
@@ -260,39 +411,29 @@ mavenPluginDependenciesCmd workdir plugin = do
         "-DshowOptional=true"
       , -- Repeat transitive deps for packages that appear multiple times
         "-DrepeatTransitiveDependenciesInTextGraph=true"
+      , "-DoutputDirectory=" <> toText outputdir
       ]
 
--- | The reactor command is documented
---  [here.](https://ferstl.github.io/depgraph-maven-plugin/reactor-mojo.html)
---  We set outputDirectory explicitly so that the file is written to a known spot even if the pom file
---  overrides the build directory (See FDN-82 for more details)
-mavenPluginReactorCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> Path Abs Dir -> DepGraphPlugin -> m Command
-mavenPluginReactorCmd workdir outputdir plugin = do
+-- | The @aggregate@ goal above cannot report edges Maven resolved away as
+--  duplicates (it hardcodes @NodeResolution.INCLUDED@ and has no
+--  @showDuplicates@ option), so a package shared by several parents appears
+--  under only one of them. The non-aggregating
+--  [graph goal](https://ferstl.github.io/depgraph-maven-plugin/graph-mojo.html)
+--  with @showDuplicates@ reports those edges as @OMITTED_FOR_DUPLICATE@.
+mavenPluginVerboseGraphCmd :: (CandidateCommandEffs sig m, Has ReadFS sig m) => Path Abs Dir -> DepGraphPlugin -> m Command
+mavenPluginVerboseGraphCmd workdir plugin = do
   candidates <- mavenCmdCandidates workdir
   mkAnalysisCommand candidates workdir args Never
   where
     args =
-      [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":reactor"
+      [ group plugin <> ":" <> artifact plugin <> ":" <> version plugin <> ":graph"
       , "-DgraphFormat=json"
-      , "-DoutputFileName=" <> toText reactorOutputFilename
-      , "-DoutputDirectory=" <> toText outputdir
+      , -- match the node identity used by the aggregate command
+        "-DmergeScopes"
+      , -- request Maven's verbose graph so duplicate-resolved edges are reported
+        "-DshowDuplicates=true"
+      , "-DoutputFileName=" <> toText verboseGraphFileName
       ]
-
-newtype ReactorArtifact = ReactorArtifact
-  { reactorArtifactName :: Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReactorArtifact where
-  parseJSON = withObject "Reactor artifact" $
-    \o -> ReactorArtifact <$> o .: "artifactId"
-
-newtype ReactorOutput = ReactorOutput {reactorArtifacts :: [ReactorArtifact]}
-  deriving (Eq, Ord, Show)
-
-instance FromJSON ReactorOutput where
-  parseJSON = withObject "Reactor output" $
-    \o -> ReactorOutput <$> (o .:? "artifacts" .!= [])
 
 data PluginOutput = PluginOutput
   { outArtifacts :: [Artifact]
@@ -329,3 +470,86 @@ data Edge = Edge
   , edgeTo :: Int
   }
   deriving (Eq, Ord, Show)
+
+-- | The depgraph plugin's JSON format. Edges join to artifacts via the string
+-- @id@ field; the numeric ids use two unrelated counters and cannot be used.
+data VerboseGraph = VerboseGraph
+  { verboseArtifacts :: [VerboseArtifact]
+  , verboseEdges :: [VerboseEdge]
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VerboseGraph where
+  parseJSON = withObject "Verbose graph" $
+    \o ->
+      VerboseGraph
+        <$> (o .:? "artifacts" .!= [])
+        <*> (o .:? "dependencies" .!= [])
+
+data VerboseArtifact = VerboseArtifact
+  { verboseArtifactId :: Text
+  , verboseArtifactGroupId :: Text
+  , verboseArtifactArtifactId :: Text
+  , verboseArtifactVersion :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VerboseArtifact where
+  parseJSON = withObject "Verbose graph artifact" $
+    \o ->
+      VerboseArtifact
+        <$> o .: "id"
+        <*> o .: "groupId"
+        <*> o .: "artifactId"
+        <*> o .: "version"
+
+data VerboseEdge = VerboseEdge
+  { verboseEdgeFrom :: Text
+  , verboseEdgeTo :: Text
+  , verboseEdgeResolution :: Text
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON VerboseEdge where
+  parseJSON = withObject "Verbose graph dependency" $
+    \o ->
+      VerboseEdge
+        <$> o .: "from"
+        <*> o .: "to"
+        <*> (o .:? "resolution" .!= "INCLUDED")
+
+-- | Merge @OMITTED_FOR_DUPLICATE@ edges into the aggregate output; both
+-- endpoints of a duplicate already exist there. @OMITTED_FOR_CONFLICT@ edges
+-- point at a losing version the build does not ship, so they are skipped.
+augmentWithDuplicateEdges :: PluginOutput -> [VerboseGraph] -> PluginOutput
+augmentWithDuplicateEdges output@PluginOutput{outArtifacts, outEdges} verboseGraphs =
+  output{outEdges = nubOrd (outEdges <> concatMap duplicateEdges verboseGraphs)}
+  where
+    idByGav :: Map (Text, Text, Text) Int
+    idByGav =
+      Map.fromList $
+        map (\a -> ((artifactGroupId a, artifactArtifactId a, artifactVersion a), artifactNumericId a)) outArtifacts
+
+    duplicateEdges :: VerboseGraph -> [Edge]
+    duplicateEdges VerboseGraph{verboseArtifacts, verboseEdges} = mapMaybe toAggregateEdge verboseEdges
+      where
+        gavByVerboseId :: Map Text (Text, Text, Text)
+        gavByVerboseId =
+          Map.fromList $
+            map
+              (\a -> (verboseArtifactId a, (verboseArtifactGroupId a, verboseArtifactArtifactId a, verboseArtifactVersion a)))
+              verboseArtifacts
+
+        lookupAggregateId :: Text -> Maybe Int
+        lookupAggregateId verboseId = Map.lookup verboseId gavByVerboseId >>= (`Map.lookup` idByGav)
+
+        toAggregateEdge :: VerboseEdge -> Maybe Edge
+        toAggregateEdge VerboseEdge{verboseEdgeFrom, verboseEdgeTo, verboseEdgeResolution} =
+          if verboseEdgeResolution /= "OMITTED_FOR_DUPLICATE"
+            then Nothing
+            else case (lookupAggregateId verboseEdgeFrom, lookupAggregateId verboseEdgeTo) of
+              (Just fromId, Just child) ->
+                if fromId == child
+                  then Nothing
+                  else Just (Edge fromId child)
+              _ -> Nothing
