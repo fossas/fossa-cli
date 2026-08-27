@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
+
 ## 3.18.2
 
 - Maven: Recover dependency edges that Maven's resolution omits as duplicates, so transitive dependencies shared by multiple parents are attributed to all of them instead of a single winning parent. ([#1730](https://github.com/fossas/fossa-cli/pull/1730))
