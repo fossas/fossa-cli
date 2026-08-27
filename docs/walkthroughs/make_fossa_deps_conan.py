@@ -43,6 +43,23 @@ logging.basicConfig(
 )
 
 
+def _forge_repo_path(host_name, remainder):
+    """Given the URL segment after 'host_name/', return the clean repo path.
+
+    Most forges use a fixed owner/repo shape, but GitLab allows arbitrary
+    group/subgroup nesting, so trim at the first '/-/', '/releases/', or
+    '/archive/' segment instead of assuming exactly two path parts.
+    """
+    if host_name == "gitlab.com":
+        repo_path = re.split(r"/-/|/releases/|/archive/", remainder, maxsplit=1)[0].rstrip("/")
+        return repo_path or None
+
+    path_parts = remainder.split("/")
+    if len(path_parts) >= 2:
+        return f"{path_parts[0]}/{path_parts[1]}"
+    return None
+
+
 def extract_git_url_from_sources(node):
     """Extract Git URL from conandata sources field.
 
@@ -76,9 +93,9 @@ def extract_git_url_from_sources(node):
                     if host_name in clean_url:
                         parts = clean_url.split(host_name + "/")
                         if len(parts) > 1:
-                            path_parts = parts[1].split("/")
-                            if len(path_parts) >= 2:
-                                git_url = f"{host_name}/{path_parts[0]}/{path_parts[1]}"
+                            repo_path = _forge_repo_path(host_name, parts[1])
+                            if repo_path:
+                                git_url = f"{host_name}/{repo_path}"
                                 return git_url, (host_name == "github.com")
 
     return None, False
@@ -106,9 +123,9 @@ def extract_git_url(node):
             if host_name in url:
                 parts = url.split(host_name + "/")
                 if len(parts) > 1:
-                    path_parts = parts[1].split("/")
-                    if len(path_parts) >= 2:
-                        clean_url = f"{host_name}/{path_parts[0]}/{path_parts[1]}"
+                    repo_path = _forge_repo_path(host_name, parts[1])
+                    if repo_path:
+                        clean_url = f"{host_name}/{repo_path}"
                         return clean_url, (host_name == "github.com")
 
     return None, False
@@ -167,7 +184,7 @@ def extract_git_tag_from_source_url(node):
             return m.group(1)
         m = re.search(r'/archive/([^/]+)\.(?:tar\.gz|tar\.xz|tar\.bz2|zip)$', url)
         if m:
-            return m.group(1).lstrip("v")
+            return m.group(1)
 
     return None
 
@@ -196,6 +213,15 @@ def license_of(node: dict) -> Optional[str]:
         return MULTI_LICENSE_JOINER.join(parts) if parts else None
     # Unexpected shape (number, dict, ...): coerce to a string so fossa-deps stays valid.
     return str(raw)
+
+
+def yaml_scalar(value):
+    """Render a value as a quoted YAML scalar so colons, '#', quotes, or
+    newlines in Conan-supplied strings (names, licenses, URLs) can't break
+    or reinterpret the generated fossa-deps.yml. JSON string syntax is a
+    valid YAML flow scalar, so json.dumps does the escaping for us.
+    """
+    return json.dumps(value, ensure_ascii=False)
 
 
 def generate_fossa_deps(nodes):
@@ -288,32 +314,32 @@ def generate_fossa_deps(nodes):
     if git_deps:
         yaml_lines.append("referenced-dependencies:")
         for dep in git_deps:
-            yaml_lines.append(f"- type: {dep['type']}")
-            yaml_lines.append(f"  name: {dep['name']}")
-            yaml_lines.append(f"  version: \"{dep['version']}\"")
+            yaml_lines.append(f"- type: {yaml_scalar(dep['type'])}")
+            yaml_lines.append(f"  name: {yaml_scalar(dep['name'])}")
+            yaml_lines.append(f"  version: {yaml_scalar(dep['version'])}")
             yaml_lines.append("")
 
     if archive_deps:
         yaml_lines.append("remote-dependencies:")
         for dep in archive_deps:
-            yaml_lines.append(f"- name: {dep['name']}")
-            yaml_lines.append(f"  version: \"{dep['version']}\"")
-            yaml_lines.append(f"  url: {dep['url']}")
+            yaml_lines.append(f"- name: {yaml_scalar(dep['name'])}")
+            yaml_lines.append(f"  version: {yaml_scalar(dep['version'])}")
+            yaml_lines.append(f"  url: {yaml_scalar(dep['url'])}")
             yaml_lines.append("")
 
     if custom_deps:
         yaml_lines.append("custom-dependencies:")
         for dep in custom_deps:
-            yaml_lines.append(f"- name: {dep['name']}")
-            yaml_lines.append(f"  version: \"{dep['version']}\"")
-            yaml_lines.append(f"  license: {dep['license']}")
+            yaml_lines.append(f"- name: {yaml_scalar(dep['name'])}")
+            yaml_lines.append(f"  version: {yaml_scalar(dep['version'])}")
+            yaml_lines.append(f"  license: {yaml_scalar(dep['license'])}")
             metadata = dep.get("metadata", {})
             if metadata.get("homepage") or metadata.get("description"):
                 yaml_lines.append("  metadata:")
                 if metadata.get("homepage"):
-                    yaml_lines.append(f"    homepage: {metadata['homepage']}")
+                    yaml_lines.append(f"    homepage: {yaml_scalar(metadata['homepage'])}")
                 if metadata.get("description"):
-                    yaml_lines.append(f"    description: {metadata['description']}")
+                    yaml_lines.append(f"    description: {yaml_scalar(metadata['description'])}")
             yaml_lines.append("")
 
     with open("fossa-deps.yml", "w") as f:
@@ -371,7 +397,10 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     # If the sole argument is a JSON file, read it directly; otherwise run conan.
-    if len(args) == 1 and args[0].endswith(".json") and os.path.isfile(args[0]):
+    if len(args) == 1 and args[0].endswith(".json"):
+        if not os.path.isfile(args[0]):
+            logging.error(f"JSON graph file not found: {args[0]}")
+            sys.exit(1)
         data = get_graph_from_file(args[0])
     else:
         data = get_graph_from_conan(args)
