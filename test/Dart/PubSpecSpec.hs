@@ -37,6 +37,11 @@ spec = do
                       , (PackageName "pkg_a", GitSource $ PubSpecDepGitSource Nothing "https://github.com/user/pkg_a.git")
                       , (PackageName "pkg_b", GitSource $ PubSpecDepGitSource (Just "release-0.9") "https://github.com/user/pkg_b")
                       , (PackageName "pkg_sdk", SdkSource $ PubSpecDepSdkSource "flutter")
+                      , (PackageName "pkg_bare", HostedSource $ PubSpecDepHostedSource Nothing Nothing Nothing)
+                      , (PackageName "pkg_version_only", HostedSource $ PubSpecDepHostedSource (Just "^2.0.0") Nothing Nothing)
+                      , (PackageName "pkg_hosted_url", HostedSource $ PubSpecDepHostedSource (Just "^1.2.0") Nothing (Just "https://custom.pub.dev"))
+                      , (PackageName "pkg_hosted_no_version", HostedSource $ PubSpecDepHostedSource Nothing (Just "pkg_hosted_no_version") (Just "http://pub.dev"))
+                      , (PackageName "pkg_git_no_ref", GitSource $ PubSpecDepGitSource Nothing "https://github.com/user/pkg_c")
                       ]
               , pubSpecDevDependencies =
                   Just $

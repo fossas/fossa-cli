@@ -20,6 +20,20 @@ dependencies:
       ref: release-0.9
   pkg_sdk:
     sdk: flutter
+  pkg_bare:
+  pkg_version_only:
+    version: ^2.0.0
+  pkg_hosted_url:
+    hosted: https://custom.pub.dev
+    version: ^1.2.0
+  pkg_hosted_no_version:
+    hosted:
+      name: pkg_hosted_no_version
+      url: http://pub.dev
+  pkg_git_no_ref:
+    git:
+      url: https://github.com/user/pkg_c
+      path: packages/pkg_c
 
 dev_dependencies:
   pkg_dev_default: 1.0.0
