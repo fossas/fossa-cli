@@ -206,7 +206,6 @@ data ConfigFile = ConfigFile
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
   , configKeywordSearch :: Maybe [ConfigGrepEntry]
   , configReachability :: Maybe ReachabilityConfigFile
-  , configEnableGoBinaryAnalysis :: Maybe Bool
   , configOrgWideCustomLicenseConfigPolicy :: OrgWideCustomLicenseConfigPolicy
   , configConfigFilePath :: Path Abs File
   }
@@ -310,7 +309,6 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "customLicenseSearch"
       <*> obj .:? "experimentalKeywordSearch"
       <*> obj .:? "reachability"
-      <*> obj .:? "enableGoBinaryAnalysis"
       <*> parseIgnoreOrgWideCustomLicenseScanConfigs obj
     where
       parseIgnoreOrgWideCustomLicenseScanConfigs obj = do

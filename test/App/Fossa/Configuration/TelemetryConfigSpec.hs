@@ -85,7 +85,6 @@ defaultConfigFile =
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = configPath
     , configReachability = Nothing
-    , configEnableGoBinaryAnalysis = Nothing
     }
 
 mockApiKeyRaw :: Text

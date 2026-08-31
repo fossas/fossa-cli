@@ -96,7 +96,7 @@ import Control.Monad (void, when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, fromMaybe)
+import Data.Maybe (catMaybes)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -705,13 +705,7 @@ collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAn
     )
     shouldAnalyzePathDependencies
     (UseGitBackedCargoLocators True)
-    goBinaryAnalysis
-  where
-    -- The flag turns it on; the config file can do the same for CI setups
-    -- that would rather not edit their pipeline arguments.
-    goBinaryAnalysis =
-      analyzeGoBinaryAnalysis
-        || fromMaybe False (maybeCfg >>= configEnableGoBinaryAnalysis)
+    analyzeGoBinaryAnalysis
 
 collectVendoredDeps ::
   (Has Diagnostics sig m) =>

@@ -90,7 +90,6 @@ configFile path =
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
     , configReachability = Nothing
-    , configEnableGoBinaryAnalysis = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = path
     }

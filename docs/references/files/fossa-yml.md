@@ -280,20 +280,6 @@ Path filtering can be used to omit some files or directories from license scanni
 
 For more details, see the [vendored-dependencies feature reference](../../features/vendored-dependencies.md#path-filtering).
 
-### `enableGoBinaryAnalysis:`
-
-Optional. If true, read Go module dependencies from the buildinfo embedded in
-compiled Go binaries, the same as passing `--enable-go-binary-analysis`.
-Defaults to false.
-
-To reach binaries nested inside an archive, also pass `--unpack-archives`.
-
-```yaml
-enableGoBinaryAnalysis: true
-```
-
-See the [Go binaries strategy reference](../strategies/languages/golang/gobinary.md).
-
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned.
 

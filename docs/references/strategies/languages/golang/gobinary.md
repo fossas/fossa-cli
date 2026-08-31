@@ -26,13 +26,6 @@ projects without the user asking for them.
 fossa analyze --enable-go-binary-analysis
 ```
 
-Or in `.fossa.yml`:
-
-```yaml
-version: 3
-enableGoBinaryAnalysis: true
-```
-
 To reach a binary nested inside an archive, pass `--unpack-archives` as well.
 The two flags are independent - neither implies the other:
 

@@ -58,7 +58,6 @@ configFileWithTargets only exclude excludeManifestStrategies =
     , configCustomLicenseSearch = Nothing
     , configKeywordSearch = Nothing
     , configReachability = Nothing
-    , configEnableGoBinaryAnalysis = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = configPath
     }
