@@ -451,6 +451,7 @@ library
     Strategy.Fpm
     Strategy.Glide
     Strategy.Go.GlideLock
+    Strategy.Go.GoBinary
     Strategy.Go.GoListPackages
     Strategy.Go.Gomod
     Strategy.Go.GopkgLock
@@ -677,6 +678,7 @@ test-suite unit-tests
     Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
+    Go.GoBinarySpec
     Go.GoListPackagesSpec
     Go.GomodSpec
     Go.GopkgLockSpec

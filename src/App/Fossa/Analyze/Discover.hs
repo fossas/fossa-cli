@@ -16,6 +16,7 @@ import Strategy.Composer qualified as Composer
 import Strategy.Conda qualified as Conda
 import Strategy.Fpm qualified as Fpm
 import Strategy.Glide qualified as Glide
+import Strategy.Go.GoBinary qualified as GoBinary
 import Strategy.Godep qualified as Godep
 import Strategy.Gomodules qualified as Gomodules
 import Strategy.Googlesource.RepoManifest qualified as RepoManifest
@@ -58,6 +59,7 @@ discoverFuncs =
   , DiscoverFunc Fpm.discover
   , DiscoverFunc Glide.discover
   , DiscoverFunc Godep.discover
+  , DiscoverFunc GoBinary.discover
   , DiscoverFunc Gomodules.discover
   , DiscoverFunc Gradle.discover
   , DiscoverFunc Leiningen.discover

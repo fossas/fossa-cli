@@ -14,7 +14,10 @@ use tar::{Archive, Entry};
 use tracing::{debug, info, info_span, warn};
 use typed_builder::TypedBuilder;
 
-use super::go_buildinfo::{is_candidate_binary, scan_go_buildinfo, GoBuildInfo, GoModule};
+use super::go_buildinfo::{
+    is_candidate_binary, scan_go_buildinfo, DiscoveredGoBinary, BINARY_PREFIX_LEN,
+    MIN_GO_BINARY_SIZE,
+};
 
 #[derive(Debug, Parser, Getters)]
 #[getset(get = "pub")]
@@ -25,11 +28,6 @@ pub struct Subcommand {
 }
 
 const JAR_OBSERVATION: &str = "v1.discover.binary.jar";
-const GO_BINARY_OBSERVATION: &str = "v1.discover.binary.go";
-
-/// Only sniff regular files at least this large; Go binaries are never tiny.
-/// (u64 because that's what tar header sizes are.)
-const MIN_GO_BINARY_SIZE: u64 = 4096;
 
 /// Magic bytes identifying a gzip stream.
 const GZIP_MAGIC: [u8; 2] = [0x1f, 0x8b];
@@ -60,29 +58,6 @@ struct OciManifest {
 /// The path in the manifest file corresponding to a layer.
 #[derive(Debug, PartialEq, Eq, Serialize, Hash)]
 struct LayerPath(PathBuf);
-
-/// A Go binary discovered in a layer, with the module list parsed from its
-/// embedded buildinfo.
-#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
-struct DiscoveredGoBinary {
-    kind: &'static str,
-    path: PathBuf,
-    go_version: String,
-    main_module: Option<GoModule>,
-    modules: Vec<GoModule>,
-}
-
-impl DiscoveredGoBinary {
-    fn new(path: PathBuf, info: GoBuildInfo) -> Self {
-        DiscoveredGoBinary {
-            kind: GO_BINARY_OBSERVATION,
-            path,
-            go_version: info.go_version,
-            main_module: info.main_module,
-            modules: info.modules,
-        }
-    }
-}
 
 #[derive(Debug, PartialEq, Eq, Serialize, TypedBuilder)]
 struct ContainerAnalysis {
@@ -232,7 +207,7 @@ fn maybe_go_binary(entry: &mut Entry<'_, impl Read>, path: &Path) -> Option<Disc
     // Sniffing consumes the entry's leading bytes (an `Entry` is a forward-only
     // reader), so stitch the prefix back onto the front of the stream: the
     // buildinfo scan needs offsets relative to the start of the file.
-    let mut prefix = [0u8; 64];
+    let mut prefix = [0u8; BINARY_PREFIX_LEN];
     if let Err(e) = entry.read_exact(&mut prefix) {
         debug!(?path, "skipped: failed to read file prefix: {e:?}");
         return None;
