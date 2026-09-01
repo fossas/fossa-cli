@@ -100,9 +100,11 @@ reportEvent = \case
   WorkflowResult _ -> pure ()
   WorkflowFailed reason _ -> logError $ "Workflow analyzer failed: " <> pretty reason
 
--- | ficus reports a preflight failure only through its exit code, and a clean
--- exit with no result is a bug rather than an empty answer. Both are fatal: the
--- user asked for this run by naming a path, so it must not pass silently.
+-- | Fatal on a non-zero exit or a missing result. ficus emits one terminal
+-- observation per run, so an observation usually supplies the reason, but the
+-- exit code is the signal a truncated stream cannot lose and is what decides.
+-- A clean exit with no result is a bug, not an empty answer: the user asked for
+-- this run by naming a path, so it must not pass silently.
 failWorkflow ::
   ( Has Diagnostics sig m
   , Has Logger sig m
