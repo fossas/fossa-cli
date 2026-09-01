@@ -4,6 +4,8 @@ module App.Fossa.Ficus.Analyze (
   analyzeWithFicus,
   -- Exported for use in hubble
   analyzeWithFicusMain,
+  -- Exported for reuse by other ficus subcommands
+  execFicusStreaming,
   -- Exported for testing
   singletonFicusMessage,
   vendoredDepsToSourceUnit,
@@ -39,6 +41,7 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (when)
 import Data.Aeson (decode, decodeStrictText)
 import Data.Aeson qualified as Aeson
+import Data.ByteString (ByteString)
 import Data.ByteString.Lazy qualified as BL
 import Data.Conduit ((.|))
 import Data.Conduit qualified as Conduit
@@ -63,11 +66,13 @@ import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), Source
 import System.FilePath ((</>))
 import System.IO (Handle, IOMode (WriteMode), hClose, hPutStrLn, hSetEncoding, openFile, stderr, utf8)
 import System.Process.Typed (
+  byteStringInput,
   createPipe,
   getStderr,
   getStdout,
   proc,
   setStderr,
+  setStdin,
   setStdout,
   setWorkingDir,
   waitExitCode,
@@ -237,129 +242,82 @@ vendoredDepsToSourceUnit deps =
             , "path" Aeson..= path
             ]
 
-runFicus ::
-  ( Has Diagnostics sig m
-  , Has (Lift IO) sig m
+-- | Run ficus with its stdout decoded as a stream of NDJSON observations, both
+-- streams teed to the debug bundle, and stderr drained on its own thread so the
+-- child never blocks on a full pipe.
+--
+-- The caller owns the binary, the command, and what the observations mean. The
+-- exit code is reported, not judged: 'runFicus' has always soft-failed a
+-- non-zero exit and keeps doing so, while newer callers treat it as fatal.
+execFicusStreaming ::
+  forall sig m b.
+  ( Has (Lift IO) sig m
   , Has Logger sig m
   ) =>
+  Path Abs Dir ->
+  Command ->
+  Maybe ByteString ->
   Maybe FilePath ->
-  FicusConfig ->
-  m FicusAnalysisResults
-runFicus maybeDebugDir ficusConfig = do
-  logDebugWithTime "About to extract Ficus binary..."
-  withFicusBinary $ \bin -> do
-    logDebugWithTime "Ficus binary extracted, building command..."
-    cmd <- ficusCommand ficusConfig bin (isJust maybeDebugDir)
-    logDebugWithTime "Executing ficus (streaming)"
-    logDebug $ "Working directory: " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
+  -- | Debug-log basename, before the @-stdout.log@ / @-stderr.log@ suffix.
+  Text ->
+  (b -> FicusMessage -> IO b) ->
+  b ->
+  m (b, ExitCode, [Text])
+execFicusStreaming workingDir cmd stdinPayload maybeDebugDir debugLogBasename step seed = do
+  logDebugWithTime "Creating process configuration..."
+  let processConfig =
+        maybe id (setStdin . byteStringInput . BL.fromStrict) stdinPayload
+          . setWorkingDir (toFilePath workingDir)
+          . setStdout createPipe
+          . setStderr createPipe
+          $ proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
 
-    logDebugWithTime "Creating process configuration..."
-    let processConfig =
-          setWorkingDir (toFilePath $ ficusConfigRootDir ficusConfig) $
-            setStdout createPipe $
-              setStderr createPipe $
-                proc (toString $ cmdName cmd) (map toString $ cmdArgs cmd)
+  logDebugWithTime "Starting Ficus process..."
 
-    logInfo $ "Running Ficus analysis on " <> pretty (toFilePath $ ficusConfigRootDir ficusConfig)
-    logDebugWithTime "Starting Ficus process..."
+  (stdoutFile, stderrFile) <- case maybeDebugDir of
+    Just debugDir -> sendIO $ do
+      stdoutH <- openLogFile debugDir "stdout"
+      stderrH <- openLogFile debugDir "stderr"
+      pure (Just stdoutH, Just stderrH)
+    Nothing -> pure (Nothing, Nothing)
 
-    -- Create files for teeing output if debug mode is enabled
-    (stdoutFile, stderrFile) <- case maybeDebugDir of
-      Just debugDir -> do
-        sendIO $ do
-          let stdoutPath = debugDir </> "fossa.ficus-stdout.log"
-          let stderrPath = debugDir </> "fossa.ficus-stderr.log"
-          stdoutH <- openFile stdoutPath WriteMode
-          hSetEncoding stdoutH utf8
-          stderrH <- openFile stderrPath WriteMode
-          hSetEncoding stderrH utf8
-          pure (Just stdoutH, Just stderrH)
-      Nothing ->
-        -- No debug mode, don't tee to files
-        pure (Nothing, Nothing)
+  outcome <- sendIO $ withProcessWait processConfig $ \p -> do
+    getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
+    -- Start async reading of stderr to prevent blocking
+    stderrAsync <- async $ consumeStderr (getStderr p) stderrFile
+    -- Read stdout in the main thread
+    accumulator <- streamFicusOutput (getStdout p) stdoutFile
+    -- Wait for stderr to finish
+    stdErrLines <- wait stderrAsync
+    exitCode <- waitExitCode p
+    pure (accumulator, exitCode, stdErrLines)
 
-    (result, exitCode, stdErrLines) <- sendIO $ withProcessWait processConfig $ \p -> do
-      getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
-      let stdoutHandle = getStdout p
-      let stderrHandle = getStderr p
-      -- Start async reading of stderr to prevent blocking
-      stderrAsync <- async $ consumeStderr stderrHandle stderrFile
-      -- Read stdout in the main thread
-      result <- streamFicusOutput stdoutHandle stdoutFile
-      -- Wait for stderr to finish
-      stdErrLines <- wait stderrAsync
-      exitCode <- waitExitCode p
-      pure (result, exitCode, stdErrLines)
+  sendIO $ do
+    traverse_ hClose stdoutFile
+    traverse_ hClose stderrFile
 
-    sendIO $ do
-      traverse_ hClose stdoutFile
-      traverse_ hClose stderrFile
-
-    if exitCode /= ExitSuccess
-      then do
-        logInfo $
-          "[Ficus] Ficus process returned non-zero exit code. Printing last 50 lines of stderr: " <> pretty (show exitCode)
-        logInfo "\n==== BEGIN Ficus STDERR ====\n"
-        logInfo $ pretty (Text.unlines stdErrLines)
-        logInfo "\n==== END Ficus STDERR ====\n"
-      else logInfo "[Ficus] Ficus exited successfully"
-    pure result
+  pure outcome
   where
-    currentTimeStamp :: IO String
-    currentTimeStamp = do
-      now <- getCurrentTime
-      pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
+    openLogFile :: FilePath -> Text -> IO Handle
+    openLogFile debugDir stream = do
+      handle <- openFile (debugDir </> toString (debugLogBasename <> "-" <> stream <> ".log")) WriteMode
+      hSetEncoding handle utf8
+      pure handle
 
-    streamFicusOutput :: Handle -> Maybe Handle -> IO FicusAnalysisResults
-    streamFicusOutput handle maybeFile = do
-      accumulator <-
-        Conduit.runConduit $
-          CC.sourceHandle handle
-            .| CC.decodeUtf8Lenient
-            .| CC.linesUnbounded
-            .| CC.mapM
-              ( \line -> do
-                  -- Tee raw line to file if debug mode
-                  traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
-                  pure line
-              )
-            .| CCL.mapMaybe decodeStrictText
-            .| CC.foldM
-              ( \(currentSnippetResults, currentVendoredDeps) message -> do
-                  -- Log messages as they come, with timestamps
-                  timestamp <- currentTimeStamp
-                  case message of
-                    FicusMessageError err -> do
-                      hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
-                      pure (currentSnippetResults, currentVendoredDeps)
-                    FicusMessageDebug dbg -> do
-                      hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
-                      pure (currentSnippetResults, currentVendoredDeps)
-                    FicusMessageFinding finding -> do
-                      hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
-                      let analysisFinding = findingToSnippetScanResult finding
-                      let vendoredDep = findingToVendoredDependency finding
-                      when (isJust currentSnippetResults && isJust analysisFinding) $
-                        hPutStrLn stderr $
-                          "[" ++ timestamp ++ "] ERROR " <> "Unexpected mutliple snippet scan results"
-                      let newSnippetResults = currentSnippetResults <|> analysisFinding
-                      let newVendoredDeps = case vendoredDep of
-                            Just dep -> dep : currentVendoredDeps
-                            Nothing -> currentVendoredDeps
-                      pure (newSnippetResults, newVendoredDeps)
-              )
-              (Nothing, [])
-
-      let (snippetResults, vendoredDeps) = accumulator
-      let vendoredResults = case vendoredDeps of
-            [] -> Nothing
-            deps -> Just . FicusVendoredDependencyScanResults . Just $ vendoredDepsToSourceUnit deps
-
-      pure $
-        FicusAnalysisResults
-          { snippetScanResults = snippetResults
-          , vendoredDependencyScanResults = vendoredResults
-          }
+    streamFicusOutput :: Handle -> Maybe Handle -> IO b
+    streamFicusOutput handle maybeFile =
+      Conduit.runConduit $
+        CC.sourceHandle handle
+          .| CC.decodeUtf8Lenient
+          .| CC.linesUnbounded
+          .| CC.mapM
+            ( \line -> do
+                -- Tee raw line to file if debug mode
+                traverse_ (\fileH -> hPutStrLn fileH (toString line)) maybeFile
+                pure line
+            )
+          .| CCL.mapMaybe decodeStrictText
+          .| CC.foldM step seed
 
     -- Use Conduit with decodeUtf8Lenient to safely handle UTF-8 output from ficus.
     -- This matches the approach used for stdout and prevents crashes on Windows
@@ -384,6 +342,80 @@ runFicus maybeDebugDir ficusConfig = do
               )
               []
       pure (reverse acc)
+
+runFicus ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  Maybe FilePath ->
+  FicusConfig ->
+  m FicusAnalysisResults
+runFicus maybeDebugDir ficusConfig = do
+  logDebugWithTime "About to extract Ficus binary..."
+  withFicusBinary $ \bin -> do
+    logDebugWithTime "Ficus binary extracted, building command..."
+    cmd <- ficusCommand ficusConfig bin (isJust maybeDebugDir)
+    logDebugWithTime "Executing ficus (streaming)"
+    logDebug $ "Working directory: " <> pretty (toFilePath rootDir)
+    logInfo $ "Running Ficus analysis on " <> pretty (toFilePath rootDir)
+
+    ((snippetResults, vendoredDeps), exitCode, stdErrLines) <-
+      execFicusStreaming rootDir cmd Nothing maybeDebugDir "fossa.ficus" accumulate (Nothing, [])
+
+    if exitCode /= ExitSuccess
+      then do
+        logInfo $
+          "[Ficus] Ficus process returned non-zero exit code. Printing last 50 lines of stderr: " <> pretty (show exitCode)
+        logInfo "\n==== BEGIN Ficus STDERR ====\n"
+        logInfo $ pretty (Text.unlines stdErrLines)
+        logInfo "\n==== END Ficus STDERR ====\n"
+      else logInfo "[Ficus] Ficus exited successfully"
+
+    let vendoredResults = case vendoredDeps of
+          [] -> Nothing
+          deps -> Just . FicusVendoredDependencyScanResults . Just $ vendoredDepsToSourceUnit deps
+    pure $
+      FicusAnalysisResults
+        { snippetScanResults = snippetResults
+        , vendoredDependencyScanResults = vendoredResults
+        }
+  where
+    rootDir :: Path Abs Dir
+    rootDir = ficusConfigRootDir ficusConfig
+
+    currentTimeStamp :: IO String
+    currentTimeStamp = do
+      now <- getCurrentTime
+      pure . formatTime defaultTimeLocale "%H:%M:%S.%3q" $ now
+
+    accumulate ::
+      (Maybe FicusSnippetScanResults, [FicusVendoredDependency]) ->
+      FicusMessage ->
+      IO (Maybe FicusSnippetScanResults, [FicusVendoredDependency])
+    accumulate (currentSnippetResults, currentVendoredDeps) message = do
+      -- Log messages as they come, with timestamps
+      timestamp <- currentTimeStamp
+      case message of
+        FicusMessageError err -> do
+          hPutStrLn stderr $ "[" ++ timestamp ++ "] ERROR " <> toString (displayFicusError err)
+          pure (currentSnippetResults, currentVendoredDeps)
+        FicusMessageDebug dbg -> do
+          hPutStrLn stderr $ "[" ++ timestamp ++ "] DEBUG " <> toString (displayFicusDebug dbg)
+          pure (currentSnippetResults, currentVendoredDeps)
+        FicusMessageFinding finding -> do
+          hPutStrLn stderr $ "[" ++ timestamp ++ "] FINDING " <> toString (displayFicusFinding finding)
+          let analysisFinding = findingToSnippetScanResult finding
+          let vendoredDep = findingToVendoredDependency finding
+          when (isJust currentSnippetResults && isJust analysisFinding) $
+            hPutStrLn stderr $
+              "[" ++ timestamp ++ "] ERROR " <> "Unexpected mutliple snippet scan results"
+          let newSnippetResults = currentSnippetResults <|> analysisFinding
+          let newVendoredDeps = case vendoredDep of
+                Just dep -> dep : currentVendoredDeps
+                Nothing -> currentVendoredDeps
+          pure (newSnippetResults, newVendoredDeps)
+
     displayFicusDebug :: FicusDebug -> Text
     displayFicusDebug (FicusDebug FicusMessageData{..}) = ficusMessageDataStrategy <> ": " <> ficusMessageDataPayload
     displayFicusError :: FicusError -> Text
