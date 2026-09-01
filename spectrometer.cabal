@@ -673,6 +673,7 @@ test-suite unit-tests
     Extra.ListSpec
     Extra.TextSpec
     Ficus.FicusSpec
+    Ficus.WorkflowSpec
     Fortran.FpmTomlSpec
     Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec
