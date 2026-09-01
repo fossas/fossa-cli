@@ -17,7 +17,10 @@ import App.Fossa.Ficus.Types (
   WorkflowRunArtifact (WorkflowRunArtifact),
   findingToWorkflowEvent,
   toWorkflowExecutable,
+  workflowResultJson,
  )
+import App.Fossa.Ficus.Workflow (runWorkflowWith)
+import Control.Carrier.Debug (Scope (scopeMetadata), runDebug)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Aeson qualified as Aeson
 import Data.ByteString (ByteString)
@@ -28,13 +31,15 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitFailure, ExitSuccess))
-import Path (Abs, Dir, Path, mkAbsDir, mkAbsFile, mkRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile, mkRelFile, toFilePath, (</>))
 import System.Directory (getPermissions, setOwnerExecutable, setPermissions)
-import Test.Effect (itWithTempDir', shouldBe', shouldSatisfy')
+import Test.Effect (expectFatal', itWithTempDir', shouldBe', shouldSatisfy')
 import Test.Hspec (Spec, describe)
 
 spec :: Spec
-spec = streamingSpec
+spec = do
+  streamingSpec
+  workflowSpec
 
 -- | ficus's own wire-contract assertion, rebuilt here so the fake speaks exactly
 -- what fossa-cli sees in production (@ficus/tests/it/workflow.rs:308-318@).
@@ -50,6 +55,17 @@ observationEnvelope payload =
             , "payload" Aeson..= payload
             , "strategy" Aeson..= ("workflow" :: Text)
             ]
+      ]
+
+workflowStartedPayload :: Text
+workflowStartedPayload =
+  decodeUtf8 . Aeson.encode $
+    Aeson.object
+      [ "type" Aeson..= ("workflow-started" :: Text)
+      , "ficusVersion" Aeson..= ("0.0.0" :: Text)
+      , "executable" Aeson..= Aeson.object ["program" Aeson..= ("node" :: Text), "args" Aeson..= ([] :: [Text])]
+      , "resolvedProgram" Aeson..= ("/usr/bin/node" :: Text)
+      , "analyzerVersion" Aeson..= ("unknown" :: Text)
       ]
 
 stepCompletedPayload :: Text
@@ -109,6 +125,9 @@ decodedEvents = mapMaybe toEvent
     toEvent (FicusMessageFinding finding) = findingToWorkflowEvent finding
     toEvent _ = Nothing
 
+analyzerBundle :: Path Abs Dir -> Path Abs File
+analyzerBundle dir = dir </> $(mkRelFile "analyzer.js")
+
 streamingSpec :: Spec
 streamingSpec = describe "execFicusStreaming" $ do
   itWithTempDir' "streams observations, delivers the artifact on stdin, and reports success" $ \tmpDir -> do
@@ -134,4 +153,19 @@ streamingSpec = describe "execFicusStreaming" $ do
     stderrLog <- sendIO . readFile . toFilePath $ tmpDir </> $(mkRelFile "fossa.ficus-workflow-stderr.log")
     toText stdoutLog `shouldSatisfy'` Text.isInfixOf (observationEnvelope stepCompletedPayload)
     toText stderrLog `shouldSatisfy'` Text.isInfixOf (decodeUtf8 runArtifactBytes)
+
+workflowSpec :: Spec
+workflowSpec = describe "analyzeWithWorkflow" $ do
+  itWithTempDir' "fails when ficus exits non-zero" $ \tmpDir -> do
+    cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 1
+    expectFatal' $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+
+  itWithTempDir' "fails when ficus exits cleanly without a result" $ \tmpDir -> do
+    cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 0
+    expectFatal' $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+
+  itWithTempDir' "records the result in the debug bundle on success" $ \tmpDir -> do
+    cmd <- writeFakeFicus tmpDir [workflowStartedPayload, stepCompletedPayload, workflowResultPayload] 0
+    (scope, ()) <- runDebug $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+    Map.lookup workflowResultJson (scopeMetadata scope) `shouldBe'` Just expectedResult
 #endif

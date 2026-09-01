@@ -252,6 +252,7 @@ library
     App.Fossa.EmbeddedBinary
     App.Fossa.Ficus.Analyze
     App.Fossa.Ficus.Types
+    App.Fossa.Ficus.Workflow
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze

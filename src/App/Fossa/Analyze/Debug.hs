@@ -25,6 +25,7 @@ module App.Fossa.Analyze.Debug (
 where
 
 import App.Fossa.EmbeddedBinary (themisVersion)
+import App.Fossa.Ficus.Types (workflowResultJson)
 import App.Fossa.Reachability.Types (reachabilityEndpointJson, reachabilityRawJson)
 import App.Version (fullVersionDescription)
 import Control.Applicative (asum)
@@ -197,6 +198,7 @@ collectDebugBundle cfg act = do
           , bundleBinaryVersions = binVersions
           , bundleReachabilityRaw = lookUpReachabilityRawScope scope
           , bundleReachabilityEndpoint = lookUpReachabilityEndpointScope scope
+          , bundleWorkflowResult = lookupScope workflowResultJson scope
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
@@ -254,6 +256,7 @@ data DebugBundle cfg = DebugBundle
   , bundleJournals :: BundleJournals
   , bundleReachabilityRaw :: Maybe Aeson.Value
   , bundleReachabilityEndpoint :: Maybe Aeson.Value
+  , bundleWorkflowResult :: Maybe Aeson.Value
   }
   deriving (Show, Generic)
 
