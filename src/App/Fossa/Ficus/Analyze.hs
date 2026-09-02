@@ -276,9 +276,9 @@ execFicusStreaming workingDir cmd stdinPayload maybeDebugDir debugLogBasename st
 
   logDebugWithTime "Starting Ficus process..."
 
-  bracket (sendIO openDebugLogs) (sendIO . closeDebugLogs) $ \(stdoutFile, stderrFile) ->
+  bracket (sendIO openDebugLogs) (sendIO . closeDebugLogs) $ \(stdoutFile, stderrFile) -> do
+    logDebugWithTime "Ficus process started, beginning stream processing..."
     sendIO . withProcessWait processConfig $ \p -> do
-      getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
       -- Start async reading of stderr to prevent blocking
       stderrAsync <- async $ consumeStderr (getStderr p) stderrFile
       -- Read stdout in the main thread
