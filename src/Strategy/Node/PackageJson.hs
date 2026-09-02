@@ -5,6 +5,7 @@
 module Strategy.Node.PackageJson (
   buildGraph,
   analyze,
+  unresolvableSpecifiers,
   Development,
   FlatDeps (..),
   Manifest (..),
@@ -27,6 +28,7 @@ import Control.Effect.Diagnostics (
   context,
   run,
  )
+import Control.Monad (unless)
 import Data.Aeson (
   FromJSON (parseJSON),
   KeyValue ((.=)),
@@ -46,6 +48,7 @@ import Data.Set (Set)
 import Data.String.Conversion (ToText (toText))
 import Data.Tagged (Tagged)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (..),
   DepType (NodeJSType),
@@ -59,15 +62,49 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
+import Effect.Logger (Logger, logWarn, pretty)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Path (Abs, File, Path, Rel)
 
 newtype WorkspacePackageNames = WorkspacePackageNames (Set Text)
 
-analyze :: (Has Diagnostics sig m) => [PackageJson] -> m (Graphing Dependency)
+analyze :: (Has Diagnostics sig m, Has Logger sig m) => [PackageJson] -> m (Graphing Dependency)
 analyze manifests = do
+  let unresolvable = concatMap unresolvableSpecifiers manifests
+  unless (null unresolvable) $
+    logWarn . pretty $
+      "Skipping "
+        <> toText (show (length unresolvable))
+        <> " dependencies whose version is a workspace reference this strategy cannot resolve without a lockfile ("
+        <> Text.intercalate ", " unresolvable
+        <> "). Analyze from the workspace root to include them."
   context "Building dependency graph" . pure $ foldMap buildGraph manifests
+
+-- | Specifier protocols that name a location in the workspace rather than a
+-- version range.
+--
+-- @catalog:@ (pnpm catalogs), @workspace:@ (the workspace protocol) and
+-- @link:@ are all resolved from files this strategy does not read — the
+-- lockfile, or pnpm-workspace.yaml. Recording the raw specifier as the version
+-- produced locators like @npm+left-pad$catalog:@, a dependency pinned to the
+-- literal version "catalog:", which does not exist in any registry.
+--
+-- @file:@ is deliberately not in this list. It is equally unresolvable, but it
+-- long predates the workspace protocols and npm projects have been reporting
+-- it this way for years; changing that is a separate decision.
+workspaceProtocols :: [Text]
+workspaceProtocols = ["catalog:", "workspace:", "link:"]
+
+isWorkspaceReference :: Text -> Bool
+isWorkspaceReference constraint = any (`Text.isPrefixOf` constraint) workspaceProtocols
+
+-- | @name\@specifier@ for every dependency dropped by 'buildGraph', for warning.
+unresolvableSpecifiers :: PackageJson -> [Text]
+unresolvableSpecifiers PackageJson{..} =
+  map (\(name, constraint) -> name <> "@" <> constraint)
+    . filter (isWorkspaceReference . snd)
+    $ Map.toList packageDeps <> Map.toList packageDevDeps
 
 type NodeGrapher = LabeledGrapher NodePackage NodePackageLabel
 
@@ -76,8 +113,8 @@ newtype NodePackageLabel = NodePackageEnv DepEnvironment
 
 buildGraph :: PackageJson -> Graphing Dependency
 buildGraph PackageJson{..} = run . withLabeling toDependency $ do
-  _ <- Map.traverseWithKey (addDep EnvProduction) packageDeps
-  _ <- Map.traverseWithKey (addDep EnvDevelopment) packageDevDeps
+  _ <- Map.traverseWithKey (addDep EnvProduction) (Map.filter (not . isWorkspaceReference) packageDeps)
+  _ <- Map.traverseWithKey (addDep EnvDevelopment) (Map.filter (not . isWorkspaceReference) packageDevDeps)
   pure ()
   where
     addDep :: Has NodeGrapher sig m => DepEnvironment -> Text -> Text -> m ()

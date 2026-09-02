@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Node: dependencies whose version is a workspace reference (`catalog:`, `workspace:`, `link:`) are no longer reported at that literal string as their version, which produced locators like `npm+left-pad$catalog:` for packages that do not exist. They are skipped with a warning when analysis falls back to a `package.json`-only strategy that cannot resolve them. ([#1765](https://github.com/fossas/fossa-cli/pull/1765))
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2

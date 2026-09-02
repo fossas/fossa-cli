@@ -229,7 +229,7 @@ analyzeNpmLock targets (Manifest npmLockFile) graph = do
     NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
-analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
+analyzeNpm :: (Has Diagnostics sig m, Has Logger sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
   void
     . recover
