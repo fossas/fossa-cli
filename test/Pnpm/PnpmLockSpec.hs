@@ -208,6 +208,41 @@ spec = do
         it "should report an empty graph rather than the whole workspace" $
           expectDeps [] graph
 
+  -- Link following over a deeper workspace, see the comment in the fixture:
+  -- apps/web links to libs/ui, which links to libs/core, which links back to
+  -- libs/ui; apps/web also links to libs/testkit from devDependencies, and
+  -- testkit carries a link: to a path with no importer. libs/orphan and the
+  -- root are linked by nobody.
+  let pnpmWorkspaceLinks = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-links/pnpm-lock.yaml")
+
+  describe "workspace link following" $
+    checkScopedGraph (Just $ Set.fromList ["apps/web"]) pnpmWorkspaceLinks $ \graph -> do
+      it "should follow a chain of links transitively" $ do
+        -- is-odd is declared only by libs/core, two links away from apps/web.
+        expectDep (mkProdDep "is-odd@3.0.1") graph
+        expectDep (mkProdDep "is-number@6.0.0") graph
+
+      it "should terminate on a link cycle and keep both sides" $ do
+        -- libs/ui and libs/core link to each other.
+        expectDep (mkProdDep "uri-js@4.4.1") graph
+        expectDep (mkProdDep "is-odd@3.0.1") graph
+
+      it "should follow a link declared under devDependencies" $
+        expectDep (mkProdDep "colorjs@0.1.9") graph
+
+      it "should include exactly the linked importers' dependencies" $
+        -- The dangling link in libs/testkit resolves to nothing, and neither
+        -- libs/orphan's lodash nor the root's typescript is reachable.
+        expectDeps
+          [ mkProdDep "left-pad@1.3.0"
+          , mkProdDep "uri-js@4.4.1"
+          , mkProdDep "punycode@2.3.1"
+          , mkProdDep "is-odd@3.0.1"
+          , mkProdDep "is-number@6.0.0"
+          , mkProdDep "colorjs@0.1.9"
+          ]
+          graph
+
   describe "resolveImporterKey" $ do
     it "should resolve a sibling link to the sibling's importer key" $
       resolveImporterKey "browser" "../shared" `shouldBe` "shared"

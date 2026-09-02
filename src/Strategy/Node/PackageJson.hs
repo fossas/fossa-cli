@@ -5,6 +5,7 @@
 module Strategy.Node.PackageJson (
   buildGraph,
   analyze,
+  unresolvableSpecifiers,
   Development,
   FlatDeps (..),
   Manifest (..),
