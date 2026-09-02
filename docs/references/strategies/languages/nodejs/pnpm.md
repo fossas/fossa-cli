@@ -224,11 +224,6 @@ When `catalog:` or `catalog:<name>` specifiers are used in `package.json`,
 the resolved versions from `pnpm-lock.yaml` are used for analysis.
 No additional configuration is needed.
 
-Resolving a catalog specifier requires the lockfile, which lives at the workspace
-root. Analyzing a member directory on its own therefore cannot resolve them, and
-such dependencies are skipped with a warning rather than reported at the literal
-version `catalog:`. Analyze from the workspace root to include them.
-
 
 # F.A.Q
 
