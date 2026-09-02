@@ -28,7 +28,6 @@ import Control.Effect.Diagnostics (
   fromEitherShow,
   fromMaybe,
   recover,
-  warn,
   warnOnErr,
  )
 import Control.Effect.Reader (Reader)
@@ -59,6 +58,8 @@ import Discovery.Walk (
  )
 import Effect.Logger (
   Logger,
+  logWarn,
+  pretty,
  )
 import Effect.ReadFS (
   ReadFS,
@@ -81,7 +82,7 @@ import Path (
   (</>),
  )
 import Strategy.Node.Bun.BunLock qualified as BunLock
-import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), UnnamedWorkspaceRoot (UnnamedWorkspaceRoot), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
+import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.Npm.PackageLockV3 qualified as PackageLockV3
 import Strategy.Node.PackageJson (
@@ -149,7 +150,7 @@ collectManifests = walkWithFilters' $ \_ _ files ->
     Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)
 
 mkProject ::
-  (Has Diagnostics sig m) =>
+  (Has Diagnostics sig m, Has Logger sig m) =>
   NodeProject ->
   m (DiscoveredProject NodeProject)
 mkProject project = do
@@ -171,9 +172,15 @@ mkProject project = do
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   -- A workspace whose root has no name gets no targets at all (see
   -- 'findWorkspaceBuildTargets'), which looks like a bug from the outside:
-  -- list-targets shows only the project. Say why, and what fixes it.
+  -- list-targets shows only the project. Say why, and what fixes it. This is
+  -- logged rather than raised as a diagnostic warning because discovery's
+  -- diagnostics are only rendered under --debug.
   when (honorsTargets && hasUnnamedWorkspaceRoot graph) $
-    warn (UnnamedWorkspaceRoot rootManifest)
+    logWarn . pretty $
+      "Workspace root "
+        <> toText (toFilePath rootManifest)
+        <> " has no `name`, so its members are not offered as build targets and the whole workspace is analyzed as one unit."
+        <> " Add a `name` to select members individually with --only-target or targets.only in .fossa.yml."
   pure $
     DiscoveredProject
       { projectType = typename
