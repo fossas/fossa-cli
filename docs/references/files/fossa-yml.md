@@ -290,20 +290,6 @@ Targets are listed in the following formats for both `only` and `exclude` lists.
     - type: pipenv (all pipenv type targets at any path)
 ```
 
-Some project types divide a single project into named build targets — for
-example each workspace package of a yarn, npm, or pnpm monorepo. Add a `target`
-field alongside `path` to select one of them:
-
-```yaml
-    - type: pnpm
-      path: ./
-      target: browser
-```
-
-This is the `.fossa.yml` equivalent of `--only-target 'pnpm@./:browser'`. Run
-`fossa list-targets` to see which targets a project has; a project with no named
-targets is selected by `type` and `path` alone.
-
 #### `targets.only:`
 The list of `only` targets that should be scanned. When used alongside `paths.only`, the intersection of the two lists is taken to find targets for scanning
 
@@ -383,7 +369,7 @@ For detailed walkthrough, and example please refer to [analysis target configura
 
 #### Project target configuration example
 
-Run the command `fossa list-targets` to determine the analysis targets present in your project. The output will look similar to the following with the targets in format `type@path`, or `type@path:target` for a project divided into named build targets (You may see that duplicated lines for "Found target" and "Found project"):
+Run the command `fossa list-targets` to determine the analysis targets present in your project. The output will look similar to the following with the targets in format `type@path` (You may see that duplicated lines for "Found target" and "Found project"):
 
 ```
 Found target: bundler@prod/docker

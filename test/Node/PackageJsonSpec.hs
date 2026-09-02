@@ -33,10 +33,9 @@ import Strategy.Node.PackageJson (
   PkgJsonLicenseObj (PkgJsonLicenseObj, licenseType, licenseUrl),
   PkgJsonWorkspaces (PkgJsonWorkspaces),
   buildGraph,
-  unresolvableSpecifiers,
  )
 import Test.Effect (it', shouldBe', shouldMatchList')
-import Test.Hspec (Spec, describe, it, runIO, shouldMatchList)
+import Test.Hspec (Spec, describe, it, runIO)
 import Test.Hspec.Hedgehog (hedgehog, modifyMaxSuccess)
 import Types (
   License (License),
@@ -82,50 +81,14 @@ packageTwo =
     , dependencyTags = Map.empty
     }
 
--- | A workspace member analyzed on its own. Four of its specifiers name a
--- location in the workspace rather than a version, and only the lockfile,
--- which this strategy does not read, can resolve them.
-workspaceReferenceInput :: PackageJson
-workspaceReferenceInput =
-  mockInput
-    { packageDeps =
-        Map.fromList
-          [ ("packageOne", "^1.0.0")
-          , ("left-pad", "catalog:")
-          , ("@ws/shared", "workspace:*")
-          , ("local-lib", "link:../local-lib")
-          ]
-    , packageDevDeps =
-        Map.fromList
-          [ ("packageTwo", "^2.0.0")
-          , ("@ws/testkit", "workspace:^")
-          ]
-    }
-
 graphSpec :: Spec
 graphSpec =
-  describe "buildGraph" $ do
+  describe "buildGraph" $
     it "should produce expected output" $ do
       let graph = buildGraph mockInput
       expectDeps [packageOne, packageTwo] graph
       expectDirect [packageOne, packageTwo] graph
       expectEdges [] graph
-
-    it "should skip dependencies whose version is a workspace reference" $ do
-      -- Recording "catalog:" as the version produced locators for packages
-      -- that exist in no registry, so these are left out rather than reported
-      -- at a version that is not one.
-      let graph = buildGraph workspaceReferenceInput
-      expectDeps [packageOne, packageTwo] graph
-      expectDirect [packageOne, packageTwo] graph
-
-    it "should name every skipped dependency for the warning" $
-      unresolvableSpecifiers workspaceReferenceInput
-        `shouldMatchList` [ "left-pad@catalog:"
-                          , "@ws/shared@workspace:*"
-                          , "local-lib@link:../local-lib"
-                          , "@ws/testkit@workspace:^"
-                          ]
 
 -- License Testing
 

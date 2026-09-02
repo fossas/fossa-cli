@@ -16,17 +16,6 @@ $ fossa list-targets
 
 This output tells us that when `fossa analyze` is run, we will be analyzing `cabal`, `cocoapods`, `pipenv`, and `yarn` projects. This can be useful to determine if there are targets you expect or don't expect to see.
 
-A project that is divided into named build targets, such as a yarn, npm, or pnpm workspace, is listed once per target in the form `type@path:target`:
-
-```bash
-$ fossa list-targets
-[ INFO] Found target: yarn@./:my-monorepo
-[ INFO] Found target: yarn@./:app
-[ INFO] Found target: yarn@./:lib-core
-```
-
-Each of those can be selected on its own with `fossa analyze --only-target 'yarn@./:app'` or a `target:` entry under `targets` in `.fossa.yml`; see [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration).
-
 #### Command output formats
 
 The list-targets command supports the following formats (via `fossa list-targets --format=<OPTION>`):
