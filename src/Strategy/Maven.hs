@@ -3,6 +3,7 @@ module Strategy.Maven (
   mkProject,
   MavenProject (..),
   getDeps,
+  getStaticAnalysis,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
@@ -18,14 +19,14 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
-import DepTypes (Dependency)
+import DepTypes (Dependency (..))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, gmap, shrinkRoots)
+import Graphing (Graphing, gmap, shrink, shrinkRoots)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
@@ -188,7 +189,12 @@ getStaticAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
   (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  pure (filteredGraph, graphBreadth)
+  pure (withoutProjectAsDep filteredGraph, graphBreadth)
+  where
+    -- The static graph is rooted at the project itself, with submodules as its children.
+    -- Those are the users' packages, not dependencies, so remove them and promote their
+    -- children to direct, like the dynamic strategies do with `shrinkRoots`.
+    withoutProjectAsDep = shrink (\dep -> dependencyName dep `Set.notMember` PomClosure.closureSubmodules closure)
 
 applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
