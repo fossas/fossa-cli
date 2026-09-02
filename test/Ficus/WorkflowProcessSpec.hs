@@ -25,6 +25,7 @@ import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Aeson qualified as Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy qualified as BL
+import Data.Either (rights)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -120,7 +121,7 @@ collectMessages :: [FicusMessage] -> FicusMessage -> IO [FicusMessage]
 collectMessages acc message = pure (acc <> [message])
 
 decodedEvents :: [FicusMessage] -> [WorkflowEvent]
-decodedEvents = mapMaybe toEvent
+decodedEvents = rights . mapMaybe toEvent
   where
     toEvent (FicusMessageFinding finding) = findingToWorkflowEvent finding
     toEvent _ = Nothing

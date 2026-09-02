@@ -369,10 +369,12 @@ instance FromJSON WorkflowEvent where
           <*> obj .: "stderrTail"
       other -> fail $ "unknown workflow event type: " <> toString other
 
--- | Findings on any other strategy belong to another consumer.
-findingToWorkflowEvent :: FicusFinding -> Maybe WorkflowEvent
+-- | Findings on any other strategy belong to another consumer. A workflow
+-- payload this version cannot decode comes back as 'Left' holding it verbatim:
+-- dropping it silently reports version skew as "ficus produced no result".
+findingToWorkflowEvent :: FicusFinding -> Maybe (Either Text WorkflowEvent)
 findingToWorkflowEvent (FicusFinding (FicusMessageData strategy payload))
-  | Text.toLower strategy == "workflow" = decodeStrictText payload
+  | Text.toLower strategy == "workflow" = Just $ maybe (Left payload) Right (decodeStrictText payload)
 findingToWorkflowEvent _ = Nothing
 
 -- | Debug-bundle key the workflow result is recorded under.

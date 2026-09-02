@@ -20,6 +20,7 @@ import Control.Effect.Lift (Has, Lift)
 import Control.Effect.Path (withSystemTempDir)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
+import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
 import Data.String.Conversion (decodeUtf8, toText)
@@ -76,9 +77,11 @@ runWorkflowWith cmd target analyzer maybeDebugDir =
         artifactBytes = BL.toStrict $ Aeson.encode artifact
     logDebug $ "Workflow run artifact: " <> pretty (decodeUtf8 artifactBytes :: Text)
 
-    (events, exitCode, stdErrLines) <-
+    (collected, exitCode, stdErrLines) <-
       execFicusStreaming scratch cmd (Just artifactBytes) maybeDebugDir "fossa.ficus-workflow" collectWorkflowEvent []
 
+    let (undecodable, events) = partitionEithers collected
+    traverse_ reportUndecodable undecodable
     traverse_ reportEvent events
     case (exitCode, [value | WorkflowResult value <- events]) of
       (ExitSuccess, result : _) -> do
@@ -87,10 +90,15 @@ runWorkflowWith cmd target analyzer maybeDebugDir =
         logInfo "Workflow analysis complete"
       _ -> failWorkflow analyzer exitCode events stdErrLines
 
-collectWorkflowEvent :: [WorkflowEvent] -> FicusMessage -> IO [WorkflowEvent]
+collectWorkflowEvent :: [Either Text WorkflowEvent] -> FicusMessage -> IO [Either Text WorkflowEvent]
 collectWorkflowEvent acc (FicusMessageFinding finding) =
   pure $ maybe acc ((acc <>) . pure) (findingToWorkflowEvent finding)
 collectWorkflowEvent acc _ = pure acc
+
+-- | Debug level: a payload this version cannot read is version skew, and the
+-- exit code still decides the run.
+reportUndecodable :: (Has Logger sig m) => Text -> m ()
+reportUndecodable payload = logDebug $ "Undecodable workflow observation: " <> pretty payload
 
 reportEvent :: (Has Logger sig m) => WorkflowEvent -> m ()
 reportEvent = \case

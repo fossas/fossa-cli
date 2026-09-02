@@ -94,27 +94,31 @@ spec = do
   describe "workflow event decoding" $ do
     it "decodes workflow-started" $
       findingToWorkflowEvent (payloadFinding "{\"type\":\"workflow-started\",\"ficusVersion\":\"1.2.3\",\"executable\":{\"program\":\"node\",\"args\":[]},\"resolvedProgram\":\"/usr/bin/node\",\"analyzerVersion\":\"unknown\"}")
-        `shouldBe` Just (WorkflowStarted "/usr/bin/node" "unknown")
+        `shouldBe` Just (Right (WorkflowStarted "/usr/bin/node" "unknown"))
 
     it "decodes step-completed" $
       findingToWorkflowEvent (payloadFinding "{\"type\":\"step-completed\",\"step\":\"module-discovery\"}")
-        `shouldBe` Just (WorkflowStepCompleted "module-discovery")
+        `shouldBe` Just (Right (WorkflowStepCompleted "module-discovery"))
 
     it "decodes workflow-result" $
       findingToWorkflowEvent (payloadFinding "{\"type\":\"workflow-result\",\"result\":{\"schemaVersion\":1,\"packages\":[]}}")
-        `shouldBe` Just (WorkflowResult (Aeson.object ["schemaVersion" Aeson..= (1 :: Int), "packages" Aeson..= ([] :: [Aeson.Value])]))
+        `shouldBe` Just (Right (WorkflowResult (Aeson.object ["schemaVersion" Aeson..= (1 :: Int), "packages" Aeson..= ([] :: [Aeson.Value])])))
 
     it "decodes workflow-failed carrying an exitCode" $
       findingToWorkflowEvent (payloadFinding "{\"type\":\"workflow-failed\",\"reason\":\"workflow executable exited with code 3\",\"exitCode\":3,\"stderrTail\":\"boom\"}")
-        `shouldBe` Just (WorkflowFailed "workflow executable exited with code 3" "boom")
+        `shouldBe` Just (Right (WorkflowFailed "workflow executable exited with code 3" "boom"))
 
     it "decodes workflow-failed carrying a timeout" $
       findingToWorkflowEvent (payloadFinding "{\"type\":\"workflow-failed\",\"reason\":\"workflow executable ran longer than 900 seconds\",\"timeout\":\"total\",\"stderrTail\":\"boom\"}")
-        `shouldBe` Just (WorkflowFailed "workflow executable ran longer than 900 seconds" "boom")
+        `shouldBe` Just (Right (WorkflowFailed "workflow executable ran longer than 900 seconds" "boom"))
 
     it "ignores findings from another strategy" $
       findingToWorkflowEvent (FicusFinding (FicusMessageData "vendetta" "{\"type\":\"step-completed\",\"step\":\"module-discovery\"}"))
         `shouldBe` Nothing
+
+    it "keeps the raw payload of a workflow finding it cannot decode" $
+      findingToWorkflowEvent (payloadFinding "{\"type\":\"workflow-adjourned\"}")
+        `shouldBe` Just (Left "{\"type\":\"workflow-adjourned\"}")
 
     it "rejects an unrecognised event type rather than decoding it" $
       (Aeson.eitherDecodeStrictText "{\"type\":\"workflow-adjourned\"}" :: Either String WorkflowEvent)
