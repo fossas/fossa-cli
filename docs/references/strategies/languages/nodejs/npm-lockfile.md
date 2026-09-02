@@ -33,6 +33,11 @@ npm@./:web
 When a subset of targets is selected, only those packages' dependencies are
 included in the analysis.
 
+The workspace root's `package.json` needs a `name` field too. Without one, no
+build targets are offered: `fossa list-targets` shows a bare `npm@./`, the
+whole workspace is analyzed as a single unit, and a warning explains that adding
+a `name` to the root `package.json` enables per-package targets.
+
 When no filtering is applied, all targets are selected and all dependencies
 from every workspace package are included in the analysis.
 

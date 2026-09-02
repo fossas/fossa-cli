@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Pnpm: workspace members are now individual build targets, so a single member can be analyzed on its own with `--only-target 'pnpm@./:my-package'` or a `target:` entry in `.fossa.yml`. Previously every member's dependencies were merged into one result with no way to scope them. Dependencies a selected member reaches through the workspace protocol (`link:` in the lockfile) are included. With no target or path filter the result is unchanged. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
+- Node: when a yarn, npm, or pnpm workspace root has no `name` in its `package.json`, discovery now warns that no build targets can be offered for the workspace and that adding a `name` enables them. Previously the targets were withheld silently. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2

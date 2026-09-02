@@ -790,6 +790,7 @@ test-suite integration-tests
     Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
+    Analysis.PnpmWorkspaceSpec
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
