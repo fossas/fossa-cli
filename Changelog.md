@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Maven: Static analysis (`pomxml`, used when `mvn` is unavailable or with `--static-only-analysis`) no longer reports the project itself as the only direct dependency. Dependencies declared in `pom.xml` are now reported as direct and the project's own modules are removed from the graph, matching dynamic analysis.
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2

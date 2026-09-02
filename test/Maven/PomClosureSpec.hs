@@ -2,16 +2,19 @@
 
 module Maven.PomClosureSpec (spec) where
 
+import Control.Carrier.Reader (runReader)
 import Control.Effect.Lift (sendIO)
 import Data.ByteString.Char8 qualified as BS
 import Data.List (find, sort)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
-import GraphUtil (expectDeps')
+import DepTypes (DepType (MavenType), Dependency (..), VerConstraint (CEq))
+import GraphUtil (expectDeps', expectDirect')
 import Graphing (shrinkRoots)
 import Path (Abs, Dir, Path, reldir, relfile, toFilePath, (</>))
 import Path.IO qualified as PIO
+import Strategy.Maven (getStaticAnalysis)
 import Strategy.Maven.Plugin (Artifact (..), Edge (Edge), PluginOutput (..))
 import Strategy.Maven.PluginStrategy (buildGraph)
 import Strategy.Maven.Pom.Closure (
@@ -22,6 +25,7 @@ import Strategy.Maven.Pom.Closure (
  )
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..))
 import Test.Effect (EffectStack, itWithTempDir', shouldBe')
+import Test.Fixtures (mavenScopeFilterSet)
 import Test.Hspec
 
 spec :: Spec
@@ -105,6 +109,32 @@ spec = do
               }
           graph = shrinkRoots $ buildGraph submodules output
       expectDeps' [] graph
+
+  describe "getStaticAnalysis" $ do
+    -- The static (pomxml) graph is rooted at the project itself with its
+    -- modules as children. Those are first-party and must not be reported;
+    -- their declared dependencies must be promoted to direct, as the dynamic
+    -- strategies already do via shrinkRoots.
+    itWithTempDir' "reports declared dependencies as direct and drops the project and its modules" $ \dir -> do
+      createParentlessFixture dir
+      closures <- findProjects dir
+      case find ((== rootCoord) . closureRootCoord) closures of
+        Nothing -> sendIO $ expectationFailure "expected a closure rooted at com.example:root-a"
+        Just closure -> do
+          (graph, _) <- runReader mavenScopeFilterSet $ getStaticAnalysis (closureSubmodules closure) closure
+          expectDirect' [libDep] graph
+          expectDeps' [libDep] graph
+
+libDep :: Dependency
+libDep =
+  Dependency
+    { dependencyType = MavenType
+    , dependencyName = "org.example:lib"
+    , dependencyVersion = Just (CEq "1.0")
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.empty
+    }
 
 rootCoord :: MavenCoordinate
 rootCoord = MavenCoordinate "com.example" "root-a" "1.0"
@@ -192,6 +222,13 @@ parentedChildPom =
     , "    <relativePath>../pom.xml</relativePath>\n"
     , "  </parent>\n"
     , "  <artifactId>child-parented</artifactId>\n"
+    , "  <dependencies>\n"
+    , "    <dependency>\n"
+    , "      <groupId>org.example</groupId>\n"
+    , "      <artifactId>lib</artifactId>\n"
+    , "      <version>1.0</version>\n"
+    , "    </dependency>\n"
+    , "  </dependencies>\n"
     , "</project>\n"
     ]
 
