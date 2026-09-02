@@ -33,6 +33,9 @@ npm@./:web
 When a subset of targets is selected, only those packages' dependencies are
 included in the analysis.
 
+If the workspace root's `package.json` has no `name` field, the root directory's
+own name is used for the root target.
+
 When no filtering is applied, all targets are selected and all dependencies
 from every workspace package are included in the analysis.
 
