@@ -290,6 +290,20 @@ Targets are listed in the following formats for both `only` and `exclude` lists.
     - type: pipenv (all pipenv type targets at any path)
 ```
 
+Some project types divide a single project into named build targets — for
+example each workspace package of a yarn, npm, or pnpm monorepo. Add a `target`
+field alongside `path` to select one of them:
+
+```yaml
+    - type: pnpm
+      path: ./
+      target: browser
+```
+
+This is the `.fossa.yml` equivalent of `--only-target 'pnpm@./:browser'`. Run
+`fossa list-targets` to see which targets a project has; a project with no named
+targets is selected by `type` and `path` alone.
+
 #### `targets.only:`
 The list of `only` targets that should be scanned. When used alongside `paths.only`, the intersection of the two lists is taken to find targets for scanning
 

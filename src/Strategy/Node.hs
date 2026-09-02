@@ -10,12 +10,15 @@ module Strategy.Node (
   findWorkspaceBuildTargets,
   extractDepListsForTargets,
   resolveNpmV3WorkspacePaths,
+  resolvePnpmImporterKeys,
+  workspaceRootTargetName,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
+import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -72,6 +75,7 @@ import Path (
   File,
   Path,
   Rel,
+  dirname,
   mkRelFile,
   parent,
   stripProperPrefix,
@@ -163,6 +167,7 @@ mkProject project = do
       projectBuildTargets' = case project of
         Yarn _ _ -> findWorkspaceBuildTargets graph
         NPMLock _ _ -> findWorkspaceBuildTargets graph
+        Pnpm _ _ -> findWorkspaceBuildTargets graph
         _ -> ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
   pure $
@@ -175,23 +180,40 @@ mkProject project = do
 
 -- | Build targets from workspace package names (root + members).
 -- If the workspace graph has children (i.e., workspace members), each
--- package name (including the root) becomes a 'BuildTarget'. If there
--- are no workspace children (single-package project), returns
--- 'ProjectWithoutTargets'.
+-- package name becomes a 'BuildTarget', along with the root's own name from
+-- 'workspaceRootTargetName'. If there are no workspace children
+-- (single-package project), returns 'ProjectWithoutTargets'.
 findWorkspaceBuildTargets :: PkgJsonGraph -> FoundTargets
-findWorkspaceBuildTargets graph@PkgJsonGraph{..} =
+findWorkspaceBuildTargets graph =
   let WorkspacePackageNames childNames = findWorkspaceNames graph
    in if Set.null childNames
         then ProjectWithoutTargets
-        else
-          let rootName = findWorkspaceRootManifest graph >>= \m -> maybe (Left "no name") Right (packageName =<< Map.lookup m jsonLookup)
-           in case rootName of
-                -- If the root package.json has no name field, fall back to
-                -- ProjectWithoutTargets so its deps aren't silently dropped.
-                Left _ -> ProjectWithoutTargets
-                Right n ->
-                  let allNames = Set.insert n childNames
-                   in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
+        else case workspaceRootTargetName graph of
+          Nothing -> ProjectWithoutTargets
+          Just n ->
+            let allNames = Set.insert n childNames
+             in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
+
+-- | The build target name for a workspace root: the @name@ field of its
+-- package.json, or the root directory's own basename when it declares none.
+--
+-- The fallback matters most for pnpm, which keeps its workspace configuration
+-- in pnpm-workspace.yaml rather than in package.json, so a pnpm workspace root
+-- is frequently a bare @{ "private": true }@ with no name at all. Without the
+-- fallback such a root produced no targets, and because 'findWorkspaceBuildTargets'
+-- is all-or-nothing that withheld targets from every workspace member as well.
+--
+-- 'Nothing' means the graph has no single root manifest, or the root sits at a
+-- filesystem root with no basename to borrow.
+workspaceRootTargetName :: PkgJsonGraph -> Maybe Text
+workspaceRootTargetName graph@PkgJsonGraph{jsonLookup} = do
+  manifest@(Manifest rootManifest) <- either (const Nothing) Just $ findWorkspaceRootManifest graph
+  (packageName =<< Map.lookup manifest jsonLookup) <|> rootDirName rootManifest
+  where
+    rootDirName :: Path Abs File -> Maybe Text
+    rootDirName m =
+      let name = toText . FP.dropTrailingPathSeparator . toFilePath . dirname $ parent m
+       in if name `elem` ["", ".", "/"] then Nothing else Just name
 
 instance AnalyzeProject NodeProject where
   analyzeProject = getDeps
@@ -207,13 +229,13 @@ getDeps ::
   m DependencyResults
 getDeps targets (Yarn yarnLockFile graph) = analyzeYarn targets yarnLockFile graph
 getDeps targets (NPMLock packageLockFile graph) = analyzeNpmLock targets packageLockFile graph
-getDeps _ (Pnpm pnpmLockFile _) = analyzePnpmLock pnpmLockFile
+getDeps targets (Pnpm pnpmLockFile graph) = analyzePnpmLock targets pnpmLockFile graph
 getDeps _ (Bun bunLockFile _) = analyzeBunLock bunLockFile
 getDeps _ (NPM graph) = analyzeNpm graph
 
-analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => Manifest -> m DependencyResults
-analyzePnpmLock (Manifest pnpmLockFile) = do
-  result <- PnpmLock.analyze pnpmLockFile
+analyzePnpmLock :: (Has Diagnostics sig m, Has ReadFS sig m, Has Logger sig m) => FoundTargets -> Manifest -> PkgJsonGraph -> m DependencyResults
+analyzePnpmLock targets (Manifest pnpmLockFile) graph = do
+  result <- PnpmLock.analyze (resolvePnpmImporterKeys targets graph) pnpmLockFile
   pure $ DependencyResults result Complete [pnpmLockFile]
 
 analyzeBunLock :: (Has Diagnostics sig m, Has ReadFS sig m) => Manifest -> m DependencyResults
@@ -229,7 +251,7 @@ analyzeNpmLock targets (Manifest npmLockFile) graph = do
     NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
-analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
+analyzeNpm :: (Has Diagnostics sig m, Has Logger sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
   void
     . recover
@@ -314,29 +336,53 @@ findWorkspaceNames PkgJsonGraph{..} =
 -- path keys npm v3 lockfiles use: @""@ for the root, @"packages/a"@ for a
 -- member. 'Nothing' means no target filter, so no scoping is applied.
 resolveNpmV3WorkspacePaths :: FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
-resolveNpmV3WorkspacePaths ProjectWithoutTargets _ = Nothing
-resolveNpmV3WorkspacePaths (FoundTargets targets) graph@PkgJsonGraph{..} =
+resolveNpmV3WorkspacePaths = resolveWorkspacePathKeys ""
+
+-- | Map selected build targets (workspace package names) to the importer keys
+-- @pnpm-lock.yaml@ uses: @"."@ for the root, @"packages/a"@ for a member.
+-- 'Nothing' means no target filter, so no scoping is applied.
+--
+-- Identical to 'resolveNpmV3WorkspacePaths' apart from how the two lockfile
+-- formats spell the workspace root.
+resolvePnpmImporterKeys :: FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
+resolvePnpmImporterKeys = resolveWorkspacePathKeys "."
+
+-- | Shared implementation of 'resolveNpmV3WorkspacePaths' and
+-- 'resolvePnpmImporterKeys', parameterized by the key the lockfile format uses
+-- for the workspace root.
+resolveWorkspacePathKeys :: Text -> FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
+resolveWorkspacePathKeys _ ProjectWithoutTargets _ = Nothing
+resolveWorkspacePathKeys rootKey (FoundTargets targets) graph@PkgJsonGraph{..} =
   case findWorkspaceRootManifest graph of
     Left _ -> Nothing
-    Right (Manifest rootManifest) ->
+    Right rootManifest ->
       Just . Set.fromList . map snd $ filter ((`Set.member` targetNames) . fst) namePathPairs
       where
-        rootDir = parent rootManifest
+        rootDir = parent $ unManifest rootManifest
         targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
 
         namePathPairs :: [(Text, Text)]
         namePathPairs =
           mapMaybe
-            (\(Manifest m, pj) -> (,) <$> packageName pj <*> manifestToWorkspacePath m)
+            (\(manifest, pj) -> (,) <$> manifestTargetName manifest pj <*> manifestToWorkspacePath (unManifest manifest))
             (Map.toList jsonLookup)
+
+        -- Must agree with 'findWorkspaceBuildTargets' on what each manifest's
+        -- target is called, including the root's basename fallback; a target
+        -- offered by list-targets but unresolvable here would silently select
+        -- nothing.
+        manifestTargetName :: Manifest -> PackageJson -> Maybe Text
+        manifestTargetName manifest pj
+          | manifest == rootManifest = workspaceRootTargetName graph
+          | otherwise = packageName pj
 
         manifestToWorkspacePath :: Path Abs File -> Maybe Text
         manifestToWorkspacePath m =
           let manifestDir = parent m
            in if manifestDir == rootDir
-                then Just ""
-                else -- npm keys workspaces with forward slashes on every OS, so
-                -- normalize the platform separator before matching.
+                then Just rootKey
+                else -- npm and pnpm both key workspaces with forward slashes on
+                -- every OS, so normalize the platform separator before matching.
                   fmap (Text.replace "\\" "/" . toText . FP.dropTrailingPathSeparator . toFilePath) (stripProperPrefix rootDir manifestDir)
 
 extractDepLists :: PkgJsonGraph -> FlatDeps

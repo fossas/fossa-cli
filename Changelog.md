@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Pnpm: workspace members are now individual build targets, so a single member can be analyzed on its own with `--only-target 'pnpm@./:my-package'` or a `target:` entry in `.fossa.yml`. Previously every member's dependencies were merged into one result with no way to scope them. Dependencies a selected member reaches through the workspace protocol (`link:` in the lockfile) are included. With no target filter the result is unchanged. ([#TODO](https://github.com/fossas/fossa-cli/pull/TODO))
+- Node: a workspace root whose `package.json` has no `name` field no longer suppresses build targets for the whole workspace; the root directory's name is used for the root target. This most often affected pnpm, whose workspace configuration lives in `pnpm-workspace.yaml`. ([#TODO](https://github.com/fossas/fossa-cli/pull/TODO))
+- Node: dependencies whose version is a workspace reference (`catalog:`, `workspace:`, `link:`) are no longer reported at that literal string as their version, which produced locators like `npm+left-pad$catalog:` for packages that do not exist. They are skipped with a warning when analysis falls back to a `package.json`-only strategy that cannot resolve them. ([#TODO](https://github.com/fossas/fossa-cli/pull/TODO))
+
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2

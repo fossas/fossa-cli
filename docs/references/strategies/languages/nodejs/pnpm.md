@@ -27,7 +27,10 @@ in `pnpm-lock.yaml` to analyze the dependency graph.
 
 > 📘 Important Note
 >
-> Anything defined in the `importers` section will be ignored. In order to scan individual targts, the workspace needs to have individual/separate lock files. 
+> The `importers` section is the source of direct dependencies. By default every
+> importer's dependencies are merged into one result for the whole workspace. To
+> report on a single workspace member, select it as a build target — see
+> [Workspace Build Targets](#workspace-build-targets) below.
 
 An example is provided below:
 
@@ -157,12 +160,71 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 * Optional dependencies are included in the analysis by default. They can be ignored in FOSSA UI.
 * `fossa-cli` supports lockFileVersion: 4.x, 5.x, 6.x, 7.x, 8.x, and 9.x.
 
+### Workspace Build Targets
+
+Each workspace member, and the workspace root, is exposed as an individual build
+target. A workspace whose `pnpm-workspace.yaml` lists `browser` and `server`
+produces:
+
+```
+pnpm@./:my-workspace
+pnpm@./:browser
+pnpm@./:server
+```
+
+The target name is the member's `name` from its `package.json`, so a member
+named `@acme/browser` is selected as `pnpm@./:@acme/browser`. Run
+`fossa list-targets` to see the exact names. If the workspace root's
+`package.json` has no `name` field — common for pnpm, since the workspace
+configuration lives in `pnpm-workspace.yaml` — the root directory's own name is
+used for the root target.
+
+Selecting a subset reports only those members' dependencies:
+
+```bash
+fossa analyze --only-target 'pnpm@./:browser'
+```
+
+or, equivalently, in `.fossa.yml`:
+
+```yaml
+version: 3
+targets:
+  only:
+    - type: pnpm
+      path: ./
+      target: browser
+```
+
+When a selected member depends on a sibling member through the
+[workspace protocol](https://pnpm.io/workspaces#workspace-protocol), pnpm records
+that in the lockfile as `version: link:<path>`. The sibling's own dependencies
+are included in the result, since the selected member does depend on them.
+
+With no target filtering, all targets are selected and every workspace member's
+dependencies are included, which is the behavior of every release before this
+feature.
+
+> 📘 Note
+>
+> A pnpm workspace is a single FOSSA project rooted at the workspace root, and
+> stays one project no matter which targets are selected. Build targets scope
+> what that project reports; they do not split it into several projects. Running
+> `fossa analyze` from inside a member directory does not scope the scan either
+> — without the lockfile in scope, analysis falls back to a `package.json`-only
+> npm strategy with a partial graph.
+
 ### Catalogs
 
 pnpm [catalogs](https://pnpm.io/catalogs) (introduced in pnpm 9.5) are supported.
 When `catalog:` or `catalog:<name>` specifiers are used in `package.json`,
 the resolved versions from `pnpm-lock.yaml` are used for analysis.
 No additional configuration is needed.
+
+Resolving a catalog specifier requires the lockfile, which lives at the workspace
+root. Analyzing a member directory on its own therefore cannot resolve them, and
+such dependencies are skipped with a warning rather than reported at the literal
+version `catalog:`. Analyze from the workspace root to include them.
 
 
 # F.A.Q
