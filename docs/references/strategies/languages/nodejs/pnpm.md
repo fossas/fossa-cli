@@ -174,10 +174,9 @@ pnpm@./:server
 
 A target's name is that package's `name` from its `package.json`, so a member
 named `@acme/browser` is selected as `pnpm@./:@acme/browser`. Run
-`fossa list-targets` to see the exact names. If the workspace root's
-`package.json` has no `name` field — common for pnpm, since the workspace
-configuration lives in `pnpm-workspace.yaml` — the root directory's own name is
-used for the root target.
+`fossa list-targets` to see the exact names. The workspace root needs a `name`
+too: without one, no build targets are offered and the whole workspace is
+analyzed as a single unit.
 
 Selecting a subset reports only those members' dependencies:
 

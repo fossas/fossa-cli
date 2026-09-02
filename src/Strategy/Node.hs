@@ -11,14 +11,12 @@ module Strategy.Node (
   extractDepListsForTargets,
   resolveNpmV3WorkspacePaths,
   resolvePnpmImporterKeys,
-  workspaceRootTargetName,
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
-import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -30,16 +28,17 @@ import Control.Effect.Diagnostics (
   fromEitherShow,
   fromMaybe,
   recover,
+  warn,
   warnOnErr,
  )
 import Control.Effect.Reader (Reader)
-import Control.Monad (void, (<=<))
+import Control.Monad (void, when, (<=<))
 import Data.Glob (Glob)
 import Data.Glob qualified as Glob
 import Data.List.Extra (singleton)
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, isJust, mapMaybe)
+import Data.Maybe (catMaybes, isJust, isNothing, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty qualified as NonEmptySet
@@ -75,7 +74,6 @@ import Path (
   File,
   Path,
   Rel,
-  dirname,
   mkRelFile,
   parent,
   stripProperPrefix,
@@ -83,7 +81,7 @@ import Path (
   (</>),
  )
 import Strategy.Node.Bun.BunLock qualified as BunLock
-import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
+import Strategy.Node.Errors (CyclicPackageJson (CyclicPackageJson), MissingNodeLockFile (..), UnnamedWorkspaceRoot (UnnamedWorkspaceRoot), fossaNodeDocUrl, npmLockFileDocUrl, yarnLockfileDocUrl, yarnV2LockfileDocUrl)
 import Strategy.Node.Npm.PackageLock qualified as PackageLock
 import Strategy.Node.Npm.PackageLockV3 qualified as PackageLockV3
 import Strategy.Node.PackageJson (
@@ -164,12 +162,18 @@ mkProject project = do
       -- Only expose build targets for project types whose getDeps actually
       -- honors them. Otherwise users see per-package targets in list-targets
       -- but filtering has no effect on analysis.
-      projectBuildTargets' = case project of
-        Yarn _ _ -> findWorkspaceBuildTargets graph
-        NPMLock _ _ -> findWorkspaceBuildTargets graph
-        Pnpm _ _ -> findWorkspaceBuildTargets graph
-        _ -> ProjectWithoutTargets
+      honorsTargets = case project of
+        Yarn _ _ -> True
+        NPMLock _ _ -> True
+        Pnpm _ _ -> True
+        _ -> False
+      projectBuildTargets' = if honorsTargets then findWorkspaceBuildTargets graph else ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
+  -- A workspace whose root has no name gets no targets at all (see
+  -- 'findWorkspaceBuildTargets'), which looks like a bug from the outside:
+  -- list-targets shows only the project. Say why, and what fixes it.
+  when (honorsTargets && hasUnnamedWorkspaceRoot graph) $
+    warn (UnnamedWorkspaceRoot rootManifest)
   pure $
     DiscoveredProject
       { projectType = typename
@@ -179,63 +183,38 @@ mkProject project = do
       }
 
 -- | Build targets from workspace package names (root + members).
--- If the workspace graph has children (i.e., workspace members), every name
--- in 'manifestTargetNames' becomes a 'BuildTarget'. If there are no workspace
--- children (single-package project), or the root has no name to offer,
--- returns 'ProjectWithoutTargets'.
+-- If the workspace graph has children (i.e., workspace members), each
+-- package name becomes a 'BuildTarget', along with the root's own name.
+-- If there are no workspace children (single-package project), or the root
+-- declares no @name@, returns 'ProjectWithoutTargets'.
 findWorkspaceBuildTargets :: PkgJsonGraph -> FoundTargets
 findWorkspaceBuildTargets graph =
   let WorkspacePackageNames childNames = findWorkspaceNames graph
    in if Set.null childNames
         then ProjectWithoutTargets
-        else case workspaceRootTargetName graph of
-          -- With no target naming the root there would be no way to select
-          -- the root's own dependencies, so offer no targets rather than lose
-          -- them.
+        else case workspaceRootName graph of
+          -- Everything that resolves selected targets back to manifests
+          -- matches on the package name, so a nameless root could never be
+          -- selected and its dependencies would be dropped by any selection,
+          -- including the default of every target. Offer no targets instead;
+          -- 'mkProject' warns so the user knows why.
           Nothing -> ProjectWithoutTargets
-          Just _ ->
-            let allNames = Set.fromList . Map.elems $ manifestTargetNames graph
+          Just n ->
+            let allNames = Set.insert n childNames
              in maybe ProjectWithoutTargets FoundTargets (NonEmptySet.nonEmpty (Set.map BuildTarget allNames))
 
--- | The name each manifest in the graph is offered under as a build target:
--- its @name@ field, except for the workspace root, which may instead borrow
--- its directory name ('workspaceRootTargetName').
---
--- Everything that turns selected build targets back into manifests must read
--- from this map. Matching on @packageName@ alone would never find a root that
--- took the fallback, and so would silently drop its dependencies whenever
--- every target is selected, which is the default.
-manifestTargetNames :: PkgJsonGraph -> Map Manifest Text
-manifestTargetNames graph@PkgJsonGraph{jsonLookup} = Map.mapMaybeWithKey targetName jsonLookup
-  where
-    root = either (const Nothing) Just (findWorkspaceRootManifest graph)
+-- | The @name@ of the workspace root's package.json, if it declares one.
+workspaceRootName :: PkgJsonGraph -> Maybe Text
+workspaceRootName graph@PkgJsonGraph{jsonLookup} = do
+  root <- either (const Nothing) Just $ findWorkspaceRootManifest graph
+  packageName =<< Map.lookup root jsonLookup
 
-    targetName :: Manifest -> PackageJson -> Maybe Text
-    targetName manifest pj =
-      if Just manifest == root
-        then workspaceRootTargetName graph
-        else packageName pj
-
--- | The build target name for a workspace root: the @name@ field of its
--- package.json, or the root directory's own basename when it declares none.
---
--- The fallback matters most for pnpm, which keeps its workspace configuration
--- in pnpm-workspace.yaml rather than in package.json, so a pnpm workspace root
--- is frequently a bare @{ "private": true }@ with no name at all. Without the
--- fallback such a root produced no targets, and because 'findWorkspaceBuildTargets'
--- is all-or-nothing that withheld targets from every workspace member as well.
---
--- 'Nothing' means the graph has no single root manifest, or the root sits at a
--- filesystem root with no basename to borrow.
-workspaceRootTargetName :: PkgJsonGraph -> Maybe Text
-workspaceRootTargetName graph@PkgJsonGraph{jsonLookup} = do
-  manifest@(Manifest rootManifest) <- either (const Nothing) Just $ findWorkspaceRootManifest graph
-  (packageName =<< Map.lookup manifest jsonLookup) <|> rootDirName rootManifest
-  where
-    rootDirName :: Path Abs File -> Maybe Text
-    rootDirName m =
-      let name = toText . FP.dropTrailingPathSeparator . toFilePath . dirname $ parent m
-       in if name `elem` ["", ".", "/"] then Nothing else Just name
+-- | True when the graph has workspace members but its root declares no
+-- @name@: the one shape of workspace that yields no build targets.
+hasUnnamedWorkspaceRoot :: PkgJsonGraph -> Bool
+hasUnnamedWorkspaceRoot graph =
+  let WorkspacePackageNames childNames = findWorkspaceNames graph
+   in not (Set.null childNames) && isNothing (workspaceRootName graph)
 
 instance AnalyzeProject NodeProject where
   analyzeProject = getDeps
@@ -374,7 +353,7 @@ resolvePnpmImporterKeys = resolveWorkspacePathKeys "."
 -- for the workspace root.
 resolveWorkspacePathKeys :: Text -> FoundTargets -> PkgJsonGraph -> Maybe (Set Text)
 resolveWorkspacePathKeys _ ProjectWithoutTargets _ = Nothing
-resolveWorkspacePathKeys rootKey (FoundTargets targets) graph =
+resolveWorkspacePathKeys rootKey (FoundTargets targets) graph@PkgJsonGraph{..} =
   case findWorkspaceRootManifest graph of
     Left _ -> Nothing
     Right rootManifest ->
@@ -386,8 +365,8 @@ resolveWorkspacePathKeys rootKey (FoundTargets targets) graph =
         namePathPairs :: [(Text, Text)]
         namePathPairs =
           mapMaybe
-            (\(manifest, name) -> (name,) <$> manifestToWorkspacePath (unManifest manifest))
-            (Map.toList $ manifestTargetNames graph)
+            (\(manifest, pj) -> (,) <$> packageName pj <*> manifestToWorkspacePath (unManifest manifest))
+            (Map.toList jsonLookup)
 
         manifestToWorkspacePath :: Path Abs File -> Maybe Text
         manifestToWorkspacePath m =
@@ -413,22 +392,20 @@ extractDepLists PkgJsonGraph{..} = foldMap extractSingle $ Map.elems jsonLookup
 
 -- | Like 'extractDepLists', but scoped to the selected workspace targets.
 -- When 'ProjectWithoutTargets', includes all deps.
--- When 'FoundTargets', only includes deps from manifests whose target name
--- (see 'manifestTargetNames') matches a selected target (root or workspace
--- member).
+-- When 'FoundTargets', only includes deps from packages whose
+-- package name matches a selected target (root or workspace member).
 extractDepListsForTargets :: FoundTargets -> PkgJsonGraph -> FlatDeps
 extractDepListsForTargets ProjectWithoutTargets graph = extractDepLists graph
-extractDepListsForTargets (FoundTargets targets) graph@PkgJsonGraph{..} =
+extractDepListsForTargets (FoundTargets targets) PkgJsonGraph{..} =
   foldMap extractSingle selectedPackageJsons
   where
     targetNames :: Set Text
     targetNames = Set.map unBuildTarget (NonEmptySet.toSet targets)
 
-    selectedManifests :: Set Manifest
-    selectedManifests = Map.keysSet . Map.filter (`Set.member` targetNames) $ manifestTargetNames graph
-
     selectedPackageJsons :: [PackageJson]
-    selectedPackageJsons = Map.elems $ Map.restrictKeys jsonLookup selectedManifests
+    selectedPackageJsons =
+      filter (maybe False (`Set.member` targetNames) . packageName) $
+        Map.elems jsonLookup
 
     mapToSet :: Map Text Text -> Set NodePackage
     mapToSet = Set.fromList . map (uncurry NodePackage) . Map.toList

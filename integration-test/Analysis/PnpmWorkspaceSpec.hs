@@ -33,13 +33,11 @@ import Strategy.Node qualified as Node
 fixtureDir :: Path Rel Dir
 fixtureDir = $(mkRelDir "test/Node/testdata/pnpm-workspaces/")
 
--- | The fixture's root package.json has no @name@ field, which is typical of a
--- pnpm workspace root since the workspace configuration lives in
--- pnpm-workspace.yaml. Its target name is therefore the root directory's own
--- basename.
+-- | Every package in the fixture, the root included, is named in its
+-- package.json. A workspace root without a @name@ yields no build targets.
 allTargetNames :: [Text]
 allTargetNames =
-  [ "pnpm-workspaces"
+  [ "@fossa-test/workspace"
   , "@fossa-test/browser"
   , "@fossa-test/server"
   , "@fossa-test/shared"
@@ -73,7 +71,7 @@ analyzeFixture = do
             withResult analyzed $ \_ depResults -> pure (dependencyGraph depResults)
       FixtureGraphs (projectBuildTargets project)
         <$> analyzeWith (projectBuildTargets project)
-        <*> analyzeWith (mkTargets ["pnpm-workspaces"])
+        <*> analyzeWith (mkTargets ["@fossa-test/workspace"])
         <*> analyzeWith (mkTargets ["@fossa-test/browser"])
         <*> analyzeWith (mkTargets ["@fossa-test/server"])
         <*> analyzeWith (mkTargets ["@fossa-test/shared"])
