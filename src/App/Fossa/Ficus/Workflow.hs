@@ -23,6 +23,7 @@ import Data.ByteString.Lazy qualified as BL
 import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -83,12 +84,20 @@ runWorkflowWith cmd target analyzer maybeDebugDir =
     let (undecodable, events) = partitionEithers collected
     traverse_ reportUndecodable undecodable
     traverse_ reportEvent events
-    case (exitCode, [value | WorkflowResult value <- events]) of
+    case (exitCode, mapMaybe workflowResult events) of
       (ExitSuccess, result : _) -> do
         debugMetadata workflowResultJson result
         logDebug $ "Workflow result: " <> pretty (decodeUtf8 (Aeson.encode result) :: Text)
         logInfo "Workflow analysis complete"
       _ -> failWorkflow analyzer exitCode events stdErrLines
+
+workflowResult :: WorkflowEvent -> Maybe Aeson.Value
+workflowResult (WorkflowResult value) = Just value
+workflowResult _ = Nothing
+
+failureReason :: WorkflowEvent -> Maybe Text
+failureReason (WorkflowFailed reason _) = Just reason
+failureReason _ = Nothing
 
 collectWorkflowEvent :: [Either Text WorkflowEvent] -> FicusMessage -> IO [Either Text WorkflowEvent]
 collectWorkflowEvent acc (FicusMessageFinding finding) =
@@ -135,7 +144,7 @@ failWorkflow analyzer exitCode events stdErrLines = do
         <> ")."
 
     reason :: Text
-    reason = case ([r | WorkflowFailed r _ <- events], exitCode) of
+    reason = case (mapMaybe failureReason events, exitCode) of
       (failure : _, _) -> failure
       ([], ExitSuccess) -> "ficus exited successfully but reported no result"
       ([], code) -> "ficus exited with " <> toText (show code)
