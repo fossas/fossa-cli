@@ -25,6 +25,7 @@ workDir :: Path Abs Dir
 jsBundle :: Path Abs File
 mjsBundle :: Path Abs File
 cjsBundle :: Path Abs File
+upperJsBundle :: Path Abs File
 nativeAnalyzer :: Path Abs File
 #ifdef mingw32_HOST_OS
 targetDir = $(mkAbsDir "C:/repo")
@@ -32,6 +33,7 @@ workDir = $(mkAbsDir "C:/scratch")
 jsBundle = $(mkAbsFile "C:/dist/analyzer.js")
 mjsBundle = $(mkAbsFile "C:/dist/analyzer.mjs")
 cjsBundle = $(mkAbsFile "C:/dist/analyzer.cjs")
+upperJsBundle = $(mkAbsFile "C:/dist/analyzer.JS")
 nativeAnalyzer = $(mkAbsFile "C:/bin/analyzer")
 #else
 targetDir = $(mkAbsDir "/abs/repo")
@@ -39,6 +41,7 @@ workDir = $(mkAbsDir "/abs/scratch")
 jsBundle = $(mkAbsFile "/abs/dist/analyzer.js")
 mjsBundle = $(mkAbsFile "/abs/dist/analyzer.mjs")
 cjsBundle = $(mkAbsFile "/abs/dist/analyzer.cjs")
+upperJsBundle = $(mkAbsFile "/abs/dist/analyzer.JS")
 nativeAnalyzer = $(mkAbsFile "/usr/local/bin/analyzer")
 #endif
 
@@ -81,6 +84,9 @@ spec = do
 
     it "runs a .cjs bundle under node" $
       toWorkflowExecutable cjsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath cjsBundle]
+
+    it "runs an uppercase .JS bundle under node" $
+      toWorkflowExecutable upperJsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath upperJsBundle]
 
     it "passes any other path through as the program itself" $
       toWorkflowExecutable nativeAnalyzer `shouldBe` WorkflowExecutable (toText $ toFilePath nativeAnalyzer) []

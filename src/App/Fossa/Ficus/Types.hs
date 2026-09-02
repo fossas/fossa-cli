@@ -333,7 +333,7 @@ toWorkflowExecutable path
 
     isJsBundle :: Bool
     isJsBundle = case fileExtension path :: Maybe String of
-      Just ext -> ext `elem` [".js", ".mjs", ".cjs"]
+      Just ext -> Text.toLower (toText ext) `elem` [".js", ".mjs", ".cjs"]
       Nothing -> False
 
 -- | What ficus reports about a workflow run, carried as a JSON string in the
