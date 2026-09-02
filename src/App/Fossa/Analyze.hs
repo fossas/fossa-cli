@@ -68,7 +68,7 @@ import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
-import App.Fossa.Ficus.Workflow (analyzeWithWorkflow)
+import App.Fossa.Ficus.Workflow qualified as Workflow
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -434,7 +434,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   workflowResult <-
     Diag.errorBoundaryIO . diagToDebug $
       traverse_
-        (\analyzer -> Diag.context "x-workflow" $ analyzeWithWorkflow basedir analyzer (Config.debugDir cfg))
+        (\analyzer -> Diag.context "x-workflow" $ Workflow.analyzeWithWorkflow basedir analyzer (Config.debugDir cfg))
         (Config.xWorkflow cfg)
 
   maybeLernieResults <-

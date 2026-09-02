@@ -25,7 +25,7 @@ module App.Fossa.Analyze.Debug (
 where
 
 import App.Fossa.EmbeddedBinary (themisVersion)
-import App.Fossa.Ficus.Types (workflowResultJson)
+import App.Fossa.Ficus.Types qualified as FicusTypes
 import App.Fossa.Reachability.Types (reachabilityEndpointJson, reachabilityRawJson)
 import App.Version (fullVersionDescription)
 import Control.Applicative (asum)
@@ -198,7 +198,7 @@ collectDebugBundle cfg act = do
           , bundleBinaryVersions = binVersions
           , bundleReachabilityRaw = lookUpReachabilityRawScope scope
           , bundleReachabilityEndpoint = lookUpReachabilityEndpointScope scope
-          , bundleWorkflowResult = lookupScope workflowResultJson scope
+          , bundleWorkflowResult = lookupScope FicusTypes.workflowResultJson scope
           , bundleJournals =
               BundleJournals
                 { bundleJournalReadFS = readFSJournal
