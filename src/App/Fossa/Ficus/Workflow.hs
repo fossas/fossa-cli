@@ -115,7 +115,9 @@ reportEvent = \case
     logInfo $ "Running workflow analyzer " <> pretty analyzerVersion <> " (" <> pretty resolvedProgram <> ")"
   WorkflowStepCompleted step -> logInfo $ "  " <> pretty step <> " completed"
   WorkflowResult _ -> pure ()
-  WorkflowFailed reason _ -> logError $ "Workflow analyzer failed: " <> pretty reason
+  -- 'failWorkflow' renders the reason and fails on it; reporting it here as
+  -- well says the same thing twice before the error itself.
+  WorkflowFailed{} -> pure ()
 
 -- | Fatal on a non-zero exit or a missing result. ficus emits one terminal
 -- observation per run, so an observation usually supplies the reason, but the
