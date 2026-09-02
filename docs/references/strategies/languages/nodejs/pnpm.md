@@ -163,8 +163,8 @@ CLI will infer the package name and version using `/${dependencyName}/${dependen
 ### Workspace Build Targets
 
 Each workspace member, and the workspace root, is exposed as an individual build
-target. A workspace whose `pnpm-workspace.yaml` lists `browser` and `server`
-produces:
+target. A workspace named `my-workspace` whose `pnpm-workspace.yaml` lists
+`browser` and `server` produces:
 
 ```
 pnpm@./:my-workspace
@@ -172,7 +172,7 @@ pnpm@./:browser
 pnpm@./:server
 ```
 
-The target name is the member's `name` from its `package.json`, so a member
+A target's name is that package's `name` from its `package.json`, so a member
 named `@acme/browser` is selected as `pnpm@./:@acme/browser`. Run
 `fossa list-targets` to see the exact names. If the workspace root's
 `package.json` has no `name` field — common for pnpm, since the workspace
@@ -185,7 +185,7 @@ Selecting a subset reports only those members' dependencies:
 fossa analyze --only-target 'pnpm@./:browser'
 ```
 
-or, equivalently, in `.fossa.yml`:
+The same selection in `.fossa.yml`:
 
 ```yaml
 version: 3
@@ -199,20 +199,20 @@ targets:
 When a selected member depends on a sibling member through the
 [workspace protocol](https://pnpm.io/workspaces#workspace-protocol), pnpm records
 that in the lockfile as `version: link:<path>`. The sibling's own dependencies
-are included in the result, since the selected member does depend on them.
+are part of the selected member's result, because the selected member depends on
+them.
 
-With no target filtering, all targets are selected and every workspace member's
-dependencies are included, which is the behavior of every release before this
-feature.
+With no target filtering, all targets are selected and every member's
+dependencies are included.
 
 > 📘 Note
 >
-> A pnpm workspace is a single FOSSA project rooted at the workspace root, and
-> stays one project no matter which targets are selected. Build targets scope
-> what that project reports; they do not split it into several projects. Running
-> `fossa analyze` from inside a member directory does not scope the scan either
-> — without the lockfile in scope, analysis falls back to a `package.json`-only
-> npm strategy with a partial graph.
+> A pnpm workspace is one FOSSA project rooted at the workspace root, and stays
+> one project no matter which targets are selected — build targets scope what
+> that project reports rather than splitting it into several projects. Running
+> `fossa analyze` from inside a member's directory is not a way to scope a scan:
+> without the lockfile in scope, analysis falls back to the
+> [package.json strategy](packagejson.md) and its partial graph.
 
 ### Catalogs
 
