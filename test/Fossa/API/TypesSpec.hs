@@ -4,9 +4,10 @@ import Data.Aeson (FromJSON, ToJSON, Value (Object), fromJSON, toJSON)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Text (Text)
-import Fossa.API.Types (Issue (..), IssueRule (..), IssueSummaryRevision (..), IssueSummaryTarget (..), IssueType (..), Issues (..), IssuesSummary (..), Organization (..))
+import Fossa.API.Types (AnalysisWorkflowId (AnalysisWorkflowId), AnalysisWorkflowUpload (AnalysisWorkflowUpload), Issue (..), IssueRule (..), IssueSummaryRevision (..), IssueSummaryTarget (..), IssueType (..), Issues (..), IssuesSummary (..), Organization (..))
 import Hedgehog.Gen qualified as Gen
 import Hedgehog.Range qualified as Range
+import Srclib.Types (Locator (Locator))
 import Test.Hspec
 import Test.Hspec.Hedgehog
 import Prelude
@@ -14,11 +15,25 @@ import Prelude
 spec :: Spec
 spec = do
   organizationParsingSpec
+  analysisWorkflowSpec
   describe "Issues ToJSON/FromJSON instances" $ do
     it "are roundtrippable" $
       hedgehog $ do
         issues <- forAll genIssues
         roundtripJson issues
+
+-- | The wire contract with the analysis service: an envelope whose locator is
+-- the server's org-scoped string, rendered verbatim.
+analysisWorkflowSpec :: Spec
+analysisWorkflowSpec = describe "analysis workflow API types" $ do
+  it "encodes the upload as the envelope the analysis service parses" $ do
+    let locator = Locator "custom" "123/github.com/fossas/repo" (Just "abc123")
+        workflowData = Object $ KeyMap.fromList [("modules", Aeson.Number 3)]
+    Aeson.encode (AnalysisWorkflowUpload locator workflowData)
+      `shouldBe` "{\"revision_locator\":\"custom+123/github.com/fossas/repo$abc123\",\"workflow_data\":{\"modules\":3}}"
+
+  it "reads the id the analysis service returns" $
+    Aeson.decode "{\"id\":\"42\"}" `shouldBe` Just (AnalysisWorkflowId "42")
 
 organizationParsingSpec :: Spec
 organizationParsingSpec = describe "Organization JSON parsing" $ do

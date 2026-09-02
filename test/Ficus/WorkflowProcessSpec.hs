@@ -189,8 +189,9 @@ workflowSpec = describe "analyzeWithWorkflow" $ do
     cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 0
     expectFatal' $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
 
-  itWithTempDir' "records the result in the debug bundle on success" $ \tmpDir -> do
+  itWithTempDir' "returns the result and records it in the debug bundle on success" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [workflowStartedPayload, stepCompletedPayload, workflowResultPayload] 0
-    (scope, ()) <- runDebug $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+    (scope, result) <- runDebug $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+    result `shouldBe'` expectedResult
     Map.lookup workflowResultJson (scopeMetadata scope) `shouldBe'` Just expectedResult
 #endif

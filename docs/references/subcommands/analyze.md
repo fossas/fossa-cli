@@ -179,13 +179,16 @@ scanning, or what information is sent to FOSSA's servers, see
 
 ### Dependency Usage Analysis with `--x-workflow`
 
-`--x-workflow` runs a dependency-usage workflow analyzer over the project and
-records its result in the debug bundle. The analyzer is a program you name on
+`--x-workflow` runs a dependency-usage workflow analyzer over the project,
+records its result in the debug bundle, and uploads it to FOSSA against the
+same revision as the dependency upload. The analyzer is a program you name on
 the command line; FOSSA CLI does not ship one yet, so this flag does nothing
 useful unless you already have an analyzer program or script to point it at.
 
-Results are not uploaded. Nothing about this flag changes what `fossa analyze`
-sends to FOSSA.
+The result is uploaded only when the analysis itself is uploaded, after the
+dependency upload succeeds; with `--output` nothing is sent. A result that
+fails to upload fails the run, but the dependency upload has already landed by
+then. Nothing else about this flag changes what `fossa analyze` sends to FOSSA.
 
 #### Enabling dependency usage analysis
 

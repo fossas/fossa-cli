@@ -10,6 +10,7 @@ module App.Fossa.Analyze (
   -- * Helpers
   toProjectResult,
   applyFiltersToProject,
+  sendToDestination,
 
   -- * Fork alias translation (for testing)
 
@@ -428,14 +429,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               (Config.debugDir cfg)
   let ficusResults = join $ resultToMaybe maybeFicusResults
 
-  -- Nothing is uploaded on this path, so a failure is loud but does not hold the
-  -- dependency upload hostage. Revisit when the result is data the user expects
-  -- to arrive.
+  -- A failed run is loud but does not hold the dependency upload hostage. The
+  -- result itself is uploaded from 'uploadSuccessfulAnalysis', because only the
+  -- locator the server issues there identifies the revision to the consumer.
   workflowResult <-
     Diag.errorBoundaryIO . diagToDebug $
-      traverse_
+      traverse
         (\analyzer -> Diag.context "x-workflow" $ Workflow.analyzeWithWorkflow basedir analyzer (Config.debugDir cfg))
         (Config.xWorkflow cfg)
+  let workflowData = join $ resultToMaybe workflowResult
 
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -569,26 +571,36 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (False, FilteredAll) -> Diag.warn ErrFilteredAllProjects $> emptyScanUnits
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
-  sendToDestination outputResult iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults
+  let doUpload (DestinationMeta (apiOpts, metadata)) =
+        Diag.context "upload-results"
+          . runFossaApiClient apiOpts
+          $ do
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults workflowData
+            doAssertRevisionBinaries iatAssertion locator
+  sendToDestination doUpload destination outputResult
 
   pure outputResult
   where
-    sendToDestination result iatAssertion destination basedir jsonOutput revision scanUnits reachabilityUnits ficusResults =
-      let doUpload (DestinationMeta (apiOpts, metadata)) =
-            Diag.context "upload-results"
-              . runFossaApiClient apiOpts
-              $ do
-                locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults
-                doAssertRevisionBinaries iatAssertion locator
-       in case destination of
-            OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
-            UploadScan meta -> doUpload meta
-            OutputAndUpload meta -> do
-              logStdout . decodeUtf8 $ Aeson.encode result
-              doUpload meta
-
     emptyScanUnits :: ScanUnits
     emptyScanUnits = SourceUnitOnly []
+
+-- | 'OutputStdout' has no API session and no server-issued locator, so nothing
+-- reaches the server from that branch, the workflow result included.
+sendToDestination ::
+  ( Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  (DestinationMeta -> m ()) ->
+  ScanDestination ->
+  Aeson.Value ->
+  m ()
+sendToDestination upload destination result =
+  case destination of
+    OutputStdout -> logStdout . decodeUtf8 $ Aeson.encode result
+    UploadScan meta -> upload meta
+    OutputAndUpload meta -> do
+      logStdout . decodeUtf8 $ Aeson.encode result
+      upload meta
 
 toProjectResult :: DiscoveredProjectScan -> Maybe ProjectResult
 toProjectResult (SkippedDueToProvidedFilter _) = Nothing

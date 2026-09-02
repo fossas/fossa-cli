@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Workflows: `fossa analyze --x-workflow <path>` runs a dependency-usage workflow analyzer through the embedded ficus and records its result in the debug bundle. Nothing is uploaded. ([#1761](https://github.com/fossas/fossa-cli/pull/1761))
+- Workflows: the `--x-workflow` result is uploaded to FOSSA against the analyzed revision once the dependency upload succeeds; `--output` runs still upload nothing. ([#1762](https://github.com/fossas/fossa-cli/pull/1762))
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2

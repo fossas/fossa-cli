@@ -24,6 +24,7 @@ module Control.Effect.FossaApiClient (
   getSignedFirstPartyScanUrl,
   getSignedLicenseScanUrl,
   uploadPathDependencyScan,
+  uploadAnalysisWorkflow,
   getSignedUploadUrl,
   getVsiInferences,
   getVsiScanAnalysisStatus,
@@ -71,12 +72,14 @@ import App.Types (ComponentUploadFileType, DependencyRebuild, FileUpload, Locato
 import Container.Types qualified as NativeContainer
 import Control.Algebra (Has)
 import Control.Carrier.Simple (Simple, sendSimple)
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Text (Text)
 import Fossa.API.Types (
+  AnalysisWorkflowId,
   AnalyzedPathDependency,
   ApiOpts,
   Archive,
@@ -171,6 +174,7 @@ data FossaApiClientF a where
   UploadFirstPartyScanResult :: SignedURL -> NE.NonEmpty FullSourceUnit -> FossaApiClientF ()
   UploadContentForReachability :: ByteString -> FossaApiClientF (Text)
   UploadBuildForReachability :: ProjectRevision -> ProjectMetadata -> [SourceUnitReachability] -> FossaApiClientF ()
+  UploadAnalysisWorkflow :: Locator -> Aeson.Value -> FossaApiClientF AnalysisWorkflowId
   DeleteReleaseGroup :: Int -> FossaApiClientF ()
   DeleteReleaseGroupRelease :: Int -> Int -> FossaApiClientF ()
   CreateReleaseGroup :: CoreTypes.CreateReleaseGroupRequest -> FossaApiClientF CoreTypes.CreateReleaseGroupResponse
@@ -263,6 +267,12 @@ getSignedLicenseScanUrl = sendSimple . GetSignedLicenseScanUrl
 
 uploadPathDependencyScan :: Has FossaApiClient sig m => PackageRevision -> ProjectRevision -> FileUpload -> m PathDependencyUpload
 uploadPathDependencyScan pkgRev projectRevision uploadKind = sendSimple $ GetPathDependencyScanUrl pkgRev projectRevision uploadKind
+
+-- | Stores a workflow result against a revision in the analysis service. The
+-- locator must be the server-issued one from 'UploadResponse', never one
+-- rendered client-side; see 'Fossa.API.Types.AnalysisWorkflowUpload'.
+uploadAnalysisWorkflow :: Has FossaApiClient sig m => Locator -> Aeson.Value -> m AnalysisWorkflowId
+uploadAnalysisWorkflow locator workflowData = sendSimple $ UploadAnalysisWorkflow locator workflowData
 
 finalizeLicenseScan :: Has FossaApiClient sig m => ArchiveComponents -> m ()
 finalizeLicenseScan = sendSimple . FinalizeLicenseScan
