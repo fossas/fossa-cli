@@ -182,7 +182,7 @@ scanning, or what information is sent to FOSSA's servers, see
 `--x-workflow` runs a dependency-usage workflow analyzer over the project and
 records its result in the debug bundle. The analyzer is a program you name on
 the command line; FOSSA CLI does not ship one yet, so this flag does nothing
-useful unless you already have a bundle to point it at.
+useful unless you already have an analyzer program or script to point it at.
 
 Results are not uploaded. Nothing about this flag changes what `fossa analyze`
 sends to FOSSA.
