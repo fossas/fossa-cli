@@ -340,8 +340,8 @@ resolvePnpmImporterKeysSpec currDir = describe "resolvePnpmImporterKeys" $ do
 
 -- | A pnpm workspace root usually keeps its configuration in
 -- pnpm-workspace.yaml, so its package.json commonly has no @name@. Such a root
--- must still yield build targets, and the name it is given must be the one the
--- importer-key resolution understands.
+-- must still yield build targets, and the name it is given must be the one
+-- that importer-key resolution and manifest selection understand.
 unnamedWorkspaceRootSpec :: Path Abs Dir -> Spec
 unnamedWorkspaceRootSpec currDir = describe "workspace root without a name" $ do
   let graph = unnamedRootWorkspaceGraph currDir
@@ -358,6 +358,16 @@ unnamedWorkspaceRootSpec currDir = describe "workspace root without a name" $ do
       (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList [BuildTarget "workspace-test"])
       graph
       `shouldBe` Just (Set.fromList ["."])
+
+  it "keeps the root's dependencies when every target is selected" $
+    -- With no target filter, analysis receives every target. That is what
+    -- yarn and npm v1 lockfile analysis see, so the root must survive it.
+    extractDepListsForTargets (findWorkspaceBuildTargets graph) graph
+      `shouldBe` extractDepListsForTargets ProjectWithoutTargets graph
+
+  it "selects the root's dependencies by its fallback target" $
+    directDeps (extractDepListsForTargets (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList [BuildTarget "workspace-test"]) graph)
+      `shouldBe` applyTag @Production (Set.fromList [NodePackage "husky" "^8.0.0"])
 
 -- | 'workspaceGraphWithDeps' with the root's @name@ field removed.
 unnamedRootWorkspaceGraph :: Path Abs Dir -> PkgJsonGraph
