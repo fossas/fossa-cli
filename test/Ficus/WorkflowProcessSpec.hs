@@ -21,11 +21,13 @@ import App.Fossa.Ficus.Types (
  )
 import App.Fossa.Ficus.Workflow (runWorkflowWith)
 import Control.Carrier.Debug (Scope (scopeMetadata), runDebug)
+import Control.Effect.Exception (SomeException, try)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Exception (throwIO)
 import Data.Aeson qualified as Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy qualified as BL
-import Data.Either (rights)
+import Data.Either (isLeft, rights)
 import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (decodeUtf8, toString, toText)
@@ -120,6 +122,11 @@ runArtifactBytes =
 collectMessages :: [FicusMessage] -> FicusMessage -> IO [FicusMessage]
 collectMessages acc message = pure (acc <> [message])
 
+-- | Fails the stream mid-run, after the first observation has been teed to the
+-- debug log but before the run can end normally.
+explodingStep :: [FicusMessage] -> FicusMessage -> IO [FicusMessage]
+explodingStep _ _ = throwIO $ userError "stream processing exploded"
+
 decodedEvents :: [FicusMessage] -> [WorkflowEvent]
 decodedEvents = rights . mapMaybe toEvent
   where
@@ -154,6 +161,15 @@ streamingSpec = describe "execFicusStreaming" $ do
     stderrLog <- sendIO . readFile . toFilePath $ tmpDir </> $(mkRelFile "fossa.ficus-workflow-stderr.log")
     toText stdoutLog `shouldSatisfy'` Text.isInfixOf (observationEnvelope stepCompletedPayload)
     toText stderrLog `shouldSatisfy'` Text.isInfixOf (decodeUtf8 runArtifactBytes)
+
+  itWithTempDir' "closes the debug logs when stream processing throws" $ \tmpDir -> do
+    cmd <- writeFakeFicus tmpDir happyPayloads 0
+    outcome <-
+      try $
+        execFicusStreaming tmpDir cmd (Just runArtifactBytes) (Just $ toFilePath tmpDir) "fossa.ficus-throwing" explodingStep ([] :: [FicusMessage])
+    (outcome :: Either SomeException ([FicusMessage], ExitCode, [Text])) `shouldSatisfy'` isLeft
+    stdoutLog <- sendIO . readFile . toFilePath $ tmpDir </> $(mkRelFile "fossa.ficus-throwing-stdout.log")
+    toText stdoutLog `shouldSatisfy'` Text.isInfixOf (observationEnvelope stepCompletedPayload)
 
 workflowSpec :: Spec
 workflowSpec = describe "analyzeWithWorkflow" $ do

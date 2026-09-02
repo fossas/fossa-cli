@@ -37,7 +37,9 @@ import App.Types (ProjectRevision (..))
 import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (Diagnostics)
 import Control.Concurrent.Async (async, wait)
+import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Exception (onException)
 import Control.Monad (when)
 import Data.Aeson (decode, decodeStrictText)
 import Data.Aeson qualified as Aeson
@@ -274,30 +276,33 @@ execFicusStreaming workingDir cmd stdinPayload maybeDebugDir debugLogBasename st
 
   logDebugWithTime "Starting Ficus process..."
 
-  (stdoutFile, stderrFile) <- case maybeDebugDir of
-    Just debugDir -> sendIO $ do
-      stdoutH <- openLogFile debugDir "stdout"
-      stderrH <- openLogFile debugDir "stderr"
-      pure (Just stdoutH, Just stderrH)
-    Nothing -> pure (Nothing, Nothing)
-
-  outcome <- sendIO $ withProcessWait processConfig $ \p -> do
-    getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
-    -- Start async reading of stderr to prevent blocking
-    stderrAsync <- async $ consumeStderr (getStderr p) stderrFile
-    -- Read stdout in the main thread
-    accumulator <- streamFicusOutput (getStdout p) stdoutFile
-    -- Wait for stderr to finish
-    stdErrLines <- wait stderrAsync
-    exitCode <- waitExitCode p
-    pure (accumulator, exitCode, stdErrLines)
-
-  sendIO $ do
-    traverse_ hClose stdoutFile
-    traverse_ hClose stderrFile
-
-  pure outcome
+  bracket (sendIO openDebugLogs) (sendIO . closeDebugLogs) $ \(stdoutFile, stderrFile) ->
+    sendIO . withProcessWait processConfig $ \p -> do
+      getCurrentTime >>= \now -> hPutStrLn stderr $ "[TIMING " ++ formatTime defaultTimeLocale "%H:%M:%S.%3q" now ++ "] Ficus process started, beginning stream processing..."
+      -- Start async reading of stderr to prevent blocking
+      stderrAsync <- async $ consumeStderr (getStderr p) stderrFile
+      -- Read stdout in the main thread
+      accumulator <- streamFicusOutput (getStdout p) stdoutFile
+      -- Wait for stderr to finish
+      stdErrLines <- wait stderrAsync
+      exitCode <- waitExitCode p
+      pure (accumulator, exitCode, stdErrLines)
   where
+    -- Bracketed: an exception out of the process or the stream handler must not
+    -- leave the debug logs open for the rest of the run.
+    openDebugLogs :: IO (Maybe Handle, Maybe Handle)
+    openDebugLogs = case maybeDebugDir of
+      Nothing -> pure (Nothing, Nothing)
+      Just debugDir -> do
+        stdoutH <- openLogFile debugDir "stdout"
+        stderrH <- openLogFile debugDir "stderr" `onException` hClose stdoutH
+        pure (Just stdoutH, Just stderrH)
+
+    closeDebugLogs :: (Maybe Handle, Maybe Handle) -> IO ()
+    closeDebugLogs (stdoutFile, stderrFile) = do
+      traverse_ hClose stdoutFile
+      traverse_ hClose stderrFile
+
     openLogFile :: FilePath -> Text -> IO Handle
     openLogFile debugDir stream = do
       handle <- openFile (debugDir </> toString (debugLogBasename <> "-" <> stream <> ".log")) WriteMode
