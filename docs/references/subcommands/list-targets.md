@@ -25,7 +25,7 @@ $ fossa list-targets
 [ INFO] Found target: yarn@./:lib-core
 ```
 
-Each of those can be selected on its own with `fossa analyze --only-target 'yarn@./:app'` or a `target:` entry under `targets` in `.fossa.yml`; see [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration).
+Each of those can be selected on its own with `fossa analyze --only-target 'yarn@./:app'`, or with a `target:` field on a `targets.only` entry in `.fossa.yml` (`targets.exclude` leaves it out instead); see [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration).
 
 #### Command output formats
 

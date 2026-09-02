@@ -131,6 +131,12 @@
         },
         "targetFilter": {
             "type": "object",
+            "allOf": [
+                {
+                    "if": { "required": ["target"] },
+                    "then": { "required": ["path"] }
+                }
+            ],
             "properties": {
                 "type": {
                     "type": "string",
