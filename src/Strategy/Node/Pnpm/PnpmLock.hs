@@ -9,6 +9,7 @@ module Strategy.Node.Pnpm.PnpmLock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
+import Control.Monad (when)
 import Data.Aeson.Types (Value, parseEither, parseJSON)
 import Data.ByteString (ByteString)
 import Data.Either (partitionEithers)
@@ -383,13 +384,13 @@ analyze selectedImporters file = context "Analyzing Pnpm Lockfile" $ do
     LockfileV678 _ -> pure ()
     LockfileV9 _ -> pure ()
 
-  case (selectedImporters, scopedImporters selectedImporters (lockfileBaseOf pnpmLockFile)) of
-    (Just keys, Just selected)
-      | Set.null selected ->
-          logWarn . pretty $
-            "Target filter (resolved importer keys: "
-              <> Text.intercalate ", " (Set.toList keys)
-              <> ") did not match any importer in the pnpm lockfile; reporting an empty dependency graph."
+  let scoped = scopedImporters selectedImporters (lockfileBaseOf pnpmLockFile)
+  case (selectedImporters, scoped) of
+    (Just keys, Just selected) ->
+      when (Set.null selected) . logWarn . pretty $
+        "Target filter (resolved importer keys: "
+          <> Text.intercalate ", " (Set.toList keys)
+          <> ") did not match any importer in the pnpm lockfile; reporting an empty dependency graph."
     _ -> pure ()
 
   context "Building dependency graph" $ pure $ buildGraph selectedImporters pnpmLockFile
