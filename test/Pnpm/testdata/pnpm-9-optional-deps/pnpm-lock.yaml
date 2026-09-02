@@ -1,0 +1,56 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+# Optional dependencies at both levels: the importer declares sharp as an
+# optionalDependency, and chokidar's snapshot lists fsevents under
+# optionalDependencies.
+
+importers:
+
+  .:
+    dependencies:
+      chokidar:
+        specifier: ^3.6.0
+        version: 3.6.0
+    optionalDependencies:
+      sharp:
+        specifier: ^0.33.0
+        version: 0.33.0
+
+packages:
+
+  chokidar@3.6.0:
+    resolution: {integrity: sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQXDda2XQ==}
+    engines: {node: '>= 8.10.0'}
+
+  fsevents@2.3.3:
+    resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
+
+  readdirp@3.6.0:
+    resolution: {integrity: sha512-hOS089on8RduqdbhvQ5Z37A0ESjsqz6qnRcffsMU3495FuTdqSm+7bhJ29JvIOsBDEEnan5DPu9t3To9VRlMzA==}
+    engines: {node: '>=8.10.0'}
+
+  sharp@0.33.0:
+    resolution: {integrity: sha512-99qq0YpfgZUSaJ3wF0LDvDSg2fQVBH2PCLZIpimlzeHVAY4/2FuUJp8mCOEAiEnfy/zX9NHUyF7T4FblWQ/n9w==}
+    engines: {node: ^18.17.0 || ^20.3.0 || >=21.0.0}
+
+snapshots:
+
+  chokidar@3.6.0:
+    dependencies:
+      readdirp: 3.6.0
+    optionalDependencies:
+      fsevents: 2.3.3
+
+  fsevents@2.3.3:
+    optional: true
+
+  readdirp@3.6.0: {}
+
+  sharp@0.33.0:
+    optional: true
