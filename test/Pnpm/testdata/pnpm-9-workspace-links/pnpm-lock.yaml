@@ -1,0 +1,119 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+# A deeper workspace for exercising link following when scoping:
+#   apps/web -> libs/ui -> libs/core -> libs/ui   (a chain that closes into a cycle)
+#   apps/web -> libs/testkit                      (linked from devDependencies)
+#   libs/testkit -> ../../vendor/not-a-member     (a link: to a path with no importer)
+#   libs/orphan                                    (linked by nobody)
+
+importers:
+
+  .:
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.4.5
+
+  apps/web:
+    dependencies:
+      '@ws/ui':
+        specifier: workspace:*
+        version: link:../../libs/ui
+      left-pad:
+        specifier: 1.3.0
+        version: 1.3.0
+    devDependencies:
+      '@ws/testkit':
+        specifier: workspace:*
+        version: link:../../libs/testkit
+
+  libs/core:
+    dependencies:
+      '@ws/ui':
+        specifier: workspace:*
+        version: link:../ui
+      is-odd:
+        specifier: 3.0.1
+        version: 3.0.1
+
+  libs/orphan:
+    dependencies:
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
+
+  libs/testkit:
+    dependencies:
+      colorjs:
+        specifier: ^0.1.9
+        version: 0.1.9
+      vendored:
+        specifier: link:../../vendor/not-a-member
+        version: link:../../vendor/not-a-member
+
+  libs/ui:
+    dependencies:
+      '@ws/core':
+        specifier: workspace:*
+        version: link:../core
+      uri-js:
+        specifier: ^4.4.1
+        version: 4.4.1
+
+packages:
+
+  colorjs@0.1.9:
+    resolution: {integrity: sha512-filDwoNvVLqcLB4zMmWa65rgNHW/ff26wn3/q+XpYrI9EFts6fwnLIPYGOr8G+9cECMsxfCm9a2QzXdf+imY7A==}
+
+  is-number@6.0.0:
+    resolution: {integrity: sha512-Wu1VHeILBK8KAWJUAiSZQX94GmOE45Rg6/538fKwiloUu21KncEkYGPqob2oSZ5mUT73vLGrHQjKw3KMPwfDzg==}
+    engines: {node: '>=0.10.0'}
+
+  is-odd@3.0.1:
+    resolution: {integrity: sha512-CQpnWPrDwmP1+SMHXZhtLtJv90yiyVfluGsX5iNCVkrhQtU3TQHsUWPG9wkdk9Lgd5yNpAg9jQEo90CBaXgWMA==}
+    engines: {node: '>=4'}
+
+  left-pad@1.3.0:
+    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bFlCBy/aVx2HrNcqQGsdot8ghrjyrvMCoEA==}
+    deprecated: use String.prototype.padStart()
+
+  lodash@4.17.21:
+    resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
+
+  punycode@2.3.1:
+    resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
+    engines: {node: '>=6'}
+
+  typescript@5.4.5:
+    resolution: {integrity: sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  uri-js@4.4.1:
+    resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+snapshots:
+
+  colorjs@0.1.9: {}
+
+  is-number@6.0.0: {}
+
+  is-odd@3.0.1:
+    dependencies:
+      is-number: 6.0.0
+
+  left-pad@1.3.0: {}
+
+  lodash@4.17.21: {}
+
+  punycode@2.3.1: {}
+
+  typescript@5.4.5: {}
+
+  uri-js@4.4.1:
+    dependencies:
+      punycode: 2.3.1
