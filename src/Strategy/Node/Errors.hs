@@ -1,6 +1,7 @@
 module Strategy.Node.Errors (
   MissingNodeLockFile (..),
   CyclicPackageJson (..),
+  UnnamedWorkspaceRoot (..),
   fossaNodeDocUrl,
   npmLockFileDocUrl,
   yarnLockfileDocUrl,
@@ -12,7 +13,8 @@ import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic, renderDiagnostic)
 import Effect.Logger (renderIt)
 import Errata (Errata (..))
-import Prettyprinter (indent, vsep)
+import Path (Abs, File, Path, toFilePath)
+import Prettyprinter (indent, pretty, vsep)
 
 yarnLockfileDocUrl :: Text
 yarnLockfileDocUrl = "https://classic.yarnpkg.com/lang/en/docs/yarn-lock/"
@@ -30,6 +32,20 @@ data CyclicPackageJson = CyclicPackageJson
 instance ToDiagnostic CyclicPackageJson where
   renderDiagnostic (CyclicPackageJson) = do
     let header = "Detected cyclic references between package.json files in the workspace"
+    Errata (Just header) [] Nothing
+
+-- | A workspace with members whose root package.json declares no @name@, so
+-- no build targets can be offered for it.
+newtype UnnamedWorkspaceRoot = UnnamedWorkspaceRoot (Path Abs File)
+
+instance ToDiagnostic UnnamedWorkspaceRoot where
+  renderDiagnostic (UnnamedWorkspaceRoot rootManifest) = do
+    let header =
+          renderIt $
+            vsep
+              [ "The workspace root " <> pretty (toFilePath rootManifest) <> " has no `name` field, so its members are not offered as build targets and the whole workspace is analyzed as one unit."
+              , indent 2 "Add a `name` to that package.json to select members individually with `--only-target` or `targets.only` in .fossa.yml."
+              ]
     Errata (Just header) [] Nothing
 
 data MissingNodeLockFile

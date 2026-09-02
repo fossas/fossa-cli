@@ -55,8 +55,8 @@ yarn@./:lib-core
 When a subset of targets is selected, only those packages' dependencies are
 included in the analysis.
 
-If the workspace root's `package.json` has no `name` field, the root directory's
-own name is used for the root target.
+The workspace root's `package.json` needs a `name` field too: without one, no
+build targets are offered and the whole workspace is analyzed as a single unit.
 
 When no filtering is applied, all targets are selected and all dependencies
 from every workspace package are included in the analysis.

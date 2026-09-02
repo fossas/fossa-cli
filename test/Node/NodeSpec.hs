@@ -14,7 +14,7 @@ import DepTypes (DepEnvironment (EnvProduction), Dependency (dependencyEnvironme
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys, workspaceRootTargetName)
+import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -338,36 +338,19 @@ resolvePnpmImporterKeysSpec currDir = describe "resolvePnpmImporterKeys" $ do
   it "resolves no importers when no target matches a manifest" $
     forTargets ["does-not-exist"] `shouldBe` Just Set.empty
 
--- | A pnpm workspace root usually keeps its configuration in
--- pnpm-workspace.yaml, so its package.json commonly has no @name@. Such a root
--- must still yield build targets, and the name it is given must be the one
--- that importer-key resolution and manifest selection understand.
+-- | A workspace root with no @name@ cannot be selected by any target filter,
+-- so no targets are offered at all and the whole workspace is analyzed as one.
+-- That is what keeps the root's own dependencies from being dropped.
 unnamedWorkspaceRootSpec :: Path Abs Dir -> Spec
 unnamedWorkspaceRootSpec currDir = describe "workspace root without a name" $ do
   let graph = unnamedRootWorkspaceGraph currDir
 
-  it "names the root target after the root directory" $
-    workspaceRootTargetName graph `shouldBe` Just "workspace-test"
+  it "offers no build targets" $
+    findWorkspaceBuildTargets graph `shouldBe` ProjectWithoutTargets
 
-  it "still exposes the root and every member as build targets" $
-    findWorkspaceBuildTargets graph
-      `shouldBe` (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList (map BuildTarget ["workspace-test", "pkg-a", "pkg-b"]))
-
-  it "resolves the fallback root target back to the root importer" $
-    resolvePnpmImporterKeys
-      (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList [BuildTarget "workspace-test"])
-      graph
-      `shouldBe` Just (Set.fromList ["."])
-
-  it "keeps the root's dependencies when every target is selected" $
-    -- With no target filter, analysis receives every target. That is what
-    -- yarn and npm v1 lockfile analysis see, so the root must survive it.
-    extractDepListsForTargets (findWorkspaceBuildTargets graph) graph
-      `shouldBe` extractDepListsForTargets ProjectWithoutTargets graph
-
-  it "selects the root's dependencies by its fallback target" $
-    directDeps (extractDepListsForTargets (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList [BuildTarget "workspace-test"]) graph)
-      `shouldBe` applyTag @Production (Set.fromList [NodePackage "husky" "^8.0.0"])
+  it "still analyzes every manifest, root included" $
+    directDeps (extractDepListsForTargets (findWorkspaceBuildTargets graph) graph)
+      `shouldBe` applyTag @Production (Set.fromList [NodePackage "husky" "^8.0.0", NodePackage "lodash" "^4.0.0", NodePackage "express" "^4.0.0"])
 
 -- | 'workspaceGraphWithDeps' with the root's @name@ field removed.
 unnamedRootWorkspaceGraph :: Path Abs Dir -> PkgJsonGraph
