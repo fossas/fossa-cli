@@ -281,6 +281,10 @@
                 "path": {
                     "type": "string",
                     "description": "Associated path with target type (if any)"
+                },
+                "target": {
+                    "type": "string",
+                    "description": "A named build target within the project at `path`, for project types that have them (for example each workspace package of a yarn, npm, or pnpm monorepo). Requires `path`. Run `fossa list-targets` to see a project's target names."
                 }
             }
         },
