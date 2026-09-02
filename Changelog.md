@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Maven: Static analysis of `pom.xml` files now reports the dependencies a project declares as direct. Previously the project itself was reported as the only direct dependency and everything it declared was reported as transitive, and in a multi-module project the root pom and every submodule were also reported as dependencies. This affects analysis without `mvn` on `PATH`, `--static-only-analysis`, and container scanning; analysis using `mvn` was already correct. Selecting a submodule with `--only-target` now reports that submodule's dependencies as direct instead of reporting none at all.
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2

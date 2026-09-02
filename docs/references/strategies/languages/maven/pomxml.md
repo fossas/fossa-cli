@@ -16,4 +16,15 @@ poms are linked together by their `<parent>` references into multi-project proje
 
 Each project in the single- or multi-project structure has its pom information overlayed on top of parent poms, and a dependency graph is gathered from each project.
 
+The root pom and every submodule are excluded from the reported graph, and the
+dependencies they declare are reported as direct. This is the same treatment the
+`mavenplugin` and `treecmd` tactics give them: those are the user's own projects,
+not things they depend on. A pom file only declares direct dependencies, so this
+tactic reports no transitive dependencies and no edges.
+
+For example, given a project `com.example:root` whose `mod-a` submodule declares
+`junit:junit` and whose `mod-b` submodule declares `com.google.guava:guava`, the
+reported dependencies are `junit:junit` and `com.google.guava:guava`, both direct.
+Neither `com.example:root` nor either submodule is reported.
+
 We have limited support for naive `${property}` interpolation.

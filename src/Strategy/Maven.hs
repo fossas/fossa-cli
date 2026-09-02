@@ -3,6 +3,7 @@ module Strategy.Maven (
   mkProject,
   MavenProject (..),
   getDeps,
+  getDepsStatically,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
@@ -18,14 +19,14 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
-import DepTypes (Dependency)
+import DepTypes (Dependency (dependencyName))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, gmap, shrinkRoots)
+import Graphing (Graphing, gmap, promoteToDirect, shrink, shrinkRoots)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
@@ -188,7 +189,31 @@ getStaticAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
   (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
   filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  pure (filteredGraph, graphBreadth)
+  pure (withoutProjectsAsDeps allSubmodules filteredGraph, graphBreadth)
+
+-- | Remove the user's own packages -- the root pom and every submodule -- from a
+-- static graph, promoting the dependencies they declare to direct.
+--
+-- 'Pom.analyze'' builds a graph rooted at the project itself, so without this the
+-- project is the only direct dependency and every dependency it declares is
+-- reported as transitive. Marking the project packages direct and then shrinking
+-- them away is the same two steps the dynamic tactics take, where
+-- 'Plugin.buildGraph' marks them and 'shrinkRoots' removes them.
+--
+-- Both steps are needed. 'shrinkRoots' alone would remove only the root pom and
+-- promote the submodules to direct dependencies rather than dropping them. A
+-- 'shrink' alone would leave a submodule-filtered graph with no direct
+-- dependencies at all, because submodule filtering removes the root pom node
+-- without rewiring the edges through it.
+--
+-- This runs after submodule filtering, which needs the submodule nodes present in
+-- the graph to work out which dependencies belong to which submodule.
+withoutProjectsAsDeps :: Set Text -> Graphing Dependency -> Graphing Dependency
+withoutProjectsAsDeps projectPackages =
+  shrink (not . isProjectPackage) . promoteToDirect isProjectPackage
+  where
+    isProjectPackage :: Dependency -> Bool
+    isProjectPackage dep = dependencyName dep `Set.member` projectPackages
 
 applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
