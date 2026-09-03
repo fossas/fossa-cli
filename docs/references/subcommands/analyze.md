@@ -203,6 +203,17 @@ To see the result, run with `--debug` and read `bundleWorkflowResult` out of
 `fossa.debug.json` in the resulting `fossa.debug.zip`. The raw analyzer output
 is preserved alongside it in `fossa.ficus-workflow-stdout.log`.
 
+#### Failure behavior
+
+A workflow that fails — the analyzer exits non-zero, produces no result, or
+the embedded ficus rejects the run — does **not** fail `fossa analyze`. The
+command completes and exits 0; the failure is reported in the log, including
+the tail of ficus's stderr, and `bundleWorkflowResult` in the debug bundle is
+left empty. This is deliberate: a broken experimental analyzer must not block
+the dependency scan and upload. Check the log for
+`The workflow analyzer at <path> did not produce a result` to confirm the run
+happened.
+
 #### Security
 
 This flag executes a program you name, on your machine, against your project.
