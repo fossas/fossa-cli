@@ -252,6 +252,7 @@ library
     App.Fossa.EmbeddedBinary
     App.Fossa.Ficus.Analyze
     App.Fossa.Ficus.Types
+    App.Fossa.Ficus.Workflow
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze
@@ -673,6 +674,8 @@ test-suite unit-tests
     Extra.ListSpec
     Extra.TextSpec
     Ficus.FicusSpec
+    Ficus.WorkflowProcessSpec
+    Ficus.WorkflowSpec
     Fortran.FpmTomlSpec
     Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec

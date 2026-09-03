@@ -68,6 +68,7 @@ import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
 import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
+import App.Fossa.Ficus.Workflow qualified as Workflow
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
 import App.Fossa.Lernie.Types (LernieResults (..))
@@ -427,6 +428,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               (Config.debugDir cfg)
   let ficusResults = join $ resultToMaybe maybeFicusResults
 
+  -- Nothing is uploaded on this path, so a failure is loud but does not hold the
+  -- dependency upload hostage. Revisit when the result is data the user expects
+  -- to arrive.
+  workflowResult <-
+    Diag.errorBoundaryIO . diagToDebug $
+      traverse_
+        (\analyzer -> Diag.context "x-workflow" $ Workflow.analyzeWithWorkflow basedir analyzer (Config.debugDir cfg))
+        (Config.xWorkflow cfg)
+
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -458,6 +468,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
   -- Flush logs from ficus
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
+  -- Flush logs from the x-workflow run
+  traverse_ (Diag.flushLogs SevError SevDebug) [workflowResult]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $

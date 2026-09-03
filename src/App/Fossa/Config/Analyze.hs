@@ -253,6 +253,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeExperimentalSnippetScan :: Flag ExperimentalSnippetScan
   , analyzeSnippetScan :: Flag SnippetScan
   , analyzeVendetta :: Bool
+  , analyzeWorkflow :: Maybe FilePath
   }
   deriving (Eq, Ord, Show)
 
@@ -294,6 +295,7 @@ data AnalyzeConfig = AnalyzeConfig
   , snippetScan :: Bool
   , debugDir :: Maybe FilePath
   , xVendetta :: Bool
+  , xWorkflow :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -374,6 +376,14 @@ cliParser =
     <*> flagOpt ExperimentalSnippetScan (applyFossaStyle <> long "x-snippet-scan" <> hidden)
     <*> flagOpt SnippetScan (applyFossaStyle <> long "snippet-scan" <> stringToHelpDoc "Enable snippet scanning to identify open source code snippets using fingerprinting.")
     <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
+    <*> optional
+      ( strOption
+          ( applyFossaStyle
+              <> long "x-workflow"
+              <> metavar "PATH"
+              <> stringToHelpDoc "Experimental. Run the dependency-usage workflow analyzer at PATH."
+          )
+      )
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -604,6 +614,12 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
   when (analyzeVendetta && analyzeOutput == Output) $
     fatalText "The --x-vendetta and --output flags cannot be used together. Vendetta scanning requires uploading results to FOSSA and is not compatible with output-only mode."
 
+  -- Checked before the path is resolved: a user who typed both flags should see the
+  -- contradiction, not a file error about a path the CLI was never going to run.
+  case (fromFlag StaticOnlyTactics analyzeStaticOnlyTactics, analyzeWorkflow) of
+    (True, Just _) -> fatalText "--x-workflow runs an analyzer on your machine and cannot be combined with --static-only-analysis"
+    _ -> pure ()
+
   AnalyzeConfig
     <$> basedir
     <*> scanDestination
@@ -628,6 +644,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> pure snippetScanEnabled
     <*> pure maybeDebugDir
     <*> pure analyzeVendetta
+    <*> traverse validateFile analyzeWorkflow
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
