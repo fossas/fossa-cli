@@ -32,8 +32,9 @@ import Effect.Logger (Logger, logDebug, logError, logInfo, pretty)
 import Path (Abs, Dir, File, Path, toFilePath)
 
 -- | Run the workflow analyzer at the given path over @target@ through
--- @ficus x-workflow@, streaming its observations. Nothing is uploaded: the
--- result lands in the debug bundle and nowhere else.
+-- @ficus x-workflow@, streaming its observations. The result is recorded in
+-- the debug bundle and returned for upload once the server has issued the
+-- revision locator; nothing is sent from here.
 analyzeWithWorkflow ::
   ( Has Debug sig m
   , Has Diagnostics sig m
@@ -43,7 +44,7 @@ analyzeWithWorkflow ::
   Path Abs Dir ->
   Path Abs File ->
   Maybe FilePath ->
-  m ()
+  m Aeson.Value
 analyzeWithWorkflow target analyzer maybeDebugDir =
   withFicusBinary $ \bin ->
     runWorkflowWith (workflowCommand . toText $ toPath bin) target analyzer maybeDebugDir
@@ -69,7 +70,7 @@ runWorkflowWith ::
   Path Abs Dir ->
   Path Abs File ->
   Maybe FilePath ->
-  m ()
+  m Aeson.Value
 runWorkflowWith cmd target analyzer maybeDebugDir =
   -- The child writes a step cache and a per-run temp directory relative to its
   -- working directory, so it must not be the repository under analysis.
@@ -89,6 +90,7 @@ runWorkflowWith cmd target analyzer maybeDebugDir =
         debugMetadata workflowResultJson result
         logDebug $ "Workflow result: " <> pretty (decodeUtf8 (Aeson.encode result) :: Text)
         logInfo "Workflow analysis complete"
+        pure result
       _ -> failWorkflow analyzer exitCode events stdErrLines
 
 workflowResult :: WorkflowEvent -> Maybe Aeson.Value
@@ -132,7 +134,7 @@ failWorkflow ::
   ExitCode ->
   [WorkflowEvent] ->
   [Text] ->
-  m ()
+  m a
 failWorkflow analyzer exitCode events stdErrLines = do
   logError . pretty $ Text.unlines (summary : stderrTail)
   fatalText summary

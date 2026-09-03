@@ -179,13 +179,16 @@ scanning, or what information is sent to FOSSA's servers, see
 
 ### Dependency Usage Analysis with `--x-workflow`
 
-`--x-workflow` runs a dependency-usage workflow analyzer over the project and
-records its result in the debug bundle. The analyzer is a program you name on
+`--x-workflow` runs a dependency-usage workflow analyzer over the project,
+records its result in the debug bundle, and uploads it to FOSSA against the
+same revision as the dependency upload. The analyzer is a program you name on
 the command line; FOSSA CLI does not ship one yet, so this flag does nothing
 useful unless you already have an analyzer program or script to point it at.
 
-Results are not uploaded. Nothing about this flag changes what `fossa analyze`
-sends to FOSSA.
+The result is uploaded only when the analysis itself is uploaded, after the
+dependency upload succeeds; with `--output` nothing is sent. A result that
+fails to upload fails the run, but the dependency upload has already landed by
+then. Nothing else about this flag changes what `fossa analyze` sends to FOSSA.
 
 #### Enabling dependency usage analysis
 
@@ -205,14 +208,22 @@ is preserved alongside it in `fossa.ficus-workflow-stdout.log`.
 
 #### Failure behavior
 
-A workflow that fails — the analyzer exits non-zero, produces no result, or
-the embedded ficus rejects the run — does **not** fail `fossa analyze`. The
-command completes and exits 0; the failure is reported in the log, including
-the tail of ficus's stderr, and `bundleWorkflowResult` in the debug bundle is
-left empty. This is deliberate: a broken experimental analyzer must not block
-the dependency scan and upload. Check the log for
+`--x-workflow` has two distinct failure modes, and only one of them is silent.
+
+A workflow *run* that fails — the analyzer exits non-zero, produces no
+result, or the embedded ficus rejects the run — does **not** fail `fossa
+analyze`. The command still exits 0; the failure is reported in the log,
+including the tail of ficus's stderr, and `bundleWorkflowResult` in the debug
+bundle is left empty. This is deliberate: a broken experimental analyzer must
+not block the dependency scan and upload. Check the log for
 `The workflow analyzer at <path> did not produce a result` to confirm the run
 happened.
+
+A workflow result that fails to *upload* is different: it fails `fossa
+analyze` with a non-zero exit, as noted above. By the time that upload is
+attempted, the dependency upload has already succeeded and its report link
+already printed, so nothing already sent is lost — but the command itself
+reports failure, and CI sees the run as failed.
 
 #### Security
 
