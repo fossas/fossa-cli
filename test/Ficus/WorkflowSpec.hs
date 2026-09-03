@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Ficus.WorkflowSpec (spec) where
 
@@ -12,13 +11,20 @@ import App.Fossa.Ficus.Types (
   findingToWorkflowEvent,
   toWorkflowExecutable,
  )
+import Control.Exception (throw)
 import Data.Aeson qualified as Aeson
 import Data.Either (isLeft)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile, toFilePath)
+import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, toFilePath)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+
+-- | The fixtures below are valid paths only on the platform they are written
+-- for; a parse failure means the fixture itself is broken, so fail with the
+-- parse error rather than carrying it on to an assertion.
+mustParse :: (Show e) => (String -> Either e p) -> String -> p
+mustParse f s = either (throw . userError . show) id (f s)
 
 targetDir :: Path Abs Dir
 workDir :: Path Abs Dir
@@ -28,21 +34,21 @@ cjsBundle :: Path Abs File
 upperJsBundle :: Path Abs File
 nativeAnalyzer :: Path Abs File
 #ifdef mingw32_HOST_OS
-targetDir = $(mkAbsDir "C:/repo")
-workDir = $(mkAbsDir "C:/scratch")
-jsBundle = $(mkAbsFile "C:/dist/analyzer.js")
-mjsBundle = $(mkAbsFile "C:/dist/analyzer.mjs")
-cjsBundle = $(mkAbsFile "C:/dist/analyzer.cjs")
-upperJsBundle = $(mkAbsFile "C:/dist/analyzer.JS")
-nativeAnalyzer = $(mkAbsFile "C:/bin/analyzer")
+targetDir = mustParse parseAbsDir "C:/repo"
+workDir = mustParse parseAbsDir "C:/scratch"
+jsBundle = mustParse parseAbsFile "C:/dist/analyzer.js"
+mjsBundle = mustParse parseAbsFile "C:/dist/analyzer.mjs"
+cjsBundle = mustParse parseAbsFile "C:/dist/analyzer.cjs"
+upperJsBundle = mustParse parseAbsFile "C:/dist/analyzer.JS"
+nativeAnalyzer = mustParse parseAbsFile "C:/bin/analyzer"
 #else
-targetDir = $(mkAbsDir "/abs/repo")
-workDir = $(mkAbsDir "/abs/scratch")
-jsBundle = $(mkAbsFile "/abs/dist/analyzer.js")
-mjsBundle = $(mkAbsFile "/abs/dist/analyzer.mjs")
-cjsBundle = $(mkAbsFile "/abs/dist/analyzer.cjs")
-upperJsBundle = $(mkAbsFile "/abs/dist/analyzer.JS")
-nativeAnalyzer = $(mkAbsFile "/usr/local/bin/analyzer")
+targetDir = mustParse parseAbsDir "/abs/repo"
+workDir = mustParse parseAbsDir "/abs/scratch"
+jsBundle = mustParse parseAbsFile "/abs/dist/analyzer.js"
+mjsBundle = mustParse parseAbsFile "/abs/dist/analyzer.mjs"
+cjsBundle = mustParse parseAbsFile "/abs/dist/analyzer.cjs"
+upperJsBundle = mustParse parseAbsFile "/abs/dist/analyzer.JS"
+nativeAnalyzer = mustParse parseAbsFile "/usr/local/bin/analyzer"
 #endif
 
 -- | The wire contract with @ficus x-workflow@. Every key name, the schema

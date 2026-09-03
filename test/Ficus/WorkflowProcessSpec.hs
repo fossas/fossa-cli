@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module Ficus.WorkflowProcessSpec (spec) where
 
@@ -23,7 +22,7 @@ import App.Fossa.Ficus.Workflow (runWorkflowWith)
 import Control.Carrier.Debug (Scope (scopeMetadata), runDebug)
 import Control.Effect.Exception (SomeException, try)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Exception (throwIO)
+import Control.Exception (throw, throwIO)
 import Data.Aeson qualified as Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString.Lazy qualified as BL
@@ -34,10 +33,16 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitFailure, ExitSuccess))
-import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile, mkRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, parseRelFile, toFilePath, (</>))
 import System.Directory (getPermissions, setOwnerExecutable, setPermissions)
 import Test.Effect (expectFatal', itWithTempDir', shouldBe', shouldSatisfy')
 import Test.Hspec (Spec, describe)
+
+-- | The fixtures below are valid paths on the platform the tests run on; a
+-- parse failure means the fixture itself is broken, so fail with the parse
+-- error rather than carrying it on to an assertion.
+mustParse :: (Show e) => (String -> Either e p) -> String -> p
+mustParse f s = either (throw . userError . show) id (f s)
 
 spec :: Spec
 spec = do
@@ -101,7 +106,7 @@ fakeFicus payloads exitCode =
 
 writeFakeFicus :: (Has (Lift IO) sig m) => Path Abs Dir -> [Text] -> Int -> m Command
 writeFakeFicus dir payloads exitCode = do
-  let script = dir </> $(mkRelFile "fake-ficus.sh")
+  let script = dir </> mustParse parseRelFile "fake-ficus.sh"
   sendIO $ do
     writeFile (toFilePath script) (toString $ fakeFicus payloads exitCode)
     permissions <- getPermissions (toFilePath script)
@@ -117,7 +122,10 @@ writeFakeFicus dir payloads exitCode = do
 runArtifactBytes :: ByteString
 runArtifactBytes =
   BL.toStrict . Aeson.encode $
-    WorkflowRunArtifact (toWorkflowExecutable $(mkAbsFile "/abs/dist/analyzer.js")) $(mkAbsDir "/abs/repo") $(mkAbsDir "/abs/scratch")
+    WorkflowRunArtifact
+      (toWorkflowExecutable (mustParse parseAbsFile "/abs/dist/analyzer.js"))
+      (mustParse parseAbsDir "/abs/repo")
+      (mustParse parseAbsDir "/abs/scratch")
 
 collectMessages :: [FicusMessage] -> FicusMessage -> IO [FicusMessage]
 collectMessages acc message = pure (acc <> [message])
@@ -134,7 +142,7 @@ decodedEvents = rights . mapMaybe toEvent
     toEvent _ = Nothing
 
 analyzerBundle :: Path Abs Dir -> Path Abs File
-analyzerBundle dir = dir </> $(mkRelFile "analyzer.js")
+analyzerBundle dir = dir </> mustParse parseRelFile "analyzer.js"
 
 streamingSpec :: Spec
 streamingSpec = describe "execFicusStreaming" $ do
@@ -157,8 +165,8 @@ streamingSpec = describe "execFicusStreaming" $ do
     cmd <- writeFakeFicus tmpDir happyPayloads 0
     _ <-
       execFicusStreaming tmpDir cmd (Just runArtifactBytes) (Just $ toFilePath tmpDir) "fossa.ficus-workflow" collectMessages ([] :: [FicusMessage])
-    stdoutLog <- sendIO . readFile . toFilePath $ tmpDir </> $(mkRelFile "fossa.ficus-workflow-stdout.log")
-    stderrLog <- sendIO . readFile . toFilePath $ tmpDir </> $(mkRelFile "fossa.ficus-workflow-stderr.log")
+    stdoutLog <- sendIO . readFile . toFilePath $ tmpDir </> mustParse parseRelFile "fossa.ficus-workflow-stdout.log"
+    stderrLog <- sendIO . readFile . toFilePath $ tmpDir </> mustParse parseRelFile "fossa.ficus-workflow-stderr.log"
     toText stdoutLog `shouldSatisfy'` Text.isInfixOf (observationEnvelope stepCompletedPayload)
     toText stderrLog `shouldSatisfy'` Text.isInfixOf (decodeUtf8 runArtifactBytes)
 
@@ -168,7 +176,7 @@ streamingSpec = describe "execFicusStreaming" $ do
       try $
         execFicusStreaming tmpDir cmd (Just runArtifactBytes) (Just $ toFilePath tmpDir) "fossa.ficus-throwing" explodingStep ([] :: [FicusMessage])
     (outcome :: Either SomeException ([FicusMessage], ExitCode, [Text])) `shouldSatisfy'` isLeft
-    stdoutLog <- sendIO . readFile . toFilePath $ tmpDir </> $(mkRelFile "fossa.ficus-throwing-stdout.log")
+    stdoutLog <- sendIO . readFile . toFilePath $ tmpDir </> mustParse parseRelFile "fossa.ficus-throwing-stdout.log"
     toText stdoutLog `shouldSatisfy'` Text.isInfixOf (observationEnvelope stepCompletedPayload)
 
 workflowSpec :: Spec

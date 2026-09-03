@@ -1,5 +1,4 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Config.AnalyzeSpec (spec) where
 
@@ -15,15 +14,22 @@ import App.Fossa.Config.Utils (itShouldFailWhenLabelsExceedFive, itShouldLoadFro
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Exception (throw)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (..), combinedTargets)
 import Effect.Logger (renderIt)
-import Path (Abs, Dir, File, Path, mkAbsFile, mkRelFile, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, parseAbsFile, parseRelFile, toFilePath, (</>))
 import Test.Effect (expectFatal', expectationFailure', it', itWithTempDir', shouldBe', shouldEndWith')
 import Test.Hspec (Spec, describe)
 import Types (DiscoveredProjectType, TargetFilter (TypeTarget))
+
+-- | The fixtures below are valid paths on the platform the tests run on; a
+-- parse failure means the fixture itself is broken, so fail with the parse
+-- error rather than carrying it on to an assertion.
+mustParse :: (Show e) => (String -> Either e p) -> String -> p
+mustParse f s = either (throw . userError . show) id (f s)
 
 envVars :: EnvVars
 envVars =
@@ -38,9 +44,9 @@ envVars =
 
 configPath :: Path Abs File
 #ifdef mingw32_HOST_OS
-configPath = $(mkAbsFile "C:/.fossa.yml")
+configPath = mustParse parseAbsFile "C:/.fossa.yml"
 #else
-configPath = $(mkAbsFile "/tmp/.fossa.yml")
+configPath = mustParse parseAbsFile "/tmp/.fossa.yml"
 #endif
 
 configFileWithTargets :: [Text] -> [Text] -> Bool -> ConfigFile
@@ -187,7 +193,7 @@ spec = do
 -- | Create a file the CLI can resolve, so path resolution is never the reason a test fails.
 writeAnalyzer :: (Has (Lift IO) sig m) => Path Abs Dir -> m (Path Abs File)
 writeAnalyzer tmpDir = do
-  let analyzer = tmpDir </> $(mkRelFile "analyzer.js")
+  let analyzer = tmpDir </> mustParse parseRelFile "analyzer.js"
   sendIO $ writeFile (toFilePath analyzer) "// stub\n"
   pure analyzer
 
