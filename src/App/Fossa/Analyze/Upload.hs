@@ -37,6 +37,7 @@ import Control.Effect.FossaApiClient (
   getSignedFirstPartyScanUrl,
   uploadAnalysis,
   uploadAnalysisWithFirstPartyLicenses,
+  uploadAnalysisWorkflow,
   uploadContributors,
   uploadFirstPartyScanResult,
  )
@@ -62,7 +63,7 @@ import Effect.Logger (
   logStdout,
   viaShow,
  )
-import Fossa.API.Types (Organization (orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
+import Fossa.API.Types (AnalysisWorkflowId (AnalysisWorkflowId), Organization (orgSupportsReachability), Project (projectIsMonorepo), UploadResponse (..), orgFileUpload)
 import Path (Abs, Dir, Path)
 import Srclib.Types (
   FullSourceUnit,
@@ -108,8 +109,9 @@ uploadSuccessfulAnalysis ::
   ScanUnits ->
   [SourceUnitReachability] ->
   Maybe FicusAnalysisResults ->
+  Maybe Aeson.Value ->
   m Locator
-uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults =
+uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults workflowData =
   context "Uploading analysis" $ do
     dieOnMonorepoUpload revision
     org <- getOrganization
@@ -150,6 +152,8 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
     -- Warn on contributor errors, never fail
     void . recover $ tryUploadContributors basedir (uploadLocator uploadResult)
 
+    uploadWorkflowResult locator workflowData
+
     when (fromFlag JsonOutput jsonOutput) $ do
       summary <-
         context "Analysis ran successfully, but the server returned invalid metadata" $
@@ -157,6 +161,23 @@ uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnit
       logStdout . decodeUtf8 $ Aeson.encode summary
 
     pure locator
+
+-- | The user asked for this result by naming an analyzer, so an upload that
+-- does not land fails the run rather than passing quietly. By this point the
+-- dependency upload has already succeeded and its report link is printed, so
+-- the failure costs nothing that was already sent.
+uploadWorkflowResult ::
+  ( Has Diagnostics sig m
+  , Has FossaApiClient sig m
+  , Has Logger sig m
+  ) =>
+  Locator ->
+  Maybe Aeson.Value ->
+  m ()
+uploadWorkflowResult locator = traverse_ $ \workflowData ->
+  context "Uploading workflow result" $ do
+    AnalysisWorkflowId workflowId <- uploadAnalysisWorkflow locator workflowData
+    logInfo $ "Uploaded workflow result for " <> pretty (renderLocator locator) <> " (id " <> pretty workflowId <> ")"
 
 uploadAnalysisWithFirstPartyLicensesToS3AndCore ::
   ( Has Diagnostics sig m

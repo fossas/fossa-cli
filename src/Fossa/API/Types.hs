@@ -35,6 +35,8 @@ module Fossa.API.Types (
   PathDependencyFinalizeReq (..),
   AnalyzedPathDependenciesResp (..),
   AnalyzedPathDependency (..),
+  AnalysisWorkflowUpload (..),
+  AnalysisWorkflowId (..),
   TokenType (..),
   TokenTypeResponse (..),
   Subscription (..),
@@ -859,6 +861,33 @@ useApiOpts opts = case useURI serverURI of
 
 authHeader :: ApiKey -> Option 'Https
 authHeader key = header "Authorization" (encodeUtf8 ("Bearer " <> unApiKey key))
+
+--- Analysis workflow
+
+-- | Envelope for @POST /api/proxy/analysis/api/v1/analysis-workflows@.
+--
+-- The locator must be the one the server returned for the revision upload
+-- ('uploadLocator'): core reads the row back by its own org-scoped
+-- @custom+<orgId>/<project>$<revision>@ string, and the analysis service matches
+-- it byte for byte. A locator rendered client-side has no org id, so its row
+-- is never found and nothing on either side reports it.
+data AnalysisWorkflowUpload = AnalysisWorkflowUpload
+  { analysisWorkflowLocator :: Locator
+  , analysisWorkflowData :: Value
+  }
+
+instance ToJSON AnalysisWorkflowUpload where
+  toJSON AnalysisWorkflowUpload{..} =
+    object
+      [ "revision_locator" .= analysisWorkflowLocator
+      , "workflow_data" .= analysisWorkflowData
+      ]
+
+newtype AnalysisWorkflowId = AnalysisWorkflowId {unAnalysisWorkflowId :: Text}
+  deriving (Eq, Ord, Show)
+
+instance FromJSON AnalysisWorkflowId where
+  parseJSON = withObject "AnalysisWorkflowId" $ \obj -> AnalysisWorkflowId <$> obj .: "id"
 
 --- Path Dependency
 
