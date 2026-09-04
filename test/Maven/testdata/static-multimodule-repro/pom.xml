@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal multi-module repro for the Maven static-analysis root handling.
+
+  A `pom`-packaging aggregator (com.example:parent) with two submodules.
+  Each submodule declares its own external dependency. After the fix the
+  static path must promote the submodule-declared deps to Direct and drop
+  every first-party artifact (parent and both submodules), mirroring the
+  dynamic depgraph-plugin behavior.
+
+  Expected (post-fix): Imports = [commons-lang3, junit]; parent/core/app absent.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>parent</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+  <modules>
+    <module>core</module>
+    <module>app</module>
+  </modules>
+</project>

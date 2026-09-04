@@ -5,6 +5,7 @@ module Strategy.Maven.Common (
   mavenDependencyToDependency,
   filterMavenSubmodules,
   filterMavenDependencyByScope,
+  promoteFirstPartyToDirect,
 ) where
 
 import Data.Set (Set)
@@ -14,7 +15,7 @@ import DepTypes (Dependency (..))
 
 import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (..))
 
-import Graphing (Graphing, color, edgesList, reachableSuccessorsWithCondition, vertexList)
+import Graphing (Graphing, color, edgesList, promoteToDirect, reachableSuccessorsWithCondition, vertexList)
 import Graphing qualified
 
 data MavenDependency = MavenDependency
@@ -27,6 +28,10 @@ data MavenDependency = MavenDependency
 
 mavenDependencyToDependency :: MavenDependency -> Dependency
 mavenDependencyToDependency MavenDependency{..} = dependency
+
+promoteFirstPartyToDirect :: Set Text -> Graphing MavenDependency -> Graphing MavenDependency
+promoteFirstPartyToDirect firstParty =
+  promoteToDirect (\dep -> dependencyName (dependency dep) `Set.member` firstParty)
 
 -- | Filter all submodules (including their dependencies) that are not in `includedSubmoduleSet`.
 --

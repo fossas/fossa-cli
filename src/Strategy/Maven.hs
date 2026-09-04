@@ -3,6 +3,7 @@ module Strategy.Maven (
   mkProject,
   MavenProject (..),
   getDeps,
+  getDepsStatically,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
@@ -27,7 +28,7 @@ import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, Path, parent)
-import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
+import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency, promoteFirstPartyToDirect)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
@@ -133,14 +134,8 @@ getDepsDynamicAnalysis submoduleTargets closure = do
     context "Dynamic Analysis" $
       errorInfo (getDepsPlugin closure <||> guardStrictMode mode (getDepsTreeCmd closure <||> getDepsPluginLegacy closure))
 
-  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  pure (withoutProjectAsDep filteredGraph, graphBreadth)
-  where
-    -- shrinkRoots is applied on all dynamic strategies.
-    -- The root deps are either the toplevel package or submodules in a multi-module project.
-    -- We don't want to consider those because they're the users' packages.
-    -- Promote them to direct when building the graph using `shrinkRoots`.
-    withoutProjectAsDep = shrinkRoots
+  finalGraph <- finalizeMavenGraph submoduleTargets allSubmodules graph
+  pure (finalGraph, graphBreadth)
 
 getDepsPlugin ::
   ( CandidateCommandEffs sig m
@@ -187,8 +182,30 @@ getStaticAnalysis ::
 getStaticAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
   (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
-  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  pure (filteredGraph, graphBreadth)
+  -- Pom.analyze' marks the project's own coordinate as the sole direct node.
+  -- Mirror the dynamic path's buildGraph by additionally marking submodules
+  -- direct; finalizeMavenGraph's shrinkRoots then removes all first-party
+  -- artifacts and promotes their declared dependencies to direct.
+  let withFirstPartyAsRoots = promoteFirstPartyToDirect allSubmodules graph
+  finalGraph <- finalizeMavenGraph submoduleTargets allSubmodules withFirstPartyAsRoots
+  pure (finalGraph, graphBreadth)
+
+-- | Shared final step for every Maven graph strategy: apply submodule/scope
+-- filtering, then remove the users' own packages (the toplevel package or
+-- submodules in a multi-module project, which each strategy marks as graph
+-- roots) and promote their children to direct via `shrinkRoots`. Centralizing
+-- this keeps the static and dynamic paths from diverging; the static path
+-- previously omitted this step, which reported the project artifact as the
+-- sole Direct dependency.
+finalizeMavenGraph ::
+  (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) =>
+  Set Text ->
+  Set Text ->
+  Graphing MavenDependency ->
+  m (Graphing Dependency)
+finalizeMavenGraph targetSet submoduleSet graph = do
+  filteredGraph <- applyMavenFilters targetSet submoduleSet graph
+  pure (shrinkRoots filteredGraph)
 
 applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
