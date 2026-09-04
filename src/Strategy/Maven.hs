@@ -189,9 +189,9 @@ getStaticAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
   (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
   -- Pom.analyze' marks the project's own coordinate as the sole direct node.
-  -- Mirror the dynamic path's buildGraph: mark every first-party artifact
-  -- direct -- the toplevel package plus submodules in a multi-module project
-  -- -- so shrinkRoots (below) removes them all and promotes their declared
+  -- Mirror the dynamic path's buildGraph: mark every first-party artifact (the
+  -- toplevel package plus submodules in a multi-module project) direct, so
+  -- shrinkRoots (below) removes them all and promotes their declared
   -- dependencies to direct.
   let withFirstPartyAsRoots =
         promoteToDirect (\dep -> dependencyName (dependency dep) `Set.member` allSubmodules) graph

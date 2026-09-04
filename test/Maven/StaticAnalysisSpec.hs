@@ -34,7 +34,11 @@ spec :: Spec
 spec = describe "Maven static analysis" $ do
   describe "Pom.analyze'" $
     it' "marks only the project's own coordinate as direct" $
-      -- this is why the strategy layer must shrink roots before uploading
+      -- Pins the current buildProjectGraph behavior that motivates the
+      -- strategy-layer shrinkRoots. If buildProjectGraph is later changed so
+      -- the root coordinate is no longer marked direct, update this
+      -- expectation in tandem; promoteToDirect + shrinkRoots remains correct
+      -- either way (both are idempotent on already-correct graphs).
       withFixtureClosure singleModuleFixture $ \closure ->
         expectDirect' [rootPackage] (Pom.analyze' closure)
 
