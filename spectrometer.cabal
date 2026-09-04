@@ -701,6 +701,7 @@ test-suite unit-tests
     Maven.PluginTreeSpec
     Maven.PomClosureSpec
     Maven.PomStrategySpec
+    Maven.StaticAnalysisSpec
     Ndb.NdbSpec
     Nim.NimbleSpec
     Node.NodeSpec

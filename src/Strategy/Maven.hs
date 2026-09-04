@@ -3,6 +3,7 @@ module Strategy.Maven (
   mkProject,
   MavenProject (..),
   getDeps,
+  getDepsStatically,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
@@ -18,14 +19,14 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
-import DepTypes (Dependency)
+import DepTypes (Dependency (..))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, gmap, shrinkRoots)
+import Graphing (Graphing, gmap, promoteToDirect, shrinkRoots)
 import Path (Abs, Dir, Path, parent)
 import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
@@ -187,8 +188,15 @@ getStaticAnalysis ::
 getStaticAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
   (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
-  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  pure (filteredGraph, graphBreadth)
+  -- Pom.analyze' marks the project's own coordinate as the sole direct node.
+  -- Mirror the dynamic path's buildGraph: mark every first-party artifact
+  -- direct -- the toplevel package plus submodules in a multi-module project
+  -- -- so shrinkRoots (below) removes them all and promotes their declared
+  -- dependencies to direct.
+  let withFirstPartyAsRoots =
+        promoteToDirect (\dep -> dependencyName (dependency dep) `Set.member` allSubmodules) graph
+  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules withFirstPartyAsRoots
+  pure (shrinkRoots filteredGraph, graphBreadth)
 
 applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
