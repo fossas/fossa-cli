@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
+- Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
 - Workflows: `fossa analyze --x-workflow <path>` runs a dependency-usage workflow analyzer through the embedded ficus and records its result in the debug bundle. ([#1761](https://github.com/fossas/fossa-cli/pull/1761))
 - Workflows: the `--x-workflow` result is uploaded to FOSSA against the analyzed revision once the dependency upload succeeds; `--output` runs still upload nothing. ([#1762](https://github.com/fossas/fossa-cli/pull/1762))
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
