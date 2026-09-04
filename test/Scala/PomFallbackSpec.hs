@@ -4,13 +4,12 @@
 -- (Strategy.Scala.analyzeWithPoms), the third resort in Scala's getDeps
 -- chain after the dependency-tree JSON and dependencyTree tactics.
 --
--- The two sbt-native tactics already shrink roots; the pom fallback returned
--- 'Pom.analyze' un-shrunk, reporting the project's own artifact as the sole
--- Direct dependency and demoting the pom's declared dependencies to
--- Transitive -- the same bug the Maven static path had. This spec feeds the
--- fallback a checked-in copy of a real `sbt makePom` artifact (the fixture
--- under test/Scala/testdata/pom-fallback-generated) and asserts it now
--- matches the sbt-native tactics' first-party handling.
+-- Without additional processing, 'Pom.analyze' marks the project's own
+-- artifact as the sole direct node and demotes declared dependencies to
+-- transitive. This spec feeds the fallback a checked-in copy of a real
+-- `sbt makePom` artifact (the fixture under
+-- test/Scala/testdata/pom-fallback-generated) and asserts that declared
+-- dependencies appear as Direct and the project artifact is removed.
 --
 -- Note the input is the pom that sbt generates for the test project in
 -- test/Scala/testdata/pom-fallback-repro; that project exercises the same

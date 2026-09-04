@@ -197,11 +197,8 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
   -- Pom.analyze' marks the project's own coordinate as the sole direct node.
-  -- Apply the same first-party handling the sbt-native tactics use inside
-  -- SbtDependencyTree/SbtDependencyTreeJson (and Maven's finalizeMavenGraph):
-  -- promote first-party artifacts to roots, shrink them away, and promote the
-  -- declared dependencies to direct. Without this, the pom fallback reported
-  -- the project artifact as the only Direct dependency.
+  -- Promote first-party artifacts to direct, then shrink them to remove the
+  -- project artifact and promote its declared dependencies to direct.
   let graph = shrinkRoots (promoteFirstPartyToDirect (closureSubmodules closure) (Pom.analyze' closure))
   pure $
     DependencyResults
