@@ -134,14 +134,8 @@ getDepsDynamicAnalysis submoduleTargets closure = do
     context "Dynamic Analysis" $
       errorInfo (getDepsPlugin closure <||> guardStrictMode mode (getDepsTreeCmd closure <||> getDepsPluginLegacy closure))
 
-  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules graph
-  pure (withoutProjectAsDep filteredGraph, graphBreadth)
-  where
-    -- shrinkRoots is applied on all dynamic strategies.
-    -- The root deps are either the toplevel package or submodules in a multi-module project.
-    -- We don't want to consider those because they're the users' packages.
-    -- Promote them to direct when building the graph using `shrinkRoots`.
-    withoutProjectAsDep = shrinkRoots
+  finalGraph <- finalizeMavenGraph submoduleTargets allSubmodules graph
+  pure (finalGraph, graphBreadth)
 
 getDepsPlugin ::
   ( CandidateCommandEffs sig m
@@ -195,8 +189,25 @@ getStaticAnalysis submoduleTargets closure = do
   -- dependencies to direct.
   let withFirstPartyAsRoots =
         promoteToDirect (\dep -> dependencyName (dependency dep) `Set.member` allSubmodules) graph
-  filteredGraph <- applyMavenFilters submoduleTargets allSubmodules withFirstPartyAsRoots
-  pure (shrinkRoots filteredGraph, graphBreadth)
+  finalGraph <- finalizeMavenGraph submoduleTargets allSubmodules withFirstPartyAsRoots
+  pure (finalGraph, graphBreadth)
+
+-- | Shared final step for every Maven graph strategy: apply submodule/scope
+-- filtering, then remove the users' own packages (the toplevel package or
+-- submodules in a multi-module project, which each strategy marks as graph
+-- roots) and promote their children to direct via `shrinkRoots`. Centralizing
+-- this keeps the static and dynamic paths from diverging; the static path
+-- previously omitted this step, which reported the project artifact as the
+-- sole Direct dependency.
+finalizeMavenGraph ::
+  (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) =>
+  Set Text ->
+  Set Text ->
+  Graphing MavenDependency ->
+  m (Graphing Dependency)
+finalizeMavenGraph targetSet submoduleSet graph = do
+  filteredGraph <- applyMavenFilters targetSet submoduleSet graph
+  pure (shrinkRoots filteredGraph)
 
 applyMavenFilters :: (Has Diagnostics sig m, Has (Reader MavenScopeFilters) sig m) => Set Text -> Set Text -> Graphing MavenDependency -> m (Graphing Dependency)
 applyMavenFilters targetSet submoduleSet graph = do
