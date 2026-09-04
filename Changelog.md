@@ -1,10 +1,10 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.18.3
 
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
 - Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
-- Workflows: `fossa analyze --x-workflow <path>` runs a dependency-usage workflow analyzer through the embedded ficus and records its result in the debug bundle. ([#1761](https://github.com/fossas/fossa-cli/pull/1761))
+- Dart: `pubspec.yaml` files using valid dependency forms the parser previously rejected no longer fail analysis with `Aeson exception: ... empty` or `failed parsing pub package's source!`: a bare dependency with no value (any version), a `version:`-only entry, the `hosted: <url>` shorthand introduced in Dart 2.15, a `hosted:` map without a `version`, and a `git:` map without a `ref`. ([#1760](https://github.com/fossas/fossa-cli/pull/1760))
 - Workflows: the `--x-workflow` result is uploaded to FOSSA against the analyzed revision once the dependency upload succeeds; `--output` runs still upload nothing. ([#1762](https://github.com/fossas/fossa-cli/pull/1762))
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
@@ -90,6 +90,7 @@
 - Vendetta: Debug bundles now include per-file component match data from Vendetta scans, making it easier to diagnose why a vendored dependency was or wasn't detected. ([#1706](https://github.com/fossas/fossa-cli/pull/1706))
 
 ## 3.17.4
+
 - Conan: Update the conan script (docs/walkthroughs/make_fossa_deps_conan.py) to work with modern conan versions ([#1629](https://github.com/fossas/fossa-cli/pull/1629) and [#1698](https://github.com/fossas/fossa-cli/pull/1698))
 
 ## 3.17.3
@@ -105,6 +106,7 @@
 - Poetry: Support PEP 621 `[project].dependencies` for Poetry 2.x projects. Production dependencies declared in the standard `[project]` section are now correctly detected alongside legacy `[tool.poetry.dependencies]`. ([#1683](https://github.com/fossas/fossa-cli/pull/1683))
 
 ## 3.17.1
+
 - Node.js: Yarn and npm workspace packages now appear as individual build targets (e.g. `yarn@./:my-package`, `npm@./:my-package`), enabling per-package dependency scoping via `.fossa.yml`. ([#1643](https://github.com/fossas/fossa-cli/pull/1643))
 - Project edit: Fix 500 error when running `fossa project edit --policy` on existing projects ([#1688](https://github.com/fossas/fossa-cli/pull/1688))
 - UV: Add `directory` source type to uv.lock parser, fixing parse failures on projects with local directory dependencies ([#1690](https://github.com/fossas/fossa-cli/pull/1690))
@@ -174,52 +176,67 @@
 - Archive uploads: Fix a bug where tar files with long filenames created by GNU tar would not extract correctly ([#1635](https://github.com/fossas/fossa-cli/pull/1635))
 
 ## 3.15.5
+
 - Fix reporting of transitive dependencies in pnpm v9 lockfiles ([#1632](https://github.com/fossas/fossa-cli/pull/1632))
 - Jar call-graph update - Attempt to fix a reachability issue ([#1634](https://github.com/fossas/fossa-cli/pull/1634))
 
 ## 3.15.4
+
 - Scala fix: Prefer `MiniDependencyTreePlugin` over explicit `DependencyTreePlugin` ([#1627](https://github.com/fossas/fossa-cli/pull/1627)).
 
 ## 3.15.3
+
 - Remove `fossa snippets` subcommand and documentation ([#1623](https://github.com/fossas/fossa-cli/pull/1623)).
-  The `fossa snippets` subcommand has been replaced by `fossa analyze --snippet-scan` ([documentation](./docs/features/snippet-scanning.md)). If you are still using `fossa snippets`, you can temporarily keep using it by using versions of the CLI previous to this release. We will eventually be sunsetting the services that back `fossa snippets`, but will keep them running to mid-February at the very earliest. Once those services stop running then `fossa snippets` will no longer work at all, even when using older versions of the CLI. Please reach out to support@fossa.com if you have any questions.
+  The `fossa snippets` subcommand has been replaced by `fossa analyze --snippet-scan` ([documentation](./docs/features/snippet-scanning.md)). If you are still using `fossa snippets`, you can temporarily keep using it by using versions of the CLI previous to this release. We will eventually be sunsetting the services that back `fossa snippets`, but will keep them running to mid-February at the very earliest. Once those services stop running then `fossa snippets` will no longer work at all, even when using older versions of the CLI. Please reach out to <support@fossa.com> if you have any questions.
 - Allow snippet scanning of binary files. This allows us to find exact matches for binary files. (No PR. This was implemented in a separate binary that does snippet scanning for us.)
 
 ## 3.15.2
+
 - Licensing: applies a fix for public domain detection ([#1625](https://github.com/fossas/fossa-cli/pull/1625))
 
 ## 3.15.1
+
 - A small tweak in format for `--x-vendetta` ([#1624](https://github.com/fossas/fossa-cli/pull/1624))
 
 ## 3.15.0
+
 - Make snippet scanning non-experimental. This PR deprecates `fossa analyze --x-snippet-scan`. Please use `fossa analyze --snippet-scan` instead. ([#1622](https://github.com/fossas/fossa-cli/pull/1622))
 
 ## 3.14.1
+
 - Add fork-aliasing. Use this if you are using a fork of a dependency, but want FOSSA to treat it as if you were using the base version that you forked from. ([#1620](https://github.com/fossas/fossa-cli/pull/1620))
 
 ## 3.14.0
+
 - Adds `--x-vendetta` flag for vendored dependency identification ([#1607](https://github.com/fossas/fossa-cli/pull/1607))
 
 ## 3.13.1
+
 - Add a summary of the snippet scan when the `--x-snippet-scan` flag is used ([#1613](https://github.com/fossas/fossa-cli/pull/1613))
 - Update snippet scanning documentation ([#1615](https://github.com/fossas/fossa-cli/pull/1615))
 
 ## 3.13.0
+
 - Change how debug logs are generated. They are now generated in a file called fossa.debug.zip, which can contain multiple files. For the common case of `fossa analyze --debug`, it will now contain the debug bundle (fossa.debug.json) and the telemetry json (fossa.telemetry.json). It will also contain Ficus logs if Ficus is run via --x-snippet-scan ([#1610](https://github.com/fossas/fossa-cli/pull/1610))
 
 ## 3.12.3
+
 - Licensing: applies a fix for proprietary license detection ([#1616](https://github.com/fossas/fossa-cli/pull/1616))
 
 ## 3.12.2
+
 - Update the latest version of a dependency for `--x-snippet-scan`. This update will start backfilling fingerprints for ~10% of files that were previously uploaded but do not have fingerprints ([#1611](https://github.com/fossas/fossa-cli/pull/1611))
 
 ## 3.12.1
+
 - Update latest version of a dependency for `--x-snippet-scan`. This makes some changes to the data we send and store so that we can more easily update snippet data in the background ([#1587](https://github.com/fossas/fossa-cli/pull/1609))
 
 ## 3.12.0
+
 - Python: Add support for projects using uv for package management ([#1604](https://github.com/fossas/fossa-cli/pull/1604))
 
 ## 3.11.12
+
 - Allow empty `go.mod` files ([#1596](https://github.com/fossas/fossa-cli/pull/1596))
 - Add new `--exclude-manifest-strategies` option ([#1597](https://github.com/fossas/fossa-cli/pull/1597))
 - Remove reachability output from scan summary ([#1598](https://github.com/fossas/fossa-cli/pull/1598))
@@ -251,6 +268,7 @@
 - Update latest version of a dependency for `--x-snippet-scan`. This change makes snippet scanning more resilient to errors when POSTing fingerprints and hashes, and ignores the `RUST_LOG` environment variable ([#1585](https://github.com/fossas/fossa-cli/pull/1585))
 
 ## 3.11.6
+
 - Update latest version of a dependency for `--x-snippet-scan`. This change fixes a bug where snippet scans with large fingerprints were failing ([#1584](https://github.com/fossas/fossa-cli/pull/1584))
 
 ## 3.11.5
@@ -313,12 +331,14 @@
 - Report: Allow generating SBOMs attribution reports using fossa-cli. ([#1534](https://github.com/fossas/fossa-cli/pull/1534))
 
 ## 3.10.6
+
 - Licensing: Fix a bug where the scikit-learn had an incorrect license detected ([#1527](https://github.com/fossas/fossa-cli/pull/1527))
 - Licensing: Adds support for the NREL disclaimer
 
 ## 3.10.5
 
 Container scanning: Resolved a large number of issues with scanning containers ([#1514](https://github.com/fossas/fossa-cli/pull/1514), [#1521](https://github.com/fossas/fossa-cli/pull/1521))
+
 - Pulling containers from recent versions of Docker are properly supported.
 - OCI container hosts are better supported.
 - Scanning exported containers from recent versions of Docker are properly supported.
@@ -330,56 +350,72 @@ Container scanning: Resolved a large number of issues with scanning containers (
 > This binary is bundled into FOSSA CLI, you don't need to do anything special to use it.
 
 ## 3.10.4
+
 - Erlang: Rebar config parsing bug fixes ([#1524](https://github.com/fossas/fossa-cli/pull/1522))
 
 ## 3.10.3
+
 - PDM Parser: Proper parsing for PDM platform_machine line ([#1521](https://github.com/fossas/fossa-cli/pull/1521))
 - License Scanning: Added the archive name to the path for licenses found inside of archives during vendored dependency and first-party license scanning ([#1520](https://github.com/fossas/fossa-cli/pull/1520))
 
 ## 3.10.2
+
 - Cargo: Do not create Cargo.lock if it already exists ([#1516](https://github.com/fossas/fossa-cli/pull/1516))
 
 ## 3.10.1
+
 - Swift: Add support for parsing path dependencies with names ([#1515](https://github.com/fossas/fossa-cli/pull/1515))
 
 ## 3.10.0
+
 - Support for user-provided dependency labels in `fossa-deps` ([#1505](https://github.com/fossas/fossa-cli/pull/1505)).
   For details, see the [`fossa-deps` documentation](https://github.com/fossas/fossa-cli/blob/master/docs/references/files/fossa-deps.md).
 
 ## 3.9.48
+
 - General: Fix a bug where directory traversal could fail if the user does not have permission to read a directory ([#1508](https://github.com/fossas/fossa-cli/pull/1508)).
 - Performance: Fix timeout issues when uploading large numbers of license scans by processing them in smaller batches ([#1509](https://github.com/fossas/fossa-cli/pull/1509)).
 
 ## 3.9.47
+
 - Licensing: Adds support for Zeebe Community License v1.1 and Camunda License v1.0
 - NuGet: Consolidate `project.assets.json` and `PackageReference` strategies ([#1461](https://github.com/fossas/fossa-cli/pull/1461))
 
 ## 3.9.46
+
 - Licensing: Fix a bug where the tzdata debian package copyright was not detected as a public domain license ([#1504](https://github.com/fossas/fossa-cli/pull/1504))
 - Container scanning: Fix a bug where Docker URLs were being constructed incorrectly, resulting in a 403 error ([#1500](https://github.com/fossas/fossa-cli/pull/1500))
 
 ## 3.9.45
+
 - Preflight: Fix a bug where the preflight checks fail for SBOM team analysis ([#1499](https://github.com/fossas/fossa-cli/pull/1499))
 
 ## 3.9.44
+
 - Preflight: Fix a bug where the preflight check could fail if you ran fossa multiple times simultaneously ([#1498](https://github.com/fossas/fossa-cli/pull/1498))
 
 ## 3.9.43
+
 - Discovery: Fix a bug where directories in paths.exclude may still be accessed during discovery which causes an error when users don't have permission to read those directories ([#1493](https://github.com/fossas/fossa-cli/pull/1493))
 
 ## 3.9.42
+
 - Licensing: Adds support for the Text-Tabs+Wrap License
 
 ## 3.9.41
+
 - GoModules: Expose a static only analysis method for Go. ([#1468](https://github.com/fossas/fossa-cli/pull/1486))
 
 ## 3.9.40
+
 - Licensing: Fix a bug where license scanner output sometimes included log lines, which breaks JSON parsing
 
 ## 3.9.39
+
 - Licensing: Add the PSF-3.12.7 license. Make a correction to the MulanPSL license. Add a new public-domain rule ([#1480](https://github.com/fossas/fossa-cli/pull/1480))
 
 ## 3.9.38
+
 - Adds clarity to "Invalid project permission" error message, instructing user to specify a team using `fossa analyze --team` or in the `.fossa.yml` file. ([#1475](https://github.com/fossas/fossa-cli/pull/1475))
 - Fixes a small typo in an error heading ([#1476](https://github.com/fossas/fossa-cli/pull/1476))
 - Licensing: Adds support for a handful of new licenses and EULAs (No PR)
@@ -430,6 +466,7 @@ Container scanning: Resolved a large number of issues with scanning containers (
 - Vendored Dependencies: add support for metadata (description, and homepage) for dependencies. ([#1455](https://github.com/fossas/fossa-cli/pull/1455))
 
 ## 3.9.29
+
 - install scripts: Surface curl errors and display http status code correctly. ([#1456](https://github.com/fossas/fossa-cli/pull/1456))
 - Update jar-callgraph version to 1.0.2 [#1454](https://github.com/fossas/fossa-cli/pull/1454)
 
@@ -460,88 +497,111 @@ Container scanning: Resolved a large number of issues with scanning containers (
 - Reachability: For organizations that don't have reachability turned on suppress messages about it. ([#1440](https://github.com/fossas/fossa-cli/pull/1440))
 
 ## 3.9.22
+
 - Fixes release group flags for `fossa analyze` and `fossa container analyze`  ([#1439](https://github.com/fossas/fossa-cli/pull/1439))
 
 ## 3.9.21
+
 - Add support for analyzing SBOM files ([#1435](https://github.com/fossas/fossa-cli/pull/1435))
 - License Scanning: Add the Llama-3-community license (No PR)
 - Yarn: Don't fail analysis if a dependency cannot be found. ([1436](https://github.com/fossas/fossa-cli/pull/1436))
 
 ## 3.9.20
+
 - Fixes file matches for license scans ([#1434](https://github.com/fossas/fossa-cli/pull/1434)).
 
 ## v3.9.19
+
 - Release a Mac arm64 binary. ([#1426](https://github.com/fossas/fossa-cli/pull/1426))
 - Updated the license to CPAL, an OSI-approved license similar to MPL ([#1431](https://github.com/fossas/fossa-cli/pull/1431)).
 
 ## v3.9.18
+
 - Resolves an issue where `vendored-dependencies` were rescanned locally, but not in the FOSSA service,
   when `forceRescans` was set to `true` ([#1423](https://github.com/fossas/fossa-cli/pull/1423)).
 
 ## v3.9.17
+
 - Poetry: Adds partial support for dependency groups. ([#1420](https://github.com/fossas/fossa-cli/pull/1420)).
 
 ## v3.9.16
+
 - Treat `targets` field in the issue summary loaded from Core as optional during `fossa test` and `fossa report` ([#1422](https://github.com/fossas/fossa-cli/pull/1422)).
 - Adds support for SwiftPM v3 files ([#1424](https://github.com/fossas/fossa-cli/pull/1424)).
   Future SwiftPM file formats will be accepted automatically if they remain backwards compatible with the current parser.
 - Updates parallel embedded binary extractions to be more properly isolated ([#1425](https://github.com/fossas/fossa-cli/pull/1425)).
 
 ## v3.9.15
+
 - Change TLS to a version that takes advantage of but does not require 1.2 with EMS.
   This will be reverted in six months.
   On-prem users should upgrade their servers to support either TLS 1.2 with EMS or TLS 1.3.
   SAAS customers are unaffected. ([#1418](https://github.com/fossas/fossa-cli/pull/1418)).
 
 ## v3.9.14
+
 - Cargo: Update cargo strategy to parse new `cargo metadata` format for cargo >= 1.77.0 ([#1416](https://github.com/fossas/fossa-cli/pull/1416)).
 - `fossa release-group`: Add command to create a FOSSA release group release (`fossa release-group create-release`) [#1409](https://github.com/fossas/fossa-cli/pull/1409).
 - `fossa project`: Adds commands to interact with FOSSA projects (`fossa project edit`) [#1394](https://github.com/fossas/fossa-cli/pull/1395).
 
 ## v3.9.13
+
 - Support GIT dependencies in Bundler projects ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
 - Reports: Increase the timeout when hitting the report generation API endpoint ([#1412](https://github.com/fossas/fossa-cli/pull/1412)).
 
 ## v3.9.12
+
 - `--detect-dynamic`: Fix deb tatic parsing ([#1401](https://github.com/fossas/fossa-cli/pull/1401)).
 
 ## v3.9.11
+
 - Licensing: Add new rules for unity licenses. Add the Redis Source Available License.
 
 ## v3.9.10
+
 - Support unarchiving `tgz`, `taz`, `txz`, `tbz`, `tbz2`, and `tz2` files for `--unpack-archives` ([#1402](https://github.com/fossas/fossa-cli/pull/1402/files))
 - `fossa test`: improves diagnostic message ([#1403](https://github.com/fossas/fossa-cli/pull/1403/files))
 - `fossa release-group`: Adds commands to interact with FOSSA release-groups (`fossa release-group add-projects`, `fossa release-group create`, `fossa release-group delete`, `fossa release-group delete-release`) [#1399](https://github.com/fossas/fossa-cli/pull/1399).
 
 ## v3.9.9
+
 - `--without-default-filters`: Users can now disable default path filters ([#1396](https://github.com/fossas/fossa-cli/pull/1396/files)).
 
 ## v3.9.8
+
 - Reachability: Users may now provide custom locations for the JAR files emitted by projects and used for reachability analysis ([#1382](https://github.com/fossas/fossa-cli/pull/1382)).
 
 ## v3.9.7
+
 - Add preflight permission checks to validate token type, subscription type, project permissions, and release group permissions [#1383](https://github.com/fossas/fossa-cli/pull/1383)
 
 ## v3.9.6
+
 - Add debug logs for build warnings in `analyze` commands [#1386](https://github.com/fossas/fossa-cli/pull/1386)
 
 ## v3.9.5
+
 - Maven: Fix hanging maven analysis ([#1381](https://github.com/fossas/fossa-cli/pull/1381)).
 
 ## v3.9.4
+
 - Reachability: Includes reachability analysis in scan summary ([#1379](https://github.com/fossas/fossa-cli/pull/1379)).
 
 ## v3.9.3
+
 - Update error structure ([#1364](https://github.com/fossas/fossa-cli/pull/1364)).
 
 ## v3.9.2
+
 - Maven: Adds reachability analysis ([#1372](https://github.com/fossas/fossa-cli/pull/1377)).
 - Gradle: Adds reachability analysis ([#1377](https://github.com/fossas/fossa-cli/pull/1377)).
 
 ## v3.9.1
+
 - `--detect-dynamic`: Safely ignores scenarios in ldd output parsing where we run into not found error ([#1376](https://github.com/fossas/fossa-cli/pull/1376)).
 
 ## v3.9.0
+
 - Emits a warning instead of an error when no analysis targets are found ([#1375](https://github.com/fossas/fossa-cli/pull/1375)).
 
 ## 3.8.37
@@ -549,17 +609,20 @@ Container scanning: Resolved a large number of issues with scanning containers (
 - Container Scans: Bugfix for some registry scans that fail with an STM error. ([#1370](https://github.com/fossas/fossa-cli/pull/1370)).
 
 ## v3.8.36
+
 - `fossa feedback`: Allow users to provide feedback on their cli experience ([#1368](https://github.com/fossas/fossa-cli/pull/1368)).
 - Add preflight checks to validate API key, connection to FOSSA app, and ability to write to temp directory in relevant commands.
 
-
 ## v3.8.35
+
 - Running `fossa analyze --detect-vendored` no longer fails if there are no detected vendored dependencies ([#1373](https://github.com/fossas/fossa-cli/pull/1373)).
 
 ## v3.8.34
+
 - Add color and update formatting in cli help commands ([#1367](https://github.com/fossas/fossa-cli/pull/1367)).
 
 ## v3.8.33
+
 - Removes warnings and tracebacks to stderr ([#1358](https://github.com/fossas/fossa-cli/pull/1358)).
 
 ## v3.8.32
@@ -578,19 +641,24 @@ Container scanning: Resolved a large number of issues with scanning containers (
 - Debug: add more logging for debugging missing dependencies ([#1360](https://github.com/fossas/fossa-cli/pull/1360)).
 
 ## v3.8.29
+
 - Prevents showing SCM warnings in fossa analyze, test, and report ([#1354](https://github.com/fossas/fossa-cli/pull/1354)).
 - Pathfinder: Pathfinder has been deprecated and removed ([#1350](https://github.com/fossas/fossa-cli/pull/1350)).
 
 ## v3.8.28
+
 - VSI: no longer reports paths inside of extracted archives with the `!_fossa.virtual_!` literal ([#1345](https://github.com/fossas/fossa-cli/pull/1345)).
 
 ## v3.8.27
+
 - Maven: Fix a bug that broke maven analysis if the build directory was in a non-standard location ([#1343](https://github.com/fossas/fossa-cli/pull/1343)).
 
 ## v3.8.26
+
 - Maven: add support for maven submodule filtering ([#1339](https://github.com/fossas/fossa-cli/pull/1339)).
 
 ## v3.8.25
+
 - Maven: add support for maven scope filtering ([#1331](https://github.com/fossas/fossa-cli/pull/1331)).
 - `fossa init`: adds new `fossa init` command which creates `.fossa.yml.example`, and `fossa-deps.yml.example` file. ([#1323](https://github.com/fossas/fossa-cli/pull/1323)).
 
@@ -600,20 +668,24 @@ Container scanning: Resolved a large number of issues with scanning containers (
 - Container Scanning: warn and exclude rpm packages that are missing attributes ([#1335](https://github.com/fossas/fossa-cli/pull/1335)).
 
 ## v3.8.23
+
 - Custom License Scans: Support full-file uploads for custom license scans ([#1333](https://github.com/fossas/fossa-cli/pull/1333)).
 
 ## v3.8.22
+
 - path: adds path dependency scanning functionality. ([#1327](https://github.com/fossas/fossa-cli/pull/1327))
-- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(https://github.com/fossas/fossa-cli/pull/1320)
+- `pnpm`: Supports `6.0` version of `pnpm-lockfile.yaml` ([#1320])(<https://github.com/fossas/fossa-cli/pull/1320>)
 - Maven: Fixes defect, where `fossa-cli` was sometimes ignoring dependency, if the dependency with multiple scopes was part of the project. ([#1322](https://github.com/fossas/fossa-cli/pull/1322))
 
 ## v3.8.21
+
 - archive: considers 0-byte tar file to be valid tar file. ([#1311](https://github.com/fossas/fossa-cli/pull/1311))
 - Cocoapods: Allow Podfile.lock without EXTERNAL SOURCES field ([#1279](https://github.com/fossas/fossa-cli/pull/1279))
 - `fossa-deps`: `--fossa-deps-file` to specify custom fossa-deps file ([#1303](https://github.com/fossas/fossa-cli/pull/1303))
 - install-latest.sh: Fixed a bug where install-latest.sh would result in a broken binary when run on some versions of macOS ([#1317](https://github.com/fossas/fossa-cli/pull/1317))
 
 ## v3.8.20
+
 - container scanning: Fixes registry network calls, to ensure `fossa-cli` uses `Accept` header on `HEAD` network calls. ([#1309](https://github.com/fossas/fossa-cli/pull/1309))
 
 ## v3.8.19
@@ -655,46 +727,56 @@ When we integrate this functionality into FOSSA CLI itself we'll have improved d
 
 Note: FOSSA is still ingesting sources into the snippet scanning database;
 
-
 ## v3.8.14
 
 - Custom License Searches and Keyword Searches allow you to search through your codebase, find matches to regular expressions and then either log the results to the scan summary (keyword search) or create a custom license match (custom license searches) ([#1274](https://github.com/fossas/fossa-cli/pull/1274))
 
 ## v3.8.13
+
 - Maven: Prevent infinite recursion from Pom file property interpolation. ([#1271](https://github.com/fossas/fossa-cli/pull/1271))
 
 ## v3.8.12
+
 - Conda: Support simple Pip packages in `environment.yml`. ([#1275](https://github.com/fossas/fossa-cli/pull/1275))
 
 ## v3.8.11
+
 - Maven analysis: Prevent maven analysis from infinitely recursing when it encounters a recursive property ([#1268](https://github.com/fossas/fossa-cli/pull/1268))
 
 ## v3.8.10
+
 - Reports: Can now export reports formatted as CycloneDX (json/xml), CSV, HTML, and JSON SPDX. ([#1266](https://github.com/fossas/fossa-cli/pull/1266))
 - Containers: RPM packages installed in containers that use the NDB format for their RPM database are now parsed much faster. ([#1262](https://github.com/fossas/fossa-cli/pull/1262))
 
 ## v3.8.9
+
 - CLI Binaries: Notarize Mac OS binaries. ([#1261](https://github.com/fossas/fossa-cli/pull/1261))
 
 ## v3.8.8
+
 - CLI Binaries: Sign Mac OS builds using codesign. ([#1251](https://github.com/fossas/fossa-cli/pull/1251))
 - CLI Binaries: Sign Linux builds using cosign. ([#1243](https://github.com/fossas/fossa-cli/pull/1243))
 
 ## v3.8.7
+
 - Due to an issue with our release process [#1254](https://github.com/fossas/fossa-cli/pull/1254), this tag exists but was not released. The changes that would have been in 3.8.7 were released as v3.8.8.
 
 ## v3.8.6
+
 - VSI: Fix a bug where root dependencies would cause analysis to fail. ([#1240](https://github.com/fossas/fossa-cli/pull/1240))
 - Node (PNPM): Fixes a bug where analyses would fail when the `lockfileVersion` attribute was a string in `pnpm-lock.yaml`. ([1239](https://github.com/fossas/fossa-cli/pull/1239))
 - License Scanning: Add a new "IBM type1 interpreter" license (no PR).
 
 ## v3.8.5
+
 - Go: `--experimental-use-v3-go-resolver` is now the default. ([Documentation](./docs/references/strategies/languages/golang/v3-go-resolver-transition-qa.md). ([1224](https://github.com/fossas/fossa-cli/pull/1224))
 
 ## v3.8.4
+
 - VSI: Report VSI rules and display them in FOSSA's UI. ([#1237](https://github.com/fossas/fossa-cli/pull/1237), [#1235](https://github.com/fossas/fossa-cli/pull/1235))
 
 ## v3.8.3
+
 - Logging: Don't output the `[INFO]` prefix for regular CLI messages. ([#1226](https://github.com/fossas/fossa-cli/pull/1226))
 - License Scanning: Fix a bug where we were identifying the "GPL with autoconf macro exception" license as "GPL with autoconf exception" in a few cases ([#1225](https://github.com/fossas/fossa-cli/pull/1225))
 - Container Scanning: More resiliant os-release parser, accounting initial line comments in the file ([#1230](https://github.com/fossas/fossa-cli/pull/1230))
@@ -702,10 +784,12 @@ Note: FOSSA is still ingesting sources into the snippet scanning database;
 - Telemetry: Collect GNU/Linux distribution information and `uname` output. ([#1222](https://github.com/fossas/fossa-cli/pull/1222))
 
 ## v3.8.2
+
 - Poetry: Defaults `category` to `main` if not present in lockfile. ([#1211](https://github.com/fossas/fossa-cli/pull/1211))
 - Maven: Revert ([#1218](https://github.com/fossas/fossa-cli/pull/1218)) from v3.8.2 due to performance impacts.
 
 ## v3.8.1
+
 - Setup.py: Fixes an defect with `setup.py` parser, caused by failing to account for line comments or backslash. ([#1191](https://github.com/fossas/fossa-cli/pull/1191))
 - Installation: `install-latest.sh` now directs `curl` and `wget` to pass `Cache-Control: no-cache` headers to the server. ([#1206](https://github.com/fossas/fossa-cli/pull/1206))
 - `Go.mod`: Anaysis does not fail if `go.mod` includes `retract` block. ([#1213](https://github.com/fossas/fossa-cli/pull/1213))
@@ -716,6 +800,7 @@ Note: FOSSA is still ingesting sources into the snippet scanning database;
 - `PDM`: Adds support for PDM package manager. ([#1214](https://github.com/fossas/fossa-cli/pull/1214))
 
 ## v3.8.0
+
 - License Scanning: You can license scan your first-party code with the `--experimental-force-first-party-scans` flag ([#1187](https://github.com/fossas/fossa-cli/pull/1187))
 - Network requests: `fossa-cli` retries network requests, if it experiences timeout error. ([#1203](https://github.com/fossas/fossa-cli/pull/1203))
 - Monorepo is no longer a supported feature of FOSSA. ([#1202](https://github.com/fossas/fossa-cli/pull/1202))
@@ -726,55 +811,68 @@ Note: FOSSA is still ingesting sources into the snippet scanning database;
 - Doc only: Fixed an issue in the `fossa-deps` schema suggesting against the use of `name` for referenced RPM dependencies. If your editor utilizes SchemaStore, this file should now lint properly after this change propagates. ([#1199](https://github.com/fossas/fossa-cli/pull/1199)).
 
 ## v3.7.11
+
 - `fossa-deps.yml`: Adds strict parsing to so that required field with only whitespace strings are prohibited early. Also throws an error, if incompatible character is used in vendor dependency's version field. ([#1192](https://github.com/fossas/fossa-cli/pull/1192))
 
 ## v3.7.10
+
 - License Scanning: Fix a bug where the license scanner did not run on MacOS 13 on M1 Macs ([#1193](https://github.com/fossas/fossa-cli/pull/1193))
 - Debug bundle: The raw dependency graph FOSSA CLI discovers is output in the FOSSA Debug Bundle. ([#1188](https://github.com/fossas/fossa-cli/pull/1188))
 
 ## v3.7.9
+
 - License Scanning: Add support for "full file uploads" for CLI-side license scans. ([#1181](https://github.com/fossas/fossa-cli/pull/1181))
 
 ## v3.7.8
+
 - Go: Do not fall back to module based analysis when using `--experimental-use-go-v3-resolver`. ([#1184](https://github.com/fossas/fossa-cli/pull/1184))
 
 ## v3.7.7
+
 - Adds `--json` flag to `fossa container analyze` ([#1180](https://github.com/fossas/fossa-cli/pull/1180))
 - License Scanning: Reduce false positives caused by indicator matches. This is done by only reporting indicator matches to SPDX keys and license names when we are scanning a manifest file ([#1182](https://github.com/fossas/fossa-cli/pull/1182))
 
 ## v3.7.6
+
 - RPM: Support origin paths for RPM spec file analysis ([#1178](https://github.com/fossas/fossa-cli/pull/1178))
 - Swift: Do not stop analysis if we encounter a badly formatted project.pbxproj file ([#1177](https://github.com/fossas/fossa-cli/pull/1177))
 
 ## v3.7.5
+
 - Go: Introduce `--experimental-use-v3-go-resolver` to preview a new [tactic](./docs/references/strategies/languages/golang/gomodules.md#experimental-strategy-use-go-list-on-packages) for Go dependency scanning. ([#1168](https://github.com/fossas/fossa-cli/pull/1168),[#1173](https://github.com/fossas/fossa-cli/pull/1173))
 - Themis: Update tag to support a new rule for the libdivide dependency. ([#1172](https://github.com/fossas/fossa-cli/pull/1172)
 
 ## v3.7.4
+
 - Gradle: Fix possible ConcurrentModificationException that can occur when getting dependencies ([#1171](https://github.com/fossas/fossa-cli/pull/1171))
 
 ## v3.7.3
+
 - Go: Collects environment variables in debug bundle. ([#1132](https://github.com/fossas/fossa-cli/pull/1132))
 - Diagnostics: Improves user-facing error messages and debugging tips for external commands and some HTTP error conditions ([#1165](https://github.com/fossas/fossa-cli/pull/1165))
 - License Scanning: Scan the full contents of "license.html" and "licence.html" for license content, not just the comments. ([#1169](https://github.com/fossas/fossa-cli/pull/1169))
 
 ## v3.7.2
+
 - License Scanning: Add four new licenses: Pushwoosh, PalletsFlaskLogo, IntelDisclaimer and Instabug ([#1163](https://github.com/fossas/fossa-cli/pull/1163))
 
 ## v3.7.1
+
 - Stack: Git based dependencies are detected and handled correctly. ([#1160](https://github.com/fossas/fossa-cli/pull/1160))
 
 ## v3.7.0
+
 - Support Maven wrapper (`mvnw`) usage in Maven projects, and user-provided binary overrides for Maven projects ([#1149](https://github.com/fossas/fossa-cli/pull/1149))
   For more information, see the [Maven strategy documentation](./docs/references/strategies/languages/maven/maven.md).
 - Installation Script: Verify that the sha256sum of the downloaded archive matches the recorded one. ([#1158](https://github.com/fossas/fossa-cli/pull/1158))
 
 ## v3.6.18
+
 - License Scanning: Emit a warning if unarchiving fails rather than a fatal error. ([#1153](https://github.com/fossas/fossa-cli/pull/1153))
 
 ## v3.6.17
 
-- Handle Leiningen deduped deps: expand groupID and artifactID in the leiningen tactic to satisfy the Maven fetcher ([#1152]](https://github.com/fossas/fossa-cli/pull/1152))
+- Handle Leiningen deduped deps: expand groupID and artifactID in the leiningen tactic to satisfy the Maven fetcher ([#1152]](<https://github.com/fossas/fossa-cli/pull/1152>))
 
 ## v3.6.17
 
@@ -795,7 +893,7 @@ Note: FOSSA is still ingesting sources into the snippet scanning database;
 
 ## v3.6.13
 
-- Vendored Dependencies: Add the unity companion license (https://unity.com/legal/licenses/unity-companion-license) and unity package distribution license (https://unity.com/legal/licenses/unity-package-distribution-license) to license scanning ([#1136](https://github.com/fossas/fossa-cli/pull/1136))
+- Vendored Dependencies: Add the unity companion license (<https://unity.com/legal/licenses/unity-companion-license>) and unity package distribution license (<https://unity.com/legal/licenses/unity-package-distribution-license>) to license scanning ([#1136](https://github.com/fossas/fossa-cli/pull/1136))
 
 ## v3.6.12
 
@@ -810,15 +908,17 @@ Note: FOSSA is still ingesting sources into the snippet scanning database;
 - Vendored Dependencies: Allow path filtering when doing cli-side license scans ([#1128](https://github.com/fossas/fossa-cli/pull/1128))
 
 ## v3.6.9
+
 - Yarn: Fix a bug where tarball URLs were recognized as git urls. ([#1126](https://github.com/fossas/fossa-cli/pull/1126))
 
 ## v3.6.8
+
 - Go: Allow quotes module names in static analysis ([#1118](https://github.com/fossas/fossa-cli/pull/1118))
 - `fossa test`: Includes revision summary and target information, when accessible ([#1119](https://github.com/fossas/fossa-cli/pull/1119))
 
 ## v3.6.7
 
-- Rename `--experimental-license-scan` to `--license-scan` (https://github.com/fossas/fossa-cli/pull/1110)
+- Rename `--experimental-license-scan` to `--license-scan` (<https://github.com/fossas/fossa-cli/pull/1110>)
 - Emit a warning if the `--experimental-native-license-scan` flag is used
 
 ## v3.6.6
@@ -883,39 +983,49 @@ You can use `--only-system-deps` flag to only scan for dependencies from `apk`, 
 This will mimic behavior of older FOSSA CLI's container scanning (older than v3.5.0).
 
 Learn more:
+
 - [container scanner](./docs/references/subcommands/container/scanner.md)
 - [fossa container analyze](./docs/references/subcommands/container.md)
 
 If you experience any issue with this release, or have question, please contact [FOSSA Support](https://support.fossa.com).
 
 ## v3.4.11
+
 - Npm (Lockfile v3) - Fixes a defect where, _sometimes_ wrong version of the dependency was reported if multiple version of the same dependency existed in the lock file. ([#1075](https://github.com/fossas/fossa-cli/pull/1075))
 - Npm (Lockfile v2) - Fixes a defect where, _sometimes_ wrong version of the dependency was reported if multiple version of the same dependency existed in the lock file. ([#1075](https://github.com/fossas/fossa-cli/pull/1075))
 
 ## v3.4.10
+
 - Scala: Supports analysis of multi-project sbt builds with `sbt-dependency-graph` plugin. ([#1074](https://github.com/fossas/fossa-cli/pull/1074)).
 
 ## v3.4.9
+
 - Scan Summary: Identifies project skipped due to production path filtering, or exclusion filtering. ([#1071](https://github.com/fossas/fossa-cli/pull/1071))
 - R: Adds support for `renv` package manager. ([#1062](https://github.com/fossas/fossa-cli/pull/1062))
 
 ## v3.4.8
+
 - Report: Fixes a defect, where `report` command was failing due to invalid dependencies cache from endpoint ([#1068](https://github.com/fossas/fossa-cli/pull/1068)).
 
 ## v3.4.7
+
 - Linux releases are now packaged as both tar.gz and zip to improve compatibility when installing ([#1066](https://github.com/fossas/fossa-cli/pull/1066))
 
 ## v3.4.6
+
 - Container Scanning: Fixes a defect, where container registry `registry:3000/org/repo:tag` was incorrectly identifying `registry` as project name. ([#1050](https://github.com/fossas/fossa-cli/issues/1050))
 - Container Scanning: Includes registry uri in project name (experimental scanner only). ([#1050](https://github.com/fossas/fossa-cli/issues/1050))
 
 ## v3.4.5
+
 - FOSSA API: Adds resiliency against API errors occurring when retrieving endpoint versioning information. ([#1051](https://github.com/fossas/fossa-cli/pull/1051))
 
 ## v3.4.4
+
 - Fix a bug in the v1 installers for Windows (install-v1.ps1 and install.ps1) ([#1052](https://github.com/fossas/fossa-cli/pull/1052))
 
 ## v3.4.3
+
 - Container scanning: Supports hardlink file discovery for experimental scanner. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
 - Container scanning: Supports busybox. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
 - Container scanning: Increases timeout to 5 mins when extracting image from docker engine api for experimental scanner. ([#1047](https://github.com/fossas/fossa-cli/pull/1047))
@@ -968,40 +1078,49 @@ If you experience any issue with this release, or have question, please contact 
 - Test: Adds `--diff` option for `fossa test` command. ([#986](https://github.com/fossas/fossa-cli/pull/986))
 
 ## v3.3.6
+
 - License scanning: Make CLI-side license scanning the default method for `vendored-dependencies`.
 - Maven: Report direct dependencies as direct rather than deep. ([#963](https://github.com/fossas/fossa-cli/pull/963))
 
 ## v3.3.5
+
 - Pnpm: Adds support for dependency analysis using `pnpm-lock.yaml` file. ([#958](https://github.com/fossas/fossa-cli/pull/958))
 
 ## v3.3.4
+
 - `fossa report attribution`: Removes copyright information from JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)) as it was never available from the server.
 - VSI scans now automatically skip the `.git` directory inside the scan root ([#969](https://github.com/fossas/fossa-cli/pull/969)).
 
 ## v3.3.3
+
 - Cocoapods: Cocoapods analyzer does not handle subspecs in vendored podspecs. ([#964](https://github.com/fossas/fossa-cli/pull/964/files))
 
 ## v3.3.2
+
 - License scanning: Skip rescanning revisions that are already known to FOSSA. This can be overridden by using the `--force-vendored-dependency-rescans` flag.
 - Swift: Added support for `Package.resolved` v2 files ([#957](https://github.com/fossas/fossa-cli/pull/957)).
 - Perl: Updated version number parser to be more lenient on non-textual version numbers ([#960](https://github.com/fossas/fossa-cli/pull/960))
 
 ## v3.3.1
+
 - Vendor Dependencies: Considers `licence` and `license` equivalent when performing native license scan ([#939](https://github.com/fossas/fossa-cli/pull/939)).
 - Vendor Dependencies: Native license scanning works in alpine linux without additional dependencies ([#949](https://github.com/fossas/fossa-cli/pull/949)).
 - `fossa report attribution`: Adds copyright information to JSON output ([#945](https://github.com/fossas/fossa-cli/pull/945)).
 - Scala: non-multi sbt projects include deep dependencies ([#942](https://github.com/fossas/fossa-cli/pull/942)).
 
 ## v3.3.0
+
 - Telemetry: CLI collects telemetry by default. ([#936](https://github.com/fossas/fossa-cli/pull/936))
 
-Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/telemetry.md. To opt-out of telemetry, provide `FOSSA_TELEMETRY_SCOPE` environment variable with value of: `off` in your shell prior to running fossa.
+Read more about telemetry: <https://github.com/fossas/fossa-cli/blob/master/docs/telemetry.md>. To opt-out of telemetry, provide `FOSSA_TELEMETRY_SCOPE` environment variable with value of: `off` in your shell prior to running fossa.
 
 ## v3.2.17
+
 - Archive upload: Fix a bug when trying to tar to a filename that already exists. ([#927](https://github.com/fossas/fossa-cli/pull/927))
 - Npm: Supports lockfile v3. ([#932](https://github.com/fossas/fossa-cli/pull/932))
 
 ## v3.2.16
+
 - Go: When statically analyzing a project, apply reported replacements. ([#926](https://github.com/fossas/fossa-cli/pull/926))
 
 ## v3.2.15
@@ -1075,6 +1194,7 @@ Read more about telemetry: https://github.com/fossas/fossa-cli/blob/master/docs/
 - Experimental: native license scanning is now disabled by default. ([#865](https://github.com/fossas/fossa-cli/pull/865))
 
 ## v3.2.0
+
 - Telemetry: Introduces fossa cli telemetry for fatal errors and warnings. By default, telemetry is disabled. ([#831](https://github.com/fossas/fossa-cli/pull/831))
 Please read for details on telemetry [here](./docs/telemetry.md)
 
@@ -1135,7 +1255,6 @@ Please read for details on telemetry [here](./docs/telemetry.md)
 - Rust: Improves error and warning messages. ([#813](https://github.com/fossas/fossa-cli/pull/813))
 - UX: Improves errors for dynamic deps, and binary deps analysis. ([#819](https://github.com/fossas/fossa-cli/pull/819))
 - UX: Improves analysis scan summary rendering. ([#819](https://github.com/fossas/fossa-cli/pull/819))
-
 
 ## v3.1.0
 
@@ -1241,7 +1360,7 @@ Please read for details on telemetry [here](./docs/telemetry.md)
 
 # Version 2 Changelog
 
-Releases for CLI 2.x can be found at: https://github.com/fossas/spectrometer/releases
+Releases for CLI 2.x can be found at: <https://github.com/fossas/spectrometer/releases>
 
 ## v2.19.9
 
@@ -2144,6 +2263,7 @@ specify pre-1.0.0 behavior. Here is how `fossa` <1.0.0 releases work:
 - 1d39bb8 fix(ant) Fix error message (#363)
 - d1c781d fix: Correctly set directory modules are passed in from the command line (#383)
 - 9509164 Add machine-readable output format to license report (#379)
+
 ## v0.7.16-rc.1+buckpreview
 
 - d8e6d3a add buck project discovery
@@ -2469,6 +2589,7 @@ Built with go version go1.10.3 linux/amd64
 ---
 Automated with [GoReleaser](https://github.com/goreleaser)
 Built with go version go1.10 darwin/amd64
+
 ## v0.7.0-alpha.12
 
 - 6796b63 feat(mvn): Add custom commands
@@ -2689,6 +2810,7 @@ Built with go version go1.10.3 linux/amd64
 ---
 Automated with [GoReleaser](https://github.com/goreleaser)
 Built with go version go1.10 darwin/amd64
+
 ## v0.6.4
 
 - e17ebd5 fix(nuget): Fix NuGet discovery path
@@ -2882,7 +3004,7 @@ Built with go version go1.10 linux/amd64
 - 7ef81e0 feat(cmd): add spinner to init cmd
 - 0583626 doc(builders): add another gradle common task
 - 748f307 doc(builders): improve gradle builder docs
-- bffa8df Merge branch 'feat/support-gradle-root-deps' of https://github.com/fossas/fossa-cli into feat/support-gradle-root-deps
+- bffa8df Merge branch 'feat/support-gradle-root-deps' of <https://github.com/fossas/fossa-cli> into feat/support-gradle-root-deps
 - db5b36b fix(builders): fix gradle syntax err
 - 60818b4 Merge branch 'master' into feat/support-gradle-root-deps
 - 1030bd6 fix(builders): set TERM=dumb when running gradle dependencies task
@@ -2936,7 +3058,7 @@ Built with go version go1.10 linux/amd64
 - b476653 fix(go): Do Go import tracing with go list instead of depth (#96)
 - 451ab20 README: Fix rendering of a link to `https://fossa.io` (#88)
 - 2893145 chore(cli): update help text
-- c285037 Merge branch 'master' of https://github.com/fossas/fossa-cli
+- c285037 Merge branch 'master' of <https://github.com/fossas/fossa-cli>
 - d604f5b release(0.4.3): update readme and installer
 - 8235155 revert(install): remove sha validation
 
@@ -3261,7 +3383,7 @@ Built with go version go1.9.2 darwin/amd64
 - 699d58d feat(build): ignore RawDependencies in serialization
 - 834466a feat(build): refactor dependency and logging
 - 82f4830 chore(build): ignore dist folder
-- 74edd98 Merge branch 'master' of https://github.com/fossas/fossa-cli
+- 74edd98 Merge branch 'master' of <https://github.com/fossas/fossa-cli>
 - 5e71265 feat(build): add release spec
 - cf3de9b Merge branch 'master' of github.com:fossas/fossa-cli
 - 0b7331d feat(go): Fall back to import path tracing when no lockfiles
@@ -3270,7 +3392,7 @@ Built with go version go1.9.2 darwin/amd64
 - f87cc95 feat(composer): composer support
 - f30e125 fix(build): fix build and maven command
 - 9221cea feat(build): update logging and docs
-- 36f5668 Merge branch 'master' of https://github.com/fossas/fossa-cli
+- 36f5668 Merge branch 'master' of <https://github.com/fossas/fossa-cli>
 - e2f557a feat(mvn): add maven support
 - 5773c86 feat(go): Add glide, godep, govendor, vndr support
 - 8ebfd7a feat(go): Add dep support
