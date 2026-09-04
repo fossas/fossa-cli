@@ -5,6 +5,7 @@ module Strategy.Maven.Common (
   mavenDependencyToDependency,
   filterMavenSubmodules,
   filterMavenDependencyByScope,
+  promoteFirstPartyToDirect,
 ) where
 
 import Data.Set (Set)
@@ -14,7 +15,7 @@ import DepTypes (Dependency (..))
 
 import Discovery.Filters (FilterSet (scopes), MavenScopeFilters (..))
 
-import Graphing (Graphing, color, edgesList, reachableSuccessorsWithCondition, vertexList)
+import Graphing (Graphing, color, edgesList, promoteToDirect, reachableSuccessorsWithCondition, vertexList)
 import Graphing qualified
 
 data MavenDependency = MavenDependency
@@ -27,6 +28,19 @@ data MavenDependency = MavenDependency
 
 mavenDependencyToDependency :: MavenDependency -> Dependency
 mavenDependencyToDependency MavenDependency{..} = dependency
+
+depNameFromMavenDependency :: MavenDependency -> Text
+depNameFromMavenDependency = dependencyName . dependency
+
+-- | Mark first-party artifacts (given as @group:artifact@ names, e.g. from
+-- 'closureSubmodules') as direct nodes so a following 'Graphing.shrinkRoots'
+-- removes them and promotes their children to direct. Used by every strategy
+-- that builds a Maven-shaped graph rooted at the user's own package(s);
+-- without it the project artifact is reported as the sole Direct dependency
+-- and all declared deps are demoted to Transitive.
+promoteFirstPartyToDirect :: Set Text -> Graphing MavenDependency -> Graphing MavenDependency
+promoteFirstPartyToDirect firstParty =
+  promoteToDirect (\dep -> depNameFromMavenDependency dep `Set.member` firstParty)
 
 -- | Filter all submodules (including their dependencies) that are not in `includedSubmoduleSet`.
 --
@@ -113,9 +127,6 @@ filterMavenSubmodules includedSubmoduleSet completeSubmoduleSet graph = do
 
     mapToDependencyNames :: [(MavenDependency, MavenDependency)] -> [(Text, Text)]
     mapToDependencyNames = concatMap (\(dep1, dep2) -> [(depNameFromMavenDependency dep1, depNameFromMavenDependency dep2)])
-
-    depNameFromMavenDependency :: MavenDependency -> Text
-    depNameFromMavenDependency = dependencyName . dependency
 
     updateDependencySubmodules :: Set Text -> MavenDependency -> MavenDependency
     updateDependencySubmodules updatedSubmoduleSet mavenDep = mavenDep{dependencySubmodules = updatedSubmoduleSet}

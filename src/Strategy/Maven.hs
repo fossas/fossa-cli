@@ -19,16 +19,16 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (group, map)
-import DepTypes (Dependency (..))
+import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
-import Graphing (Graphing, gmap, promoteToDirect, shrinkRoots)
+import Graphing (Graphing, gmap, shrinkRoots)
 import Path (Abs, Dir, Path, parent)
-import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency)
+import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency, promoteFirstPartyToDirect)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
@@ -183,12 +183,10 @@ getStaticAnalysis submoduleTargets closure = do
   let allSubmodules = PomClosure.closureSubmodules closure
   (graph, graphBreadth) <- context "Static analysis" $ pure (Pom.analyze' closure, Partial)
   -- Pom.analyze' marks the project's own coordinate as the sole direct node.
-  -- Mirror the dynamic path's buildGraph: mark every first-party artifact (the
-  -- toplevel package plus submodules in a multi-module project) direct, so
-  -- shrinkRoots (below) removes them all and promotes their declared
-  -- dependencies to direct.
-  let withFirstPartyAsRoots =
-        promoteToDirect (\dep -> dependencyName (dependency dep) `Set.member` allSubmodules) graph
+  -- Mirror the dynamic path's buildGraph by additionally marking submodules
+  -- direct; finalizeMavenGraph's shrinkRoots then removes all first-party
+  -- artifacts and promotes their declared dependencies to direct.
+  let withFirstPartyAsRoots = promoteFirstPartyToDirect allSubmodules graph
   finalGraph <- finalizeMavenGraph submoduleTargets allSubmodules withFirstPartyAsRoots
   pure (finalGraph, graphBreadth)
 
