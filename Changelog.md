@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Maven: analysis no longer fails with `An exception occurred: /tmp/fossa-maven-... removeDirectoryRecursive:getSymbolicLinkStatus: does not exist (No such file or directory)` when the plugin's scratch directory is removed (e.g. by the OS temp reaper) before cleanup runs; the scratch directory is now cleaned up on a best-effort basis. ([#1771](https://github.com/fossas/fossa-cli/pull/1771))
 - Dart: `pubspec.yaml` files using valid dependency forms the parser previously rejected no longer fail analysis with `Aeson exception: ... empty` or `failed parsing pub package's source!`: a bare dependency with no value (any version), a `version:`-only entry, the `hosted: <url>` shorthand introduced in Dart 2.15, a `hosted:` map without a `version`, and a `git:` map without a `ref`. ([#1760](https://github.com/fossas/fossa-cli/pull/1760))
 - Workflows: `fossa analyze --x-workflow <path>` runs a dependency-usage workflow analyzer through the embedded ficus and records its result in the debug bundle. ([#1761](https://github.com/fossas/fossa-cli/pull/1761))
 - Workflows: the `--x-workflow` result is uploaded to FOSSA against the analyzed revision once the dependency upload succeeds; `--output` runs still upload nothing. ([#1762](https://github.com/fossas/fossa-cli/pull/1762))
