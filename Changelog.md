@@ -1,6 +1,11 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.18.4
+
+- Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
+- Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
+
+## 3.18.3
 
 - Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
 - Dart: `pubspec.yaml` files using valid dependency forms the parser previously rejected no longer fail analysis with `Aeson exception: ... empty` or `failed parsing pub package's source!`: a bare dependency with no value (any version), a `version:`-only entry, the `hosted: <url>` shorthand introduced in Dart 2.15, a `hosted:` map without a `version`, and a `git:` map without a `ref`. ([#1760](https://github.com/fossas/fossa-cli/pull/1760))
