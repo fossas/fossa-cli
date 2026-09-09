@@ -232,8 +232,12 @@ parsePackageDep = try parsePathDep <|> parseGitDep
       _ <- symbol ".package" <* symbol "("
       _ <- optionallyTry (parseKeyValue "name" parseQuotedText)
 
-      -- Url (Required Field)
-      url <- parseKeyValue "url" $ parseQuotedText <* maybeComma
+      -- Url (Required Field), or -- for a package-registry dependency (SwiftPM 5.7+) --
+      -- the package's scoped identifier, e.g. `.package(id: "mona.LinkedList", from: "1.0.0")`.
+      -- https://developer.apple.com/documentation/packagedescription/package/dependency/package(id:from:)
+      -- Registry dependencies take the same version requirements as url dependencies,
+      -- so they share this parser; the identifier is used in place of the url.
+      url <- (parseKeyValue "url" parseQuotedText <|> parseKeyValue "id" parseQuotedText) <* maybeComma
 
       versionRequirement <-
         optional $

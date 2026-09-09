@@ -2,8 +2,11 @@ module Swift.PackageSwiftSpec (
   spec,
 ) where
 
+import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
+import Data.String.Conversion (toString)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDeps, expectDirect, expectEdges)
@@ -85,6 +88,23 @@ expectedSwiftPackage =
 expectedSwiftPackageNoDeps :: SwiftPackage
 expectedSwiftPackageNoDeps = SwiftPackage "6.0" []
 
+-- | A minimal, valid Package.swift declaring the given package dependencies.
+manifestWithDependencies :: [Text] -> Text
+manifestWithDependencies deps =
+  Text.unlines $
+    [ "// swift-tools-version:5.7"
+    , "import PackageDescription"
+    , ""
+    , "let package = Package("
+    , "    name: \"Example\","
+    , "    dependencies: ["
+    ]
+      <> map (\dep -> "        " <> dep <> ",") deps
+      <> [ "    ],"
+         , "    targets: [.target(name: \"Example\")]"
+         , ")"
+         ]
+
 spec :: Spec
 spec = do
   packageDotSwiftFile <- runIO (TIO.readFile "test/Swift/testdata/Package.swift")
@@ -108,6 +128,43 @@ spec = do
       case runParser parsePackageSwiftFile "" packageDotSwiftNoDepsFile of
         Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldBe` expectedSwiftPackageNoDeps
+
+  -- Package-registry dependencies (SwiftPM 5.7+) are declared with a scoped
+  -- identifier instead of a url: `.package(id: "scope.name", ...)`. They used to
+  -- fail the whole analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`.
+  describe "Parses package-registry dependencies" $ do
+    let registryForms :: [(Text, SwiftPackageGitDep)]
+        registryForms =
+          [ (".package(id: \"mona.LinkedList\", from: \"1.0.0\")", gitDepFrom "mona.LinkedList" "1.0.0")
+          , (".package(id: \"mona.LinkedList\", exact: \"1.2.3\")", gitDepExactly "mona.LinkedList" "1.2.3")
+          , (".package(id: \"mona.LinkedList\", .upToNextMajor(from: \"1.0.0\"))", gitDepUpToNextMajor "mona.LinkedList" "1.0.0")
+          , (".package(id: \"mona.LinkedList\", .upToNextMinor(from: \"1.0.0\"))", gitDepUpToNextMinor "mona.LinkedList" "1.0.0")
+          , (".package(id: \"mona.LinkedList\", \"1.0.0\"..<\"2.0.0\")", gitDepWithRhsHalfOpenInterval "mona.LinkedList" "1.0.0" "2.0.0")
+          , (".package(id: \"mona.LinkedList\", \"1.0.0\"...\"1.5.0\")", gitDepWithClosedRange "mona.LinkedList" "1.0.0" "1.5.0")
+          ]
+    for_ registryForms $ \(form, expected) ->
+      it ("should parse " <> toString form) $ do
+        case runParser parsePackageSwiftFile "" (manifestWithDependencies [form]) of
+          Left failCode -> expectationFailure $ show failCode
+          Right result -> result `shouldBe` SwiftPackage "5.7" [GitSource expected]
+
+    it "should parse registry dependencies alongside url and path dependencies" $ do
+      let manifest =
+            manifestWithDependencies
+              [ ".package(url: \"https://github.com/apple/swift-argument-parser\", from: \"1.0.0\")"
+              , ".package(id: \"mona.LinkedList\", from: \"1.0.0\")"
+              , ".package(path: \"../local\")"
+              ]
+      case runParser parsePackageSwiftFile "" manifest of
+        Left failCode -> expectationFailure $ show failCode
+        Right result ->
+          result
+            `shouldBe` SwiftPackage
+              "5.7"
+              [ GitSource $ gitDepFrom "https://github.com/apple/swift-argument-parser" "1.0.0"
+              , GitSource $ gitDepFrom "mona.LinkedList" "1.0.0"
+              , PathSource "../local"
+              ]
 
   describe "buildGraph, when no resolved content is discovered" $ do
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
