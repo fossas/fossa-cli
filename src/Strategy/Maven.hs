@@ -217,7 +217,7 @@ applyMavenFilters targetSet submoduleSet graph = do
   filteredSubmoduleScopeGraph <-
     if Set.null $ mavenScopeFilterSet mavenScopeFilters
       then pure filteredSubmoduleGraph
-      else context "Filter maven scopes" $ pure (filterMavenDependencyByScope mavenScopeFilters filteredSubmoduleGraph)
+      else context "Filter maven scopes" $ pure (filterMavenDependencyByScope submoduleSet mavenScopeFilters filteredSubmoduleGraph)
   pure $ gmap mavenDependencyToDependency filteredSubmoduleScopeGraph
 
 submoduleTargetSet :: FoundTargets -> Set Text

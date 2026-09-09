@@ -14,11 +14,12 @@ module Maven.StaticAnalysisSpec (spec) where
 
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Lift (sendIO)
+import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Set.NonEmpty qualified as NESet
 import Data.Text (Text)
 import DepTypes (DepType (MavenType), Dependency (..), VerConstraint (CEq))
-import Discovery.Filters (MavenScopeFilters (..))
+import Discovery.Filters (MavenScopeFilters (..), setInclude)
 import GraphUtil (expectDeps', expectDirect')
 import Path (Dir, Path, Rel, reldir, (</>))
 import Path.IO qualified as PIO
@@ -57,6 +58,12 @@ spec = describe "Maven static analysis" $ do
         expectDirect' expected (dependencyGraph results)
         expectDeps' expected (dependencyGraph results)
 
+    it' "retains dependencies when scope-only include filter is active (no double-shrink)" $
+      withFixtureClosure scopeOnlyFixture $ \closure -> do
+        results <- staticallyAnalyzeWithScopes (MavenScopeIncludeFilters $ setInclude $ Set.fromList ["compile"]) closure
+        expectDirect' [junitCompileScopedDependency] (dependencyGraph results)
+        expectDeps' [junitCompileScopedDependency] (dependencyGraph results)
+
 -- | Load a checked-in fixture and pass its sole project closure to the test,
 -- failing with a readable message otherwise.
 withFixtureClosure :: Path Rel Dir -> (MavenProjectClosure -> EffectStack ()) -> EffectStack ()
@@ -68,8 +75,11 @@ withFixtureClosure fixture act = do
     _ -> expectationFailure' $ "expected exactly one Maven project closure, got " <> show (length closures)
 
 staticallyAnalyze :: MavenProjectClosure -> EffectStack DependencyResults
-staticallyAnalyze closure =
-  runReader (MavenScopeIncludeFilters mempty)
+staticallyAnalyze = staticallyAnalyzeWithScopes (MavenScopeIncludeFilters mempty)
+
+staticallyAnalyzeWithScopes :: MavenScopeFilters -> MavenProjectClosure -> EffectStack DependencyResults
+staticallyAnalyzeWithScopes scopeFilters closure =
+  runReader scopeFilters
     . getDepsStatically (allTargets closure)
     $ MavenProject closure
 
@@ -88,6 +98,9 @@ singleModuleFixture = [reldir|test/Maven/testdata/static-root-repro|]
 multiModuleFixture :: Path Rel Dir
 multiModuleFixture = [reldir|test/Maven/testdata/static-multimodule-repro|]
 
+scopeOnlyFixture :: Path Rel Dir
+scopeOnlyFixture = [reldir|test/Maven/testdata/static-scope-repro|]
+
 rootPackage :: MavenDependency
 rootPackage = MavenDependency projectArtifact mempty mempty
 
@@ -96,6 +109,17 @@ projectArtifact = mkDependency "com.example:app" "1.0.0"
 
 junitDependency :: Dependency
 junitDependency = mavenDependencyToDependency $ MavenDependency junitArtifact mempty mempty
+
+junitCompileScopedDependency :: Dependency
+junitCompileScopedDependency =
+  Dependency
+    { dependencyType = MavenType
+    , dependencyName = "junit:junit"
+    , dependencyVersion = Just (CEq "4.13.2")
+    , dependencyLocations = []
+    , dependencyEnvironments = mempty
+    , dependencyTags = Map.fromList [("scope", ["compile"])]
+    }
 
 commonsLang3Dependency :: Dependency
 commonsLang3Dependency = mavenDependencyToDependency $ MavenDependency commonsLang3Artifact mempty mempty
