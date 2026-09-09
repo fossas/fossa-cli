@@ -1,7 +1,10 @@
 """FOSSA CLI integration script for conan package manager.
 
-Generates fossa-deps.yml with referenced-dependencies (Git), remote-dependencies
-(archive tarball), and custom-dependencies from a Conan project.
+Generates fossa-deps.yml from a Conan project. Packages Conan already
+downloaded source for are emitted as vendored-dependencies (path-based scan,
+as in earlier versions of this script); everything else is classified as a
+referenced-dependency (Git), remote-dependency (archive tarball), or
+custom-dependency, in that order of preference.
 
 Requires:
     - python3 to run this script
@@ -33,6 +36,7 @@ import subprocess
 import logging
 import os
 import re
+import urllib.parse
 from datetime import datetime
 from typing import Optional
 
@@ -232,6 +236,7 @@ def generate_fossa_deps(nodes):
 
     logging.info(f"Found {len(nodes)} nodes in dependency graph")
 
+    vendored_deps = []
     git_deps = []
     archive_deps = []
     custom_deps = []
@@ -253,11 +258,24 @@ def generate_fossa_deps(nodes):
             logging.info(f"Skipping {ref or name} (test dependency)")
             continue
 
-        if node.get("binary") == "Skip" and node.get("package_type") == "header-library":
-            logging.info(f"Skipping {ref or name} (header-only, skipped binary)")
-            continue
-
         package_name = name or (ref.split("/")[0] if "/" in ref else ref)
+
+        # Conan already downloaded source for this package (e.g. via
+        # tools.build:download_source=True): keep classifying it as a
+        # vendored-dependency, as the previous version of this script did.
+        # Reclassifying these as referenced-dependencies would change how
+        # existing users' issues are tracked in FOSSA and churn their
+        # existing issue list, so that upgrade path is opt-in — it only
+        # applies below to packages that have no local source to vendor.
+        src_dir = node.get("source_folder")
+        if src_dir:
+            pkg_id = node.get("package_id", "none")
+            version_params = urllib.parse.urlencode({"package_id": pkg_id}, doseq=True)
+            raw_version = node.get("version") or (ref.split("/", 1)[1] if "/" in ref else "")
+            version = f"{raw_version},{version_params}"
+            logging.info(f"Adding (vendored): {package_name} {version} — {src_dir}")
+            vendored_deps.append({"name": package_name, "version": version, "path": src_dir})
+            continue
 
         # Private channel packages without conandata have no upstream source
         # record to confirm their version — skip git lookup to avoid resolving
@@ -297,6 +315,7 @@ def generate_fossa_deps(nodes):
         else:
             logging.warning(f"Skipping {package_name} (insufficient info)")
 
+    vendored_deps.sort(key=lambda x: x["name"])
     git_deps.sort(key=lambda x: x["name"])
     archive_deps.sort(key=lambda x: x["name"])
     custom_deps.sort(key=lambda x: x["name"])
@@ -310,6 +329,14 @@ def generate_fossa_deps(nodes):
         "# FOSSA Support: https://support.fossa.com/hc/en-us",
         "",
     ]
+
+    if vendored_deps:
+        yaml_lines.append("vendored-dependencies:")
+        for dep in vendored_deps:
+            yaml_lines.append(f"- name: {yaml_scalar(dep['name'])}")
+            yaml_lines.append(f"  version: {yaml_scalar(dep['version'])}")
+            yaml_lines.append(f"  path: {yaml_scalar(dep['path'])}")
+            yaml_lines.append("")
 
     if git_deps:
         yaml_lines.append("referenced-dependencies:")
@@ -347,7 +374,8 @@ def generate_fossa_deps(nodes):
 
     logging.info(
         f"Successfully generated fossa-deps.yml — "
-        f"{len(git_deps)} git, {len(archive_deps)} archive, {len(custom_deps)} custom"
+        f"{len(vendored_deps)} vendored, {len(git_deps)} git, "
+        f"{len(archive_deps)} archive, {len(custom_deps)} custom"
     )
     logging.info("Run 'fossa analyze' to upload to FOSSA")
 
