@@ -15,7 +15,7 @@ import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -24,9 +24,8 @@ import Data.Yaml (decodeAllEither', prettyPrintParseException)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
-  Dependency (Dependency, dependencyType),
+  Dependency (Dependency, dependencyEnvironments, dependencyType),
   VerConstraint (CEq),
-  hydrateDepEnvs,
   insertEnvironment,
  )
 import Effect.Grapher (deep, direct, edge, label, run, withLabeling)
@@ -38,6 +37,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), fileParseErrorSupportMsg, readContentsBS)
 import Graphing (Graphing)
 import Graphing qualified
+import Graphing.Hydrate (hydrate)
 import Path (Abs, File, Path)
 import Strategy.Node.Pnpm.Types (
   BuildGraphConfig (..),
@@ -120,52 +120,48 @@ resolveCatalogVersion (PnpmCatalogs cats) depName ver
        in fromMaybe ver $ Map.lookup name cats >>= Map.lookup depName
   | otherwise = ver
 
--- | Apply accumulated labels to transform a graph node.
-applyLabels :: Dependency -> Set.Set PnpmLabel -> Dependency
-applyLabels = foldr applyLabel
-  where
-    applyLabel (PnpmEnv env) = insertEnvironment env
+-- | Keep the lockfile key alongside the reportable dependency so peer
+-- contexts remain distinct during reachability and environment propagation.
+type PnpmNode = (Text, Dependency)
 
--- | Strip local (file:) packages from the final graph.
-withoutLocalPackages :: Graphing Dependency -> Graphing Dependency
-withoutLocalPackages = Graphing.shrink (\dep -> dependencyType dep /= UserType)
+applyLabels :: PnpmNode -> Set.Set PnpmLabel -> PnpmNode
+applyLabels (key, dep) labels = (key, foldr (\(PnpmEnv env) -> insertEnvironment env) dep labels)
+
+-- Merge environments only after traversing the distinct resolution contexts.
+-- Hydrating after this collapse would leak one context's environments into
+-- another context's transitive dependencies.
+collapseNodes :: Graphing PnpmNode -> Graphing Dependency
+collapseNodes graph = Graphing.gmap report graph
+  where
+    identity dep = dep{dependencyEnvironments = mempty}
+    environments = Map.fromListWith (<>) [(identity dep, dependencyEnvironments dep) | (_, dep) <- Graphing.vertexList graph]
+    report (_, dep) = dep{dependencyEnvironments = Map.findWithDefault mempty (identity dep) environments}
 
 --
 -- Resolved dependency lookup
 --
 
--- | Resolve a dependency name and version to a 'Dependency' by looking it up
--- in the packages map.
+-- | Resolve a dependency to its lockfile key and reportable metadata.
 --
 -- Non-registry resolvers (tarball, git, directory) use the version value
 -- directly as the @packages@ key. Registry resolvers use a constructed key.
 toResolvedDependency ::
-  -- | toEnv for this version
   (Bool -> Set.Set DepEnvironment) ->
   Map Text PackageData ->
-  -- | mkPkgKey for this version
   (Text -> Text -> Text) ->
-  -- | dependency name
   Text ->
-  -- | dependency version
   Text ->
-  Maybe Dependency
-toResolvedDependency toEnv pkgs mkPkg depName depVersion = do
-  -- Some versions of the lockfile remove the peer dep suffix.
-  -- Others do not which is why it tries both.
-  let strippedVersion = withoutPeerDepSuffix depVersion
-  let maybeNonRegistrySrcPackage =
-        Map.lookup depVersion pkgs
-          <|> Map.lookup strippedVersion pkgs
-  let maybeRegistrySrcPackage =
-        fmap (depVersion,) (Map.lookup (mkPkg depName depVersion) pkgs)
-          <|> fmap (strippedVersion,) (Map.lookup (mkPkg depName strippedVersion) pkgs)
-  case (maybeNonRegistrySrcPackage, maybeRegistrySrcPackage) of
-    (Nothing, Nothing) -> Nothing
-    (Just nonRegistryPkg, _) ->
-      Just $ toDependency toEnv depName Nothing nonRegistryPkg
-    (Nothing, Just (version, registryPkg)) ->
-      Just $ toDependency toEnv depName (Just version) registryPkg
+  Maybe PnpmNode
+toResolvedDependency toEnv pkgs mkPkg depName depVersion =
+  nonRegistry depVersion
+    <|> nonRegistry (withoutPeerDepSuffix depVersion)
+    <|> registry depVersion
+    <|> registry (withoutPeerDepSuffix depVersion)
+  where
+    nonRegistry key = (key,) . toDependency toEnv depName Nothing <$> Map.lookup key pkgs
+    registry version =
+      let key = mkPkg depName version
+       in (key,) . toDependency toEnv depName (Just version) <$> Map.lookup key pkgs
 
 --
 -- Shared graph-building loop
@@ -180,10 +176,16 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
       labelingMode = bgcLabelingMode
       snapshotEdges = bgcSnapshotEdges
       catalogs = bgcCatalogs
-      pkgs = lockfilePackages base
+      -- v9 metadata is shared across peer contexts, but each snapshot has its
+      -- own edges. Add contextual keys backed by that shared package metadata.
+      pkgs = Map.union (Map.fromList $ mapMaybe snapshotPackage snapshotEdges) (lockfilePackages base)
+      snapshotPackage (key, _) = (key,) <$> Map.lookup (withoutPeerDepSuffix key) (lockfilePackages base)
       snapshotEdgesHM = HashMap.fromList snapshotEdges
-   in withoutLocalPackages . hydrateDepEnvs $
-        run . withLabeling applyLabels $ do
+   in collapseNodes
+        . Graphing.shrink ((/= UserType) . dependencyType . snd)
+        . hydrate (dependencyEnvironments . snd) (\envs (key, dep) -> (key, dep{dependencyEnvironments = envs}))
+        $ run . withLabeling applyLabels
+        $ do
           -- Direct dependencies from each importer (workspace package).
           for_ (toList (lockfileImporters base)) $ \(_, projectImporters) -> do
             -- Optional dependencies are production dependencies an install may
@@ -215,7 +217,7 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
             let (depName, depVersion) = case getPkgNameVersion pkgKey of
                   Nothing -> (pkgKey, Nothing)
                   Just (name, version) -> (name, Just version)
-            let parentDep = toDependency toEnv depName depVersion pkgMeta
+            let parentDep = (pkgKey, toDependency toEnv depName depVersion pkgMeta)
 
             -- It is ok if this dependency was already graphed as direct
             -- @direct 1 <> deep 1 = direct 1@
@@ -229,7 +231,7 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
 --
 
 -- | Build the dependency graph, labeling direct deps with their environment
--- (prod\/dev). hydrateDepEnvs then propagates those environments to all
+-- (prod\/dev). Hydration propagates those environments to all
 -- transitive successors.
 buildGraph :: PnpmLockfile -> Graphing Dependency
 buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphConfigV4or5 base
