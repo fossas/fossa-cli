@@ -1,7 +1,7 @@
 {
     "graph": {
-        "nodes": [
-            {
+        "nodes": {
+            "0": {
                 "ref": "",
                 "id": 0,
                 "recipe": "Consumer",
@@ -75,7 +75,7 @@
                 "context": "host",
                 "test": false
             },
-            {
+            "1": {
                 "ref": "zlib/1.2.13#e377bee636333ae348d51ca90874e353",
                 "id": 1,
                 "recipe": "Cache",
@@ -170,7 +170,7 @@
                 "context": "host",
                 "test": false
             },
-            {
+            "2": {
                 "ref": "openssl/3.1.0#8eadf484563de6cdd24daafb9c3813db",
                 "id": 2,
                 "recipe": "Cache",
@@ -631,7 +631,7 @@
                 "context": "host",
                 "test": false
             },
-            {
+            "3": {
                 "ref": "cmake/3.22.6#32cced101c6df0fab43e8d00bd2483eb",
                 "id": 3,
                 "recipe": "Cache",
@@ -696,7 +696,7 @@
                 "context": "build",
                 "test": false
             }
-        ],
+        },
         "root": {
             "0": ""
         }
