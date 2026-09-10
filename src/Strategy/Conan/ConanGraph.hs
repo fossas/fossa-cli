@@ -27,7 +27,6 @@ import Data.Map qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Data.Text.Extra (breakOnAndRemove)
 import DepTypes
   ( DepEnvironment (..),
     DepType (ConanType),
@@ -115,26 +114,15 @@ data ConanGraphNode = ConanGraphNode
 
 instance FromJSON ConanGraphNode where
   parseJSON = withObject "ConanGraphNode" $ \obj -> do
-    (name, version) <- obj `parseNameVersion` "label"
     ConanGraphNode
       <$> obj .: "ref"
       <*> obj .: "id"
       <*> obj .: "package_id"
-      <*> (pure name)
-      <*> (pure version)
+      <*> obj .: "name"
+      <*> obj .: "version"
       <*> obj .: "context"
       <*> obj .: "test"
       <*> obj .: "dependencies"
-    where
-      parseNameVersion :: Object -> Key -> Parser (Text, Text)
-      parseNameVersion obj key = do
-        value <- obj .: key
-        case value of
-          "conanfile.py" -> pure ("conanfile.py", "")
-          "conanfile.txt" -> pure ("conanfile.txt", "")
-          _ -> case breakOnAndRemove "/" value of
-            Nothing -> fail $ "Expected " <> show key <> " to have, / seperator, but recieved: " <> show value
-            Just (name, version) -> pure (name, version)
 
 data ConanGraphDependency = ConanGraphDependency
   { -- Dependency reference
