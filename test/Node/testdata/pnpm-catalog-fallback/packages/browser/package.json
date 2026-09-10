@@ -1,0 +1,11 @@
+{
+  "name": "browser",
+  "dependencies": {
+    "left-pad": "catalog:",
+    "react": "catalog:react18",
+    "is-odd": "^3.0.1"
+  },
+  "devDependencies": {
+    "typescript": "catalog:tools"
+  }
+}

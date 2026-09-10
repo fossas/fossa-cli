@@ -164,10 +164,12 @@ When `catalog:` or `catalog:<name>` specifiers are used in `package.json`,
 the resolved versions from `pnpm-lock.yaml` are used for analysis.
 No additional configuration is needed.
 
-Resolving a catalog specifier requires the lockfile, which lives at the workspace
-root. Analyzing a member directory on its own therefore cannot resolve them, and
-such dependencies are skipped with a warning rather than reported at the literal
-version `catalog:`. Analyze from the workspace root to include them.
+When no lockfile is in scope, the [package.json fallback](packagejson.md#workspace-references)
+looks for the nearest `pnpm-workspace.yaml` in the package directory or its
+parents. It expands default and named catalog references into their declared
+versions or ranges. This includes scans started inside a member directory.
+For exact resolved versions and transitive dependencies, analyze from the
+workspace root with its lockfile.
 
 
 # F.A.Q

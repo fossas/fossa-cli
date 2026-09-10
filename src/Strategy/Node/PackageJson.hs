@@ -76,17 +76,17 @@ analyze manifests = do
     logWarn . pretty $
       "Skipping "
         <> toText (show (length unresolvable))
-        <> " dependencies whose version is a workspace reference this strategy cannot resolve without a lockfile ("
+        <> " dependencies whose workspace references could not be resolved ("
         <> Text.intercalate ", " unresolvable
-        <> "). Analyze from the workspace root to include them."
+        <> "). Check the workspace catalog definitions or analyze from the workspace root with a lockfile."
   context "Building dependency graph" . pure $ foldMap buildGraph manifests
 
 -- | Specifier protocols that name a location in the workspace rather than a
 -- version range.
 --
--- @catalog:@ (pnpm catalogs), @workspace:@ (the workspace protocol) and
--- @link:@ are all resolved from files this strategy does not read — the
--- lockfile, or pnpm-workspace.yaml. Recording the raw specifier as the version
+-- Catalog references are expanded from pnpm-workspace.yaml before analysis.
+-- Any remaining @catalog:@ reference is unresolved; @workspace:@ and @link:@
+-- name local packages this fallback cannot resolve. Recording the raw specifier as the version
 -- produced locators like @npm+left-pad$catalog:@, a dependency pinned to the
 -- literal version "catalog:", which does not exist in any registry.
 --

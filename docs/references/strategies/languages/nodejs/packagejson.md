@@ -26,17 +26,22 @@ files.
 
 ### Workspace references
 
-A version specifier can name another package in the same workspace rather than a
-version range: `catalog:` and `catalog:<name>`
-([pnpm catalogs](https://pnpm.io/catalogs)), `workspace:`
-([the workspace protocol](https://pnpm.io/workspaces#workspace-protocol)), and
-`link:`. Resolving those needs the lockfile or `pnpm-workspace.yaml`, neither of
-which this strategy reads, so such dependencies are skipped and a warning names
-them.
+Without a lockfile, pnpm catalog references can still be resolved from
+`pnpm-workspace.yaml`. For each package that uses `catalog:` or `catalog:<name>`,
+FOSSA searches its directory and then its parents for the nearest workspace
+file. This also works when the scan starts inside a workspace member.
 
-This strategy is a fallback used when no lockfile is in scope — most often when
-`fossa analyze` is run from inside a workspace member's own directory. Analyze
-from the workspace root instead, where the lockfile resolves these specifiers to
-real versions. To report on one member, see workspace build targets for
-[npm](npm-lockfile.md#workspace-build-targets) or
-[yarn](yarn.md#workspace-build-targets).
+The default `catalog` and named `catalogs` mappings supply the declared version
+or range. For example, `"left-pad": "catalog:"` with `left-pad: ^1.3.0` in the
+default catalog is reported just like `"left-pad": "^1.3.0"`. This is a partial
+graph of declared dependencies; an exact installed version and transitive
+dependencies still require lockfile analysis.
+
+An unresolved catalog reference (missing or unreadable workspace file, missing
+catalog, or missing package entry) is skipped with a warning naming it. FOSSA
+uses only the nearest workspace file; it does not borrow missing entries from
+an outer workspace. Local `workspace:` and `link:` references are also skipped
+with a warning. `file:` references retain their existing behavior.
+
+For a complete graph, analyze from the workspace root with its lockfile in
+scope. See [pnpm catalogs](https://pnpm.io/catalogs) for catalog configuration.
