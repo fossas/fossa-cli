@@ -66,9 +66,9 @@ conanVersionCmd =
 guardConanVersion2Gt :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ()
 guardConanVersion2Gt dir = do
   conanVer <- execParser conanVersion dir conanVersionCmd
-  if satisfies conanVer (CGt version_2_0_0)
+  if satisfies conanVer (CGt version_2_0_5)
     then pure ()
-    else fatalText $ "Expected conan version greater than 2.0.0, but recieved: " <> toText conanVer
+    else fatalText $ "Expected conan version greater than 2.0.5, but recieved: " <> toText conanVer
   where
-    version_2_0_0 :: Version
-    version_2_0_0 = version 2 0 0 [] []
+    version_2_0_5 :: Version
+    version_2_0_5 = version 2 0 5 [] []
