@@ -188,6 +188,47 @@ spec = do
           ]
           graph
 
+  let pnpmPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
+  describe "peer resolution contexts" $ do
+    checkScopedGraph (Just $ Set.singleton "a") pnpmPeerContexts $ \graph ->
+      it "keeps only the production member's transitive peer resolution" $
+        expectDeps [mkProdDep "parent@1.0.0", mkProdDep "widget@1.0.0", mkProdDep "peer@1.0.0"] graph
+    checkScopedGraph (Just $ Set.singleton "b") pnpmPeerContexts $ \graph ->
+      it "keeps only the development member's transitive peer resolution" $
+        expectDeps [mkDevDep "parent@1.0.0", mkDevDep "widget@1.0.0", mkDevDep "peer@2.0.0"] graph
+    checkScopedGraph (Just $ Set.fromList ["a", "b"]) pnpmPeerContexts $ \graph -> do
+      it "merges package environments without leaking them across peer contexts" $
+        expectDeps [mkBothEnvDep "parent@1.0.0", mkBothEnvDep "widget@1.0.0", mkProdDep "peer@1.0.0", mkDevDep "peer@2.0.0"] graph
+      it "retains both contexts' edges after collapsing their reportable identities" $ do
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
+    checkGraph pnpmPeerContexts $ \graph ->
+      it "keeps both peer resolutions in whole-workspace analysis" $
+        expectDeps [mkBothEnvDep "parent@1.0.0", mkBothEnvDep "widget@1.0.0", mkProdDep "peer@1.0.0", mkDevDep "peer@2.0.0"] graph
+
+  let environmentFixtures =
+        [ currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-6-workspace-environments/pnpm-lock.yaml")
+        , currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-environments/pnpm-lock.yaml")
+        ]
+  mapM_
+    ( \fixture -> describe ("workspace environments: " <> toString fixture) $ do
+        checkScopedGraph (Just $ Set.singleton "dev") fixture $ \graph ->
+          it "propagates development through linked workspaces, cycles, and external transitives" $
+            expectDeps [mkDevDep "leaf@1.0.0", mkDevDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+        checkScopedGraph (Just $ Set.singleton "prod") fixture $ \graph ->
+          it "keeps optional links production and a linked package's own dev dependencies development" $
+            expectDeps [mkProdDep "leaf@1.0.0", mkProdDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+        checkScopedGraph (Just $ Set.fromList ["dev", "prod"]) fixture $ \graph ->
+          it "propagates both environments when a workspace is reached through both paths" $
+            expectDeps [mkBothEnvDep "leaf@1.0.0", mkBothEnvDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+    )
+    environmentFixtures
+
+  let allViaDev = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-dev-link-all-importers/pnpm-lock.yaml")
+  checkScopedGraph (Just $ Set.singleton ".") allViaDev $ \graph ->
+    it "retains development provenance even when links reach every importer" $
+      expectDeps [mkDevDep "leaf@1.0.0"] graph
+
   -- Workspace scoping. The fixture has four importers: the root (colorjs),
   -- browser (left-pad, plus a link: to shared), server (is-odd -> is-number)
   -- and shared (uri-js -> punycode).
@@ -266,7 +307,7 @@ spec = do
         expectDep (mkProdDep "is-odd@3.0.1") graph
 
       it "should follow a link declared under devDependencies" $
-        expectDep (mkProdDep "colorjs@0.1.9") graph
+        expectDep (mkDevDep "colorjs@0.1.9") graph
 
       it "should exclude external links even when their suffix names an internal member" $
         -- The dangling and escaping links in libs/testkit resolve to no importer; neither
@@ -277,7 +318,7 @@ spec = do
           , mkProdDep "punycode@2.3.1"
           , mkProdDep "is-odd@3.0.1"
           , mkProdDep "is-number@6.0.0"
-          , mkProdDep "colorjs@0.1.9"
+          , mkDevDep "colorjs@0.1.9"
           ]
           graph
 

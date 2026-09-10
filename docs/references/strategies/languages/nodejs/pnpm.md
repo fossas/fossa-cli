@@ -203,7 +203,11 @@ When a selected member depends on a sibling member through the
 that in the lockfile as `version: link:<path>`. The sibling's own dependencies
 are part of the selected member's result, because the selected member depends on
 them. Links declared in `dependencies`, `devDependencies`, and
-`optionalDependencies` are followed transitively.
+`optionalDependencies` are followed transitively. Dependencies reached only through a
+workspace's development dependency remain development dependencies; a package
+reached through both production and development paths carries both environments.
+Peer resolution contexts are kept separate while following the graph, so a
+selected member uses its own resolved peer versions.
 
 With no target filtering, all targets are selected and every member's
 dependencies are included.
