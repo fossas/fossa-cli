@@ -352,6 +352,16 @@ unnamedWorkspaceRootSpec currDir = describe "workspace root without a name" $ do
     directDeps (extractDepListsForTargets (findWorkspaceBuildTargets graph) graph)
       `shouldBe` applyTag @Production (Set.fromList [NodePackage "husky" "^8.0.0", NodePackage "lodash" "^4.0.0", NodePackage "express" "^4.0.0"])
 
+  it "keeps every dependency when a member, rather than the root, is unnamed" $ do
+    let namedGraph = workspaceGraphWithDeps currDir
+        member = Manifest $ currDir </> $(mkRelFile "test/Node/testdata/workspace-test/pkg-a/package.json")
+        graphWithUnnamedMember = namedGraph{jsonLookup = Map.adjust (\pj -> pj{packageName = Nothing}) member (jsonLookup namedGraph)}
+        targets = findWorkspaceBuildTargets graphWithUnnamedMember
+    targets `shouldBe` ProjectWithoutTargets
+    resolvePnpmImporterKeys targets graphWithUnnamedMember `shouldBe` Nothing
+    directDeps (extractDepListsForTargets targets graphWithUnnamedMember)
+      `shouldBe` directDeps (extractDepListsForTargets ProjectWithoutTargets namedGraph)
+
 -- | 'workspaceGraphWithDeps' with the root's @name@ field removed.
 unnamedRootWorkspaceGraph :: Path Abs Dir -> PkgJsonGraph
 unnamedRootWorkspaceGraph currDir =

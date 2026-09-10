@@ -10,6 +10,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject))
 import App.Types (Mode (NonStrict))
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Reader (runReader)
+import Data.Map.Strict qualified as Map
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty qualified as NonEmptySet
@@ -19,6 +20,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Dir, Path, Rel, mkRelDir, (</>))
 import Path.IO qualified as PIO
+import Strategy.Node.PackageJson (PackageJson (..), PkgJsonGraph (..))
 import Test.Hspec (Spec, beforeAll, describe, it, shouldBe, shouldSatisfy)
 import Types (
   BuildTarget (BuildTarget),
@@ -49,6 +51,7 @@ data FixtureGraphs = FixtureGraphs
   , rootGraph :: Graphing Dependency
   , browserGraph :: Graphing Dependency
   , serverGraph :: Graphing Dependency
+  , unnamedMemberGraph :: Graphing Dependency
   , sharedGraph :: Graphing Dependency
   }
 
@@ -74,6 +77,15 @@ analyzeFixture = do
         <*> analyzeWith (mkTargets ["@fossa-test/workspace"])
         <*> analyzeWith (mkTargets ["@fossa-test/browser"])
         <*> analyzeWith (mkTargets ["@fossa-test/server"])
+        <*> ( case projectData project of
+                Node.Pnpm lockfile graph -> do
+                  let unnamedGraph = graph{jsonLookup = Map.map (\pj -> if packageName pj == Just "@fossa-test/server" then pj{packageName = Nothing} else pj) (jsonLookup graph)}
+                      targets = Node.findWorkspaceBuildTargets unnamedGraph
+                  targets `shouldBe` ProjectWithoutTargets
+                  analyzed <- testRunner (ignoreDebug $ runReader NonStrict $ analyzeProject targets (Node.Pnpm lockfile unnamedGraph)) LocalEnvironment
+                  withResult analyzed $ \_ depResults -> pure (dependencyGraph depResults)
+                _ -> fail "expected a pnpm project"
+            )
         <*> analyzeWith (mkTargets ["@fossa-test/shared"])
     projects' -> fail ("expected exactly one discovered project, got " <> show (length projects'))
 
@@ -103,3 +115,6 @@ spec = beforeAll analyzeFixture $
       depNames (wholeGraph fixture) `shouldBe` Set.fromList ["colorjs", "left-pad", "is-odd", "is-number", "uri-js", "punycode"]
       [rootGraph fixture, browserGraph fixture, serverGraph fixture, sharedGraph fixture]
         `shouldSatisfy` all ((`Set.isSubsetOf` depNames (wholeGraph fixture)) . depNames)
+
+    it "should retain an unnamed member's dependencies in unfiltered analysis" $ \fixture ->
+      unnamedMemberGraph fixture `shouldBe` wholeGraph fixture

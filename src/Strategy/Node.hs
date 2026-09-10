@@ -170,17 +170,15 @@ mkProject project = do
         _ -> False
       projectBuildTargets' = if honorsTargets then findWorkspaceBuildTargets graph else ProjectWithoutTargets
   Manifest rootManifest <- fromEitherShow $ findWorkspaceRootManifest graph
-  -- A workspace whose root has no name gets no targets at all (see
-  -- 'findWorkspaceBuildTargets'), which looks like a bug from the outside:
-  -- list-targets shows only the project. Say why, and what fixes it. This is
-  -- logged rather than raised as a diagnostic warning because discovery's
-  -- diagnostics are only rendered under --debug.
-  when (honorsTargets && hasUnnamedWorkspaceRoot graph) $
+  -- Discovery diagnostics are only rendered under --debug, so log the
+  -- reason that workspace targets are unavailable as a normal warning.
+  let unnamed = unnamedWorkspaceManifests graph
+  when (honorsTargets && not (null unnamed)) $
     logWarn . pretty $
-      "Workspace root "
-        <> toText (toFilePath rootManifest)
-        <> " has no `name`, so its members are not offered as build targets and the whole workspace is analyzed as one unit."
-        <> " Add a `name` to select members individually with --only-target or targets.only in .fossa.yml."
+      "Workspace package.json files missing a `name`: "
+        <> Text.intercalate ", " (map (toText . toFilePath . unManifest) unnamed)
+        <> ". No build targets are offered and the whole workspace is analyzed as one unit."
+        <> " Add a `name` to each file to select members individually with --only-target or targets.only in .fossa.yml."
   pure $
     DiscoveredProject
       { projectType = typename
@@ -192,16 +190,16 @@ mkProject project = do
 -- | Build targets from workspace package names (root + members).
 -- If the workspace graph has children (i.e., workspace members), each
 -- package name becomes a 'BuildTarget', along with the root's own name.
--- If there are no workspace children (single-package project), or the root
+-- If there are no workspace children (single-package project), or any package
 -- declares no @name@, returns 'ProjectWithoutTargets'.
 findWorkspaceBuildTargets :: PkgJsonGraph -> FoundTargets
 findWorkspaceBuildTargets graph =
   let WorkspacePackageNames childNames = findWorkspaceNames graph
-   in if Set.null childNames
+   in if Set.null childNames || not (null (unnamedWorkspaceManifests graph))
         then ProjectWithoutTargets
         else case workspaceRootName graph of
           -- Everything that resolves selected targets back to manifests
-          -- matches on the package name, so a nameless root could never be
+          -- matches on the package name, so a nameless package could never be
           -- selected and its dependencies would be dropped by any selection,
           -- including the default of every target. Offer no targets instead;
           -- 'mkProject' warns so the user knows why.
@@ -216,12 +214,13 @@ workspaceRootName graph@PkgJsonGraph{jsonLookup} = do
   root <- either (const Nothing) Just $ findWorkspaceRootManifest graph
   packageName =<< Map.lookup root jsonLookup
 
--- | True when the graph has workspace members but its root declares no
--- @name@: the one shape of workspace that yields no build targets.
-hasUnnamedWorkspaceRoot :: PkgJsonGraph -> Bool
-hasUnnamedWorkspaceRoot graph =
-  let WorkspacePackageNames childNames = findWorkspaceNames graph
-   in not (Set.null childNames) && isNothing (workspaceRootName graph)
+-- | Unnamed packages in a workspace cannot be selected, even by the default
+-- selection of all targets. Keep analysis unscoped to retain their dependencies.
+-- A single-package project already has no targets and needs no warning.
+unnamedWorkspaceManifests :: PkgJsonGraph -> [Manifest]
+unnamedWorkspaceManifests PkgJsonGraph{jsonGraph, jsonLookup}
+  | null (AM.edgeList jsonGraph) = []
+  | otherwise = Map.keys $ Map.filter (isNothing . packageName) jsonLookup
 
 instance AnalyzeProject NodeProject where
   analyzeProject = getDeps
