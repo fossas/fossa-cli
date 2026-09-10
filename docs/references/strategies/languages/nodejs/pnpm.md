@@ -202,7 +202,8 @@ When a selected member depends on a sibling member through the
 [workspace protocol](https://pnpm.io/workspaces#workspace-protocol), pnpm records
 that in the lockfile as `version: link:<path>`. The sibling's own dependencies
 are part of the selected member's result, because the selected member depends on
-them.
+them. Links declared in `dependencies`, `devDependencies`, and
+`optionalDependencies` are followed transitively.
 
 With no target filtering, all targets are selected and every member's
 dependencies are included.

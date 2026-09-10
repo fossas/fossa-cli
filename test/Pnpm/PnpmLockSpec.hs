@@ -175,6 +175,19 @@ spec = do
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
 
+  let pnpmOptionalWorkspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-optional-workspace-links/pnpm-lock.yaml")
+  describe "scoped optional workspace links" $
+    checkScopedGraph (Just $ Set.singleton "app") pnpmOptionalWorkspace $ \graph -> do
+      optionalDepsSpec graph
+      it "should follow optional links transitively and retain optional packages when pruning" $
+        expectDeps
+          [ mkProdDep "chokidar@3.6.0"
+          , mkProdDep "sharp@0.33.0"
+          , mkProdDep "readdirp@3.6.0"
+          , mkProdDep "fsevents@2.3.3"
+          ]
+          graph
+
   -- Workspace scoping. The fixture has four importers: the root (colorjs),
   -- browser (left-pad, plus a link: to shared), server (is-odd -> is-number)
   -- and shared (uri-js -> punycode).

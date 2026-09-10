@@ -296,7 +296,9 @@ expandWorkspaceLinks base = go Set.empty . Set.toList
       Nothing -> []
       Just projectMap ->
         mapMaybe (linkTarget key . version) $
-          Map.elems (directDependencies projectMap) <> Map.elems (directDevDependencies projectMap)
+          Map.elems (directDependencies projectMap)
+            <> Map.elems (directDevDependencies projectMap)
+            <> Map.elems (directOptionalDependencies projectMap)
 
     -- A link is only followed when it names an importer the lockfile actually
     -- has; a @link:@ pointing outside the workspace resolves to nothing.
