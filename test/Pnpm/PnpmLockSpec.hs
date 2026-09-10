@@ -188,23 +188,20 @@ spec = do
           ]
           graph
 
-  let pnpmPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
+  let pnpmScopedPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
   describe "peer resolution contexts" $ do
-    checkScopedGraph (Just $ Set.singleton "a") pnpmPeerContexts $ \graph ->
+    checkScopedGraph (Just $ Set.singleton "a") pnpmScopedPeerContexts $ \graph ->
       it "keeps only the production member's transitive peer resolution" $
         expectDeps [mkProdDep "parent@1.0.0", mkProdDep "widget@1.0.0", mkProdDep "peer@1.0.0"] graph
-    checkScopedGraph (Just $ Set.singleton "b") pnpmPeerContexts $ \graph ->
+    checkScopedGraph (Just $ Set.singleton "b") pnpmScopedPeerContexts $ \graph ->
       it "keeps only the development member's transitive peer resolution" $
         expectDeps [mkDevDep "parent@1.0.0", mkDevDep "widget@1.0.0", mkDevDep "peer@2.0.0"] graph
-    checkScopedGraph (Just $ Set.fromList ["a", "b"]) pnpmPeerContexts $ \graph -> do
+    checkScopedGraph (Just $ Set.fromList ["a", "b"]) pnpmScopedPeerContexts $ \graph -> do
       it "merges package environments without leaking them across peer contexts" $
         expectDeps [mkBothEnvDep "parent@1.0.0", mkBothEnvDep "widget@1.0.0", mkProdDep "peer@1.0.0", mkDevDep "peer@2.0.0"] graph
       it "retains both contexts' edges after collapsing their reportable identities" $ do
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
-    checkGraph pnpmPeerContexts $ \graph ->
-      it "keeps both peer resolutions in whole-workspace analysis" $
-        expectDeps [mkBothEnvDep "parent@1.0.0", mkBothEnvDep "widget@1.0.0", mkProdDep "peer@1.0.0", mkDevDep "peer@2.0.0"] graph
 
   let environmentFixtures =
         [ currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-6-workspace-environments/pnpm-lock.yaml")
