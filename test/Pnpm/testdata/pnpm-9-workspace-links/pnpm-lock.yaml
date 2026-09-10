@@ -8,6 +8,7 @@ settings:
 #   apps/web -> libs/ui -> libs/core -> libs/ui   (a chain that closes into a cycle)
 #   apps/web -> libs/testkit                      (linked from devDependencies)
 #   libs/testkit -> ../../vendor/not-a-member     (a link: to a path with no importer)
+#   libs/testkit -> ../../../libs/orphan           (outside the workspace, not libs/orphan)
 #   libs/orphan                                    (linked by nobody)
 
 importers:
@@ -51,6 +52,9 @@ importers:
       colorjs:
         specifier: ^0.1.9
         version: 0.1.9
+      external:
+        specifier: link:../../../libs/orphan
+        version: link:../../../libs/orphan
       vendored:
         specifier: link:../../vendor/not-a-member
         version: link:../../vendor/not-a-member

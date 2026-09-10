@@ -320,9 +320,12 @@ resolveImporterKey fromKey relPath = toKey $ foldl' step [] segments
     segments =
       concatMap (filter (not . Text.null) . Text.splitOn "/" . Text.replace "\\" "/") [fromKey, relPath]
 
-    -- The accumulator is in reverse order, so ".." drops its head.
+    -- The accumulator is in reverse order. Preserve excess parent segments
+    -- so paths outside the workspace cannot alias an internal importer.
     step :: [Text] -> Text -> [Text]
-    step acc ".." = drop 1 acc
+    step [] ".." = [".."]
+    step acc@(".." : _) ".." = ".." : acc
+    step (_ : rest) ".." = rest
     step acc "." = acc
     step acc segment = segment : acc
 

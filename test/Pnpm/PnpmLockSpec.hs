@@ -255,8 +255,8 @@ spec = do
       it "should follow a link declared under devDependencies" $
         expectDep (mkProdDep "colorjs@0.1.9") graph
 
-      it "should include exactly the linked importers' dependencies" $
-        -- The dangling link in libs/testkit resolves to nothing, and neither
+      it "should exclude external links even when their suffix names an internal member" $
+        -- The dangling and escaping links in libs/testkit resolve to no importer; neither
         -- libs/orphan's lodash nor the root's typescript is reachable.
         expectDeps
           [ mkProdDep "left-pad@1.3.0"
@@ -277,6 +277,15 @@ spec = do
 
     it "should resolve a link back to the workspace root" $
       resolveImporterKey "browser" ".." `shouldBe` "."
+
+    it "should preserve a parent segment outside the workspace" $
+      resolveImporterKey "browser" "../../shared" `shouldBe` "../shared"
+
+    it "should preserve repeated parent segments outside the workspace" $
+      resolveImporterKey "." "../../shared" `shouldBe` "../../shared"
+
+    it "should collapse ordinary segments after leaving the workspace" $
+      resolveImporterKey "browser" "../../outside/../shared" `shouldBe` "../shared"
 
     it "should resolve a link relative to the root importer" $
       resolveImporterKey "." "packages/a" `shouldBe` "packages/a"
