@@ -432,8 +432,8 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conan
     Strategy.Conan.ConanGraph
-    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
