@@ -245,7 +245,7 @@ analyzeNpm wsGraph = do
 
   resolved <- traverse (\(Manifest file, pkg) -> resolveCatalogReferences file pkg) (Map.toList $ jsonLookup wsGraph)
   graph <- PackageJson.analyze $ map fst resolved
-  let catalogFiles = Set.toList . Set.fromList . catMaybes $ map snd resolved
+  let catalogFiles = Set.toList . Set.fromList $ mapMaybe snd resolved
   pure $ DependencyResults graph Partial $ pkgFileList wsGraph <> catalogFiles
 
 analyzeYarn ::
