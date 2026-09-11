@@ -11,10 +11,8 @@ module Strategy.Dart.PubSpec (
   PubSpecDepPathSource (..),
 ) where
 
-import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Data.Aeson qualified as Aeson
-import Data.Foldable (asum, for_)
+import Data.Foldable (for_)
 import Data.Map (Map, toList)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, maybeToList)
@@ -72,42 +70,37 @@ instance FromJSON PubSpecContent where
 
 instance FromJSON PubSpecDepSource where
   parseJSON (Yaml.String s) = pure $ HostedSource $ PubSpecDepHostedSource (Just s) Nothing Nothing
-  parseJSON (Yaml.Object o) =
-    asum
-      [ parseHostedSource o
-      , parseGitSource o
-      , parseSdkSource o
-      , parsePathSource o
-      ]
+  -- A dependency without a value (@pkg:@) is valid, and means any version.
+  parseJSON Yaml.Null = pure $ HostedSource $ PubSpecDepHostedSource Nothing Nothing Nothing
+  -- Committing to a source kind by its key (rather than trying each source's
+  -- parser in turn) makes a malformed value under a source key a parse
+  -- failure instead of falling through to another source kind.
+  parseJSON (Yaml.Object o) = do
+    git <- o .:? "git"
+    sdk <- o .:? "sdk"
+    path <- o .:? "path"
+    case (git, sdk, path) of
+      (Just g, _, _) -> parseGitSource g
+      (_, Just sdkName', _) -> pure $ SdkSource $ PubSpecDepSdkSource sdkName'
+      (_, _, Just hostPath') -> pure $ PathSource $ PubSpecDepPathSource hostPath'
+      (Nothing, Nothing, Nothing) -> parseHostedSource o
     where
       parseHostedSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
-      parseHostedSource ho =
-        HostedSource
-          <$> ( PubSpecDepHostedSource
-                  <$> ho .: "version"
-                  <*> ho .: "hosted" |> "name"
-                  <*> ho .: "hosted" |> "url"
-              )
+      parseHostedSource ho = do
+        version <- ho .:? "version"
+        hosted <- ho .:? "hosted"
+        case (version, hosted) of
+          (Nothing, Nothing) -> fail "expected a version or hosted field for a hosted pub package's source!"
+          (_, Nothing) -> pure $ HostedSource $ PubSpecDepHostedSource version Nothing Nothing
+          -- Shorthand allowed since Dart 2.15: hosted is the registry url.
+          (_, Just (Yaml.String url)) -> pure $ HostedSource $ PubSpecDepHostedSource version Nothing (Just url)
+          (_, Just (Yaml.Object h)) -> HostedSource <$> (PubSpecDepHostedSource version <$> h .:? "name" <*> h .:? "url")
+          (_, Just _) -> fail "expected hosted to be a url, or a map with name/url fields!"
 
-      parseGitSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
-      parseGitSource go =
-        GitSource
-          <$> ( PubSpecDepGitSource
-                  <$> go .: "git" |> "ref"
-                  <*> go .: "git" |> "url"
-                  <|> PubSpecDepGitSource Nothing
-                    <$> go .: "git"
-              )
-      parseSdkSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
-      parseSdkSource so = SdkSource . PubSpecDepSdkSource <$> so .: "sdk"
-
-      parsePathSource :: Yaml.Object -> Yaml.Parser PubSpecDepSource
-      parsePathSource po = PathSource . PubSpecDepPathSource <$> po .: "path"
-
-      (|>) :: FromJSON a => Yaml.Parser Yaml.Object -> Aeson.Key -> Yaml.Parser a
-      (|>) parser key = do
-        obj <- parser
-        obj .: key
+      parseGitSource :: Yaml.Value -> Yaml.Parser PubSpecDepSource
+      parseGitSource (Yaml.String url) = pure $ GitSource $ PubSpecDepGitSource Nothing url
+      parseGitSource (Yaml.Object g) = GitSource <$> (PubSpecDepGitSource <$> g .:? "ref" <*> g .: "url")
+      parseGitSource _ = fail "expected git to be a url, or a map with url/ref fields!"
   parseJSON _ = fail "failed parsing pub package's source!"
 
 toDependency :: DepEnvironment -> PackageName -> PubSpecDepSource -> Maybe Dependency

@@ -177,6 +177,71 @@ For more detail about how Vendetta works, how to use file filtering during
 scanning, or what information is sent to FOSSA's servers, see
 [the Vendetta feature documentation](../../features/vendetta.md).
 
+### Dependency Usage Analysis with `--x-workflow`
+
+`--x-workflow` runs a dependency-usage workflow analyzer over the project,
+records its result in the debug bundle, and uploads it to FOSSA against the
+same revision as the dependency upload. The analyzer is a program you name on
+the command line; FOSSA CLI does not ship one yet, so this flag does nothing
+useful unless you already have an analyzer program or script to point it at.
+
+The result is uploaded only when the analysis itself is uploaded, after the
+dependency upload succeeds; with `--output` nothing is sent. A result that
+fails to upload fails the run, but the dependency upload has already landed by
+then. Nothing else about this flag changes what `fossa analyze` sends to FOSSA.
+
+#### Enabling dependency usage analysis
+
+| Name                  | Description                                                                                                                                                                    |
+|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--x-workflow PATH`   | Experimental. Run the dependency-usage workflow analyzer at `PATH` over the project. A `.js`, `.mjs` or `.cjs` path is run under `node`; any other path is run as the program itself. |
+
+A relative `PATH` is resolved against the directory you run `fossa` from, and a
+path that does not exist fails immediately rather than partway through the
+analysis. `--x-workflow` cannot be combined with `--static-only-analysis`,
+which is the kill switch for running third-party tooling on your machine;
+passing both is an error rather than a silent skip.
+
+To see the result, run with `--debug` and read `bundleWorkflowResult` out of
+`fossa.debug.json` in the resulting `fossa.debug.zip`. The raw analyzer output
+is preserved alongside it in `fossa.ficus-workflow-stdout.log`.
+
+#### Failure behavior
+
+`--x-workflow` has two distinct failure modes, and only one of them is silent.
+
+A workflow *run* that fails — the analyzer exits non-zero, produces no
+result, or the embedded ficus rejects the run — does **not** fail `fossa
+analyze`. The command still exits 0; the failure is reported in the log,
+including the tail of ficus's stderr, and `bundleWorkflowResult` in the debug
+bundle is left empty. This is deliberate: a broken experimental analyzer must
+not block the dependency scan and upload. Check the log for
+`The workflow analyzer at <path> did not produce a result` to confirm the run
+happened.
+
+A workflow result that fails to *upload* is different: it fails `fossa
+analyze` with a non-zero exit, as noted above. By the time that upload is
+attempted, the dependency upload has already succeeded and its report link
+already printed, so nothing already sent is lost — but the command itself
+reports failure, and CI sees the run as failed.
+
+#### Security
+
+This flag executes a program you name, on your machine, against your project.
+FOSSA CLI does not sandbox it and does not constrain what it does: it runs with
+your privileges, reads whatever it can read, and may make network requests of
+its own. `--output` suppresses FOSSA CLI's own upload; it cannot suppress a
+child process's traffic.
+
+Only point `--x-workflow` at a program you trust as much as you trust the rest
+of your build.
+
+#### More detail
+
+`--x-workflow` is an experimental option. Refer to the
+[experimental options overview](../experimental/README.md) for what that means
+for support and stability.
+
 ### Experimental Options
 
 _Important: For support and other general information, refer to the [experimental options overview](../experimental/README.md) before using experimental options._
