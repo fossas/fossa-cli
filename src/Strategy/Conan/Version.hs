@@ -11,7 +11,7 @@ import Data.SemVer.Constraint (Constraint (..), satisfies)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (
-  AllowErr (Never),
+  AllowErr (Always),
   Command (..),
   Exec,
   Has,
@@ -27,6 +27,7 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
+import Data.Char (isSpace)
 
 type Parser = Parsec Void Text
 
@@ -38,12 +39,12 @@ symbol = Lexer.symbol sc
 
 -- | Parses conan version from output of @conanVersionCmd@
 --
--- >> parseTest majorConanVersion "conan version v1.2.4"
+-- >> parseTest majorConanVersion "Conan version 1.2.4"
 -- > Version {...}
 conanVersion :: Parser Version
 conanVersion = do
-  void $ symbol "conan" <* symbol "version"
-  version' <- fromText <$> (takeWhile1P (Just "conan version") (/= ' '))
+  void $ symbol "Conan" <* symbol "version"
+  version' <- fromText <$> (takeWhile1P (Just "Conan version") (\c -> not (isSpace c) && c /= '-' ))
   case version' of
     Left err -> fail err
     Right parsedVersion -> pure parsedVersion
@@ -53,13 +54,13 @@ conanVersion = do
 -- on docs or on conan --help, but exists for Conan v1, and v2.
 --
 -- >> conan --version
--- > conan version 2.0.5
+-- > Conan version 2.0.5
 conanVersionCmd :: Command
 conanVersionCmd =
   Command
     { cmdName = "conan"
     , cmdArgs = ["--version"]
-    , cmdAllowErr = Never
+    , cmdAllowErr = Always
     , cmdEnvVars = Map.empty
     }
 
