@@ -5,6 +5,7 @@ module Strategy.Conan.Version (
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (void)
+import Data.Char (isSpace)
 import Data.Map.Strict qualified as Map
 import Data.SemVer (Version, fromText, toText, version)
 import Data.SemVer.Constraint (Constraint (..), satisfies)
@@ -27,7 +28,6 @@ import Text.Megaparsec (
  )
 import Text.Megaparsec.Char (char)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
-import Data.Char (isSpace)
 
 type Parser = Parsec Void Text
 
@@ -44,7 +44,7 @@ symbol = Lexer.symbol sc
 conanVersion :: Parser Version
 conanVersion = do
   void $ symbol "Conan" <* symbol "version"
-  version' <- fromText <$> (takeWhile1P (Just "Conan version") (\c -> not (isSpace c) && c /= '-' ))
+  version' <- fromText <$> (takeWhile1P (Just "Conan version") (\c -> not (isSpace c) && c /= '-'))
   case version' of
     Left err -> fail err
     Right parsedVersion -> pure parsedVersion
