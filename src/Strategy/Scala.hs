@@ -10,6 +10,7 @@ module Strategy.Scala (
   discover,
   findProjects,
   ScalaProject (..),
+  analyzeWithPoms,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -43,7 +44,7 @@ import Effect.Exec (
 import Effect.Logger (Logger, logDebug, viaShow)
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
-import Graphing (gmap)
+import Graphing (gmap, shrinkRoots)
 import Path (
   Abs,
   Dir,
@@ -53,9 +54,9 @@ import Path (
   parseAbsFile,
   toFilePath,
  )
-import Strategy.Maven.Common (mavenDependencyToDependency)
+import Strategy.Maven.Common (mavenDependencyToDependency, promoteFirstPartyToDirect)
 import Strategy.Maven.Pom qualified as Pom
-import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath)
+import Strategy.Maven.Pom.Closure (MavenProjectClosure, buildProjectClosures, closurePath, closureSubmodules)
 import Strategy.Maven.Pom.PomFile (RawPom (rawPomArtifact, rawPomGroup, rawPomVersion))
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Strategy.Scala.Common (mkSbtCommand)
@@ -195,9 +196,13 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
 analyzeWithPoms :: (Has Diagnostics sig m) => ScalaProject -> m DependencyResults
 analyzeWithPoms (ScalaProject _ _ closure) = context "Analyzing sbt dependencies with generated pom" $ do
+  -- Pom.analyze' marks the project's own coordinate as the sole direct node.
+  -- Promote first-party artifacts to direct, then shrink them to remove the
+  -- project artifact and promote its declared dependencies to direct.
+  let graph = shrinkRoots (promoteFirstPartyToDirect (closureSubmodules closure) (Pom.analyze' closure))
   pure $
     DependencyResults
-      { dependencyGraph = gmap mavenDependencyToDependency $ Pom.analyze' closure
+      { dependencyGraph = gmap mavenDependencyToDependency graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [closurePath closure]
       }

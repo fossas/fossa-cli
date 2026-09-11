@@ -11,9 +11,11 @@ import Control.Carrier.Simple (interpret)
 import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
 import Control.Effect.Git (GitF (FetchGitContributors))
+import Data.Aeson ((.=))
+import Data.Aeson qualified as Aeson
 import Data.Flag (toFlag)
 import Data.List.NonEmpty qualified as NE
-import Fossa.API.Types (Organization (..), Project (..), UploadResponse (..))
+import Fossa.API.Types (AnalysisWorkflowId (AnalysisWorkflowId), Organization (..), Project (..), UploadResponse (..))
 import Srclib.Types (FullSourceUnit (..), LicenseUnitInfo (..), Locator, emptyLicenseUnitData)
 import Test.Effect (expectFatal', it', shouldBe')
 import Test.Fixtures qualified as Fixtures
@@ -59,6 +61,15 @@ expectAnalysisUploadSuccess = UploadAnalysis Fixtures.projectRevision Fixtures.p
 expectContributorUploadSuccess :: Has MockApi sig m => m ()
 expectContributorUploadSuccess =
   UploadContributors expectedLocator Fixtures.contributors `alwaysReturns` ()
+
+workflowData :: Aeson.Value
+workflowData = Aeson.object ["modules" .= (3 :: Int)]
+
+-- | The workflow upload must carry the locator the server issued, not one
+-- rendered from the project name and revision.
+expectWorkflowUploadSuccess :: Has MockApi sig m => m ()
+expectWorkflowUploadSuccess =
+  UploadAnalysisWorkflow expectedLocator workflowData `returnsOnce` AnalysisWorkflowId "workflow-1"
 
 expectFirstPartyAnalysisUploadSuccess :: FileUpload -> Has MockApi sig m => m ()
 expectFirstPartyAnalysisUploadSuccess uploadKind = do
@@ -141,6 +152,7 @@ uploadSuccessfulAnalysisSpec = do
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
               Nothing
+              Nothing
           locator `shouldBe'` expectedLocator
       -- Currently our StdOut logging just writes directly to StdOut, so this is
       -- just checking it doesn't fail.  In the future we should extract that so
@@ -160,6 +172,7 @@ uploadSuccessfulAnalysisSpec = do
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
               Nothing
+              Nothing
           locator `shouldBe'` expectedLocator
       it' "performs reachability upload, if organization supports reachability"
         . withGit mockGit
@@ -177,6 +190,7 @@ uploadSuccessfulAnalysisSpec = do
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
               Nothing
+              Nothing
           locator `shouldBe'` expectedLocator
 
       it' "aborts when uploading to a monorepo"
@@ -191,6 +205,7 @@ uploadSuccessfulAnalysisSpec = do
             Fixtures.projectRevision
             (SourceUnitOnly Fixtures.sourceUnits)
             mempty
+            Nothing
             Nothing
       it' "continues if fetching the project fails"
         . withGit mockGit
@@ -210,6 +225,7 @@ uploadSuccessfulAnalysisSpec = do
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
               Nothing
+              Nothing
           locator `shouldBe'` expectedLocator
       it' "continues if fetching contributors fails"
         . withGit (\_ -> fatalText "Mocked failure of fetching contributors from git")
@@ -224,6 +240,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
+              Nothing
               Nothing
           locator `shouldBe'` expectedLocator
       it' "continues if uploading contributors fails"
@@ -240,6 +257,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectRevision
               (SourceUnitOnly Fixtures.sourceUnits)
               mempty
+              Nothing
               Nothing
           locator `shouldBe'` expectedLocator
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses"
@@ -259,6 +277,7 @@ uploadSuccessfulAnalysisSpec = do
               (SourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit)
               mempty
               Nothing
+              Nothing
           locator `shouldBe'` expectedLocator
 
       it' "uploads to S3 and to /api/builds/custom_with_first_party_licenses if there are licenses and no targets were found"
@@ -277,6 +296,7 @@ uploadSuccessfulAnalysisSpec = do
               Fixtures.projectRevision
               (LicenseSourceUnitOnly Fixtures.firstLicenseSourceUnit)
               mempty
+              Nothing
               Nothing
           locator `shouldBe'` expectedLocator
 
@@ -299,7 +319,50 @@ uploadSuccessfulAnalysisSpec = do
               (SourceAndLicenseUnits Fixtures.sourceUnits Fixtures.firstLicenseSourceUnit)
               mempty
               Nothing
+              Nothing
           locator `shouldBe'` expectedLocator
+
+workflowUploadSpec :: Spec
+workflowUploadSpec =
+  describe
+    "uploadSuccessfulAnalysis with a workflow result"
+    $ do
+      baseDir <- runIO Fixtures.baseDir
+      it' "uploads the workflow result against the server-issued locator"
+        . withGit mockGit
+        $ do
+          expectGetSuccess
+          expectAnalysisUploadSuccess
+          expectContributorUploadSuccess
+          expectWorkflowUploadSuccess
+          locator <-
+            uploadSuccessfulAnalysis
+              baseDir
+              Fixtures.projectMetadata
+              (toFlag (JsonOutput) False)
+              Fixtures.projectRevision
+              (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
+              Nothing
+              (Just workflowData)
+          locator `shouldBe'` expectedLocator
+      it' "fails the run when the workflow result does not land"
+        . withGit mockGit
+        $ do
+          expectGetSuccess
+          expectAnalysisUploadSuccess
+          expectContributorUploadSuccess
+          UploadAnalysisWorkflow expectedLocator workflowData `fails` "analysis service unavailable"
+          expectFatal' $
+            uploadSuccessfulAnalysis
+              baseDir
+              Fixtures.projectMetadata
+              (toFlag (JsonOutput) False)
+              Fixtures.projectRevision
+              (SourceUnitOnly Fixtures.sourceUnits)
+              mempty
+              Nothing
+              (Just workflowData)
 
 mergeSourceAndLicenseUnitsSpec :: Spec
 mergeSourceAndLicenseUnitsSpec =
@@ -313,5 +376,7 @@ mergeSourceAndLicenseUnitsSpec =
 spec :: Spec
 spec = do
   uploadSuccessfulAnalysisSpec
+
+  workflowUploadSpec
 
   mergeSourceAndLicenseUnitsSpec
