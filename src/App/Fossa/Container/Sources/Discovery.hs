@@ -28,6 +28,7 @@ import Strategy.Bundler qualified as Bundler
 import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
 import Strategy.Composer qualified as Composer
+import Strategy.Conan qualified as Conan
 import Strategy.Dpkg qualified as Dpkg
 import Strategy.Fpm qualified as Fpm
 import Strategy.Glide qualified as Glide
@@ -84,6 +85,7 @@ managedDepsDiscoveryF =
   , DiscoverFunc Carthage.discover
   , DiscoverFunc Cocoapods.discover
   , DiscoverFunc Composer.discover
+  , DiscoverFunc Conan.discover
   , DiscoverFunc Fpm.discover
   , DiscoverFunc Glide.discover
   , DiscoverFunc Maven.discover

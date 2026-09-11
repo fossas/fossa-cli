@@ -432,8 +432,8 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conan
     Strategy.Conan.ConanGraph
-    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
@@ -636,7 +636,6 @@ test-suite unit-tests
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conan.ConanGraphSpec
-    Conan.EnrichSpec
     Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
