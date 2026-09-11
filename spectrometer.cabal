@@ -701,6 +701,7 @@ test-suite unit-tests
     Maven.PluginTreeSpec
     Maven.PomClosureSpec
     Maven.PomStrategySpec
+    Maven.StaticAnalysisSpec
     Ndb.NdbSpec
     Nim.NimbleSpec
     Node.NodeSpec
@@ -743,6 +744,7 @@ test-suite unit-tests
     Ruby.ParseSpec
     Scala.CommonSpec
     Scala.PluginSpec
+    Scala.PomFallbackSpec
     Scala.SbtDependencyTreeJsonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
