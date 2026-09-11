@@ -2,6 +2,7 @@
 
 module Strategy.Conan.ConanGraph
   ( ConanGraph (..),
+    ConanGraphDependency (..),
     ConanGraphNode (..),
     ConanGraphNodeContext (..),
     buildGraph,
