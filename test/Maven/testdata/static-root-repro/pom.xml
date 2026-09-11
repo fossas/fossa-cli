@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Minimal repro for the Maven static-analysis "root as sole direct dep" bug.
+
+  The project declares exactly ONE dependency (junit). Static analysis
+  (Pom.analyze') reports the project's own artifact as the sole Direct
+  dependency and junit one level down as Transitive, because
+  buildProjectGraph marks the root coordinate `direct` and the static path
+  never applies `shrinkRoots` (the dynamic path does).
+
+  Buggy static output:   Imports = ["mvn+com.example:app$1.0.0"]
+  Expected (post-fix):   Imports = ["mvn+junit:junit$4.13.2"]
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>app</artifactId>
+  <version>1.0.0</version>
+
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+    </dependency>
+  </dependencies>
+</project>
