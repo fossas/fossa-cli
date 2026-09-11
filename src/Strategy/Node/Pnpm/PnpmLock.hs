@@ -4,15 +4,18 @@ module Strategy.Node.Pnpm.PnpmLock (
   -- * for testing
   buildGraph,
   parsePnpmLockfile,
+  resolveImporterKey,
 ) where
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
+import Control.Monad (when)
 import Data.Aeson.Types (Value, parseEither, parseJSON)
 import Data.ByteString (ByteString)
 import Data.Either (partitionEithers)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
+import Data.List (foldl')
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
@@ -168,12 +171,18 @@ toResolvedDependency toEnv pkgs mkPkg depName depVersion =
 --
 
 -- | Core graph-building logic shared across all lockfile versions.
-buildGraphCore :: BuildGraphConfig -> PnpmLockfileBase -> Graphing Dependency
-buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgcLabelingMode, bgcSnapshotEdges, bgcCatalogs} base =
+--
+-- The first argument maps reachable importers to their environments, or is
+-- 'Nothing' to use every importer in the lockfile. See
+-- 'scopedImporters'.
+buildGraphCore :: Maybe ImporterEnvironments -> BuildGraphConfig -> PnpmLockfileBase -> Graphing Dependency
+buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgcLabelingMode, bgcSnapshotEdges, bgcCatalogs} base =
   let getPkgNameVersion = bgcGetPkgNameVersion
       mkPkgKey = bgcMkPkgKey
-      toEnv = bgcToEnv
-      labelingMode = bgcLabelingMode
+      -- Inline dev flags in older lockfiles describe the whole workspace.
+      -- Scoped scans derive environments from the selected importers instead.
+      toEnv = maybe bgcToEnv (const $ const mempty) selection
+      labelingMode = maybe bgcLabelingMode (const LabelingOn) selection
       snapshotEdges = bgcSnapshotEdges
       catalogs = bgcCatalogs
       -- v9 metadata is shared across peer contexts, but each snapshot has its
@@ -181,13 +190,20 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
       pkgs = Map.union (Map.fromList $ mapMaybe snapshotPackage snapshotEdges) (lockfilePackages base)
       snapshotPackage (key, _) = (key,) <$> Map.lookup (withoutPeerDepSuffix key) (lockfilePackages base)
       snapshotEdgesHM = HashMap.fromList snapshotEdges
+      importers = maybe (lockfileImporters base) (Map.restrictKeys (lockfileImporters base) . Map.keysSet) selection
+      -- Every entry in `packages` is added as a deep node below, so a scoped
+      -- graph would otherwise still carry the whole workspace's dependencies,
+      -- just with a smaller direct set. Prune to what the selected importers
+      -- can actually reach. Unscoped analysis retains every package.
+      pruneIfScoped = maybe id (const Graphing.pruneUnreachable) selection
    in collapseNodes
         . Graphing.shrink ((/= UserType) . dependencyType . snd)
         . hydrate (dependencyEnvironments . snd) (\envs (key, dep) -> (key, dep{dependencyEnvironments = envs}))
+        . pruneIfScoped
         $ run . withLabeling applyLabels
         $ do
           -- Direct dependencies from each importer (workspace package).
-          for_ (toList (lockfileImporters base)) $ \(_, projectImporters) -> do
+          for_ (toList importers) $ \(importerKey, projectImporters) -> do
             -- Optional dependencies are production dependencies an install may
             -- skip on a platform that cannot use them; see 'ProjectMap'.
             let prodDependencies = Map.toList (directDependencies projectImporters) <> Map.toList (directOptionalDependencies projectImporters)
@@ -196,7 +212,9 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep
                     case labelingMode of
-                      LabelingOn -> label dep (PnpmEnv EnvProduction)
+                      LabelingOn ->
+                        for_ (maybe (Set.singleton EnvProduction) (Map.findWithDefault mempty importerKey) selection) $ \env ->
+                          label dep (PnpmEnv env)
                       LabelingOff -> pure ()
 
             for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
@@ -227,16 +245,100 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
               maybe (pure ()) (edge parentDep) (toResolvedDependency toEnv pkgs mkPkgKey deepName deepVersion)
 
 --
+-- Workspace scoping
+--
+
+-- | The base fields of a lockfile, whatever its version.
+lockfileBaseOf :: PnpmLockfile -> PnpmLockfileBase
+lockfileBaseOf (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = base
+lockfileBaseOf (LockfileV678 (PnpmLockfileV678 base)) = base
+lockfileBaseOf (LockfileV9 v) = lockfileBase v
+
+-- | Environments in which each workspace importer is reached. Selected
+-- importers start in production; a dev link makes everything beyond it dev.
+type ImporterEnvironments = Map Text (Set.Set DepEnvironment)
+
+-- | Nothing represents selection of the entire workspace. Only the original
+-- selection can trigger that shortcut: reaching every importer via a dev link
+-- must not erase the environments carried by that link.
+scopedImporters :: Maybe (Set.Set Text) -> PnpmLockfileBase -> Maybe ImporterEnvironments
+scopedImporters Nothing _ = Nothing
+scopedImporters (Just keys) base =
+  if selected == allImporters then Nothing else Just $ expandWorkspaceLinks base selected
+  where
+    allImporters = Map.keysSet (lockfileImporters base)
+    selected = keys `Set.intersection` allImporters
+
+-- | Follow workspace links with their environments. Track (importer, environment)
+-- pairs so cycles terminate while a second production/development path still
+-- propagates to the importer's descendants.
+expandWorkspaceLinks :: PnpmLockfileBase -> Set.Set Text -> ImporterEnvironments
+expandWorkspaceLinks base keys =
+  Map.fromListWith (<>) [(key, Set.singleton env) | (key, env) <- Set.toList reached]
+  where
+    importers = lockfileImporters base
+    reached = go Set.empty [(key, EnvProduction) | key <- Set.toList keys]
+
+    go seen [] = seen
+    go seen (item@(key, env) : rest)
+      | item `Set.member` seen = go seen rest
+      | otherwise = go (Set.insert item seen) (linkedFrom key env <> rest)
+
+    linkedFrom key env = case Map.lookup key importers of
+      Nothing -> []
+      Just projectMap ->
+        mapMaybe (linkTarget key env . version) (Map.elems (directDependencies projectMap) <> Map.elems (directOptionalDependencies projectMap))
+          <> mapMaybe (linkTarget key EnvDevelopment . version) (Map.elems (directDevDependencies projectMap))
+
+    linkTarget fromKey env ver = do
+      relPath <- Text.stripPrefix "link:" ver
+      let key = resolveImporterKey fromKey relPath
+      if key `Map.member` importers then Just (key, env) else Nothing
+
+-- | Resolve a path relative to an importer back into importer-key form:
+-- forward slashes, @.@ and @..@ segments collapsed, and @"."@ for the
+-- workspace root.
+--
+-- >> resolveImporterKey "browser" "../server" = "server"
+-- >> resolveImporterKey "apps/web" "../../libs/ui" = "libs/ui"
+-- >> resolveImporterKey "browser" "../" = "."
+resolveImporterKey :: Text -> Text -> Text
+resolveImporterKey fromKey relPath = toKey $ foldl' step [] segments
+  where
+    segments :: [Text]
+    segments =
+      concatMap (filter (not . Text.null) . Text.splitOn "/" . Text.replace "\\" "/") [fromKey, relPath]
+
+    -- The accumulator is in reverse order. Preserve excess parent segments
+    -- so paths outside the workspace cannot alias an internal importer.
+    step :: [Text] -> Text -> [Text]
+    step [] ".." = [".."]
+    step acc@(".." : _) ".." = ".." : acc
+    step (_ : rest) ".." = rest
+    step acc "." = acc
+    step acc segment = segment : acc
+
+    toKey :: [Text] -> Text
+    toKey [] = "."
+    toKey acc = Text.intercalate "/" (reverse acc)
+
+--
 -- Top-level dispatch
 --
 
 -- | Build the dependency graph, labeling direct deps with their environment
 -- (prod\/dev). Hydration propagates those environments to all
 -- transitive successors.
-buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphConfigV4or5 base
-buildGraph (LockfileV678 (PnpmLockfileV678 base)) = buildGraphCore buildGraphConfigV678 base
-buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
+--
+-- The first argument scopes the graph to a set of workspace importer keys; see
+-- 'scopedImporters'.
+buildGraph :: Maybe (Set.Set Text) -> PnpmLockfile -> Graphing Dependency
+buildGraph selection lockfile = case lockfile of
+  LockfileV4Or5 (PnpmLockfileV4Or5 base) -> withSelection buildGraphConfigV4or5 base
+  LockfileV678 (PnpmLockfileV678 base) -> withSelection buildGraphConfigV678 base
+  LockfileV9 v -> withSelection (buildGraphConfigV9 v) (lockfileBase v)
+  where
+    withSelection config base = buildGraphCore (scopedImporters selection base) config base
 
 -- | Parse the contents of a pnpm-lock.yaml file.
 --
@@ -256,8 +358,12 @@ parsePnpmLockfile contents = case decodeAllEither' contents of
     ([], []) -> Left "no YAML documents found"
     (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
 
-analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze file = context "Analyzing Pnpm Lockfile" $ do
+-- | Analyze a pnpm lockfile, optionally scoped to the given workspace importer
+-- keys (@"."@ for the root, @"packages/a"@ for a member), as resolved from the
+-- selected build targets by 'Strategy.Node.resolvePnpmImporterKeys'. 'Nothing'
+-- means no target filter is applied, so the whole workspace is graphed.
+analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Maybe (Set.Set Text) -> Path Abs File -> m (Graphing Dependency)
+analyze selectedImporters file = context "Analyzing Pnpm Lockfile" $ do
   pnpmLockFile <- context "Parsing pnpm-lock file" $
     context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
       contents <- readContentsBS file
@@ -276,4 +382,13 @@ analyze file = context "Analyzing Pnpm Lockfile" $ do
     LockfileV678 _ -> pure ()
     LockfileV9 _ -> pure ()
 
-  context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
+  let scoped = scopedImporters selectedImporters (lockfileBaseOf pnpmLockFile)
+  case (selectedImporters, scoped) of
+    (Just keys, Just selected) ->
+      when (Map.null selected) . logWarn . pretty $
+        "Target filter (resolved importer keys: "
+          <> Text.intercalate ", " (Set.toList keys)
+          <> ") did not match any importer in the pnpm lockfile; reporting an empty dependency graph."
+    _ -> pure ()
+
+  context "Building dependency graph" $ pure $ buildGraph selectedImporters pnpmLockFile
