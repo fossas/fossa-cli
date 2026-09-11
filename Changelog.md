@@ -2,6 +2,7 @@
 
 ## 3.18.4
 
+- Node: package.json-only analysis now resolves pnpm `catalog:` references from the nearest `pnpm-workspace.yaml`, including scans started inside a workspace member. Catalog dependencies are reported with their declared versions or ranges. References that remain unresolved, and local `workspace:` or `link:` references, are skipped with a warning rather than reported at literal protocol strings as versions. ([#1765](https://github.com/fossas/fossa-cli/pull/1765))
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
 - Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
 
