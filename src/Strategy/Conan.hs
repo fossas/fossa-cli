@@ -1,40 +1,40 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Strategy.Conan
-  ( discover,
-  )
+module Strategy.Conan (
+  discover,
+)
 where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import Control.Effect.Diagnostics
-  ( Diagnostics,
-    Has,
-    ToDiagnostic (..),
-    fatalText,
-  )
+import Control.Applicative
+import Control.Effect.Diagnostics (
+  Diagnostics,
+  Has,
+  ToDiagnostic (..),
+  fatalText,
+ )
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
+import Data.Maybe (catMaybes)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
-import Discovery.Walk
-  ( WalkStep (WalkSkipAll),
-    findFileNamed,
-    walkWithFilters',
-  )
+import Discovery.Walk (
+  WalkStep (WalkSkipAll),
+  findFileNamed,
+  walkWithFilters',
+ )
 import Effect.Exec (GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path)
-import Types
-  ( DependencyResults (..),
-    DiscoveredProject (..),
-    DiscoveredProjectType (ConanProjectType),
-    GraphBreadth (Complete),
-  )
-import Data.Maybe (catMaybes)
-import Control.Applicative
 import Strategy.Conan.ConanGraph (analyzeFromConanGraph)
+import Types (
+  DependencyResults (..),
+  DiscoveredProject (..),
+  DiscoveredProjectType (ConanProjectType),
+  GraphBreadth (Complete),
+ )
 
 data DynamicAnalysisFailed = DynamicAnalysisFailed
 
@@ -53,10 +53,10 @@ findProjects = walkWithFilters' $ \dir _ files -> do
 
   let project =
         ConanProject
-          { conanDir = dir,
-            conanfilePy = conanfilePy,
-            conanfileTxt = conanfileTxt,
-            conanLock = conanLock
+          { conanDir = dir
+          , conanfilePy = conanfilePy
+          , conanfileTxt = conanfileTxt
+          , conanLock = conanLock
           }
 
   case conanfilePy <|> conanfileTxt of
@@ -64,10 +64,10 @@ findProjects = walkWithFilters' $ \dir _ files -> do
     Just _ -> pure ([project], WalkSkipAll)
 
 data ConanProject = ConanProject
-  { conanDir :: Path Abs Dir,
-    conanfilePy :: Maybe (Path Abs File),
-    conanfileTxt :: Maybe (Path Abs File),
-    conanLock :: Maybe (Path Abs File)
+  { conanDir :: Path Abs Dir
+  , conanfilePy :: Maybe (Path Abs File)
+  , conanfileTxt :: Maybe (Path Abs File)
+  , conanLock :: Maybe (Path Abs File)
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -80,19 +80,18 @@ instance AnalyzeProject ConanProject where
 mkProject :: ConanProject -> DiscoveredProject ConanProject
 mkProject project =
   DiscoveredProject
-    { projectType = ConanProjectType,
-      projectBuildTargets = mempty,
-      projectPath = conanDir project,
-      projectData = project
+    { projectType = ConanProjectType
+    , projectBuildTargets = mempty
+    , projectPath = conanDir project
+    , projectData = project
     }
 
-
 getDeps :: (GetDepsEffs sig m) => ConanProject -> m DependencyResults
-getDeps ConanProject {..} = do
+getDeps ConanProject{..} = do
   graph <- analyzeFromConanGraph conanDir
   pure $
     DependencyResults
-      { dependencyGraph = graph,
-        dependencyGraphBreadth = Complete,
-        dependencyManifestFiles = catMaybes [conanLock, conanfilePy, conanfileTxt]
+      { dependencyGraph = graph
+      , dependencyGraphBreadth = Complete
+      , dependencyManifestFiles = catMaybes [conanLock, conanfilePy, conanfileTxt]
       }
