@@ -5,7 +5,6 @@ jobs:
   dependency-scan:
     name: dependency-scan
     runs-on: ubuntu-latest
-    container: fossa/haskell-static-alpine:ghc-9.8.4
     env:
       FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
 
