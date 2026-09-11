@@ -7,6 +7,7 @@ import Data.Set qualified as Set
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
 import Strategy.Conan.ConanGraph
   ( ConanGraph (..),
+    ConanGraphDependency (..),
     ConanGraphNode (..),
     ConanGraphNodeContext (..),
     toDependency,
@@ -29,7 +30,7 @@ spec = do
         `T.shouldBe` ( Dependency
                          ConanType
                          "cmake"
-                         (Just $ CEq "3.22.6?arch=armv8&os=Macos&package_id=9e5323c65b94ae38c3c733fe12637776db0119a5")
+                         (Just $ CEq "3.22.6")
                          mempty
                          (Set.singleton EnvDevelopment)
                          mempty
@@ -39,7 +40,7 @@ spec = do
         `T.shouldBe` ( Dependency
                          ConanType
                          "zlib"
-                         (Just $ CEq "1.2.13?arch=armv8&build_type=Release&compiler=clang&compiler.version=13&os=Macos&package_id=6ee94108e5a809f66e5396a0549a9ff4ed7621e8")
+                         (Just $ CEq "1.2.13")
                          mempty
                          (Set.singleton EnvProduction)
                          mempty
@@ -50,8 +51,8 @@ spec = do
         `T.shouldBe` ( Dependency
                          ConanType
                          "nodeWithSrc"
-                         (Just $ CEq "1.0.0?package_id=pkgId")
-                         ["src_dir"]
+                         (Just $ CEq "1.0.0")
+                         mempty
                          (Set.singleton EnvProduction)
                          mempty
                      )
@@ -61,8 +62,8 @@ spec = do
         `T.shouldBe` ( Dependency
                          ConanType
                          "nodeWithSharedLib"
-                         (Just $ CEq "1.0.0?package_id=pkgId")
-                         ["build_dir"]
+                         (Just $ CEq "1.0.0")
+                         mempty
                          (Set.singleton EnvProduction)
                          mempty
                      )
@@ -77,20 +78,46 @@ expectedSimpleGraph =
             ("2", opensslNode),
             ("3", cmakeNode)
           ],
-      root = fromList [("0", "")]
+      root = fromList [("0", "None")]
     }
 
 consumerNode :: ConanGraphNode
 consumerNode =
   ConanGraphNode
-    { ref = TextLike "",
+    { ref = TextLike "conanfile",
       nodeid = TextLike "0",
-      packageId = Just "e982649002579f1faa063c390c3788c91140d20d",
-      name = Just "conanfile.py",
-      version = Just "",
+      packageId = Nothing,
+      name = Nothing,
+      version = Nothing,
       context = HostContext,
       test = False,
-      dependencies = Data.Map.empty
+      dependencies =
+        fromList
+          [ ( "1",
+              ConanGraphDependency
+                { dep_ref = TextLike "zlib/1.2.13",
+                  dep_test = False,
+                  dep_direct = True,
+                  dep_build = False
+                }
+            ),
+            ( "2",
+              ConanGraphDependency
+                { dep_ref = TextLike "openssl/3.1.0",
+                  dep_test = False,
+                  dep_direct = True,
+                  dep_build = False
+                }
+            ),
+            ( "3",
+              ConanGraphDependency
+                { dep_ref = TextLike "cmake/3.22.6",
+                  dep_test = False,
+                  dep_direct = True,
+                  dep_build = True
+                }
+            )
+          ]
     }
 
 zlibNode :: ConanGraphNode
@@ -116,7 +143,17 @@ opensslNode =
       version = Just "3.1.0",
       context = HostContext,
       test = False,
-      dependencies = Data.Map.empty
+      dependencies =
+        fromList
+          [ ( "1",
+              ConanGraphDependency
+                { dep_ref = TextLike "zlib/1.2.13",
+                  dep_test = False,
+                  dep_direct = True,
+                  dep_build = False
+                }
+            )
+          ]
     }
 
 cmakeNode :: ConanGraphNode
