@@ -20,7 +20,7 @@ import Data.Aeson
     withText,
     (.:),
   )
-import Data.Aeson.Extra (TextLike (TextLike))
+import Data.Aeson.Extra (TextLike)
 import Data.Aeson.Types (Parser)
 import Data.Foldable (for_)
 import Data.Map (Map, findWithDefault, keys, lookup, toList)
@@ -47,6 +47,7 @@ import Errata (Errata (..))
 import Graphing (Graphing)
 import Path (Abs, Dir, Path)
 import Strategy.Conan.Version (guardConanVersion2Gt)
+import Control.Monad (when)
 
 -- | Represents `conan graph info -f json`.
 -- Creates the dependency graph for a conan project.
@@ -165,9 +166,6 @@ instance FromJSON ConanGraphNodeContext where
       "build" -> pure BuildContext
       other -> pure $ OtherContext other
 
-indexById :: ConanGraph -> Map TextLike ConanGraphNode
-indexById = mempty
-
 getDirectDepsMap :: (Applicative m) => ConanGraph -> m (Map Text Bool)
 getDirectDepsMap graph = do
   case Map.lookup "0" (nodes graph) of
@@ -184,16 +182,17 @@ mkGraph conanGraph = do
       then direct resolvedDep
       else deep resolvedDep
 
-    let transitives = mapMaybe (refToDependency . TextLike) (keys $ dependencies dep)
-    for_ transitives $ \childDep -> do
-      deep childDep
-      edge resolvedDep childDep
+    let transitives = mapMaybe (refToDependency) (keys $ dependencies dep)
+    let resolvedDirectDeps = Map.map dep_direct (dependencies dep)
+    for_ transitives $ \(nodeId, childDep) -> do
+      let isDirectChild = findWithDefault False nodeId resolvedDirectDeps
+      when isDirectChild $ edge resolvedDep childDep
   where
-    registry :: Map TextLike ConanGraphNode
-    registry = indexById conanGraph
+    registry :: Map Text ConanGraphNode
+    registry = nodes conanGraph
 
-    refToDependency :: TextLike -> Maybe Dependency
-    refToDependency nodeId = toDependency <$> Data.Map.lookup nodeId registry
+    refToDependency :: Text -> Maybe (Text, Dependency)
+    refToDependency nodeId = ((nodeId,)) . toDependency <$> Data.Map.lookup nodeId registry
 
 toDependency :: ConanGraphNode -> Dependency
 toDependency cn =
