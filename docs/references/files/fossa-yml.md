@@ -291,18 +291,29 @@ Targets are listed in the following formats for both `only` and `exclude` lists.
 ```
 
 Some project types divide a single project into named build targets — for
-example each package of a yarn or npm workspace. Add a `target` field alongside
-`path` to select one of them:
+example each package of a yarn or npm workspace. If `fossa list-targets` prints:
+
+```text
+Found target: yarn@./:app
+```
+
+Select that member with this `.fossa.yml` filter:
 
 ```yaml
+version: 3
+targets:
+  only:
     - type: yarn
       path: ./
       target: app
 ```
 
-This is the `.fossa.yml` equivalent of `--only-target 'yarn@./:app'`. Run
-`fossa list-targets` to see which targets a project has; a project with no named
-targets is selected by `type` and `path` alone.
+The part before `@` is `type`; the path between `@` and `:` is `path`; the
+complete name after `:` is `target`. For example, `yarn@./:@example/app` uses
+`target: '@example/app'`. A `target` filter must also include `path`.
+
+This is the `.fossa.yml` equivalent of `--only-target 'yarn@./:app'`. A project
+with no named targets is selected by `type` and `path` alone.
 
 #### `targets.only:`
 The list of `only` targets that should be scanned. When used alongside `paths.only`, the intersection of the two lists is taken to find targets for scanning

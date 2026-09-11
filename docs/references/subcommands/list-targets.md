@@ -25,7 +25,28 @@ $ fossa list-targets
 [ INFO] Found target: yarn@./:lib-core
 ```
 
-Each of those can be selected on its own with `fossa analyze --only-target 'yarn@./:app'`, or with a `target:` field on a `targets.only` entry in `.fossa.yml` (`targets.exclude` leaves it out instead); see [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration).
+To select `yarn@./:app`, map each part of the output to a filter field:
+
+| Part of `yarn@./:app` | Filter field | Value |
+| --- | --- | --- |
+| Before `@` | `type` | `yarn` |
+| Between `@` and `:` | `path` | `./` |
+| After `:` | `target` | `app` |
+
+Put the resulting filter in `.fossa.yml` at the directory where you ran `fossa list-targets`:
+
+```yaml
+version: 3
+targets:
+  only:
+    - type: yarn
+      path: ./
+      target: app
+```
+
+Running `fossa analyze` with this configuration selects the same workspace member as `fossa analyze --only-target 'yarn@./:app'`. Copy the complete name after `:` into `target`, including any package scope: `yarn@./:@example/app` becomes `target: '@example/app'`.
+
+Use the same filter under `targets.exclude` to leave that member out instead. See [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration) for more examples.
 
 #### Command output formats
 
