@@ -12,6 +12,7 @@ module Strategy.Conan.ConanGraph (
 where
 
 import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, run)
+import Control.Monad (when)
 import Data.Aeson (
   FromJSON (parseJSON),
   Key,
@@ -20,10 +21,10 @@ import Data.Aeson (
   withText,
   (.:),
  )
-import Data.Aeson.Extra (TextLike (TextLike))
+import Data.Aeson.Extra (TextLike)
 import Data.Aeson.Types (Parser)
 import Data.Foldable (for_)
-import Data.Map (Map, keys, lookup)
+import Data.Map (Map, findWithDefault, keys, lookup, toList)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set qualified as Set
@@ -165,30 +166,33 @@ instance FromJSON ConanGraphNodeContext where
       "build" -> pure BuildContext
       other -> pure $ OtherContext other
 
-indexById :: ConanGraph -> Map TextLike ConanGraphNode
-indexById = mempty
+getDirectDepsMap :: (Applicative m) => ConanGraph -> m (Map Text Bool)
+getDirectDepsMap graph = do
+  case Map.lookup "0" (nodes graph) of
+    Nothing -> pure Map.empty
+    Just node -> pure (Map.map dep_direct (dependencies node))
 
 mkGraph :: (Has (Grapher Dependency) sig m) => ConanGraph -> m ()
 mkGraph conanGraph = do
-  for_ (nodes conanGraph) $ \dep -> do
+  directDeps <- getDirectDepsMap conanGraph
+  for_ (toList $ nodes conanGraph) $ \(key, dep) -> do
     let resolvedDep = toDependency dep
-    if isDirectDep dep
+    let isDirect = findWithDefault False key directDeps
+    if isDirect
       then direct resolvedDep
       else deep resolvedDep
 
-    let transitives = mapMaybe (refToDependency . TextLike) (keys $ dependencies dep)
-    for_ transitives $ \childDep -> do
-      deep childDep
-      edge resolvedDep childDep
+    let transitives = mapMaybe (refToDependency) (keys $ dependencies dep)
+    let resolvedDirectDeps = Map.map dep_direct (dependencies dep)
+    for_ transitives $ \(nodeId, childDep) -> do
+      let isDirectChild = findWithDefault False nodeId resolvedDirectDeps
+      when isDirectChild $ edge resolvedDep childDep
   where
-    registry :: Map TextLike ConanGraphNode
-    registry = indexById conanGraph
+    registry :: Map Text ConanGraphNode
+    registry = nodes conanGraph
 
-    isDirectDep :: ConanGraphNode -> Bool
-    isDirectDep _ = True
-
-    refToDependency :: TextLike -> Maybe Dependency
-    refToDependency nodeId = toDependency <$> Data.Map.lookup nodeId registry
+    refToDependency :: Text -> Maybe (Text, Dependency)
+    refToDependency nodeId = ((nodeId,)) . toDependency <$> Data.Map.lookup nodeId registry
 
 toDependency :: ConanGraphNode -> Dependency
 toDependency cn =
