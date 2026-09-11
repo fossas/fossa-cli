@@ -308,12 +308,14 @@ targets:
       target: app
 ```
 
-The part before `@` is `type`; the path between `@` and `:` is `path`; the
-complete name after `:` is `target`. For example, `yarn@./:@example/app` uses
-`target: '@example/app'`. A `target` filter must also include `path`.
+Copy the values from the listed target into the filter fields:
 
-This is the `.fossa.yml` equivalent of `--only-target 'yarn@./:app'`. A project
-with no named targets is selected by `type` and `path` alone.
+| Listed target | `type` | `path` | `target` |
+| --- | --- | --- | --- |
+| `yarn@./:app` | `yarn` | `./` | `app` |
+| `yarn@./:@example/app` | `yarn` | `./` | `'@example/app'` |
+
+Always include `path` when specifying `target`.
 
 #### `targets.only:`
 The list of `only` targets that should be scanned. When used alongside `paths.only`, the intersection of the two lists is taken to find targets for scanning
