@@ -28,8 +28,8 @@ spec :: Spec
 spec = do
   -- this test only exists to prevent merging the commented out analyzers
   describe "Discovery function list" $
-    it "should be length 36" $
-      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 36
+    it "should be length 37" $
+      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 37
 
   sendToDestinationSpec
 
