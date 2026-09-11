@@ -2,6 +2,7 @@
 
 ## 3.18.4
 
+- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
 - Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
 
