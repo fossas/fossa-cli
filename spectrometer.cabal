@@ -629,6 +629,7 @@ test-suite unit-tests
     BundlerSpec
     Cargo.CargoLockSpec
     Cargo.CargoTomlSpec
+    Cargo.LockfileSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec

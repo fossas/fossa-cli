@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/alpha", "crates/beta", "crates/gamma"]
+default-members = ["crates/alpha"]
