@@ -1,0 +1,8 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tagged = { git = "https://github.com/x/tagged", tag = "v1.2.3" }
+untagged = { git = "https://github.com/x/untagged", rev = "deadbeef" }

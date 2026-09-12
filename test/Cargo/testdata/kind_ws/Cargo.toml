@@ -1,0 +1,5 @@
+[workspace]
+members = ["crates/*"]
+
+[workspace.dependencies]
+shared = "2.0"

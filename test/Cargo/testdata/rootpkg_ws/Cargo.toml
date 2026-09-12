@@ -1,0 +1,17 @@
+[package]
+name = "rootpkg"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+alpha = { path = "crates/alpha" }
+shared_reg = "1"
+
+[dev-dependencies]
+devdep = "1"
+
+[build-dependencies]
+buildd = "1"
+
+[workspace]
+members = ["crates/*"]
