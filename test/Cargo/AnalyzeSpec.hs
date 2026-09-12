@@ -9,28 +9,72 @@
 --   * 'Strategy.Cargo.analyze' building the graph directly from a
 --     present, parsable 'Cargo.lock' (no @cargo@ invocation);
 --   * 'Strategy.Cargo.readLockfileSoft' surfacing an unreadable lockfile as a
---     read error (the input to 'analyze's warn + fallback branch).
+--     read error (the input to 'analyze's warn + fallback branch);
+--   * 'AnalyzeProject.analyzeProjectStaticOnly' producing real results
+--     from a lockfile, and the new fatals for a missing or unparseable
+--     lockfile.
 module Cargo.AnalyzeSpec (
   spec,
 ) where
 
+import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly))
+import App.Fossa.Config.Analyze (StrategyConfig (..), UseGitBackedCargoLocators (..))
+import App.Types (Mode (..))
+import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
+import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
+import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.Stack (StackC, runStack)
+import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Control.Effect.Lift (sendIO)
+import Control.Exception (finally)
+import Data.Function ((&))
 import Data.Set qualified as Set
+import Data.String.Conversion (toString)
+import Data.Text (Text)
 import DepTypes
-import Effect.ReadFS (ReadFSErr (FileReadError))
+import Diag.Result (EmittedWarn, ErrGroup, Result (Failure, Success), renderFailure)
+import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
+import Effect.Exec (ExecIOC, runExecIO)
+import Effect.Logger (LoggerC, Severity (SevWarn), renderIt, withDefaultLogger)
+import Effect.ReadFS (ReadFSErr (FileReadError), ReadFSIOC, runReadFSIO)
 import GraphUtil (expectDeps', expectDirect')
-import Path (mkRelFile, toFilePath, (</>))
+import Graphing qualified
+import Path (Abs, Dir, Path, mkRelFile, parseAbsDir, toFilePath, (</>))
 import Strategy.Cargo (
   CargoProject (..),
   analyze,
   readLockfileSoft,
  )
 import Strategy.CargoLock qualified as Lock
+import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
 import System.Posix.Files (setFileMode)
 import System.Posix.Types (FileMode)
+import System.Random (randomIO)
 import Test.Effect (expectationFailure', itWithTempDir', shouldBe', shouldSatisfy')
-import Test.Hspec (Spec, describe, it, shouldBe)
-import Types (GraphBreadth (Complete))
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldContain)
+import Type.Operator (type ($))
+import Types (
+  DependencyResults (dependencyGraph, dependencyManifestFiles),
+  FoundTargets (..),
+  GraphBreadth (Complete),
+ )
+
+-- | A minimal carrier stack satisfying 'AnalyzeStaticTaskEffs', mirroring the
+-- tail of "Analysis.FixtureUtils"' 'TestC' (readers on top, telemetry at the
+-- bottom).
+type StaticTestC m =
+  ReaderC AllFilters
+    $ ReaderC Mode
+    $ ReaderC MavenScopeFilters
+    $ ReaderC StrategyConfig
+    $ ExecIOC
+    $ ReadFSIOC
+    $ IgnoreDebugC
+    $ DiagnosticsC
+    $ LoggerC
+    $ StackC
+    $ IgnoreTelemetryC
+        m
 
 -- | A single-crate manifest with one registry dependency.
 demoManifest :: String
@@ -61,6 +105,10 @@ demoLock =
     , "source = \"registry+https://github.com/rust-lang/crates.io-index\""
     , "checksum = \"abcd\""
     ]
+
+-- | A lockfile that fails to parse (not valid TOML).
+corruptLock :: String
+corruptLock = "version = "
 
 demoDependency :: Dependency
 demoDependency =
@@ -146,8 +194,86 @@ lockfileReadSpecs =
           reason `shouldSatisfy'` (/= "")
         other -> expectationFailure' ("expected a read error, got: " ++ show other)
 
+-- ===========================================================================
+-- Static analysis wiring
+
+-- | Run a static analysis with a minimal carrier stack. The lockfile
+-- branches never use 'Exec'; the real 'Exec' carrier is present but idle.
+runStaticAnalysis :: CargoProject -> IO (Result DependencyResults)
+runStaticAnalysis project =
+  ( analyzeProjectStaticOnly ProjectWithoutTargets project ::
+      StaticTestC IO DependencyResults
+  )
+    & runReader (mempty :: AllFilters)
+    & runReader (NonStrict :: Mode)
+    & runReader (MavenScopeIncludeFilters mempty)
+    & runReader (StrategyConfig Nothing False (UseGitBackedCargoLocators False))
+    & runExecIO
+    & runReadFSIO
+    & ignoreDebug
+    & runDiagnostics
+    & withDefaultLogger SevWarn
+    & runStack
+    & withoutTelemetry
+
+renderFailureText :: [EmittedWarn] -> ErrGroup -> Text
+renderFailureText ws eg = renderIt (renderFailure ws eg "An issue occurred")
+
+-- | Create a temp directory, run the action in it, and remove it again.
+withTempDirIO :: (Path Abs Dir -> IO a) -> IO a
+withTempDirIO act = do
+  base <- getTemporaryDirectory
+  junk :: Word <- randomIO
+  let dirStr = base <> "/cargo-analyze-spec-" <> show junk
+  dir <- case parseAbsDir dirStr of
+    Just d -> pure d
+    Nothing -> fail $ "unparseable temp dir: " <> dirStr
+  createDirectoryIfMissing True (toFilePath dir)
+  act dir `finally` removeDirectoryRecursive (toFilePath dir)
+
+staticAnalysisSpecs :: Spec
+staticAnalysisSpecs =
+  describe "analyzeProjectStaticOnly (lockfile required)" $ do
+    it "returns real results when a parsable Cargo.lock is present" $
+      withTempDirIO $ \dir -> do
+        let tomlFile = dir </> $(mkRelFile "Cargo.toml")
+            lockFile = dir </> $(mkRelFile "Cargo.lock")
+        writeFile (toFilePath tomlFile) demoManifest
+        writeFile (toFilePath lockFile) demoLock
+        let project = CargoProject dir tomlFile
+        res <- runStaticAnalysis project
+        case res of
+          Failure ws eg -> expectationFailure $ "expected static analysis to succeed, got: " <> toString (renderFailureText ws eg)
+          Success _ results -> do
+            let graph = dependencyGraph results
+            Graphing.vertexList graph `shouldContain` [demoDependency]
+            dependencyManifestFiles results `shouldBe` [tomlFile]
+    it "fatals with the missing-lockfile diagnostic when no Cargo.lock is present" $
+      withTempDirIO $ \dir -> do
+        let tomlFile = dir </> $(mkRelFile "Cargo.toml")
+        writeFile (toFilePath tomlFile) demoManifest
+        res <- runStaticAnalysis (CargoProject dir tomlFile)
+        case res of
+          Success _ _ -> expectationFailure "expected static analysis to fail without a Cargo.lock"
+          Failure ws eg ->
+            let rendered = renderFailureText ws eg
+             in shouldContain (toString rendered) "Cannot analyze Cargo project statically: no Cargo.lock was found for cargo manifest"
+    it "fatals with the unparseable-lockfile diagnostic when Cargo.lock cannot be parsed" $
+      withTempDirIO $ \dir -> do
+        let tomlFile = dir </> $(mkRelFile "Cargo.toml")
+            lockFile = dir </> $(mkRelFile "Cargo.lock")
+        writeFile (toFilePath tomlFile) demoManifest
+        writeFile (toFilePath lockFile) corruptLock
+        res <- runStaticAnalysis (CargoProject dir tomlFile)
+        case res of
+          Success _ _ -> expectationFailure "expected static analysis to fail for a corrupt Cargo.lock"
+          Failure ws eg ->
+            let rendered = renderFailureText ws eg
+             in shouldContain (toString rendered) "Cannot analyze Cargo project statically: could not parse Cargo.lock for cargo manifest"
+
 spec :: Spec
 spec = do
   sourceDecisionSpecs
   fullAnalysisSpecs
   lockfileReadSpecs
+  staticAnalysisSpecs
