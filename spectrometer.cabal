@@ -426,6 +426,7 @@ library
     Strategy.BerkeleyDB.Internal
     Strategy.Bundler
     Strategy.Cargo
+    Strategy.CargoLock
     Strategy.Carthage
     Strategy.Cocoapods
     Strategy.Cocoapods.Errors
@@ -626,6 +627,7 @@ test-suite unit-tests
     BerkeleyDB.BerkeleyDBSpec
     Bun.BunLockSpec
     BundlerSpec
+    Cargo.CargoLockSpec
     Cargo.CargoTomlSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
