@@ -14,6 +14,7 @@ module Effect.ReadFS (
   readContentsBS,
   readContentsBSLimit,
   readContentsText,
+  readContentsText',
 
   -- * Get current directory
   getCurrentDir,
