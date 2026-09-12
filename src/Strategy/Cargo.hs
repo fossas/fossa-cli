@@ -17,9 +17,12 @@ module Strategy.Cargo (
 
   -- * for testing
   Package (..),
+  analyze,
   extractGitCommitHash,
+  lockfileToMetadata,
   parseGitRepoUrl,
   parsePkgId,
+  readLockfileSoft,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (
@@ -34,7 +37,7 @@ import Control.Effect.Diagnostics (
   ToDiagnostic,
   context,
   errCtx,
-  fatalText,
+  fatal,
   run,
   warn,
  )
@@ -80,12 +83,20 @@ import Effect.Grapher (
   label,
   withLabeling,
  )
-import Effect.ReadFS (ReadFS, doesFileExist, readContentsToml)
+import Effect.ReadFS (
+  ReadFS,
+  ReadFSErr (..),
+  doesFileExist,
+  readContentsText,
+  readContentsText',
+  readContentsToml,
+ )
 import Errata (Errata (..))
 import GHC.Generics (Generic)
 import Graphing (Graphing, shrinkRoots)
 import Network.URI (parseURI, uriAuthority, uriPath, uriRegName)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, parseRelFile, toFilePath, (</>))
+import Strategy.CargoLock qualified as Lock
 import Text.Megaparsec (
   Parsec,
   choice,
@@ -246,7 +257,19 @@ instance ToJSON CargoProject
 
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = const $ fatalText "Cannot analyze Cargo project statically."
+  analyzeProjectStaticOnly _ project = do
+    outcome <- Lock.staticLockfileOutcome <$> readLockfile (cargoDir project)
+    case outcome of
+      Lock.StaticUseLockfile lock -> do
+        (graph, graphBreadth) <- lockfileToDeps False (cargoDir project) lock
+        pure $
+          DependencyResults
+            { dependencyGraph = graph
+            , dependencyGraphBreadth = graphBreadth
+            , dependencyManifestFiles = [cargoToml project]
+            }
+      Lock.StaticMissingLockfile -> fatal (MissingCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock")))
+      Lock.StaticUnparseableLockfile err -> fatal (UnparseableCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderCargoLockError err))
 
 data CargoPackage = CargoPackage
   { license :: Maybe Text.Text
@@ -352,6 +375,14 @@ cargoMetadataCmd =
     , cmdEnvVars = Map.empty
     }
 
+-- | Full (dynamic) analysis of a Cargo project.
+--
+-- When a 'Cargo.lock' exists in the manifest directory, it is read and
+-- parsed and the dependency graph is built from it directly, without
+-- running @cargo@. A lockfile that fails to parse emits an errata warning
+-- and falls back to the pre-existing @cargo metadata@ path. When no
+-- lockfile exists, the pre-existing @cargo metadata@ path (which generates
+-- a lockfile if missing) is used unchanged.
 analyze ::
   ( Has Exec sig m
   , Has Diagnostics sig m
@@ -360,7 +391,96 @@ analyze ::
   Bool ->
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
-analyze emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
+analyze emitGitBackedLocators project = do
+  lockParsed <- readLockfileSoft (cargoDir project)
+  case lockParsed of
+    Left readErr ->
+      warn (FailedToReadCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderReadFSErr readErr))
+        >> analyzeViaMetadata emitGitBackedLocators project
+    Right Nothing -> analyzeViaMetadata emitGitBackedLocators project
+    Right (Just (Right lock)) -> lockfileToDeps emitGitBackedLocators (cargoDir project) lock
+    Right (Just (Left err)) ->
+      warn (FailedToParseCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderCargoLockError err))
+        >> analyzeViaMetadata emitGitBackedLocators project
+
+-- | Read and parse the @Cargo.lock@ in @manifestDir@, if one exists.
+-- 'Nothing' means no lockfile is present; @Just (Left err)@ means a lockfile
+-- is present but did not parse; @Just (Right lock)@ is the parsed lockfile.
+-- A lockfile that cannot be read (an IO error) aborts the analysis via the
+-- 'ReadFS' fatal. Used by the static path, which has no fallback to
+-- @cargo metadata@.
+readLockfile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe (Either Lock.CargoLockError Lock.CargoLock))
+readLockfile manifestDir = do
+  let lockPath = manifestDir </> $(mkRelFile "Cargo.lock")
+  exists <- doesFileExist lockPath
+  if exists
+    then fmap (Just . Lock.parseCargoLock) (readContentsText lockPath)
+    else pure Nothing
+
+-- | Read and parse the @Cargo.lock@ in @manifestDir@, if one exists.
+-- 'Right Nothing' means no lockfile is present; @Right (Just (Left err))@
+-- means a lockfile is present but did not parse; @Right (Just (Right lock))@
+-- is the parsed lockfile. Unlike 'readLockfile', a lockfile that cannot be
+-- read (an IO error) surfaces as @Left err@ instead of aborting, so the
+-- caller can warn and fall back to @cargo metadata@. Used by the dynamic
+-- ('analyze') path.
+readLockfileSoft :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr (Maybe (Either Lock.CargoLockError Lock.CargoLock)))
+readLockfileSoft manifestDir = do
+  let lockPath = manifestDir </> $(mkRelFile "Cargo.lock")
+  exists <- doesFileExist lockPath
+  if exists
+    then do
+      contents <- readContentsText' lockPath
+      pure (contents >>= \text -> Right (Just (Lock.parseCargoLock text)))
+    else pure (Right Nothing)
+
+-- | Render a 'ReadFSErr' as a short human-readable reason string.
+renderReadFSErr :: ReadFSErr -> Text
+renderReadFSErr (FileReadError _ reason) = reason
+renderReadFSErr (FileParseError _ reason) = reason
+renderReadFSErr (ResolveError _ _ reason) = reason
+renderReadFSErr (ListDirError _ reason) = reason
+renderReadFSErr (NotDirOrFile path) = "path is neither a file nor a directory: " <> toText path
+renderReadFSErr (UndeterminableFileType path) = "path is both a file and a directory: " <> toText path
+renderReadFSErr (CurrentDirError reason) = reason
+
+-- | Render a 'Lock.CargoLockError' as a human-readable diagnostic message.
+renderCargoLockError :: Lock.CargoLockError -> Text
+renderCargoLockError (Lock.TomlParseError reason) = reason
+renderCargoLockError (Lock.UnsupportedVersion version) =
+  "unsupported Cargo.lock version " <> toText version
+
+-- | Build the dependency graph from a parsed lockfile and workspace manifest
+-- analysis, without running @cargo@. Shared by the lockfile paths of
+-- 'analyze' and 'AnalyzeProject.analyzeProjectStaticOnly'.
+lockfileToDeps ::
+  ( Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Bool ->
+  Path Abs Dir ->
+  Lock.CargoLock ->
+  m (Graphing Dependency, GraphBreadth)
+lockfileToDeps emitGitBackedLocators manifestDir lock =
+  context "Building dependency graph" $ do
+    members <- Lock.enumerateWorkspaceMembers manifestDir
+    analysis <- Lock.analyzeManifests manifestDir members
+    for_ (Lock.lockWarnings lock) warn
+    for_ (Lock.manifestWarnings analysis) warn
+    let graph = buildGraph emitGitBackedLocators (lockfileToMetadata lock members analysis)
+    pure (graph, Complete)
+
+-- | The pre-existing @cargo metadata@-based analysis path: generate a
+-- lockfile if one is missing, then run @cargo metadata@.
+analyzeViaMetadata ::
+  ( Has Exec sig m
+  , Has Diagnostics sig m
+  , Has ReadFS sig m
+  ) =>
+  Bool ->
+  CargoProject ->
+  m (Graphing Dependency, GraphBreadth)
+analyzeViaMetadata emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
   exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
   unless exists $
     void $
@@ -370,6 +490,38 @@ analyze emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
   meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
   graph <- context "Building dependency graph" $ pure (buildGraph emitGitBackedLocators meta)
   pure (graph, Complete)
+
+newtype FailedToReadCargoLockFile = FailedToReadCargoLockFile (Path Abs File, Text)
+instance ToDiagnostic FailedToReadCargoLockFile where
+  renderDiagnostic (FailedToReadCargoLockFile (path, reason)) = do
+    let header = "Could not read Cargo.lock for cargo manifest: " <> toText path <> ": " <> reason <> ". Falling back to `cargo metadata`."
+    Errata (Just header) [] Nothing
+
+newtype FailedToParseCargoLockFile = FailedToParseCargoLockFile (Path Abs File, Text)
+instance ToDiagnostic FailedToParseCargoLockFile where
+  renderDiagnostic (FailedToParseCargoLockFile (path, reason)) = do
+    let header = "Could not parse Cargo.lock for cargo manifest: " <> toText path <> ": " <> reason <> ". Falling back to `cargo metadata`."
+    Errata (Just header) [] Nothing
+
+newtype MissingCargoLockFile = MissingCargoLockFile (Path Abs File)
+instance ToDiagnostic MissingCargoLockFile where
+  renderDiagnostic (MissingCargoLockFile path) = do
+    let header =
+          "Cannot analyze Cargo project statically: no Cargo.lock was found for cargo manifest: "
+            <> toText path
+            <> ". Static analysis reads Cargo.lock directly and cannot run `cargo metadata` to generate one."
+    Errata (Just header) [] Nothing
+
+newtype UnparseableCargoLockFile = UnparseableCargoLockFile (Path Abs File, Text)
+instance ToDiagnostic UnparseableCargoLockFile where
+  renderDiagnostic (UnparseableCargoLockFile (path, reason)) = do
+    let header =
+          "Cannot analyze Cargo project statically: could not parse Cargo.lock for cargo manifest: "
+            <> toText path
+            <> ": "
+            <> reason
+            <> "."
+    Errata (Just header) [] Nothing
 
 newtype FailedToGenLockFile = FailedToGenLockFile (Path Abs File)
 instance ToDiagnostic FailedToGenLockFile where
@@ -567,6 +719,107 @@ reachable adj = go Set.empty . Set.toList
         else
           let children = fromMaybe [] (Map.lookup x adj)
            in go (Set.insert x visited) (children ++ xs)
+
+-- | Rebuild a 'CargoMetadata' from a parsed 'CargoLock' plus workspace manifest
+-- analysis, so 'buildGraph' can be driven without running @cargo metadata@.
+--
+-- The 'PackageId's are constructed so that 'toDependency' classifies each
+-- dependency exactly as it would for the equivalent @cargo metadata@ output:
+--
+--   * registry / sparse packages use their source string verbatim, yielding
+--     'CargoType' with the crate name and version;
+--   * git packages keep their source verbatim in the package list (so the
+--     commit hash is available to 'toDependency' via the source map) while the
+--     'PackageId' itself drops the @#commit@ fragment, so untagged git deps
+--     surface the commit hash as their version and tagged deps keep the crate
+--     version, matching the metadata path;
+--   * workspace members and other path packages use an absolute @file://@
+--     source (with a @path+@ prefix for members), yielding 'UnresolvedPathType'
+--     with the absolute path as the dependency name.
+--
+-- Dependency edge kinds come from the manifest analysis: a dependency declared
+-- by a workspace member carries one 'NodeDepKind' per declared kind (a dep in
+-- both @\[dependencies\]@ and @\[build-dependencies\]@ carries both a null and a
+-- @"build"@ kind). Edges whose parent is not a member default to a single
+-- null kind -- the documented, accepted gap (see the module header of
+-- "Strategy.CargoLock").
+lockfileToMetadata :: Lock.CargoLock -> [Lock.WorkspaceMember] -> Lock.ManifestAnalysis -> CargoMetadata
+lockfileToMetadata lock members analysis =
+  CargoMetadata
+    { metadataPackages = packages
+    , metadataWorkspaceMembers = memberIds
+    , metadataResolve = Resolve resolveNodes
+    }
+  where
+    memberDirs = Map.fromList [(Lock.memberName m, Lock.memberDir m) | m <- members]
+
+    isMemberPath p = isNothing (Lock.packageSource p) && isJust (Map.lookup (Lock.packageName p) memberDirs)
+
+    pkgIdentity p =
+      let name = Lock.packageName p
+          version = fromMaybe "*" (Lock.packageVersion p)
+       in case Lock.packageSource p of
+            Nothing ->
+              case Map.lookup name memberDirs of
+                Just dir -> (PackageId name version ("path+file://" <> toText (toFilePath dir)), Nothing)
+                Nothing ->
+                  case Map.lookup name (Lock.manifestPathDeps analysis) of
+                    Just dir -> (PackageId name version ("file://" <> toText (toFilePath dir)), Nothing)
+                    -- No member declared this path; fall back to a bare file
+                    -- source so the dependency still resolves to
+                    -- 'UnresolvedPathType'.
+                    Nothing -> (PackageId name version ("file://" <> name), Nothing)
+            Just src
+              | "git+" `Text.isPrefixOf` src ->
+                  -- Keep the query (?tag=/?branch=) but drop the trailing
+                  -- #commit fragment from the id; the full source (with the
+                  -- hash) is kept in the source map so 'toDependency' can
+                  -- recover it.
+                  let base = fst (breakOn "#" src)
+                   in (PackageId name version base, Just src)
+              | otherwise -> (PackageId name version src, Just src)
+
+    labeled = [(p, pkgIdentity p) | p <- Lock.lockPackages lock]
+
+    -- (name, version) -> PackageId, for resolving "name version" dep strings.
+    pidByNameVer = Map.fromList [((Lock.packageName p, fromMaybe "*" (Lock.packageVersion p)), pid) | (p, (pid, _)) <- labeled]
+
+    -- name -> [PackageId], a fallback for references that don't pin a version.
+    pidByName = Map.fromListWith (++) [(Lock.packageName p, [pid]) | (p, (pid, _)) <- labeled]
+
+    packages =
+      [ Package (pkgIdName pid) (pkgIdVersion pid) pid Nothing Nothing [] srcUrl
+      | (_, (pid, srcUrl)) <- labeled
+      ]
+
+    memberIds = [pid | (p, (pid, _)) <- labeled, isMemberPath p]
+
+    resolveNodes =
+      [ ResolveNode pid [NodeDependency (resolveTarget dep) (nodeDepKinds p dep) | dep <- Lock.packageDependencies p]
+      | (p, (pid, _)) <- labeled
+      ]
+
+    resolveTarget dep =
+      case Map.lookup (Lock.depName dep, fromMaybe "*" (Lock.depVersion dep)) pidByNameVer of
+        Just pid -> pid
+        Nothing ->
+          case Map.lookup (Lock.depName dep) pidByName of
+            Just (pid : _) -> pid
+            _ -> PackageId (Lock.depName dep) (fromMaybe "*" (Lock.depVersion dep)) ""
+
+    nodeDepKinds p dep =
+      let parentName = Lock.packageName p
+       in if isMemberPath p
+            then case Map.lookup (parentName, Lock.depName dep) (Lock.depKindMap analysis) of
+              Just kinds -> map depKindToNdk (Set.toList kinds)
+              Nothing -> [prodNdk]
+            else [prodNdk]
+
+    depKindToNdk Lock.DepProd = prodNdk
+    depKindToNdk Lock.DepDev = NodeDepKind (Just "dev") Nothing
+    depKindToNdk Lock.DepBuild = NodeDepKind (Just "build") Nothing
+
+    prodNdk = NodeDepKind Nothing Nothing
 
 -- | Custom Parsec type alias
 type PkgSpecParser a = Parsec Void Text a
