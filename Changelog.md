@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
 - Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
 
 ## 3.18.4
