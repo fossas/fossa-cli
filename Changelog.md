@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
+
 ## 3.18.4
 
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
