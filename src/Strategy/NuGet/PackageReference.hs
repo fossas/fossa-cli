@@ -14,6 +14,7 @@ import Control.Applicative (optional, (<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (mapMaybe)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -67,17 +68,25 @@ instance FromXML PackageReference where
   parseElement el = PackageReference <$> children "ItemGroup" el
 
 instance FromXML ItemGroup where
-  parseElement el = ItemGroup <$> children "PackageReference" el
+  parseElement el = ItemGroup . mapMaybe unPackageItem <$> children "PackageReference" el
 
--- | A "PackageReference" xml tag
+-- | A single @\<PackageReference\>@ xml tag.
+--
+-- MSBuild allows item operations beyond @Include@/@Update@ -- e.g.
+-- @\<PackageReference Remove="..." /\>@ -- which name no package to report.
+-- Those parse to 'Nothing' and are skipped by 'ItemGroup' rather than failing
+-- the parse of the whole project file.
 --
 -- See: https://docs.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#packagereference
+-- See: https://learn.microsoft.com/en-us/visualstudio/msbuild/item-element-msbuild
 -- See: https://cloud.google.com/functions/docs/writing/specifying-dependencies-dotnet
-instance FromXML Package where
-  parseElement el =
-    Package
-      <$> (attr "Include" el <|> attr "Update" el)
-      <*> optional (attr "Version" el <|> child "Version" el)
+newtype PackageItem = PackageItem {unPackageItem :: Maybe Package}
+
+instance FromXML PackageItem where
+  parseElement el = do
+    name <- optional (attr "Include" el <|> attr "Update" el)
+    version <- optional (attr "Version" el <|> child "Version" el)
+    pure . PackageItem $ (`Package` version) <$> name
 
 buildGraph :: PackageReference -> Graphing Dependency
 buildGraph = buildGraphWithCPM Map.empty
