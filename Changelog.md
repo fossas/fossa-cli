@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped.
+- NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
 
 ## 3.18.4
 
