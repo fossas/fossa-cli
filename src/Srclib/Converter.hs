@@ -123,7 +123,6 @@ isSupportedType :: Dependency -> Bool
 isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
-    && dependencyType /= ConanType
     && dependencyType /= UnresolvedPathType
 
 toLocator :: Dependency -> Locator
