@@ -35,12 +35,12 @@ module App.Fossa.Ficus.Types (
 import App.Types (ProjectRevision)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decodeStrictText, object, withObject, withText, (.=))
 import Data.Aeson.Types (Parser, (.:), (.:?))
-import Data.String.Conversion (toString, toText)
+import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Fossa.API.Types
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path, fileExtension, toFilePath)
+import Path (Abs, Dir, Path, toFilePath)
 import Srclib.Types (SourceUnit)
 import Text.URI
 import Types (GlobFilter)
