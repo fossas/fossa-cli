@@ -31,15 +31,15 @@ lock =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = map ref ["dep1", "dep2"]
-            , uvlockPackageDevDependencies = map ref ["dep3", "dep4"]
+            , uvlockPackageDependencies = map mkPackageDep ["dep1", "dep2"]
+            , uvlockPackageDevDependencies = map mkPackageDep ["dep3", "dep4"]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
             , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = [ref "dep4"]
+            , uvlockPackageDependencies = [mkPackageDep "dep4"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -55,7 +55,7 @@ lock =
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = [ref "dep6"]
+            , uvlockPackageDependencies = [mkPackageDep "dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -63,7 +63,7 @@ lock =
             { uvlockPackageName = "dep4"
             , uvlockPackageVersion = Just "1.0.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = [ref "dep5"]
+            , uvlockPackageDependencies = [mkPackageDep "dep5"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -99,9 +99,9 @@ lockNewStyleDevDeps =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = map ref ["dep1", "dep2"]
+            , uvlockPackageDependencies = map mkPackageDep ["dep1", "dep2"]
             , uvlockPackageDevDependencies = []
-            , uvlockPackageOptionalDependencies = Map.fromList [("dev", [ref "dep3"])]
+            , uvlockPackageOptionalDependencies = Map.fromList [("dev", [mkPackageDep "dep3"])]
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
@@ -115,7 +115,7 @@ lockNewStyleDevDeps =
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = [ref "dep6"]
+            , uvlockPackageDependencies = [mkPackageDep "dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -143,8 +143,8 @@ lockEditableNoVersion =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Nothing
             , uvlockPackageSource = SourceEditable "."
-            , uvlockPackageDependencies = [ref "dep1"]
-            , uvlockPackageDevDependencies = [ref "dep3"]
+            , uvlockPackageDependencies = [mkPackageDep "dep1"]
+            , uvlockPackageDevDependencies = [mkPackageDep "dep3"]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -159,7 +159,7 @@ lockEditableNoVersion =
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = [ref "dep6"]
+            , uvlockPackageDependencies = [mkPackageDep "dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -185,7 +185,7 @@ lockWithDirectory =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = map ref ["dep1", "local-lib"]
+            , uvlockPackageDependencies = map mkPackageDep ["dep1", "local-lib"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -208,8 +208,8 @@ lockWithDirectory =
         ]
     }
 
-ref :: Text -> UvLockPackageDependency
-ref name = UvLockPackageDependency name Nothing Nothing
+mkPackageDep :: Text -> UvLockPackageDependency
+mkPackageDep name = UvLockPackageDependency name Nothing Nothing
 
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
