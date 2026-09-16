@@ -183,7 +183,16 @@ spec = do
       failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
       case failureText of
         Nothing -> expectationFailure' "expected the trailing path to be read as the scan target"
-        Just rendered -> Text.isInfixOf "/definitely/not/here" rendered `shouldBe'` True
+        -- Don't assert on the full POSIX path literal: Windows normalises
+        -- separators/drive letters, so "/definitely/not/here" never appears
+        -- verbatim in the rendered message there. Instead assert (a) the
+        -- failure is a missing-*directory* error -- the platform-independent
+        -- marker that the argument reached 'validateDir' (the scan-target
+        -- path), not the flag itself -- and (b) it still names a distinctive,
+        -- separator-free fragment of the path, so this can't pass on some
+        -- unrelated directory-not-found error.
+        Just rendered ->
+          (Text.isInfixOf "Directory does not exist" rendered && Text.isInfixOf "definitely" rendered) `shouldBe'` True
 
     it' "should fail when combined with --static-only-analysis" $ do
       cliOpts <- parseArgString cliParser "--static-only-analysis --x-workflow"
