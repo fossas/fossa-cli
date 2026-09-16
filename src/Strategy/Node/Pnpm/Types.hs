@@ -231,11 +231,9 @@ instance FromJSON PnpmLockFileSnapshots where
               pure . HashMap.toList $ deps <> optionalDeps
       snapshots <- traverse readTransitiveDepPairs o
 
-      -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
-      -- section which is where we look the dependency up.
-      let snapshots' = (HashMap.mapKeys withoutPeerDepSuffix) . toHashMapText $ snapshots
-      pure $
-        PnpmLockFileSnapshots{snapshots = snapshots'}
+      -- Snapshot keys include their resolved peer context. Keep that context
+      -- until graph traversal is complete; stripping it here loses variants.
+      pure $ PnpmLockFileSnapshots{snapshots = toHashMapText snapshots}
 
 --
 -- Project map
