@@ -36,6 +36,7 @@ module Control.Carrier.FossaApiClient.Internal.Core (
   addTeamProjects,
   updateRevision,
   getOrgLabels,
+  uploadAnalysisWorkflow,
 ) where
 
 import App.Fossa.Config.Report (ReportOutputFormat)
@@ -49,10 +50,12 @@ import Control.Effect.FossaApiClient (PackageRevision (..))
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
+import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy (ByteString)
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Fossa.API.Types (
+  AnalysisWorkflowId,
   ApiOpts,
   Archive,
   Build,
@@ -92,6 +95,17 @@ getTokenType ::
 getTokenType = do
   apiOpts <- ask
   API.getTokenType apiOpts
+
+uploadAnalysisWorkflow ::
+  ( API.APIClientEffs sig m
+  , Has (Reader ApiOpts) sig m
+  ) =>
+  Locator ->
+  Aeson.Value ->
+  m AnalysisWorkflowId
+uploadAnalysisWorkflow locator workflowData = do
+  apiOpts <- ask
+  API.uploadAnalysisWorkflow apiOpts locator workflowData
 
 getCustomBuildPermissions ::
   ( API.APIClientEffs sig m

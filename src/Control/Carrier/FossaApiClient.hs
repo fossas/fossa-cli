@@ -101,6 +101,7 @@ runFossaApiClient apiOpts action = do
             -- Reachability
             UploadContentForReachability content -> Core.uploadReachabilityContent content
             UploadBuildForReachability rev metadata content -> Core.uploadReachabilityBuild rev metadata content
+            UploadAnalysisWorkflow locator workflowData -> Core.uploadAnalysisWorkflow locator workflowData
             GetTokenType -> Core.getTokenType
             GetCustomBuildPermissons rev metadata -> Core.getCustomBuildPermissions rev metadata
             -- Release Group

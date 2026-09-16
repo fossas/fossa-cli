@@ -25,8 +25,9 @@ module Strategy.Maven.Plugin (
 
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (renderDiagnostic), recover, warn)
-import Control.Effect.Exception (Lift, bracket)
+import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
+import Control.Effect.Path (withSystemTempDir)
 import Control.Monad (when)
 import Data.Aeson (FromJSON, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.ByteString (ByteString)
@@ -79,7 +80,6 @@ import Path (
   toFilePath,
   (</>),
  )
-import Path.IO (createTempDir, getTempDir, removeDirRecur)
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifacts)
 import Strategy.Maven.Pom.PomFile qualified as PomFile
 import System.FilePath qualified as FP
@@ -117,10 +117,13 @@ withUnpackedPlugin ::
   (FP.FilePath -> m a) ->
   m a
 withUnpackedPlugin plugin act =
-  bracket
-    (sendIO (getTempDir >>= \tmp -> createTempDir tmp "fossa-maven"))
-    (sendIO . removeDirRecur)
-    go
+  -- 'withSystemTempDir' removes the scratch directory on a best-effort basis
+  -- (it ignores IO errors during cleanup). A previous hand-rolled
+  -- 'bracket'/'removeDirRecur' cleanup would instead escalate any cleanup
+  -- failure to a fatal, analysis-wide error -- e.g. when the OS temp reaper (or
+  -- a race) removed the directory first, the run died with
+  -- @An exception occurred: /tmp/fossa-maven-... removeDirectoryRecursive:getSymbolicLinkStatus: does not exist@.
+  withSystemTempDir "fossa-maven" go
   where
     go tmpDir = do
       let pluginJarFilepath = fromAbsDir tmpDir FP.</> "plugin.jar"

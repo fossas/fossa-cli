@@ -718,6 +718,7 @@ standardAnalyzeConfig =
     , ANZ.snippetScan = False
     , ANZ.debugDir = Nothing
     , ANZ.xVendetta = False
+    , ANZ.xWorkflow = Nothing
     }
 
 sampleJarParsedContent :: Text

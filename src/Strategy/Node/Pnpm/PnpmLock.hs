@@ -125,6 +125,16 @@ resolveCatalogVersion (PnpmCatalogs cats) depName ver
 
 -- | Keep the lockfile key alongside the reportable dependency so peer
 -- contexts remain distinct during reachability and environment propagation.
+--
+-- The key is the lockfile's own @packages@ or @snapshots@ key, so two
+-- resolutions of the same package stay separate nodes even though they
+-- report the same dependency:
+--
+-- >> ("widget@1.0.0(peer@1.0.0)", widget)
+-- >> ("widget@1.0.0(peer@2.0.0)", widget)
+--
+-- Older lockfile formats spell the key differently: @/widget\@1.0.0(peer\@2.0.0)@
+-- in v6 through v8, and @/widget/1.0.0_peer\@2.0.0@ in v5.
 type PnpmNode = (Text, Dependency)
 
 applyLabels :: PnpmNode -> Set.Set PnpmLabel -> PnpmNode

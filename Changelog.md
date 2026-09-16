@@ -2,11 +2,24 @@
 
 ## Unreleased
 
+- NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
+- Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
 - Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions.
-
 - Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
 - Pnpm: workspace members are now individual build targets, so a single member can be analyzed on its own with `--only-target 'pnpm@./:my-package'` or a `target:` entry in `.fossa.yml`. Previously every member's dependencies were merged into one result with no way to scope them. Dependencies a selected member reaches through the workspace protocol (`link:` in the lockfile) are included. Scoped analysis preserves development-only workspace links and each member's resolved peer versions. Unfiltered analysis retains the whole workspace. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
 - Node: when a yarn, npm, or pnpm workspace root or member has no `name` in its `package.json`, discovery now warns that no build targets can be offered for the workspace and that adding a `name` enables them. This also preserves unnamed members' dependencies during unfiltered analysis. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
+
+## 3.18.4
+
+- Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
+- Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
+
+## 3.18.3
+
+- Maven: analysis no longer fails with `An exception occurred: /tmp/fossa-maven-... removeDirectoryRecursive:getSymbolicLinkStatus: does not exist (No such file or directory)` when the plugin's scratch directory is removed (e.g. by the OS temp reaper) before cleanup runs; the scratch directory is now cleaned up on a best-effort basis. ([#1771](https://github.com/fossas/fossa-cli/pull/1771))
+- Dart: `pubspec.yaml` files using valid dependency forms the parser previously rejected no longer fail analysis with `Aeson exception: ... empty` or `failed parsing pub package's source!`: a bare dependency with no value (any version), a `version:`-only entry, the `hosted: <url>` shorthand introduced in Dart 2.15, a `hosted:` map without a `version`, and a `git:` map without a `ref`. ([#1760](https://github.com/fossas/fossa-cli/pull/1760))
+- Workflows: `fossa analyze --x-workflow <path>` runs a dependency-usage workflow analyzer through the embedded ficus and records its result in the debug bundle. ([#1761](https://github.com/fossas/fossa-cli/pull/1761))
+- Workflows: the `--x-workflow` result is uploaded to FOSSA against the analyzed revision once the dependency upload succeeds; `--output` runs still upload nothing. ([#1762](https://github.com/fossas/fossa-cli/pull/1762))
 - Diagnostics: When an error or warning group contains multiple errors, each error's `Traceback:` header is now printed on its own line instead of being glued onto the last line of the preceding error message (e.g. `...none passed validationTraceback:`). ([#1758](https://github.com/fossas/fossa-cli/pull/1758))
 
 ## 3.18.2
