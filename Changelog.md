@@ -1,10 +1,14 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
+- Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
+- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions.
+- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
+
 ## 3.18.4
 
-- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions.
-
-- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.
 - Scala: the sbt-generated-pom fallback no longer reports the project's own artifact as the only Direct dependency; it now removes the project artifact and promotes declared dependencies to Direct, matching Scala's dependency-tree tactics.
 
