@@ -1,0 +1,13 @@
+lockfileVersion: '9.0'
+importers:
+  .:
+    devDependencies:
+      shared: {version: 'link:shared'}
+  shared:
+    dependencies:
+      leaf: {version: 1.0.0}
+packages:
+  leaf@1.0.0:
+    resolution: {integrity: test}
+snapshots:
+  leaf@1.0.0: {}
