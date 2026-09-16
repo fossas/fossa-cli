@@ -8,8 +8,8 @@ import App.Fossa.Ficus.Types (
   WorkflowEvent (..),
   WorkflowExecutable (WorkflowExecutable),
   WorkflowRunArtifact (WorkflowRunArtifact),
-  findingToWorkflowEvent,
   downloadedWorkflowExecutable,
+  findingToWorkflowEvent,
  )
 import Control.Exception (throw)
 import Data.Aeson qualified as Aeson

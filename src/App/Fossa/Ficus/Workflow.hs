@@ -10,8 +10,8 @@ import App.Fossa.Ficus.Types (
   FicusMessage (FicusMessageFinding),
   WorkflowEvent (..),
   WorkflowRunArtifact (..),
-  findingToWorkflowEvent,
   downloadedWorkflowExecutable,
+  findingToWorkflowEvent,
   workflowResultJson,
  )
 import Control.Effect.Debug (Debug, debugMetadata)
