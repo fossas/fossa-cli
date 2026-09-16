@@ -6,7 +6,6 @@ import App.Fossa.Ficus.Types (
   FicusFinding (FicusFinding),
   FicusMessageData (FicusMessageData),
   WorkflowEvent (..),
-  WorkflowExecutable (WorkflowExecutable),
   WorkflowRunArtifact (WorkflowRunArtifact),
   downloadedWorkflowExecutable,
   findingToWorkflowEvent,
@@ -14,10 +13,10 @@ import App.Fossa.Ficus.Types (
 import Control.Exception (throw)
 import Data.Aeson qualified as Aeson
 import Data.Either (isLeft)
-import Data.String.Conversion (decodeUtf8, toText)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, toFilePath)
+import Path (Abs, Dir, Path, parseAbsDir, toFilePath)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 
 -- | The fixtures below are valid paths only on the platform they are written
@@ -28,27 +27,12 @@ mustParse f s = either (throw . userError . show) id (f s)
 
 targetDir :: Path Abs Dir
 workDir :: Path Abs Dir
-jsBundle :: Path Abs File
-mjsBundle :: Path Abs File
-cjsBundle :: Path Abs File
-upperJsBundle :: Path Abs File
-nativeAnalyzer :: Path Abs File
 #ifdef mingw32_HOST_OS
 targetDir = mustParse parseAbsDir "C:/repo"
 workDir = mustParse parseAbsDir "C:/scratch"
-jsBundle = mustParse parseAbsFile "C:/dist/analyzer.js"
-mjsBundle = mustParse parseAbsFile "C:/dist/analyzer.mjs"
-cjsBundle = mustParse parseAbsFile "C:/dist/analyzer.cjs"
-upperJsBundle = mustParse parseAbsFile "C:/dist/analyzer.JS"
-nativeAnalyzer = mustParse parseAbsFile "C:/bin/analyzer"
 #else
 targetDir = mustParse parseAbsDir "/abs/repo"
 workDir = mustParse parseAbsDir "/abs/scratch"
-jsBundle = mustParse parseAbsFile "/abs/dist/analyzer.js"
-mjsBundle = mustParse parseAbsFile "/abs/dist/analyzer.mjs"
-cjsBundle = mustParse parseAbsFile "/abs/dist/analyzer.cjs"
-upperJsBundle = mustParse parseAbsFile "/abs/dist/analyzer.JS"
-nativeAnalyzer = mustParse parseAbsFile "/usr/local/bin/analyzer"
 #endif
 
 -- | The wire contract with @ficus x-workflow@. Every key name, the schema
