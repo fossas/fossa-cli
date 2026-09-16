@@ -181,9 +181,10 @@ scanning, or what information is sent to FOSSA's servers, see
 
 `--x-workflow` runs a dependency-usage workflow analyzer over the project,
 records its result in the debug bundle, and uploads it to FOSSA against the
-same revision as the dependency upload. The analyzer is a program you name on
-the command line; FOSSA CLI does not ship one yet, so this flag does nothing
-useful unless you already have an analyzer program or script to point it at.
+same revision as the dependency upload. FOSSA CLI does not ship the analyzer:
+the embedded ficus downloads the latest release of it and runs that, so the
+flag needs nothing from you but itself, and a run needs network access to
+reach that release.
 
 The result is uploaded only when the analysis itself is uploaded, after the
 dependency upload succeeds; with `--output` nothing is sent. A result that
@@ -192,13 +193,14 @@ then. Nothing else about this flag changes what `fossa analyze` sends to FOSSA.
 
 #### Enabling dependency usage analysis
 
-| Name                  | Description                                                                                                                                                                    |
-|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `--x-workflow PATH`   | Experimental. Run the dependency-usage workflow analyzer at `PATH` over the project. A `.js`, `.mjs` or `.cjs` path is run under `node`; any other path is run as the program itself. |
+| Name             | Description                                                                                          |
+|------------------|------------------------------------------------------------------------------------------------------|
+| `--x-workflow`   | Experimental. Run the dependency-usage workflow analyzer, which the embedded ficus downloads, over the project. |
 
-A relative `PATH` is resolved against the directory you run `fossa` from, and a
-path that does not exist fails immediately rather than partway through the
-analysis. `--x-workflow` cannot be combined with `--static-only-analysis`,
+The flag takes no argument. A path written after it is read as the directory to
+scan, the same as any other trailing path.
+
+`--x-workflow` cannot be combined with `--static-only-analysis`,
 which is the kill switch for running third-party tooling on your machine;
 passing both is an error rather than a silent skip.
 
@@ -216,8 +218,8 @@ analyze`. The command still exits 0; the failure is reported in the log,
 including the tail of ficus's stderr, and `bundleWorkflowResult` in the debug
 bundle is left empty. This is deliberate: a broken experimental analyzer must
 not block the dependency scan and upload. Check the log for
-`The workflow analyzer at <path> did not produce a result` to confirm the run
-happened.
+`The workflow analyzer did not produce a result` to confirm the run happened.
+A failure to reach or download the release is reported the same way.
 
 A workflow result that fails to *upload* is different: it fails `fossa
 analyze` with a non-zero exit, as noted above. By the time that upload is
@@ -227,14 +229,16 @@ reports failure, and CI sees the run as failed.
 
 #### Security
 
-This flag executes a program you name, on your machine, against your project.
-FOSSA CLI does not sandbox it and does not constrain what it does: it runs with
-your privileges, reads whatever it can read, and may make network requests of
-its own. `--output` suppresses FOSSA CLI's own upload; it cannot suppress a
-child process's traffic.
+This flag downloads a program and executes it, on your machine, against your
+project. FOSSA CLI does not sandbox it and does not constrain what it does: it
+runs with your privileges, reads whatever it can read, and may make network
+requests of its own. `--output` suppresses FOSSA CLI's own upload; it cannot
+suppress a child process's traffic.
 
-Only point `--x-workflow` at a program you trust as much as you trust the rest
-of your build.
+The program comes from the analyzer's own release repository, which ficus has
+hardcoded and which this flag cannot redirect. Enabling `--x-workflow` means
+trusting that repository's releases as much as you trust the rest of your
+build.
 
 #### More detail
 
