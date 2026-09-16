@@ -29,9 +29,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess))
 import Effect.Logger (Logger, logDebug, logError, logInfo, pretty)
-import Path (Abs, Dir, File, Path, toFilePath)
+import Path (Abs, Dir, Path)
 
--- | Run the workflow analyzer at the given path over @target@ through
+-- | Download the workflow analyzer and run it over @target@ through
 -- @ficus x-workflow@, streaming its observations. The result is recorded in
 -- the debug bundle and returned for upload once the server has issued the
 -- revision locator; nothing is sent from here.
@@ -123,7 +123,7 @@ reportEvent = \case
 -- observation per run, so an observation usually supplies the reason, but the
 -- exit code is the signal a truncated stream cannot lose and is what decides.
 -- A clean exit with no result is a bug, not an empty answer: the user asked for
--- this run by naming a path, so it must not pass silently.
+-- this run with @--x-workflow@, so it must not pass silently.
 failWorkflow ::
   ( Has Diagnostics sig m
   , Has Logger sig m
