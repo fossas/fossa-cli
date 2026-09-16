@@ -208,6 +208,50 @@ lockWithDirectory =
         ]
     }
 
+--       my-project
+--      /          \
+--   foo 1.0    foo 2.0 (dev)
+--                  |
+--                 bar
+lockSplitVersions :: UvLock
+lockSplitVersions =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = Just "0.1.0"
+            , uvlockPackageSource = SourceVirtual "."
+            , uvlockPackageDependencies = [UvLockPackageDependency "foo" (Just "1.0.0") Nothing]
+            , uvlockPackageDevDependencies = [UvLockPackageDependency "foo" (Just "2.0.0") Nothing]
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "foo"
+            , uvlockPackageVersion = Just "1.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "foo"
+            , uvlockPackageVersion = Just "2.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = [mkPackageDep "bar"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "bar"
+            , uvlockPackageVersion = Just "1.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
+
 mkPackageDep :: Text -> UvLockPackageDependency
 mkPackageDep name = UvLockPackageDependency name Nothing Nothing
 
@@ -305,6 +349,16 @@ spec = do
       expectDirect [dep1, localLib] result
       expectDeps [dep1, localLib] result
       expectEdges [] result
+
+    it "should label each locked version with the environment that references it" $ do
+      let result = buildGraph lockSplitVersions
+      let fooProd = mkDep "foo" "1.0.0" [EnvProduction]
+      let fooDev = mkDep "foo" "2.0.0" [EnvDevelopment]
+      let bar = mkDep "bar" "1.0.0" [EnvDevelopment]
+
+      expectDirect [fooProd, fooDev] result
+      expectDeps [fooProd, fooDev, bar] result
+      expectEdges [(fooDev, bar)] result
 
   describe "parse uv.lock" $ do
     it' "correctly parse and interpret uv.lock" $ do

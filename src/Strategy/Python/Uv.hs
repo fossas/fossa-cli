@@ -122,18 +122,11 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
   traverse_ mkEdges packages
   where
     packages = uvlockPackages lock
-    packagesByName = Map.fromListWith (<>) [(uvlockPackageName p, [p]) | p <- packages]
+    packagesByName = Map.fromListWith (<>) $ map (\p -> (uvlockPackageName p, [p])) packages
 
-    -- uv only records a dependency's version and source when the lockfile contains more than one
-    -- package with that name (e.g. different versions resolved for different Python versions), so
-    -- use them to select the matching packages when present.
     resolveDependency :: UvLockPackageDependency -> [UvLockPackage]
-    resolveDependency UvLockPackageDependency{..} =
-      filter matches $ Map.findWithDefault [] uvlockPackageDependencyName packagesByName
-      where
-        matches pkg =
-          all (\v -> uvlockPackageVersion pkg == Just v) uvlockPackageDependencyVersion
-            && all (== uvlockPackageSource pkg) uvlockPackageDependencySource
+    resolveDependency dep =
+      filter (dependencyMatches dep) $ Map.findWithDefault [] (uvlockPackageDependencyName dep) packagesByName
 
     -- Workspace packages (editable/virtual) are the user's own code, not third-party deps.
     -- We include them during graph construction (for edges and env labeling) but remove them
@@ -160,23 +153,22 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
         applyLabels pkg = toDependency pkg $ newEnvs pkg
 
         newEnvs :: UvLockPackage -> Set DepEnvironment
-        newEnvs UvLockPackage{..} =
+        newEnvs pkg =
           Set.fromList $
             catMaybes
-              [ maybeElem prodDeps EnvProduction uvlockPackageName
-              , maybeElem devDeps EnvDevelopment uvlockPackageName
+              [ referencedBy prodDeps EnvProduction
+              , referencedBy devDeps EnvDevelopment
               ]
+          where
+            referencedBy :: [UvLockPackageDependency] -> DepEnvironment -> Maybe DepEnvironment
+            referencedBy deps env = if any (`dependencyMatches` pkg) deps then Just env else Nothing
 
-        maybeElem :: (Eq a) => [a] -> b -> a -> Maybe b
-        maybeElem list def toFind = if toFind `elem` list then Just def else Nothing
-
-        prodDeps = map uvlockPackageDependencyName . foldMap uvlockPackageDependencies $ directList gr
+        prodDeps = foldMap uvlockPackageDependencies $ directList gr
         -- Legacy format has dev dependencies under the dev-dependencies field
         -- New format has dev dependencies under optional-dependencies.dev
         devDeps =
-          map uvlockPackageDependencyName $
-            foldMap uvlockPackageDevDependencies (directList gr)
-              <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
+          foldMap uvlockPackageDevDependencies (directList gr)
+            <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
 
     -- Locate the root nodes of the graph and mark these as direct dependencies
     -- The root node will be the uv package being scanned, not its dependencies, so we will need to later
@@ -343,6 +335,15 @@ instance Toml.Schema.FromValue UvLockPackageSource where
         , Toml.Schema.Key "path" (fmap SourcePath . Toml.Schema.fromValue)
         , Toml.Schema.Key "directory" (fmap SourceDirectory . Toml.Schema.fromValue)
         ]
+
+-- uv only records a dependency's version and source when the lockfile contains more than one
+-- package with that name (e.g. different versions resolved for different Python versions), so
+-- they are only compared when present.
+dependencyMatches :: UvLockPackageDependency -> UvLockPackage -> Bool
+dependencyMatches UvLockPackageDependency{..} UvLockPackage{..} =
+  uvlockPackageDependencyName == uvlockPackageName
+    && all (\v -> uvlockPackageVersion == Just v) uvlockPackageDependencyVersion
+    && all (== uvlockPackageSource) uvlockPackageDependencySource
 
 isWorkspacePackage :: UvLockPackageSource -> Bool
 isWorkspacePackage (SourceEditable _) = True
