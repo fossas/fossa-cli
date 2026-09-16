@@ -9,7 +9,7 @@ import App.Fossa.Ficus.Types (
   WorkflowExecutable (WorkflowExecutable),
   WorkflowRunArtifact (WorkflowRunArtifact),
   findingToWorkflowEvent,
-  toWorkflowExecutable,
+  downloadedWorkflowExecutable,
  )
 import Control.Exception (throw)
 import Data.Aeson qualified as Aeson
@@ -58,9 +58,7 @@ expectedArtifactJson :: Text
 expectedArtifactJson =
   Text.concat
     [ "{\"version\":1"
-    , ",\"executable\":{\"program\":\"node\",\"args\":["
-    , jsonString jsBundle
-    , "]}"
+    , ",\"executable\":{\"program\":\"fossa-dependency-usage-analyzer\",\"args\":[]}"
     , ",\"target\":"
     , jsonString targetDir
     , ",\"workingDirectory\":"
@@ -78,24 +76,8 @@ spec :: Spec
 spec = do
   describe "run artifact encoding" $ do
     it "matches the JSON ficus parses" $ do
-      let artifact = WorkflowRunArtifact (toWorkflowExecutable jsBundle) targetDir workDir
+      let artifact = WorkflowRunArtifact downloadedWorkflowExecutable targetDir workDir
       Just (Aeson.toJSON artifact) `shouldBe` Aeson.decodeStrictText expectedArtifactJson
-
-  describe "program inference" $ do
-    it "runs a .js bundle under node" $
-      toWorkflowExecutable jsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath jsBundle]
-
-    it "runs a .mjs bundle under node" $
-      toWorkflowExecutable mjsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath mjsBundle]
-
-    it "runs a .cjs bundle under node" $
-      toWorkflowExecutable cjsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath cjsBundle]
-
-    it "runs an uppercase .JS bundle under node" $
-      toWorkflowExecutable upperJsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath upperJsBundle]
-
-    it "passes any other path through as the program itself" $
-      toWorkflowExecutable nativeAnalyzer `shouldBe` WorkflowExecutable (toText $ toFilePath nativeAnalyzer) []
 
   describe "workflow event decoding" $ do
     it "decodes workflow-started" $

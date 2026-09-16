@@ -27,7 +27,7 @@ module App.Fossa.Ficus.Types (
   WorkflowExecutable (..),
   WorkflowRunArtifact (..),
   WorkflowEvent (..),
-  toWorkflowExecutable,
+  downloadedWorkflowExecutable,
   findingToWorkflowEvent,
   workflowResultJson,
 ) where
@@ -319,22 +319,16 @@ instance ToJSON WorkflowRunArtifact where
       , "workingDirectory" .= toFilePath workflowArtifactWorkingDirectory
       ]
 
--- | ficus resolves @program@ to a file and requires the executable bit, so a
--- plain JS bundle can never be the program itself. A non-JS path passes through
--- unchanged: that is the wrapper-script escape hatch and the seam for a future
--- compiled analyzer.
-toWorkflowExecutable :: Path Abs File -> WorkflowExecutable
-toWorkflowExecutable path
-  | isJsBundle = WorkflowExecutable "node" [rendered]
-  | otherwise = WorkflowExecutable rendered []
-  where
-    rendered :: Text
-    rendered = toText $ toFilePath path
-
-    isJsBundle :: Bool
-    isJsBundle = case fileExtension path :: Maybe String of
-      Just ext -> Text.toLower (toText ext) `elem` [".js", ".mjs", ".cjs"]
-      Nothing -> False
+-- | The executable section ficus expects in a run artifact.
+--
+-- ficus downloads the workflow executable itself and ignores what this names,
+-- but the artifact schema still requires a non-empty @program@, so name the
+-- executable that actually runs rather than inventing a placeholder. @args@
+-- stays empty: ficus places them before the target on the downloaded
+-- program's command line, where anything this side invented would be a stray
+-- argument.
+downloadedWorkflowExecutable :: WorkflowExecutable
+downloadedWorkflowExecutable = WorkflowExecutable "fossa-dependency-usage-analyzer" []
 
 -- | What ficus reports about a workflow run, carried as a JSON string in the
 -- observation payload of a @workflow@-strategy finding.
