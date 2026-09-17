@@ -177,28 +177,25 @@ For more detail about how Vendetta works, how to use file filtering during
 scanning, or what information is sent to FOSSA's servers, see
 [the Vendetta feature documentation](../../features/vendetta.md).
 
-### Dependency Usage Analysis with `--x-workflow`
+### Extended Dependency Usage Analysis
 
-`--x-workflow` runs a dependency-usage workflow analyzer over the project,
-records its result in the debug bundle, and uploads it to FOSSA against the
-same revision as the dependency upload. FOSSA CLI does not ship the analyzer:
-the embedded ficus downloads the latest release of it and runs that, so the
-flag needs nothing from you but itself, and a run needs network access to
-reach that release.
+`--x-workflow` runs an additional dependency usage analyzer over the project
+and uploads it to FOSSA against the same revision as the dependency upload.
+FOSSA CLI downloads the analyzer, if needed, when this flag is used. A run
+needs network access to reach that location.
 
 The result is uploaded only when the analysis itself is uploaded, after the
 dependency upload succeeds; with `--output` nothing is sent. A result that
 fails to upload fails the run, but the dependency upload has already landed by
 then. Nothing else about this flag changes what `fossa analyze` sends to FOSSA.
 
-#### Enabling dependency usage analysis
+#### Enabling Dependency Usage Analysis
 
-| Name             | Description                                                                                          |
-|------------------|------------------------------------------------------------------------------------------------------|
-| `--x-workflow`   | Experimental. Run the dependency-usage workflow analyzer, which the embedded ficus downloads, over the project. |
+| Name             | Description                                                       |
+|------------------|-------------------------------------------------------------------|
+| `--x-workflow`   | Experimental. Run the dependency usage analyzer over the project. |
 
-The flag takes no argument. A path written after it is read as the directory to
-scan, the same as any other trailing path.
+The flag takes no argument and the existing directory path is scanned by the analzer.
 
 `--x-workflow` cannot be combined with `--static-only-analysis`,
 which is the kill switch for running third-party tooling on your machine;
@@ -213,13 +210,13 @@ is preserved alongside it in `fossa.ficus-workflow-stdout.log`.
 `--x-workflow` has two distinct failure modes, and only one of them is silent.
 
 A workflow *run* that fails — the analyzer exits non-zero, produces no
-result, or the embedded ficus rejects the run — does **not** fail `fossa
-analyze`. The command still exits 0; the failure is reported in the log,
-including the tail of ficus's stderr, and `bundleWorkflowResult` in the debug
-bundle is left empty. This is deliberate: a broken experimental analyzer must
-not block the dependency scan and upload. Check the log for
-`The workflow analyzer did not produce a result` to confirm the run happened.
-A failure to reach or download the release is reported the same way.
+result, or fails start — does **not** fail `fossa analyze`. The command still
+exits 0; the failure is reported in the log, including the tail of the stderr,
+and `bundleWorkflowResult` in the debug bundle is left empty. This is deliberate:
+a broken experimental analyzer must not block the dependency scan and upload.
+Check the log for `The workflow analyzer did not produce a result` to confirm
+the run happened. A failure to reach or download the release is reported the
+same way.
 
 A workflow result that fails to *upload* is different: it fails `fossa
 analyze` with a non-zero exit, as noted above. By the time that upload is
@@ -235,7 +232,7 @@ runs with your privileges, reads whatever it can read, and may make network
 requests of its own. `--output` suppresses FOSSA CLI's own upload; it cannot
 suppress a child process's traffic.
 
-The program comes from the analyzer's own release repository, which ficus has
+The program comes from the analyzer's own release repository, which is
 hardcoded and which this flag cannot redirect. Enabling `--x-workflow` means
 trusting that repository's releases as much as you trust the rest of your
 build.

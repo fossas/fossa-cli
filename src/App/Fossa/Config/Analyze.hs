@@ -376,7 +376,7 @@ cliParser =
     <*> flagOpt ExperimentalSnippetScan (applyFossaStyle <> long "x-snippet-scan" <> hidden)
     <*> flagOpt SnippetScan (applyFossaStyle <> long "snippet-scan" <> stringToHelpDoc "Enable snippet scanning to identify open source code snippets using fingerprinting.")
     <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
-    <*> switch (applyFossaStyle <> long "x-workflow" <> stringToHelpDoc "Experimental flag to enable the dependency-usage workflow analyzer, which ficus downloads.")
+    <*> switch (applyFossaStyle <> long "x-workflow" <> stringToHelpDoc "Experimental flag to enable extended dependency usage analysis, like linking and distribution methods.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
