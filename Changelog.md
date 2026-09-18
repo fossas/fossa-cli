@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Go: `fossa analyze` can now report Go module dependencies read from the buildinfo embedded in compiled Go binaries (built with Go >= 1.18), so Go code shipped as a binary with no `go.mod` alongside it is no longer invisible to analysis. Opt in with `--enable-go-binary-analysis`; it is off by default because `fossa analyze` otherwise reports only what package managers declare. To reach binaries nested inside an archive (for example a `.so` inside an AAR or JAR), combine it with `--unpack-archives`.
+
 ## 3.19.0
 
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
