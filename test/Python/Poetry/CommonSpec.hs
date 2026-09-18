@@ -162,6 +162,7 @@ spec = do
   emptyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pyproject2.toml")
   pep621Contents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621/pyproject.toml")
   pep621MixedContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621-mixed/pyproject.toml")
+  pep621SourceOnlyContents <- runIO (TIO.readFile "test/Python/Poetry/testdata/pep621-source-only/pyproject.toml")
 
   describe "toCanonicalName" $ do
     it "should convert text to lowercase" $
@@ -191,6 +192,17 @@ spec = do
           let prodDeps = filter (\d -> Set.singleton EnvProduction == dependencyEnvironments d) deps
           -- Both requests and flask should be production deps
           map dependencyName prodDeps `shouldMatchList` ["requests", "flask"]
+
+    it "should use the [project].dependencies version for source-only [tool.poetry.dependencies] entries" $ do
+      case decodeEither pep621SourceOnlyContents of
+        Left e -> fail $ "Failed to parse pyproject.toml: " <> show e
+        Right pyProject -> do
+          let versions = map (\d -> (dependencyName d, dependencyVersion d)) $ pyProjectDeps pyProject
+          versions
+            `shouldMatchList` [ ("requests", Just $ CGreaterOrEq "2.28.0")
+                              , ("private-lib", Just $ CEq "2.0.10")
+                              , ("private-tool", Nothing)
+                              ]
 
   describe "allPoetryProductionDeps" $ do
     it "should include PEP 621 [project].dependencies" $ do
