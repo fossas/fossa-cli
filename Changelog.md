@@ -5,6 +5,7 @@
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
 - NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
 - Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
+- Node: package.json-only analysis now resolves pnpm `catalog:` references from the nearest `pnpm-workspace.yaml`, including scans started inside a workspace member. Catalog dependencies are reported with their declared versions or ranges. References that remain unresolved, and local `workspace:` or `link:` references, are skipped with a warning rather than reported at literal protocol strings as versions. ([#1765](https://github.com/fossas/fossa-cli/pull/1765))
 
 ## 3.18.4
 
