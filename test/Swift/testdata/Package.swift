@@ -64,6 +64,11 @@ let package = Package(
         // range
         .package(url: "https://github.com/LeoNatan/LNPopupController.git", "2.5.0"..<"2.5.6"),
         .package(url: "https://github.com/Polidea/RxBluetoothKit.git", "3.0.5"..."3.0.7"),
+
+        // traits
+        .package(url: "https://github.com/example/banana.git", .from("3.2.2"),  traits: [
+            "SomeTrait"
+        ]),
  
         // version constructor
         .package(url: "https://github.com/example/example.git", .from(Version(1, 7, 0, prereleaseIdentifiers: ["a", "b"], buildMetadataIdentifiers: ["x", "banana"]))),

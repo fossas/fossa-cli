@@ -95,6 +95,9 @@ isEndLine '\n' = True
 isEndLine '\r' = True
 isEndLine _ = False
 
+parseStringArray :: Parser [Text]
+parseStringArray = betweenSquareBrackets (sepEndBy parseQuotedText (symbol ","))
+
 -- | Represents https://developer.apple.com/documentation/packagedescription/version
 data SwiftVersion = SwiftVersion
   { parts :: [Text]
@@ -126,9 +129,6 @@ parseVersionConstructor = (symbol "Version") >> assembleParts <$> parseParts
         Just ("buildMetadataIdentifiers") -> (Just . BuildMetadataIdentifiers) <$> parseStringArray
         -- Unknown key -- Not reachable in practice, but consume the value of any unknown keys so the parser continues
         _ -> Nothing <$ (void parseStringArray <|> void parseQuotedText <|> void (some digitChar))
-
-    parseStringArray :: Parser [Text]
-    parseStringArray = betweenSquareBrackets (sepEndBy parseQuotedText (symbol ","))
 
     assembleParts :: [SwiftVersionPart] -> SwiftVersion
     assembleParts =
@@ -232,8 +232,12 @@ parsePackageDep = try parsePathDep <|> parseGitDep
       _ <- symbol ".package" <* symbol "("
       _ <- optionallyTry (parseKeyValue "name" parseQuotedText)
 
-      -- Url (Required Field)
-      url <- parseKeyValue "url" $ parseQuotedText <* maybeComma
+      -- Url (Required Field), or -- for a package-registry dependency (SwiftPM 5.7+) --
+      -- the package's scoped identifier, e.g. `.package(id: "mona.LinkedList", from: "1.0.0")`.
+      -- https://developer.apple.com/documentation/packagedescription/package/dependency/package(id:from:)
+      -- Registry dependencies take the same version requirements as url dependencies,
+      -- so they share this parser; the identifier is used in place of the url.
+      url <- (parseKeyValue "url" parseQuotedText <|> parseKeyValue "id" parseQuotedText) <* maybeComma
 
       versionRequirement <-
         optional $
@@ -249,6 +253,8 @@ parsePackageDep = try parsePathDep <|> parseGitDep
               , ClosedInterval <$> parseRange "..."
               , RhsHalfOpenInterval <$> parseRange "..<"
               ]
+      _ <- maybeComma
+      _ <- optional $ parseKeyValue "traits" $ void parseStringArray
       _ <- symbol ")"
       pure $ GitSource $ SwiftPackageGitDep url (versionRequirement)
 

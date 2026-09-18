@@ -3,18 +3,24 @@ module Strategy.Node.Pnpm.PnpmLock (
 
   -- * for testing
   buildGraph,
+  parsePnpmLockfile,
 ) where
 
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, Has, context)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
+import Data.Aeson.Types (Value, parseEither, parseJSON)
+import Data.ByteString (ByteString)
+import Data.Either (partitionEithers)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Yaml (decodeAllEither', prettyPrintParseException)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType, UserType),
@@ -29,7 +35,7 @@ import Effect.Logger (
   logWarn,
   pretty,
  )
-import Effect.ReadFS (ReadFS, readContentsYaml)
+import Effect.ReadFS (ReadFS, ReadFSErr (FileParseError), fileParseErrorSupportMsg, readContentsBS)
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
@@ -227,9 +233,32 @@ buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphC
 buildGraph (LockfileV678 (PnpmLockfileV678 base)) = buildGraphCore buildGraphConfigV678 base
 buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
 
+-- | Parse the contents of a pnpm-lock.yaml file.
+--
+-- pnpm v11 can write the lockfile as a multi-document YAML stream. In practice
+-- the stream is exactly two documents: a metadata front-document (pnpmfile
+-- checksum, config dependency integrity, etc. — no dependency data) followed by
+-- the lockfile document, which still carries all of the importers\/packages\/
+-- snapshots data. Only the lockfile document parses as a 'PnpmLockfile' (the
+-- metadata document has no @lockfileVersion@), so selecting the first document
+-- that parses as a lockfile analyzes the full dependency data rather than
+-- rejecting the stream with "Multiple YAML documents encountered".
+parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
+parsePnpmLockfile contents = case decodeAllEither' contents of
+  Left err -> Left . toText $ prettyPrintParseException err
+  Right (docs :: [Value]) -> case partitionEithers $ map (parseEither parseJSON) docs of
+    (_, lockfile : _) -> Right lockfile
+    ([], []) -> Left "no YAML documents found"
+    (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
+
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
-  pnpmLockFile <- context "Parsing pnpm-lock file" $ readContentsYaml file
+  pnpmLockFile <- context "Parsing pnpm-lock file" $
+    context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
+      contents <- readContentsBS file
+      case parsePnpmLockfile contents of
+        Left err -> errSupport (fileParseErrorSupportMsg file) . fatal $ FileParseError (toString file) err
+        Right lockfile -> pure lockfile
 
   -- Warn about unsupported versions (v1-v3).
   case pnpmLockFile of

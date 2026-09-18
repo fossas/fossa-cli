@@ -43,6 +43,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   alreadyAnalyzedPathRevision,
   getTokenType,
   getCustomBuildUploadPermissions,
+  uploadAnalysisWorkflow,
   AnalysisService (..),
   APIClientEffs,
 
@@ -162,6 +163,8 @@ import Effect.Logger (
  )
 import Errata (Errata (..), errataSimple)
 import Fossa.API.Types (
+  AnalysisWorkflowId,
+  AnalysisWorkflowUpload (AnalysisWorkflowUpload),
   AnalyzedPathDependenciesResp,
   ApiOpts,
   Archive,
@@ -1561,6 +1564,29 @@ getEndpointVersion apiOpts = fossaReq $ do
   case parseXML (decodeUtf8 body) of
     Left err -> fatalText (xmlErrorPretty err)
     Right (appManifest :: AppManifest) -> pure $ endpointAppVersion appManifest
+
+---- Analysis workflow
+
+-- | The analysis service sits behind the same ingress path prefix as
+-- 'containerUploadUrl' for 'Sparkle': a plain path route, so the request and
+-- its bearer token arrive unchanged and the service resolves the org from the
+-- token.
+analysisWorkflowsEndpoint :: Url 'Https -> Url 'Https
+analysisWorkflowsEndpoint baseUrl = baseUrl /: "api" /: "proxy" /: "analysis" /: "api" /: "v1" /: "analysis-workflows"
+
+uploadAnalysisWorkflow ::
+  APIClientEffs sig m =>
+  ApiOpts ->
+  Locator ->
+  Aeson.Value ->
+  m AnalysisWorkflowId
+uploadAnalysisWorkflow apiOpts locator workflowData = fossaReq $ do
+  (baseUrl, baseOpts) <- useApiOpts apiOpts
+  let envelope = AnalysisWorkflowUpload locator workflowData
+  response <-
+    context ("Uploading the workflow result for " <> renderLocator locator) $
+      req POST (analysisWorkflowsEndpoint baseUrl) (ReqBodyJson envelope) jsonResponse baseOpts
+  pure (responseBody response)
 
 ---- Path Dependency
 

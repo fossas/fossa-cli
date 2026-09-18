@@ -1,5 +1,6 @@
 module Strategy.Maven.PluginTree (
   parseTextArtifact,
+  parseTextArtifacts,
   TextArtifact (..),
   parseArtifactChild,
 ) where
@@ -16,11 +17,12 @@ import Text.Megaparsec (
   chunk,
   eof,
   getSourcePos,
+  many,
+  satisfy,
   sepBy,
   some,
   sourceColumn,
   takeWhile1P,
-  takeWhileP,
   try,
   unPos,
   (<|>),
@@ -64,7 +66,12 @@ parseArtifactChild ::
   Parser (Tree TextArtifact)
 parseArtifactChild prefixCount =
   try $ do
-    void $ takeWhileP Nothing (\c -> c `notElem` ['\\', '+'])
+    -- Connector prefixes consist only of continuation bars and whitespace.
+    -- Any other text (e.g. an unconnected artifact line that starts a new
+    -- module's block in multi-module output) is not a child of this parent;
+    -- failing here lets the top level parse it as a new root instead of
+    -- swallowing the whole following block as one giant prefix.
+    void $ many (satisfy (\c -> c `elem` ['|', ' ', '\t', '\n']))
     pos <- currentColumn
     if pos == prefixCount
       then -- The parser is where we expect a child of its parent to be positioned
@@ -122,3 +129,29 @@ parseTextArtifactAndChildren isDirect =
 -- The parser should parse the text into a tree of these artifacts.
 parseTextArtifact :: Parser (Tree TextArtifact)
 parseTextArtifact = parseTextArtifactAndChildren True <* eof
+
+-- | Parse plugin output containing one top-level tree per reactor module.
+--
+-- The @aggregate@ goal emits a separate root block for every module of the
+-- build, so a multi-module project yields several trees in one file (and the
+-- same dependency can repeat under different roots). 'parseTextArtifact' only
+-- accepts a single tree and fails on real multi-module output.
+parseTextArtifacts :: Parser [Tree TextArtifact]
+parseTextArtifacts = do
+  first <- parseTextArtifactAndChildren True
+  -- Each following root block starts after any whitespace (typically a
+  -- newline); the 'try' rolls back the consumed separator when a line is not
+  -- a valid artifact root, so trailing garbage still fails the final 'eof'
+  -- instead of being dropped.
+  rest <- many $ try nextRootBlock
+  void $ many (satisfy isSpace)
+  eof
+  pure (first : rest)
+  where
+    -- 'many', not 'some': the previous block's trailing lexeme has usually
+    -- already consumed the separating newline, so there may be zero whitespace
+    -- before the next root.
+    nextRootBlock :: Parser (Tree TextArtifact)
+    nextRootBlock = do
+      void $ many (satisfy isSpace)
+      parseTextArtifactAndChildren True

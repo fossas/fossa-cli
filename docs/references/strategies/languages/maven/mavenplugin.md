@@ -22,16 +22,25 @@ Find `pom.xml` files, and treat those as maven projects. Skip all subdirectories
 
 1. unpack the embedded plugin to a temporary directory
 2. install it to the local maven repository `mvn org.apache.maven.plugins:maven-install-plugin:3.0.0-M1:install-file -DgroupId=com.github.ferstl -DartifactId=depgraph-maven-plugin -Dversion=4.0.1 -Dpackaging=jar -Dfile=<location>/depgraph-maven-plugin-4.0.1.jar` (uses a specific version of [Maven Install Plugin](https://maven.apache.org/plugins/maven-install-plugin/) to avoid a [bug in earlier versions](https://issues.apache.org/jira/browse/MINSTALL-110))
-3. invoke the plugin in the top-level project with the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:aggregate -DgraphFormat=text -DmergeScopes -DreduceEdges=false -DshowVersions=true -DshowGroupIds=true -DshowOptional=true -DrepeatTransitiveDependenciesInTextGraph=true`
+3. invoke the plugin in the top-level project with the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:aggregate -DgraphFormat=text -DmergeScopes -DreduceEdges=false -DshowVersions=true -DshowGroupIds=true -DshowOptional=true -DrepeatTransitiveDependenciesInTextGraph=true -DoutputDirectory=<tempdir>`
 
-For `graphFormat`s other than `text` the data will be output to
-`target/dependency-graph.<format>`. For `text`, it will additionally be output
-to stdout.
+The `-DoutputDirectory` flag ensures output is written to a known temporary
+directory regardless of any `<build><directory>` overrides in the project's POMs.
+For `graphFormat`s other than `text` the data will be output to the configured
+output directory. For `text`, it will additionally be output to stdout.
 
-During this analysis we will attempt to determine what submodules are part of the
-this project using the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:reactor -Dgraphformat=json -DoutputFilename=fossa-reactor-graph.json`. We then generate a graph that excludes all of those submodules, but with
-their imediate deps marked as direct. This is because we don't want to include the users' projects in graphs, but
-do want to be able to analyze the things that they depend on.
+Submodule discovery is performed by parsing the project's POM files and building
+a reachability graph (POM closure). Submodules are identified from this closure
+rather than by running a separate Maven reactor invocation. We then generate a
+graph that excludes all of those submodules, but with their immediate deps marked
+as direct. This is because we don't want to include the users' projects in graphs,
+but do want to be able to analyze the things that they depend on.
+
+A second `:graph` (per-module) invocation is run with the command `mvn com.github.ferstl:depgraph-maven-plugin:4.0.1:graph -DgraphFormat=json -DmergeScopes -DshowDuplicates=true -DoutputFileName=fossa-depgraph-verbose.json`
+to recover dependency edges that Maven resolved away as duplicates (the same
+artifact reachable via multiple paths in the reactor). These duplicate-resolved
+edges are merged back into the main graph. If this pass fails, a warning is
+emitted and analysis continues with the aggregate result alone.
 
 For example:
 

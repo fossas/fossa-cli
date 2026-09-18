@@ -12,6 +12,7 @@ import Test.Hspec (Spec, describe, expectationFailure, it, runIO, shouldBe)
 spec :: Spec
 spec = do
   propsFile <- runIO (TIO.readFile "test/NuGet/testdata/Directory.Packages.props")
+  tolerantPropsFile <- runIO (TIO.readFile "test/NuGet/testdata/Directory.Packages.tolerant.props")
 
   describe "Directory.Packages.props parser" $ do
     it "parses PackageVersion entries" $ do
@@ -28,3 +29,16 @@ spec = do
           Map.lookup "MixedCase.Package" versions `shouldBe` Nothing
           Map.lookup "nonexistent" versions `shouldBe` Nothing
         Left err -> expectationFailure (toString ("could not parse Directory.Packages.props: " <> xmlErrorPretty err))
+
+    it "tolerates PackageVersion entries without a Version attribute" $ do
+      case parseXML tolerantPropsFile of
+        Right props -> do
+          let versions = buildVersionMap props
+          Map.lookup "normal" versions `shouldBe` Just "1.0.0"
+          -- Version metadata declared as a child element instead of an attribute
+          Map.lookup "child.version" versions `shouldBe` Just "2.0.0"
+          Map.lookup "updated" versions `shouldBe` Just "3.0.0"
+          -- Entries with no resolvable name/version are skipped, not fatal
+          Map.lookup "removed" versions `shouldBe` Nothing
+          Map.lookup "attrless" versions `shouldBe` Nothing
+        Left err -> expectationFailure (toString ("could not parse Directory.Packages.tolerant.props: " <> xmlErrorPretty err))

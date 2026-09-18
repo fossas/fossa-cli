@@ -45,6 +45,7 @@ module Effect.ReadFS (
   readContentsToml,
   readContentsYaml,
   readContentsXML,
+  fileParseErrorSupportMsg,
 
   -- * Reading file contents, redacting the content from logging and diagnostics.
   readRedactedContentsBS,

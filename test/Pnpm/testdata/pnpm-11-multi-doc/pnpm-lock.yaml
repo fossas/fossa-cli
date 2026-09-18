@@ -1,0 +1,38 @@
+pnpmfileChecksum: sha256-cf+5r3ZWOJxzgXmKavdmLHG0t5CZ2JP04zWHTtIHtJo=
+configDependencies:
+  "@pnpm/plugin-esm-node-path": 1.0.0
+---
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+  .:
+    dependencies:
+      local-pkg:
+        specifier: file:packages/local-pkg
+        version: file:packages/local-pkg
+
+packages:
+  file:packages/local-pkg:
+    resolution: {directory: packages/local-pkg, type: directory}
+    name: local-pkg
+
+  express@4.18.2:
+    resolution: {integrity: sha512-xxxxxxxxxx==}
+
+  body-parser@1.20.1:
+    resolution: {integrity: sha512-xxxxxxxxxx==}
+
+snapshots:
+  file:packages/local-pkg:
+    dependencies:
+      express: 4.18.2
+
+  express@4.18.2:
+    dependencies:
+      body-parser: 1.20.1
+
+  body-parser@1.20.1: {}
