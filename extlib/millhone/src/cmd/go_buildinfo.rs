@@ -430,7 +430,6 @@ fn read_paths_from_stdin() -> std::io::Result<Vec<PathBuf>> {
     std::io::stdin().read_to_string(&mut buf)?;
     Ok(buf
         .lines()
-        .map(str::trim_end)
         .filter(|line| !line.is_empty())
         .map(PathBuf::from)
         .collect())

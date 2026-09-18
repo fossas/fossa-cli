@@ -1,7 +1,8 @@
 # Go Binaries (buildinfo)
 
-Go binaries built with module support (Go >= 1.18) embed the list of every
-module linked into them. This is the same data `go version -m <binary>` prints.
+Go binaries built with module support embed the list of every module linked
+into them; FOSSA CLI reads the encoding used by Go >= 1.18. This is the same
+data `go version -m <binary>` prints.
 
 FOSSA CLI reads that list, so Go code shipped as a compiled binary is reported
 even when no `go.mod`, `go.sum`, or Go source is present next to it.
@@ -51,12 +52,12 @@ a source unit is named after its directory. Each contributing binary appears as
 an origin path, and their module lists are combined.
 
 Default path filters still apply: a binary under `vendor/` is skipped unless you
-pass `--include-path vendor`.
+pass `--without-default-filters`.
 
 ## Analysis
 
 The module list is read directly out of the binary; no Go toolchain is invoked
-and nothing is executed. Every module found is reported as a direct `go`
+and nothing is executed. Every module found is reported as a direct `go+`
 dependency.
 
 Versions are normalized the same way `go.mod` analysis normalizes them:

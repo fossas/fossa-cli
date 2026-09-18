@@ -182,15 +182,16 @@ findProjects dir = do
 toProjects :: [Path Abs File] -> [DiscoveredGoBinary] -> [GoBinaryProject]
 toProjects candidates discovered = map toProject . Map.toAscList $ Map.fromListWith merge byDir
   where
-    byPath = Map.fromList [(toText path, path) | path <- candidates]
+    byPath = Map.fromList $ map (\path -> (toText path, path)) candidates
 
-    byDir =
-      [ (parent path, (NE.singleton path, deps))
-      | binary <- discovered
-      , let deps = goBinaryDependencies binary
-      , not (null deps)
-      , Just path <- [Map.lookup (goBinaryPath binary) byPath]
-      ]
+    byDir = mapMaybe toDir discovered
+
+    toDir binary = do
+      path <- Map.lookup (goBinaryPath binary) byPath
+      let deps = goBinaryDependencies binary
+      if null deps
+        then Nothing
+        else Just (parent path, (NE.singleton path, deps))
 
     -- 'Map.fromListWith' applies the later entry first; flip so paths and
     -- dependencies stay in the order the binaries were discovered.
