@@ -1,16 +1,18 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Go.GoBinarySpec (spec) where
 
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy (ByteString)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (
   DepType (GoType),
   Dependency (..),
   VerConstraint (CEq),
  )
-import Path (mkAbsDir, mkAbsFile)
+import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile)
 import Strategy.Go.GoBinary (
   DiscoveredGoBinary (..),
   GoBinaryProject (..),
@@ -24,13 +26,32 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 -- Output from @millhone analyze-go-binaries@ for a single Go binary.
 millhoneOutput :: ByteString
 millhoneOutput =
-  "[{\"kind\":\"v1.discover.binary.go\",\"path\":\"/src/jni/arm64-v8a/libgojni.so\",\
-  \\"go_version\":\"go1.25.6\",\
-  \\"main_module\":{\"path\":\"example.com/sdk\",\"version\":\"(devel)\"},\
-  \\"modules\":[\
-  \{\"path\":\"github.com/google/uuid\",\"version\":\"v1.6.0\"},\
-  \{\"path\":\"golang.org/x/sys\",\"version\":\"v0.0.0-20220715151400-c0bba94af5f8\"}\
-  \]}]"
+  mconcat
+    [ "[{\"kind\":\"v1.discover.binary.go\",\"path\":\"/src/jni/arm64-v8a/libgojni.so\","
+    , "\"go_version\":\"go1.25.6\","
+    , "\"main_module\":{\"path\":\"example.com/sdk\",\"version\":\"(devel)\"},"
+    , "\"modules\":["
+    , "{\"path\":\"github.com/google/uuid\",\"version\":\"v1.6.0\"},"
+    , "{\"path\":\"golang.org/x/sys\",\"version\":\"v0.0.0-20220715151400-c0bba94af5f8\"}"
+    , "]}]"
+    ]
+
+-- Windows rejects `/`-rooted absolute paths at compile time.
+toolA, toolB, nested :: Path Abs File
+toolsDir, jniDir :: Path Abs Dir
+#ifdef mingw32_HOST_OS
+toolA = $(mkAbsFile "C:/src/tools/toolA")
+toolB = $(mkAbsFile "C:/src/tools/toolB")
+nested = $(mkAbsFile "C:/src/jni/libgojni.so")
+toolsDir = $(mkAbsDir "C:/src/tools/")
+jniDir = $(mkAbsDir "C:/src/jni/")
+#else
+toolA = $(mkAbsFile "/src/tools/toolA")
+toolB = $(mkAbsFile "/src/tools/toolB")
+nested = $(mkAbsFile "/src/jni/libgojni.so")
+toolsDir = $(mkAbsDir "/src/tools/")
+jniDir = $(mkAbsDir "/src/jni/")
+#endif
 
 expectedBinary :: DiscoveredGoBinary
 expectedBinary =
@@ -102,17 +123,15 @@ spec = do
     -- Source units are named after their directory, so one project per binary
     -- would emit colliding units for a directory holding several Go binaries.
     it "groups binaries in one directory into a single project" $ do
-      let toolA = $(mkAbsFile "/src/tools/toolA")
-          toolB = $(mkAbsFile "/src/tools/toolB")
-          binA = expectedBinary{goBinaryPath = "/src/tools/toolA"}
+      let binA = expectedBinary{goBinaryPath = toText toolA}
           binB =
             expectedBinary
-              { goBinaryPath = "/src/tools/toolB"
+              { goBinaryPath = toText toolB
               , goBinaryModules = [GoModule "github.com/urfave/cli/v3" "v3.3.3"]
               }
       toProjects [toolA, toolB] [binA, binB]
         `shouldBe` [ GoBinaryProject
-                       { goBinaryProjectDir = $(mkAbsDir "/src/tools/")
+                       { goBinaryProjectDir = toolsDir
                        , goBinaryProjectFiles = [toolA, toolB]
                        , goBinaryProjectDeps =
                            [ mkDep "github.com/google/uuid" "v1.6.0"
@@ -123,16 +142,13 @@ spec = do
                    ]
 
     it "keeps binaries in different directories as separate projects" $ do
-      let toolA = $(mkAbsFile "/src/tools/toolA")
-          nested = $(mkAbsFile "/src/jni/libgojni.so")
-          binA = expectedBinary{goBinaryPath = "/src/tools/toolA"}
-          binNested = expectedBinary{goBinaryPath = "/src/jni/libgojni.so"}
+      let binA = expectedBinary{goBinaryPath = toText toolA}
+          binNested = expectedBinary{goBinaryPath = toText nested}
       map goBinaryProjectDir (toProjects [toolA, nested] [binA, binNested])
-        `shouldBe` [$(mkAbsDir "/src/jni/"), $(mkAbsDir "/src/tools/")]
+        `shouldBe` [jniDir, toolsDir]
 
     it "drops binaries with no usable dependency and paths millhone was not given" $ do
-      let toolA = $(mkAbsFile "/src/tools/toolA")
-          devel = expectedBinary{goBinaryPath = "/src/tools/toolA", goBinaryModules = [], goBinaryMainModule = Just (GoModule "example.com/sdk" "(devel)")}
+      let devel = expectedBinary{goBinaryPath = toText toolA, goBinaryModules = [], goBinaryMainModule = Just (GoModule "example.com/sdk" "(devel)")}
           unknown = expectedBinary{goBinaryPath = "/somewhere/else"}
       toProjects [toolA] [devel] `shouldBe` []
       toProjects [toolA] [unknown] `shouldBe` []
