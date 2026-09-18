@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Poetry: `pyproject.toml` files with a `[tool.poetry.dependencies]` entry that has no version, git, path or url (e.g. a source-only `pkg = { source = "private" }` that adds settings to a dependency declared in PEP 621 `[project].dependencies`) no longer fail analysis.
+
 ## 3.19.0
 
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
