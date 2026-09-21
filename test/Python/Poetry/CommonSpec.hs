@@ -200,7 +200,7 @@ spec = do
           let versions = map (\d -> (dependencyName d, dependencyVersion d)) $ pyProjectDeps pyProject
           versions
             `shouldMatchList` [ ("requests", Just $ CGreaterOrEq "2.28.0")
-                              , ("private-lib", Just $ CEq "2.0.10")
+                              , ("Private_Lib", Just $ CEq "2.0.10")
                               , ("private-tool", Nothing)
                               ]
 

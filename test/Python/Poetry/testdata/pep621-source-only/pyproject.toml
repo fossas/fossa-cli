@@ -3,11 +3,12 @@ name = "my-pep621-source-only-project"
 version = "1.0.0"
 dependencies = [
     "requests>=2.28.0",
-    "private-lib==2.0.10",
+    "Private_Lib==2.0.10",
 ]
 
 [tool.poetry.dependencies]
-# Source-only entries; the version comes from [project].dependencies when present
+# Source-only entries; the version comes from [project].dependencies when present.
+# private-lib is spelled differently from its [project].dependencies entry, but names the same package.
 private-lib = { source = "private" }
 private-tool = { source = "private" }
 

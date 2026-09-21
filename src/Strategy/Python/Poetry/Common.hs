@@ -151,9 +151,11 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
         --
         -- Unversioned poetry entries are the exception: PEP 621 carries the version for them, so
         -- they only fill in packages missing from [project].dependencies.
+        --
+        -- Keys are canonicalized so that differently spelled names for the same package merge.
         (unversionedProdDeps, versionedProdDeps) = Map.partition (== PyProjectPoetryUnversionedDependencySpec) supportedProdDeps
         prodDeps =
-          Map.unions
+          Map.unions . map (Map.mapKeys toCanonicalName) $
             [ toDependency [EnvProduction] versionedProdDeps
             , pep621ProdDeps
             , toDependency [EnvProduction] unversionedProdDeps
