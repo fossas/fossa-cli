@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- uv: `uv.lock` files that lock more than one version of a package (e.g. different versions for different Python versions) now report every version under the package that depends on it. Previously only one version was kept, and the other versions' dependencies were reported as direct dependencies.
+
 ## 3.19.0
 
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
