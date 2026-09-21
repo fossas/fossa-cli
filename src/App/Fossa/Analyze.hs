@@ -117,7 +117,7 @@ import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
-import Control.Monad (join, unless, void, when)
+import Control.Monad (guard, join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
@@ -435,8 +435,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   workflowResult <-
     Diag.errorBoundaryIO . diagToDebug $
       traverse
-        (\analyzer -> Diag.context "x-workflow" $ Workflow.analyzeWithWorkflow basedir analyzer (Config.debugDir cfg))
-        (Config.xWorkflow cfg)
+        (\() -> Diag.context "x-workflow" $ Workflow.analyzeWithWorkflow basedir (Config.debugDir cfg))
+        (guard (Config.xWorkflow cfg) :: Maybe ())
   let workflowData = join $ resultToMaybe workflowResult
 
   maybeLernieResults <-

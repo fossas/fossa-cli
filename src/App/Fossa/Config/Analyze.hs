@@ -253,7 +253,7 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeExperimentalSnippetScan :: Flag ExperimentalSnippetScan
   , analyzeSnippetScan :: Flag SnippetScan
   , analyzeVendetta :: Bool
-  , analyzeWorkflow :: Maybe FilePath
+  , analyzeWorkflow :: Bool
   }
   deriving (Eq, Ord, Show)
 
@@ -295,7 +295,7 @@ data AnalyzeConfig = AnalyzeConfig
   , snippetScan :: Bool
   , debugDir :: Maybe FilePath
   , xVendetta :: Bool
-  , xWorkflow :: Maybe (Path Abs File)
+  , xWorkflow :: Bool
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -376,14 +376,7 @@ cliParser =
     <*> flagOpt ExperimentalSnippetScan (applyFossaStyle <> long "x-snippet-scan" <> hidden)
     <*> flagOpt SnippetScan (applyFossaStyle <> long "snippet-scan" <> stringToHelpDoc "Enable snippet scanning to identify open source code snippets using fingerprinting.")
     <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
-    <*> optional
-      ( strOption
-          ( applyFossaStyle
-              <> long "x-workflow"
-              <> metavar "PATH"
-              <> stringToHelpDoc "Experimental. Run the dependency-usage workflow analyzer at PATH."
-          )
-      )
+    <*> switch (applyFossaStyle <> long "x-workflow" <> stringToHelpDoc "Experimental flag to enable extended dependency usage analysis, like linking and distribution methods.")
   where
     fossaDepsFileHelp :: Maybe (Doc AnsiStyle)
     fossaDepsFileHelp =
@@ -617,7 +610,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
   -- Checked before the path is resolved: a user who typed both flags should see the
   -- contradiction, not a file error about a path the CLI was never going to run.
   case (fromFlag StaticOnlyTactics analyzeStaticOnlyTactics, analyzeWorkflow) of
-    (True, Just _) -> fatalText "--x-workflow runs an analyzer on your machine and cannot be combined with --static-only-analysis"
+    (True, True) -> fatalText "--x-workflow runs an analyzer on your machine and cannot be combined with --static-only-analysis"
     _ -> pure ()
 
   AnalyzeConfig
@@ -644,7 +637,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> pure snippetScanEnabled
     <*> pure maybeDebugDir
     <*> pure analyzeVendetta
-    <*> traverse validateFile analyzeWorkflow
+    <*> pure analyzeWorkflow
 
 collectMavenScopeFilters ::
   (Has Diagnostics sig m) =>
