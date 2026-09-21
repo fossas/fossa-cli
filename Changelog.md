@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `fossa container test`: when the scan reveals issues, the command now fails with `The scan has revealed issues. Number of issues found: N` (matching `fossa test`) instead of the spurious `An exception occurred:ExitFailure 1` it previously reported; the exit code is unchanged.
+- `fossa container test`: when the scan reveals issues, the command now fails with `The scan has revealed issues. Number of issues found: N` (matching `fossa test`) instead of the spurious `An exception occurred:ExitFailure 1` it previously reported; the exit code is unchanged. ([#1785](https://github.com/fossas/fossa-cli/pull/1785))
 
 ## 3.19.0
 
