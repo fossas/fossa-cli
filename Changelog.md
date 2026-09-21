@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- `fossa container test`: when the scan reveals issues, the command now fails with `The scan has revealed issues. Number of issues found: N` (matching `fossa test`) instead of the spurious `An exception occurred:ExitFailure 1` it previously reported; the exit code is unchanged.
+
 ## 3.19.0
 
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
