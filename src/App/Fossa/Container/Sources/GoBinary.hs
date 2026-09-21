@@ -11,13 +11,8 @@ import Container.Types (DiscoveredGoBinary (..), GoModule (..))
 import Data.Aeson qualified as Aeson
 import Data.List (nub)
 import Data.Maybe (mapMaybe, maybeToList)
-import Data.SemVer qualified as SemVer
-import Data.SemVer.Internal (Version (..))
-import Data.Text (Text)
-import Data.Text qualified as Text
 import Srclib.Types (Locator (..), SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..), textToOriginPath)
-import Strategy.Go.Gomod (PackageVersion (..), parsePackageVersion)
-import Text.Megaparsec (parseMaybe)
+import Strategy.Go.GoBinary (normalizeVersion)
 import Types (GraphBreadth (..))
 
 -- | One source unit per discovered binary. Binaries with no usable module
@@ -75,13 +70,3 @@ goModuleToLocator (GoModule path version) = do
       , locatorProject = path
       , locatorRevision = Just normalized
       }
-
-normalizeVersion :: Text -> Maybe Text
-normalizeVersion version =
-  if Text.null version || version == "(devel)"
-    then Nothing
-    else case parseMaybe (parsePackageVersion id) version of
-      Just (Pseudo commitHash) -> Just commitHash
-      Just (Semantic semver) -> Just ("v" <> SemVer.toText semver{_versionMeta = []})
-      Just (NonCanonical v) -> Just v
-      Nothing -> Just version

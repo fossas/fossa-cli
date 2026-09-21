@@ -124,6 +124,7 @@ collectStrategyConfig maybeCfg =
     )
     False -- This should be ok because discovery has no impact on whether, analysis includes path dependency or not!
     (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available
+    False -- Go binary analysis is opt-in; listing its targets would imply it runs by default
 
 data ListTargetsCliOpts = ListTargetsCliOpts
   { commons :: CommonOpts
