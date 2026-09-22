@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Go: `go.mod` files whose `module` directive is not the first directive (Go allows directives in any order) no longer fail static analysis with `unexpected "go 1.2" expecting "module" or end of input`.
+- Go: `go.mod` files whose `module` directive is not the first directive (Go allows directives in any order) no longer fail static analysis with `unexpected "go 1.2" expecting "module" or end of input`. ([#1787](https://github.com/fossas/fossa-cli/pull/1787))
 
 ## 3.19.1
 
