@@ -19,7 +19,7 @@ import Data.Maybe (catMaybes)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
-  WalkStep (WalkSkipAll, WalkContinue),
+  WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
   walkWithFilters',
  )
