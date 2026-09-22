@@ -19,7 +19,7 @@ import Data.Maybe (catMaybes)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
-  WalkStep (WalkSkipAll),
+  WalkStep (WalkSkipAll, WalkContinue),
   findFileNamed,
   walkWithFilters',
  )
@@ -60,7 +60,7 @@ findProjects = walkWithFilters' $ \dir _ files -> do
           }
 
   case conanfilePy <|> conanfileTxt of
-    Nothing -> pure ([], WalkSkipAll)
+    Nothing -> pure ([], WalkContinue)
     Just _ -> pure ([project], WalkSkipAll)
 
 data ConanProject = ConanProject

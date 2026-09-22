@@ -12,7 +12,7 @@ import Data.SemVer.Constraint (Constraint (..), satisfies)
 import Data.Text (Text)
 import Data.Void (Void)
 import Effect.Exec (
-  AllowErr (Always),
+  AllowErr (Never),
   Command (..),
   Exec,
   Has,
@@ -60,7 +60,7 @@ conanVersionCmd =
   Command
     { cmdName = "conan"
     , cmdArgs = ["--version"]
-    , cmdAllowErr = Always
+    , cmdAllowErr = Never
     , cmdEnvVars = Map.empty
     }
 
