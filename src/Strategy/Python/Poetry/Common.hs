@@ -148,7 +148,18 @@ pyProjectDeps project = filter notNamedPython $ map snd allDeps
         -- Poetry-style prod deps take precedence; PEP 621 fills in anything missing.
         -- [tool.poetry.dependencies] can carry richer metadata (explicit source, git refs, etc.)
         -- that PEP 621's PEP 508 strings can't express, so it's strictly more informative.
-        prodDeps = toDependency [EnvProduction] supportedProdDeps `Map.union` pep621ProdDeps
+        --
+        -- Unversioned poetry entries are the exception: PEP 621 carries the version for them, so
+        -- they only fill in packages missing from [project].dependencies.
+        --
+        -- Keys are canonicalized so that differently spelled names for the same package merge.
+        (unversionedProdDeps, versionedProdDeps) = Map.partition (== PyProjectPoetryUnversionedDependencySpec) supportedProdDeps
+        prodDeps =
+          Map.unions . map (Map.mapKeys toCanonicalName) $
+            [ toDependency [EnvProduction] versionedProdDeps
+            , pep621ProdDeps
+            , toDependency [EnvProduction] unversionedProdDeps
+            ]
         devDeps = toDependency [EnvDevelopment] supportedDevDeps
 
 -- | Gets Dependency from `PoetryDependency` and it's `DepEnvironment`.
@@ -174,6 +185,7 @@ poetrytoDependency depEnvs name deps =
       PyProjectPoetryGitDependencySpec ds -> gitUrl ds
       PyProjectPoetryUrlDependencySpec ds -> sourceUrl ds
       PyProjectPoetryPathDependencySpec ds -> sourcePath ds
+      PyProjectPoetryUnversionedDependencySpec -> name
 
     depVersion = case deps of
       PoetryTextVersion ds -> toDependencyVersion ds
