@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Go: `go.mod` files whose `module` directive is not the first directive (Go allows directives in any order) no longer fail static analysis with `unexpected "go 1.2" expecting "module" or end of input`. ([#1787](https://github.com/fossas/fossa-cli/pull/1787))
+
 ## 3.19.1
 
 - Poetry: `pyproject.toml` files with a `[tool.poetry.dependencies]` entry that has no version, git, path or url (e.g. a source-only `pkg = { source = "private" }` that adds settings to a dependency declared in PEP 621 `[project].dependencies`) no longer fail analysis.
