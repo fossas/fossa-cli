@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Poetry: `pyproject.toml` files with a `[tool.poetry.dependencies]` entry that has no version, git, path or url (e.g. a source-only `pkg = { source = "private" }` that adds settings to a dependency declared in PEP 621 `[project].dependencies`) no longer fail analysis.
+- uv: `uv.lock` files that lock more than one version of a package (e.g. different versions for different Python versions) now report every version under the package that depends on it. Previously only one version was kept, and the other versions' dependencies were reported as direct dependencies.
 
 ## 3.19.0
 
