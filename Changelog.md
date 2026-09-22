@@ -1,5 +1,15 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- uv: `uv.lock` files that lock more than one version of a package (e.g. different versions for different Python versions) now report every version under the package that depends on it. Previously only one version was kept, and the other versions' dependencies were reported as direct dependencies.
+
+## 3.19.0
+
+- `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
+- NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
+- Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
+
 ## 3.18.4
 
 - Maven: static analysis (`pomxml`, used for hosted imports such as GitHub App / Quick Import and as the fallback when dynamic analysis is unavailable) no longer reports the project's own artifact as the only Direct dependency with every declared dependency demoted to Transitive; the static path now removes the project artifact and promotes declared dependencies to Direct, matching dynamic analysis.

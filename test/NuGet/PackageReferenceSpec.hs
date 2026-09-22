@@ -4,6 +4,8 @@ module NuGet.PackageReferenceSpec (
 
 import Data.Map.Strict qualified as Map
 import Data.String.Conversion (toString)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
@@ -73,6 +75,23 @@ refThree = Package "three" $ Just "3.0.0"
 refFour :: Package
 refFour = Package "four" Nothing
 
+-- | A project file whose PackageReference items include MSBuild operations
+-- other than Include/Update (here @Remove@), which name no package.
+projectWithRemoveItems :: Text
+projectWithRemoveItems =
+  Text.unlines
+    [ "<Project Sdk=\"Microsoft.NET.Sdk\">"
+    , "  <ItemGroup>"
+    , "    <PackageReference Include=\"one\" Version=\"1.0.0\" />"
+    , "    <PackageReference Remove=\"one\" />"
+    , "  </ItemGroup>"
+    , "  <ItemGroup>"
+    , "    <PackageReference Remove=\"unrelated\" />"
+    , "    <PackageReference Update=\"two\" Version=\"2.0.0\" />"
+    , "  </ItemGroup>"
+    , "</Project>"
+    ]
+
 spec :: Spec
 spec = do
   refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
@@ -81,6 +100,13 @@ spec = do
     it "reads a file and constructs an accurate list of item groups" $ do
       case parseXML refFile of
         Right project -> (groups project) `shouldContain` itemGroupList
+        Left err -> expectationFailure (toString ("could not parse package reference file" <> xmlErrorPretty err))
+
+    -- Items without an Include or Update attribute used to fail the whole file with
+    -- `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`.
+    it "skips PackageReference items that name no package" $ do
+      case parseXML projectWithRemoveItems of
+        Right project -> groups project `shouldBe` [ItemGroup [refOne], ItemGroup [refTwo]]
         Left err -> expectationFailure (toString ("could not parse package reference file" <> xmlErrorPretty err))
 
     it "constructs an accurate graph" $ do
