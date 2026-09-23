@@ -44,10 +44,10 @@ module Srclib.Types (
 import Data.Aeson
 import Data.Char qualified as Char
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.String (IsString)
 import Data.String.Conversion (ToString (toString), ToText, toText)
 import Data.Text (Text)
@@ -266,8 +266,16 @@ instance Semigroup LicenseUnit where
   licenseUnit1 <> licenseUnit2 =
     licenseUnit1
       { licenseUnitData = licenseUnitData licenseUnit1 <> licenseUnitData licenseUnit2
-      , licenseUnitFiles = NE.nub $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
+      , licenseUnitFiles = nubOrd $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
       }
+
+nubOrd :: Ord a => NonEmpty a -> NonEmpty a
+nubOrd (x :| xs) = x :| go (Set.singleton x) xs
+  where
+    go _ [] = []
+    go seen (y : ys)
+      | Set.member y seen = go seen ys
+      | otherwise = y : go (Set.insert y seen) ys
 
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =

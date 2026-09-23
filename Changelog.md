@@ -4,6 +4,7 @@
 
 - `fossa container test`: when the scan reveals issues, the command now fails with `The scan has revealed issues. Number of issues found: N` (matching `fossa test`) instead of the spurious `An exception occurred:ExitFailure 1` it previously reported; the exit code is unchanged. ([#1785](https://github.com/fossas/fossa-cli/pull/1785))
 - Go: `go.mod` files whose `module` directive is not the first directive (Go allows directives in any order) no longer fail static analysis with `unexpected "go 1.2" expecting "module" or end of input`. ([#1787](https://github.com/fossas/fossa-cli/pull/1787))
+- Custom license searches: repositories where a custom license matches thousands of files no longer spend minutes in `analyze` and then fail with `The connection to the FOSSA endpoint was closed without a response`. ([#1788](https://github.com/fossas/fossa-cli/pull/1788))
 
 ## 3.19.1
 

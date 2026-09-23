@@ -123,7 +123,7 @@ import Control.Effect.Debug (Debug, debugLog)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Exception (Exception (displayException), SomeException)
+import Control.Exception (Exception (displayException), SomeException, evaluate)
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (
@@ -1147,15 +1147,17 @@ licenseScanResultUpload signedUploadURI licenseScanResult = fossaReq $ do
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
+  zipped <- sendIO $ evaluate zippedLicenseResult
+
   context ("Uploading license scan result to " <> signedURL signedUploadURI) $ case validatedURI of
-    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
-    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest zipped httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest zipped httpsUrl httpsOptions
   where
     zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
     -- We send gzipped json, so we can't use req's JSON utilities.
-    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
-    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
+    uploadArchiveRequest :: (MonadHttp m) => BS.ByteString -> Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest body url options = reqCb PUT url (ReqBodyBs body) lbsResponse options (pure . requestEncoder)
 
 ---------- The first-party scan result upload function uploads the JSON license result directly to the signed URL it is provided.
 
@@ -1170,15 +1172,17 @@ firstPartyScanResultUpload signedUploadURI firstPartyScanResult = fossaReq $ do
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
+  zipped <- sendIO $ evaluate zippedLicenseResult
+
   context ("Uploading first-party scan result to " <> signedURL signedUploadURI) $ case validatedURI of
-    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
-    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest zipped httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest zipped httpsUrl httpsOptions
   where
     zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode firstPartyScanResult
     -- We send gzipped json, so we can't use req's JSON utilities.
-    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
-    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
+    uploadArchiveRequest :: (MonadHttp m) => BS.ByteString -> Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest body url options = reqCb PUT url (ReqBodyBs body) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.
