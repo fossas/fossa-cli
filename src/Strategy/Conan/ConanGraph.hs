@@ -128,10 +128,10 @@ instance FromJSON ConanGraphNode where
 
 data ConanGraphDependency = ConanGraphDependency
   { -- Dependency reference
-    dep_ref :: TextLike
-  , dep_test :: Bool
-  , dep_direct :: Bool
-  , dep_build :: Bool
+    depRef :: TextLike
+  , depTest :: Bool
+  , depDirect :: Bool
+  , depBuild :: Bool
   }
   deriving (Show, Eq, Ord)
 
@@ -170,7 +170,7 @@ getDirectDepsMap :: (Applicative m) => ConanGraph -> m (Map Text Bool)
 getDirectDepsMap graph = do
   case Map.lookup "0" (nodes graph) of
     Nothing -> pure Map.empty
-    Just node -> pure (Map.map dep_direct (dependencies node))
+    Just node -> pure (Map.map depDirect (dependencies node))
 
 mkGraph :: (Has (Grapher Dependency) sig m) => ConanGraph -> m ()
 mkGraph conanGraph = do
@@ -183,7 +183,7 @@ mkGraph conanGraph = do
       else deep resolvedDep
 
     let transitives = mapMaybe (refToDependency) (keys $ dependencies dep)
-    let resolvedDirectDeps = Map.map dep_direct (dependencies dep)
+    let resolvedDirectDeps = Map.map depDirect (dependencies dep)
     for_ transitives $ \(nodeId, childDep) -> do
       let isDirectChild = findWithDefault False nodeId resolvedDirectDeps
       when isDirectChild $ edge resolvedDep childDep

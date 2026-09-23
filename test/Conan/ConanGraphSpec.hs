@@ -96,28 +96,28 @@ consumerNode =
           [
             ( "1"
             , ConanGraphDependency
-                { dep_ref = TextLike "zlib/1.2.13"
-                , dep_test = False
-                , dep_direct = True
-                , dep_build = False
+                { depRef = TextLike "zlib/1.2.13"
+                , depTest = False
+                , depDirect = True
+                , depBuild = False
                 }
             )
           ,
             ( "2"
             , ConanGraphDependency
-                { dep_ref = TextLike "openssl/3.1.0"
-                , dep_test = False
-                , dep_direct = True
-                , dep_build = False
+                { depRef = TextLike "openssl/3.1.0"
+                , depTest = False
+                , depDirect = True
+                , depBuild = False
                 }
             )
           ,
             ( "3"
             , ConanGraphDependency
-                { dep_ref = TextLike "cmake/3.22.6"
-                , dep_test = False
-                , dep_direct = True
-                , dep_build = True
+                { depRef = TextLike "cmake/3.22.6"
+                , depTest = False
+                , depDirect = True
+                , depBuild = True
                 }
             )
           ]
@@ -151,10 +151,10 @@ opensslNode =
           [
             ( "1"
             , ConanGraphDependency
-                { dep_ref = TextLike "zlib/1.2.13"
-                , dep_test = False
-                , dep_direct = True
-                , dep_build = False
+                { depRef = TextLike "zlib/1.2.13"
+                , depTest = False
+                , depDirect = True
+                , depBuild = False
                 }
             )
           ]
