@@ -273,9 +273,10 @@ nubOrd :: Ord a => NonEmpty a -> NonEmpty a
 nubOrd (x :| xs) = x :| go (Set.singleton x) xs
   where
     go _ [] = []
-    go seen (y : ys)
-      | Set.member y seen = go seen ys
-      | otherwise = y : go (Set.insert y seen) ys
+    go seen (y : ys) =
+      if Set.member y seen
+        then go seen ys
+        else y : go (Set.insert y seen) ys
 
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =
