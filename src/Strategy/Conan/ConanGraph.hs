@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
-
 module Strategy.Conan.ConanGraph (
   ConanGraph (..),
   ConanGraphDependency (..),
@@ -66,6 +64,10 @@ import Strategy.Conan.Version (guardConanVersion2Gt)
 -- >  "root": {..}
 -- > }
 -- > }
+-- >
+-- > Check this reference for more information:
+
+-- > https://docs.conan.io/2/reference/commands/formatters/graph_info_json_formatter.html#reference-commands-graph-info-json-format
 conanV2GraphCmd :: [Text] -> Command
 conanV2GraphCmd extraArgs =
   Command
@@ -206,7 +208,7 @@ toDependency cn =
     }
 
 getEnv :: ConanGraphNode -> DepEnvironment
-getEnv ConanGraphNode{..} = case (test, context) of
+getEnv ConanGraphNode{test, context} = case (test, context) of
   (True, _) -> EnvTesting
   (_, BuildContext) -> EnvDevelopment
   (_, HostContext) -> EnvProduction
