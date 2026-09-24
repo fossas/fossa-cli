@@ -1,5 +1,10 @@
 # FOSSA CLI Changelog
 
+## 3.19.3
+
+- Licensing: the NVIDIA CUDA Toolkit license (shipped in packages such as `nvidia-cublas`) now also reports GPL-3.0 for its bundled GDB component. (#PR)
+- Licensing: the Cypress Linux Firmware License, the Sonar Source-Available License v1.0 and the VIB CREsted academic license are now detected instead of reported as no license. (#PR)
+
 ## 3.19.2
 
 - `fossa container test`: when the scan reveals issues, the command now fails with `The scan has revealed issues. Number of issues found: N` (matching `fossa test`) instead of the spurious `An exception occurred:ExitFailure 1` it previously reported; the exit code is unchanged. ([#1785](https://github.com/fossas/fossa-cli/pull/1785))
