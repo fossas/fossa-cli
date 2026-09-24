@@ -594,6 +594,7 @@ test-suite unit-tests
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
     App.Fossa.Container.GoBinarySpec
+    App.Fossa.Container.TestSpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec
