@@ -2,8 +2,8 @@
 
 ## 3.19.3
 
-- Licensing: the NVIDIA CUDA Toolkit license (shipped in packages such as `nvidia-cublas`) now also reports GPL-3.0 for its bundled GDB component. (#PR)
-- Licensing: the Cypress Linux Firmware License, the Sonar Source-Available License v1.0 and the VIB CREsted academic license are now detected instead of reported as no license. (#PR)
+- Licensing: the NVIDIA CUDA Toolkit license (shipped in packages such as `nvidia-cublas`) now also reports GPL-3.0 for its bundled GDB component. ([#1789](https://github.com/fossas/fossa-cli/pull/1789))
+- Licensing: the Cypress Linux Firmware License, the Sonar Source-Available License v1.0 and the VIB CREsted academic license are now detected instead of reported as no license. ([#1789](https://github.com/fossas/fossa-cli/pull/1789))
 
 ## 3.19.2
 
