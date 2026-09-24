@@ -47,10 +47,11 @@ import Control.Effect.StickyLogger (StickyLogger, logSticky)
 import Data.Either.Combinators (rightToMaybe)
 import Data.Error (SourceLocation, createEmptyBlock, getSourceLocation)
 import Data.HashMap.Strict qualified as HM
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Semigroup (Any (..))
+import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -166,13 +167,18 @@ combineLicenseUnits units =
     mergeTwoUnits unitA unitB =
       unitA{licenseUnitFiles = combinedFiles, licenseUnitData = combinedData}
       where
-        combinedFiles = NE.sort $ NE.nub $ licenseUnitFiles unitA <> licenseUnitFiles unitB
-        combinedData = NE.sort $ NE.nub $ licenseUnitData unitA <> licenseUnitData unitB
+        combinedFiles = sortedNub $ licenseUnitFiles unitA <> licenseUnitFiles unitB
+        combinedData = sortedNub $ licenseUnitData unitA <> licenseUnitData unitB
 
     addUnit :: LicenseUnit -> HM.HashMap Text LicenseUnit -> HM.HashMap Text LicenseUnit
     addUnit unit = HM.insertWith mergeTwoUnits (licenseUnitName unit) unit
 
     licenseUnitMap = foldr addUnit HM.empty units
+
+sortedNub :: Ord a => NonEmpty a -> NonEmpty a
+sortedNub xs = case Set.toAscList $ Set.fromList $ NE.toList xs of
+  y : ys -> y :| ys
+  [] -> xs
 
 themisRunner ::
   ( Has (Lift IO) sig m
