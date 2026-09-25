@@ -1,0 +1,8 @@
+{
+  "name": "missing",
+  "dependencies": {
+    "absent": "catalog:",
+    "react": "catalog:unknown",
+    "is-odd": "^3.0.1"
+  }
+}

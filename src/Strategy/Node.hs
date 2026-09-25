@@ -98,7 +98,7 @@ import Strategy.Node.PackageJson (
  )
 import Strategy.Node.PackageJson qualified as PackageJson
 import Strategy.Node.Pnpm.PnpmLock qualified as PnpmLock
-import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs))
+import Strategy.Node.Pnpm.Workspace (PnpmWorkspace (workspaceSpecs), resolveCatalogReferences)
 import Strategy.Node.YarnV1.YarnLock qualified as V1
 import Strategy.Node.YarnV2.YarnLock qualified as V2
 import System.FilePath qualified as FP
@@ -229,7 +229,7 @@ analyzeNpmLock targets (Manifest npmLockFile) graph = do
     NpmLockV1Compatible -> PackageLock.analyze npmLockFile (extractDepListsForTargets targets graph) (findWorkspaceNames graph)
   pure $ DependencyResults result Complete [npmLockFile]
 
-analyzeNpm :: (Has Diagnostics sig m) => PkgJsonGraph -> m DependencyResults
+analyzeNpm :: (Has Diagnostics sig m, Has Logger sig m, Has ReadFS sig m) => PkgJsonGraph -> m DependencyResults
 analyzeNpm wsGraph = do
   void
     . recover
@@ -243,8 +243,10 @@ analyzeNpm wsGraph = do
     . errDoc yarnV2LockfileDocUrl
     $ fatalText "Lock files - yarn.lock or package-lock.json were not discovered."
 
-  graph <- PackageJson.analyze $ Map.elems $ jsonLookup wsGraph
-  pure $ DependencyResults graph Partial $ pkgFileList wsGraph
+  resolved <- traverse (\(Manifest file, pkg) -> resolveCatalogReferences file pkg) (Map.toList $ jsonLookup wsGraph)
+  graph <- PackageJson.analyze $ map fst resolved
+  let catalogFiles = Set.toList . Set.fromList $ mapMaybe snd resolved
+  pure $ DependencyResults graph Partial $ pkgFileList wsGraph <> catalogFiles
 
 analyzeYarn ::
   ( Has Diagnostics sig m

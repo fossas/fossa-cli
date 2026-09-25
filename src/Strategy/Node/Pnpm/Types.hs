@@ -8,6 +8,8 @@ module Strategy.Node.Pnpm.Types (
 
   -- * Catalogs
   PnpmCatalogs (..),
+  WorkspaceCatalogs (..),
+  resolveCatalogVersion,
 
   -- * Snapshots
   SnapshotDepName,
@@ -43,6 +45,7 @@ import Data.Char (isDigit)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -181,8 +184,22 @@ data PnpmLockfile
 -- Catalogs
 --
 
--- | Catalogs parsed from lockfile. Maps catalog name to (package name -> resolved version).
--- See: https://pnpm.io/catalogs
+-- | Catalogs keyed by catalog name, then package name. The default catalog
+-- is stored under the name @default@, which is how @catalog:@ references
+-- without a name resolve.
+--
+-- The lockfile and @pnpm-workspace.yaml@ spell catalogs differently, so each
+-- has its own parser. The 'FromJSON' instance here reads the lockfile's
+-- @catalogs@ section, where every entry records the locked version:
+--
+-- > catalogs:
+-- >   default:
+-- >     react:
+-- >       specifier: ^18.0.0
+-- >       version: 18.2.0
+--
+-- 'WorkspaceCatalogs' reads the workspace file, where entries are the
+-- declared constraints. See: https://pnpm.io/catalogs
 newtype PnpmCatalogs = PnpmCatalogs
   { catalogEntries :: Map Text (Map Text Text)
   }
@@ -197,6 +214,37 @@ instance FromJSON PnpmCatalogs where
       parseCatalog = withObject "Catalog" $ \entries ->
         (Map.fromList . HashMap.toList)
           <$> traverse (withObject "CatalogEntry" (.: "version")) (toHashMapText entries)
+
+-- | Catalogs as declared in @pnpm-workspace.yaml@. The singular @catalog@
+-- key is the default catalog and @catalogs@ holds the named ones, with each
+-- entry a bare version constraint rather than a locked version:
+--
+-- > catalog:
+-- >   react: ^18.0.0
+-- > catalogs:
+-- >   react17:
+-- >     react: ^17.0.0
+newtype WorkspaceCatalogs = WorkspaceCatalogs PnpmCatalogs
+  deriving (Show, Eq, Ord)
+
+instance FromJSON WorkspaceCatalogs where
+  parseJSON = withObject "Pnpm workspace catalogs" $ \o -> do
+    defaultCatalog <- o .:? "catalog"
+    namedCatalogs <- o .:? "catalogs" .!= mempty
+    pure $ WorkspaceCatalogs $ PnpmCatalogs $ maybe namedCatalogs (\catalog -> Map.insert "default" catalog namedCatalogs) defaultCatalog
+
+-- | Resolve a @catalog:@ or @catalog:name@ reference to the catalog's entry
+-- for the package. Any other version string is returned unchanged, as is a
+-- reference to a catalog or package that is not declared.
+--
+-- >> resolveCatalogVersion catalogs "react" "catalog:" = "18.2.0"
+-- >> resolveCatalogVersion catalogs "react" "catalog:missing" = "catalog:missing"
+-- >> resolveCatalogVersion catalogs "react" "^18.0.0" = "^18.0.0"
+resolveCatalogVersion :: PnpmCatalogs -> Text -> Text -> Text
+resolveCatalogVersion (PnpmCatalogs catalogs) depName version = fromMaybe version $ do
+  catalogName <- Text.stripPrefix "catalog:" version
+  entries <- Map.lookup (if Text.null catalogName then "default" else catalogName) catalogs
+  Map.lookup depName entries
 
 --
 -- Snapshots

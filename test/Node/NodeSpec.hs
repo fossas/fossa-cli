@@ -10,7 +10,7 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.Tagged (applyTag)
-import DepTypes (DepEnvironment (EnvProduction), Dependency (dependencyEnvironments, dependencyName))
+import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), Dependency (dependencyEnvironments, dependencyName, dependencyVersion), VerConstraint (CCompatible))
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
@@ -48,7 +48,7 @@ import Types (
   DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType),
   DiscoveredProjectType (NpmProjectType),
   FoundTargets (FoundTargets, ProjectWithoutTargets),
-  GraphBreadth (Complete),
+  GraphBreadth (Complete, Partial),
  )
 
 spec :: Spec
@@ -61,6 +61,7 @@ spec = do
   workspaceBuildTargetsSpec currDir
   extractDepListsForTargetsSpec currDir
   resolveNpmV3WorkspacePathsSpec currDir
+  catalogFallbackSpec currDir
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =
@@ -369,3 +370,52 @@ emptyPackageJson =
     , packageLicenses = Nothing
     , packagePeerDeps = Map.empty
     }
+
+-- Exercise discovery and the actual package.json fallback without a lockfile.
+catalogFallbackSpec :: Path Abs Dir -> Spec
+catalogFallbackSpec currDir = describe "pnpm catalog fallback" $ do
+  let root = currDir </> $(mkRelDir "test/Node/testdata/pnpm-catalog-fallback")
+      browser = root </> $(mkRelDir "packages/browser")
+      expectedBrowser =
+        Set.fromList
+          [ ("left-pad", Just (CCompatible "^1.3.0"), Set.singleton EnvProduction)
+          , ("react", Just (CCompatible "^18.3.1"), Set.singleton EnvProduction)
+          , ("is-odd", Just (CCompatible "^3.0.1"), Set.singleton EnvProduction)
+          , ("typescript", Just (CCompatible "~5.4.0"), Set.singleton EnvDevelopment)
+          ]
+      summarize = Set.fromList . map (\dep -> (dependencyName dep, dependencyVersion dep, dependencyEnvironments dep)) . Graphing.vertexList . dependencyGraph
+      analyzeDir dir = do
+        projects <- discover dir
+        length projects `shouldBe'` 1
+        traverse (\DiscoveredProject{..} -> getDeps projectBuildTargets projectData) projects
+
+  it' "resolves default and named catalogs from a member scan, preserving environments and ranges" $ do
+    results <- analyzeDir browser
+    for_ results $ \result -> do
+      summarize result `shouldBe'` expectedBrowser
+      dependencyGraphBreadth result `shouldBe'` Partial
+      Set.fromList (dependencyManifestFiles result)
+        `shouldBe'` Set.fromList
+          [ browser </> $(mkRelFile "package.json")
+          , root </> $(mkRelFile "pnpm-workspace.yaml")
+          ]
+
+  it' "resolves root and member references when the scan starts at the workspace root" $ do
+    results <- analyzeDir root
+    for_ results $ \result ->
+      summarize result `shouldBe'` Set.insert ("colorjs", Just (CCompatible "0.1.9"), Set.singleton EnvProduction) expectedBrowser
+
+  it' "keeps ordinary dependencies when no workspace file is available" $ do
+    results <- analyzeDir $ currDir </> $(mkRelDir "test/Node/testdata/catalog-without-workspace")
+    for_ results $ \result ->
+      summarize result `shouldBe'` Set.singleton ("is-odd", Just (CCompatible "^3.0.1"), Set.singleton EnvProduction)
+
+  for_ ["isolated", "broken", "missing"] $ \member -> do
+    let dir = case member of
+          "isolated" -> root </> $(mkRelDir "packages/isolated")
+          "broken" -> root </> $(mkRelDir "packages/broken")
+          _ -> root </> $(mkRelDir "packages/missing")
+    it' ("preserves ordinary dependencies without borrowing an unrelated catalog: " <> member) $ do
+      results <- analyzeDir dir
+      for_ results $ \result ->
+        summarize result `shouldBe'` Set.singleton ("is-odd", Just (CCompatible "^3.0.1"), Set.singleton EnvProduction)
