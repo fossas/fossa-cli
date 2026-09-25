@@ -5,6 +5,7 @@ module Strategy.Conan.Version (
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (void)
+import Data.Char (isSpace)
 import Data.Map.Strict qualified as Map
 import Data.SemVer (Version, fromText, toText, version)
 import Data.SemVer.Constraint (Constraint (..), satisfies)
@@ -38,12 +39,12 @@ symbol = Lexer.symbol sc
 
 -- | Parses conan version from output of @conanVersionCmd@
 --
--- >> parseTest majorConanVersion "conan version v1.2.4"
+-- >> parseTest majorConanVersion "Conan version 1.2.4"
 -- > Version {...}
 conanVersion :: Parser Version
 conanVersion = do
-  void $ symbol "conan" <* symbol "version"
-  version' <- fromText <$> (takeWhile1P (Just "conan version") (/= ' '))
+  void $ symbol "Conan" <* symbol "version"
+  version' <- fromText <$> (takeWhile1P (Just "Conan version") (\c -> not (isSpace c) && c /= '-'))
   case version' of
     Left err -> fail err
     Right parsedVersion -> pure parsedVersion
@@ -53,7 +54,7 @@ conanVersion = do
 -- on docs or on conan --help, but exists for Conan v1, and v2.
 --
 -- >> conan --version
--- > conan version 2.0.5
+-- > Conan version 2.0.5
 conanVersionCmd :: Command
 conanVersionCmd =
   Command
@@ -66,9 +67,9 @@ conanVersionCmd =
 guardConanVersion2Gt :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m ()
 guardConanVersion2Gt dir = do
   conanVer <- execParser conanVersion dir conanVersionCmd
-  if satisfies conanVer (CGt version_2_0_0)
+  if satisfies conanVer (CGt version_2_0_5)
     then pure ()
-    else fatalText $ "Expected conan version greater than 2.0.0, but recieved: " <> toText conanVer
+    else fatalText $ "Expected conan version greater than 2.0.5, but recieved: " <> toText conanVer
   where
-    version_2_0_0 :: Version
-    version_2_0_0 = version 2 0 0 [] []
+    version_2_0_5 :: Version
+    version_2_0_5 = version 2 0 5 [] []

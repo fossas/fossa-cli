@@ -716,6 +716,7 @@ depTypeFromText text = case text of
   "cargo" -> Just CargoType
   "carthage" -> Just CarthageType
   "composer" -> Just ComposerType
+  "conan" -> Just ConanType
   "cpan" -> Just CpanType
   "cran" -> Just CranType
   "gem" -> Just GemType
@@ -741,6 +742,7 @@ depTypeToText depType = case depType of
   CargoType -> "cargo"
   CarthageType -> "carthage"
   ComposerType -> "composer"
+  ConanType -> "conan"
   CpanType -> "cpan"
   CranType -> "cran"
   GemType -> "gem"
