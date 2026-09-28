@@ -45,12 +45,11 @@ gradleSettingsOnly =
       [reldir|gradle/sample/|]
       [reldir|.|]
 
--- | Gradle's own 9.1.0 "building Java applications" sample ships with
--- @org.gradle.configuration-cache=true@ in its @gradle.properties@. The init
--- script used to resolve dependencies inside the task's @doLast@, which the
--- configuration cache rejects with "Invocation of 'Task.project' by task
--- ':app:jsonDeps' at execution time is unsupported with the configuration
--- cache", so analysis of any such build failed.
+-- | Gradle's "Building Java Applications" sample
+-- (https://docs.gradle.org/9.1.0/samples/sample_building_java_applications.html)
+-- ships with @org.gradle.configuration-cache=true@ in its @gradle.properties@,
+-- so analyzing it exercises the @jsonDeps@ init script under the
+-- configuration cache.
 gradleConfigurationCache :: AnalysisTestFixture (Gradle.GradleProject)
 gradleConfigurationCache =
   AnalysisTestFixture
