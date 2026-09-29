@@ -21,7 +21,6 @@ From the project root, we walk through and search all directories for a `conanfi
 
 If a conan lockfile is present, `conan graph info` will pick it up and give the exact versions being used in the project. If it isn't, it'll use the `conanfile` to figure out what the versions should be but this could be different from the actual versions depending on the constraints used. Therefore, it's recommended to have a lockfile in your project. 
 
-
 ## F.A.Q
 
 #### 1. Why do I need Conan `v2.0.6` or greater?
