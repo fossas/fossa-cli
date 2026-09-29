@@ -8,7 +8,7 @@ We do support the Conan package manager as part of our regular analysis strategi
 
 | Strategy          | Direct Deps        | Transitive Deps    | Edges                | Container Scanning |
 |-------------------|--------------------|--------------------|----------------------|--------------------|
-| `conan`           | :white_check_mark: | :white_check_mark: | :white_check_mark:   | :white_check_mark: |
+| `conan`           | :white_check_mark: | :white_check_mark: | :white_check_mark:   | :x:                |
 | `detect-vendored` | :white_check_mark: | :x:                | :x:                  | :x:                |
 | `detect-dynamic`  | :white_check_mark: | :white_check_mark: | :x:                  | :x:                |
 
