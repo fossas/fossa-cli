@@ -219,11 +219,6 @@ buildGraph conanGraph = run . evalGrapher $ mkGraph conanGraph
 
 analyzeFromConanGraph :: (Has Exec sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Graphing Dependency)
 analyzeFromConanGraph dir = do
-  -- We only support conan v2 or greater for this tactic,
-  -- since, conan v1 does not have equiavlent command, which
-  -- would ensure source code is always retrieved. Also, the
-  -- equivalent command of "conan info ." in conan v1
-  -- does not provide used settings for the dependency.
   errCtx ConanV2IsRequiredCtx $ errHelp ConanV2IsRequiredHelp $ guardConanVersion2Gt dir
 
   conanGraph <- execJson dir $ conanV2GraphCmd []
