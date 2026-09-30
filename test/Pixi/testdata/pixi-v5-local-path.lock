@@ -1,0 +1,69 @@
+# Trimmed from the Rattler v5 conda-lock fixture
+# (conda/rattler test-data/conda-lock/v5/flat-index-lock.yml).
+#
+# The `requests` entry is the point: it is sourced from a local wheel via
+# `path:` and carries no `url:`. Requiring `url:` made the whole file fail to
+# parse with `key "url" not found`, so a project with one path-sourced package
+# reported zero dependencies.
+version: 5
+environments:
+  default:
+    channels:
+      - url: https://conda.anaconda.org/conda-forge/
+    indexes:
+      - https://pypi.org/simple
+    find-links:
+      - path: ./links
+    packages:
+      osx-arm64:
+        - conda: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-h93a5062_5.conda
+        - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024a-h0c530f3_0.conda
+        - pypi: https://files.pythonhosted.org/packages/ba/06/a07f096c664aeb9f01624f858c3add0a4e913d6c96257acb4fce61e7de14/certifi-2024.2.2-py3-none-any.whl
+        - pypi: https://files.pythonhosted.org/packages/e5/3e/741d8c82801c347547f8a2a06aa57dbb1992be9e948df2ea0eda2c8b79e8/idna-3.7-py3-none-any.whl
+        - pypi: ./links/requests-2.31.0-py3-none-any.whl
+packages:
+  - kind: conda
+    name: bzip2
+    version: 1.0.8
+    build: h93a5062_5
+    build_number: 5
+    subdir: osx-arm64
+    url: https://conda.anaconda.org/conda-forge/osx-arm64/bzip2-1.0.8-h93a5062_5.conda
+    sha256: bfa84296a638bea78a8bb29abc493ee95f2a0218775642474a840411b950fe5f
+    md5: 1bbc659ca658bfd49a481b5ef7a0f40f
+    license: bzip2-1.0.6
+    license_family: BSD
+    size: 122325
+    timestamp: 1699280294368
+  - kind: conda
+    name: tzdata
+    version: 2024a
+    build: h0c530f3_0
+    subdir: noarch
+    noarch: generic
+    url: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024a-h0c530f3_0.conda
+    sha256: 7b2b69c54ec62a243eb6fba2391b5e443421608c3ae5dbff938ad33ca8db5122
+    md5: 161081fc7cec0bfda0d86d7cb595f8d8
+    license: LicenseRef-Public-Domain
+    size: 119815
+    timestamp: 1706886945727
+  - kind: pypi
+    name: certifi
+    version: 2024.2.2
+    url: https://files.pythonhosted.org/packages/ba/06/a07f096c664aeb9f01624f858c3add0a4e913d6c96257acb4fce61e7de14/certifi-2024.2.2-py3-none-any.whl
+    sha256: dc383c07b76109f368f6106eee2b593b04a011ea4d55f652c6ca24a754d1cdd1
+    requires_python: ">=3.6"
+  - kind: pypi
+    name: idna
+    version: "3.7"
+    url: https://files.pythonhosted.org/packages/e5/3e/741d8c82801c347547f8a2a06aa57dbb1992be9e948df2ea0eda2c8b79e8/idna-3.7-py3-none-any.whl
+    sha256: 82fee1fc78add43492d3a1898bfa6d8a904cc97d8427f683ed8e798d07761aa0
+    requires_python: ">=3.5"
+  - kind: pypi
+    name: requests
+    version: 2.31.0
+    path: ./links/requests-2.31.0-py3-none-any.whl
+    requires_dist:
+      - charset-normalizer<4,>=2
+      - idna<4,>=2.5
+    requires_python: ">=3.7"
