@@ -96,6 +96,7 @@ data DiscoveredProjectType
   | PdmProjectType
   | PerlProjectType
   | PipenvProjectType
+  | PixiProjectType
   | PnpmProjectType
   | PoetryProjectType
   | ProjectAssetsJsonProjectType
@@ -149,6 +150,7 @@ projectTypeToText = \case
   PdmProjectType -> "pdm"
   PerlProjectType -> "perl"
   PipenvProjectType -> "pipenv"
+  PixiProjectType -> "pixi"
   PnpmProjectType -> "pnpm"
   PoetryProjectType -> "poetry"
   ProjectAssetsJsonProjectType -> "projectassetsjson"
