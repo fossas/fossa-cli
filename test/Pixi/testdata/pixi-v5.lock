@@ -1,0 +1,35 @@
+# Trimmed from a real v5 pixi.lock (rordenlab/dcm2niix). v5 spells out name,
+# version, build and subdir and uses `url` as the locator.
+version: 5
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/binaryen-118-he02047a_1.conda
+packages:
+- kind: conda
+  name: _libgcc_mutex
+  version: '0.1'
+  build: conda_forge
+  subdir: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
+  sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
+  md5: d7c89558ba9fa0495403155b64376d81
+  license: None
+  size: 2562
+  timestamp: 1578324546067
+- kind: conda
+  name: binaryen
+  version: '118'
+  build: he02047a_1
+  build_number: 1
+  subdir: linux-64
+  url: https://conda.anaconda.org/conda-forge/linux-64/binaryen-118-he02047a_1.conda
+  sha256: 4a2d3b2c0c2bb6b8e1a4a9d6f4a9f6dbb10ba4d6a9e2c2fa5b58b0a99cf9cd3e
+  md5: 2c1b0e9ba0b2ba0d2a3a5f0f1e7b1e91
+  license: Apache-2.0
+  size: 3524215
+  timestamp: 1729550576815
