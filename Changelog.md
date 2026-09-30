@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- pixi: Added static analysis support for `pixi.lock` (conda + PyPI packages) ([#PRNUM](https://github.com/fossas/fossa-cli/pull/PRNUM))
+- pixi: Added static analysis support for `pixi.lock` (conda + PyPI packages) ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
 
 ## 3.20.0
 
