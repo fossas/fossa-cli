@@ -25,6 +25,14 @@
 -- convention makes this unambiguous — the last two hyphen-separated fields are
 -- version and build, and a name may itself contain hyphens — but it is a
 -- convention rather than a guarantee.
+--
+-- NO SINGLE ENTRY MAY FAIL THE FILE. Every @packages@ entry is read
+-- independently and an unreadable one degrades to a warning, because the bug
+-- this strategy exists to fix is a pixi project reporting zero dependencies.
+-- An aeson field decoder that fails mid-list takes the whole document with it,
+-- which turns one odd package into exactly that bug — a v5 lockfile with one
+-- @path:@-sourced package used to fail with @key \"url\" not found@ and report
+-- nothing at all.
 module Strategy.Pixi.PixiLock (
   analyze,
   buildGraph,
@@ -33,6 +41,7 @@ module Strategy.Pixi.PixiLock (
   PixiEnvironment (..),
   PixiLocator (..),
   PixiPackage (..),
+  PixiPackageEntry (..),
   UnsupportedPixiLockVersion (..),
   -- exposed for testing
   parseCondaArtifactUrl,
@@ -52,7 +61,7 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Aeson.Types (Parser)
+import Data.Aeson.Types (Parser, parseEither)
 import Data.Foldable (for_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -117,9 +126,22 @@ newtype PixiEnvironment = PixiEnvironment
 data PixiLockFile = PixiLockFile
   { pixiLockVersion :: Int
   , pixiLockEnvironments :: Map Text PixiEnvironment
-  , pixiLockPackages :: [PixiPackage]
+  , pixiLockPackages :: [PixiPackageEntry]
   }
   deriving (Eq, Ord, Show)
+
+-- | One @packages@ entry, or the reason it could not be read.
+--
+-- The whole point of the indirection: 'parseJSON' here always succeeds, so a
+-- malformed or unrecognised entry can only ever cost that one package.
+data PixiPackageEntry
+  = PackageEntry PixiPackage
+  | UnreadableEntry Text
+  deriving (Eq, Ord, Show)
+
+instance FromJSON PixiPackageEntry where
+  parseJSON value =
+    pure . either (UnreadableEntry . toText) PackageEntry $ parseEither parseJSON value
 
 instance FromJSON PixiLockFile where
   parseJSON = withObject "PixiLockFile" $ \obj ->
@@ -150,14 +172,19 @@ instance FromJSON PixiPackage where
       Just _ -> parseV5 obj
       Nothing -> parseV6 obj
     where
-      -- v5: `kind` names the ecosystem and `url` is the locator.
+      -- v5: `kind` names the ecosystem, and the locator is `url` for a
+      -- published artifact or `path` for one resolved from disk. `path` is
+      -- what the environments list references for those, so it is the join
+      -- key as much as `url` is.
       parseV5 :: Object -> Parser PixiPackage
       parseV5 obj = do
         kind <- obj .: "kind"
-        url <- obj .: "url"
+        url <- obj .:? "url"
+        path <- obj .:? "path"
+        source <- maybe (fail "entry has neither a 'url' nor a 'path'") pure (url <|> path)
         locator <- case (kind :: Text) of
-          "conda" -> pure $ CondaLocator url
-          "pypi" -> pure $ PypiLocator url
+          "conda" -> pure $ CondaLocator source
+          "pypi" -> pure $ PypiLocator source
           other -> fail $ "unknown package kind: " <> toString other
         PixiPackage locator <$> obj .:? "name" <*> obj .:? "version"
 
@@ -179,17 +206,32 @@ data CondaArtifact = CondaArtifact
 
 -- | Split @https:\/\/conda.anaconda.org\/conda-forge\/linux-64\/zlib-1.3.1-hb9d3cd8_2.conda@.
 --
--- The last two path segments are the subdir and the filename; the segment
--- before the subdir is the channel, which also covers self-hosted mirrors such
--- as @https:\/\/prefix.dev\/conda-forge\/…@. Within the filename the final two
+-- The last two path segments are the subdir and the filename. Everything
+-- between the host and the subdir is the channel, joined back with @\/@ —
+-- not just the segment nearest the subdir. Labeled channels are ordinary
+-- conda usage and put extra segments there:
+-- @conda-forge\/label\/broken\/linux-64\/…@ is the @conda-forge\/label\/broken@
+-- channel, not the @broken@ channel. This matches
+-- 'Strategy.Conda.CondaEnvCreate.parseCondaEnvDep', which joins every channel
+-- component the same way; the two strategies have to agree or one package
+-- lands in FOSSA under two names.
+--
+-- Dropping the host also covers self-hosted mirrors such as
+-- @https:\/\/prefix.dev\/conda-forge\/…@. Within the filename the final two
 -- hyphen-separated fields are version and build, so a hyphenated package name
 -- like @ld_impl_linux-64@ survives the split.
 parseCondaArtifactUrl :: Text -> Maybe CondaArtifact
 parseCondaArtifactUrl url = do
-  let segments = filter (not . Text.null) . Text.splitOn "/" . Text.takeWhile (/= '?') $ url
+  let afterScheme = case Text.breakOn "://" url of
+        (before, rest) | Text.null rest -> before
+        (_, rest) -> Text.drop 3 rest
+      segments = filter (not . Text.null) . Text.splitOn "/" . Text.takeWhile (/= '?') $ afterScheme
   (initSegments, fileName) <- unsnoc segments
-  (channelSegments, platform) <- unsnoc initSegments
-  channel <- lastMaybe channelSegments
+  (hostAndChannel, platform) <- unsnoc initSegments
+  channel <- case hostAndChannel of
+    [] -> Nothing
+    (_host : channelSegments) | not (null channelSegments) -> Just (Text.intercalate "/" channelSegments)
+    _ -> Nothing
   let stem = stripArchiveExtension fileName
   (nameAndVersion, _build) <- unsnocOn '-' stem
   (name, version) <- unsnocOn '-' nameAndVersion
@@ -205,10 +247,6 @@ parseCondaArtifactUrl url = do
     unsnoc xs = case reverse xs of
       [] -> Nothing
       (x : rest) -> Just (reverse rest, x)
-
-    lastMaybe xs = case reverse xs of
-      [] -> Nothing
-      (x : _) -> Just x
 
     unsnocOn c t = case Text.breakOnEnd (Text.singleton c) t of
       ("", _) -> Nothing
@@ -256,7 +294,8 @@ depKey Dependency{..} = (dependencyType, dependencyName, dependencyVersion)
 
 buildGraph :: (Has Diagnostics sig m) => PixiLockFile -> m (Graphing Dependency)
 buildGraph PixiLockFile{..} = do
-  let packageIndex = Map.fromList [(pixiPkgLocator p, p) | p <- pixiLockPackages]
+  let packageIndex = Map.fromList [(pixiPkgLocator p, p) | PackageEntry p <- pixiLockPackages]
+      unreadable = ["pixi: skipping an unreadable package entry: " <> why | UnreadableEntry why <- pixiLockPackages]
       slots =
         [ (locator, environmentToDepEnvironment envName)
         | (envName, PixiEnvironment platforms) <- Map.toList pixiLockEnvironments
@@ -264,7 +303,7 @@ buildGraph PixiLockFile{..} = do
         , locator <- locators
         ]
       (skipped, deps) = foldr (collect packageIndex) ([], Map.empty) slots
-  for_ (Set.toList $ Set.fromList skipped) warn
+  for_ (Set.toList . Set.fromList $ unreadable <> skipped) warn
   pure . Graphing.fromList . Map.elems $ deps
   where
     collect index (locator, env) (skips, acc) =
@@ -290,10 +329,15 @@ toDependency metadata locator env = case locator of
         , dependencyTags = Map.empty
         }
 
+    -- Names the package when the lockfile gave us one, because "skipping
+    -- ./links/requests-2.31.0-py3-none-any.whl" is a worse thing to read in
+    -- a scan log than "skipping requests".
+    described fallback = maybe fallback (\n -> n <> " (" <> fallback <> ")") (pixiPkgName =<< metadata)
+
     -- v5 spells name and version out; v6/v7 leave the filename as the only
     -- source for them. Prefer the explicit fields when the lockfile has them.
     condaDep url = case parseCondaArtifactUrl url of
-      Nothing -> Left $ "pixi: could not read a package name from conda artifact URL, skipping: " <> url
+      Nothing -> Left $ "pixi: could not read a package name from conda artifact URL, skipping: " <> described url
       Just CondaArtifact{..} ->
         let name = fromMaybe condaArtifactName (pixiPkgName =<< metadata)
             version = (pixiPkgVersion =<< metadata) <|> Just condaArtifactVersion
@@ -306,7 +350,7 @@ toDependency metadata locator env = case locator of
       PypiGit url -> Right $ mkDep GitType (Text.takeWhile (/= '?') $ Text.takeWhile (/= '#') url) (gitRevision url)
       PypiLocalPath ->
         Left $
-          "pixi: skipping pypi dependency from a local source, which has no registry coordinates: " <> source
+          "pixi: skipping pypi dependency from a local source, which has no registry coordinates: " <> described source
 
     -- The fragment is the resolved commit; pixi also writes a `?rev=` query
     -- that names the same commit less precisely.

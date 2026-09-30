@@ -17,7 +17,20 @@ We parse `pixi.lock`, which is in the YAML format. The file has two halves that 
 
 Conda packages are reported as conda dependencies named `'<channel>':<subdir>:<name>`, the same form the [conda](conda.md) strategy uses, so a package resolved by pixi and the same package resolved by conda are the same dependency in FOSSA. PyPI packages are reported as pip dependencies.
 
-Lock format versions 5, 6 and 7 are supported. A lockfile with any other version fails analysis with an error naming the version, rather than reporting an empty dependency graph.
+### Lock format versions
+
+The `version:` field at the top of `pixi.lock` is checked against the versions this strategy understands:
+
+| `version:` | Behaviour |
+| ---------- | --------- |
+| `5`, `6`, `7` | Analyzed. |
+| anything else | Analysis fails with an error naming the version. It does not silently report an empty dependency graph. |
+
+Version 5 spells out `name`, `version`, `build` and `subdir` on each package and locates it by `url` or `path`. Versions 6 and 7 replace that with a single `conda:`/`pypi:` key holding the locator, and record no `name` or `version` for conda packages. Version 7 adds a top-level `platforms` block, which carries no dependency information.
+
+### Unreadable entries
+
+A `packages` entry this strategy cannot read — an unrecognised ecosystem key from a newer pixi, a conda URL with no parseable filename, a PyPI entry with no name — costs only that one package. It is reported as a warning and the rest of the lockfile is still analyzed. A single unusual package must never turn into a project that reports nothing.
 
 ## Supported
 
@@ -37,4 +50,6 @@ Lock format versions 5, 6 and 7 are supported. A lockfile with any other version
 
 - **Conda names come from the artifact filename.** Lock versions 6 and 7 do not record a `name` or `version` for conda packages — the only place those exist is the artifact URL, so they are parsed out of `<name>-<version>-<build>.conda`. This follows conda's filename convention and handles names containing hyphens, but it is a convention rather than a guarantee. Version 5 records `name` and `version` explicitly and those are used when present.
 
-- **Local path dependencies are skipped.** pixi can resolve a PyPI dependency from a directory in the workspace (written as `.` or `./` in the lockfile). These have no registry coordinates, so they are skipped with a warning rather than reported as a PyPI package that does not exist.
+- **Local path dependencies are skipped.** pixi can resolve a PyPI dependency from a path in the workspace — written as `.` or `./…` under `pypi:` in versions 6 and 7, or as a `path:` key in version 5. These have no registry coordinates, so they are skipped with a warning naming the package rather than reported as a PyPI package that does not exist.
+
+- **Labeled channels are kept whole.** A package from `conda-forge/label/broken` is named `'conda-forge/label/broken':<subdir>:<name>`, not `'broken':…`. This matches how the [conda](conda.md) strategy names the same package, so one package resolved by both strategies is one dependency in FOSSA.
