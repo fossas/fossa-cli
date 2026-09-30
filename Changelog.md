@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- pixi: Added static analysis support for `pixi.lock` (conda + PyPI packages) ([#PRNUM](https://github.com/fossas/fossa-cli/pull/PRNUM))
+
 ## 3.20.0
 
 - Go (dep): `Gopkg.lock` and `Gopkg.toml` files that declare no dependencies (no `[[projects]]`, `[[constraint]]` or `[[override]]` tables, which is what `dep` writes for a project without dependencies) no longer fail analysis with `missing key: projects in <top-level>` / `missing key: constraint in <top-level>`. ([#1791](https://github.com/fossas/fossa-cli/pull/1791))

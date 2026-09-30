@@ -438,6 +438,7 @@ library
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
     Strategy.Conda.EnvironmentYml
+    Strategy.Conda.Naming
     Strategy.Dart.Errors
     Strategy.Dart.PubDeps
     Strategy.Dart.PubSpec
@@ -508,6 +509,8 @@ library
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
     Strategy.Perl
+    Strategy.Pixi
+    Strategy.Pixi.PixiLock
     Strategy.Pub
     Strategy.Python.Errors
     Strategy.Python.PDM.Pdm
@@ -719,6 +722,7 @@ test-suite unit-tests
     Pdm.PdmLockSpec
     Pdm.PdmSpec
     Perl.PerlSpec
+    Pixi.PixiLockSpec
     Pnpm.PnpmLockSpec
     Python.PipenvSpec
     Python.PipSpec
