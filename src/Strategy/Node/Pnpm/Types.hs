@@ -5,6 +5,7 @@ module Strategy.Node.Pnpm.Types (
   PnpmLockfileV678 (..),
   PnpmLockfileV9 (..),
   PnpmLockfile (..),
+  mergeLockfiles,
 
   -- * Catalogs
   PnpmCatalogs (..),
@@ -153,11 +154,11 @@ data PnpmLockfileBase = PnpmLockfileBase
 
 -- | Version-specific extension for v4\/v5 lockfiles.
 newtype PnpmLockfileV4Or5 = PnpmLockfileV4Or5 PnpmLockfileBase
-  deriving (Show, Eq, Ord, Semigroup, Monoid)
+  deriving (Show, Eq, Ord, Semigroup)
 
 -- | Version-specific extension for v6\/v7\/v8 lockfiles.
 newtype PnpmLockfileV678 = PnpmLockfileV678 PnpmLockfileBase
-  deriving (Show, Eq, Ord, Semigroup, Monoid)
+  deriving (Show, Eq, Ord, Semigroup)
 
 -- | Version-specific extension for v9+ lockfiles.
 data PnpmLockfileV9 = PnpmLockfileV9
@@ -178,7 +179,7 @@ data PnpmLockfile
   deriving (Show, Eq, Ord)
 
 --
--- Monoid instances for combining multi-document lockfiles
+-- Merging multi-document lockfiles
 --
 --
 -- pnpm v11+ can write pnpm-lock.yaml as a multi-document YAML stream: an env
@@ -187,26 +188,33 @@ data PnpmLockfile
 -- valid 'PnpmLockfile'. A tool that reports everything the lockfile installs
 -- (SBOM generators, vulnerability scanners) must union the documents rather
 -- than keep only the first one: the env document parses successfully and would
--- otherwise shadow the project graph. These instances let 'mconcat' fold a
--- stream of documents into one, so the single-document parser and graph builder
--- can be reused unchanged. pnpm guarantees every document in a stream shares
--- one lockfileVersion, so documents always combine within a single constructor;
--- the mismatched-constructor fallback is defensive only.
+-- otherwise shadow the project graph.
 
--- Not quite a lawful 'Monoid': 'lockfileRawVersion' comes from the left
--- operand, so 'mempty <>' would lose the right operand's version. Harmless
--- because documents of one stream share a lockfileVersion and 'mconcat' is
--- only ever folded over a non-empty parse result, but do not rely on left
--- identity.
+-- | Combine two documents of one multi-document stream. Documents are unioned
+-- with the later document winning on conflicts, since pnpm writes the env
+-- document first and the project document last.
+--
+-- This is a plain function rather than a 'Semigroup' instance because the sum
+-- type has no lawful combination across constructors: 'PnpmLockfile' variants
+-- of different versions have nothing sensible to merge, and every total
+-- fallback (keep left, keep right) is non-associative — and would silently
+-- drop one document's graph, the very bug class this fixes. A stream whose
+-- documents disagree on lockfileVersion is malformed and must be rejected.
+mergeLockfiles :: PnpmLockfile -> PnpmLockfile -> Either Text PnpmLockfile
+mergeLockfiles (LockfileV4Or5 a) (LockfileV4Or5 b) = Right (LockfileV4Or5 (a <> b))
+mergeLockfiles (LockfileV678 a) (LockfileV678 b) = Right (LockfileV678 (a <> b))
+mergeLockfiles (LockfileV9 a) (LockfileV9 b) = Right (LockfileV9 (a <> b))
+mergeLockfiles _ _ = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
+
 instance Semigroup PnpmLockfileBase where
   (<>) a b =
     PnpmLockfileBase
       { lockfileImporters = Map.unionWith (<>) (lockfileImporters a) (lockfileImporters b)
       , lockfilePackages = unionPreferringSecond (lockfilePackages a) (lockfilePackages b)
-      , lockfileRawVersion = lockfileRawVersion a
+      , -- First non-empty: documents of one stream share one lockfileVersion,
+        -- and the empty version is the identity, keeping this instance lawful.
+        lockfileRawVersion = if Text.null (lockfileRawVersion a) then lockfileRawVersion b else lockfileRawVersion a
       }
-instance Monoid PnpmLockfileBase where
-  mempty = PnpmLockfileBase mempty mempty mempty
 
 instance Semigroup PnpmLockfileV9 where
   (<>) a b =
@@ -220,8 +228,6 @@ instance Semigroup PnpmLockfileV9 where
                 (catalogEntries (lockfileCatalogs b))
             )
       }
-instance Monoid PnpmLockfileV9 where
-  mempty = PnpmLockfileV9 mempty mempty mempty
 
 -- | Union two maps giving precedence to the second argument, so that later
 -- documents in a multi-document lockfile win on conflicting keys. ('Map.union'
@@ -229,16 +235,6 @@ instance Monoid PnpmLockfileV9 where
 -- shadow the project lockfile's data.)
 unionPreferringSecond :: Ord k => Map k v -> Map k v -> Map k v
 unionPreferringSecond first second = Map.union second first
-
-instance Semigroup PnpmLockfile where
-  LockfileV4Or5 a <> LockfileV4Or5 b = LockfileV4Or5 (a <> b)
-  LockfileV678 a <> LockfileV678 b = LockfileV678 (a <> b)
-  LockfileV9 a <> LockfileV9 b = LockfileV9 (a <> b)
-  -- Defensive: pnpm writes one lockfileVersion per stream. If two documents
-  -- somehow disagree, keep the earlier (left) document's version.
-  a <> _ = a
-instance Monoid PnpmLockfile where
-  mempty = LockfileV9 mempty
 
 -- | Union two snapshot maps by key. On a shared key the later document's
 -- dependency list wins (List.fromList keeps the last occurrence for a key).

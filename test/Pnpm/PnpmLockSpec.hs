@@ -25,7 +25,7 @@ import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldContain)
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -165,6 +165,11 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
         -- document's copy won, that edge would not exist.
         expectEdge graph (mkDep "a@1.0.0" Nothing) (mkDep "b@2.0.0" Nothing)
 
+  it "rejects a stream whose documents disagree on lockfileVersion" $
+    case parsePnpmLockfile (BS8.pack mixedVersionDocs) of
+      Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
+      Right _ -> expectationFailure "expected an inconsistent-version error"
+
 -- A document without a parseable lockfileVersion (front metadata documents,
 -- or malformed ones) fails to parse and is skipped.
 invalidFirstDoc :: String
@@ -200,6 +205,23 @@ collidingDocs =
     , "    dependencies:"
     , "      b: 2.0.0"
     , "  b@2.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Documents of one stream must share one lockfileVersion; each constructor
+-- parses as a different PnpmLockfile variant, so a v6 document followed by a
+-- v9 document has nothing to merge.
+mixedVersionDocs :: String
+mixedVersionDocs =
+  unlines
+    [ "lockfileVersion: '6.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
     , "    resolution: {integrity: sha512-b==}"
     ]
 

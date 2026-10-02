@@ -11,7 +11,7 @@ import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
 import Data.Aeson.Types (Value, parseEither, parseJSON)
 import Data.ByteString (ByteString)
 import Data.Either (partitionEithers)
-import Data.Foldable (for_)
+import Data.Foldable (foldl', for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
@@ -54,6 +54,7 @@ import Strategy.Node.Pnpm.Types (
   ProjectMapDepMetadata (..),
   Resolution (..),
   TarballResolution (..),
+  mergeLockfiles,
   withoutPeerDepSuffix,
  )
 import Strategy.Node.Pnpm.V4_8 (
@@ -250,18 +251,19 @@ buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase 
 -- pnpm v11+ can write the lockfile as a multi-document YAML stream: an env
 -- lockfile (configDependencies / packageManagerDependencies) followed by the
 -- project lockfile. Both documents carry the same @lockfileVersion@ and each
--- parses as a 'PnpmLockfile'. We parse every document and 'mconcat' the ones
--- that succeed, reusing the single-document parser and graph builder. Unioning
--- every document reports what the whole lockfile installs (pnpm's guidance for
--- SBOM / vulnerability tools) and, at minimum, never lets the env document
--- shadow the project graph. Single-document lockfiles parse exactly as before.
+-- parses as a 'PnpmLockfile'. We parse every document and merge the ones that
+-- succeed, reusing the single-document parser and graph builder. Merging every
+-- document reports what the whole lockfile installs (pnpm's guidance for SBOM /
+-- vulnerability tools) and, at minimum, never lets the env document shadow the
+-- project graph. Single-document lockfiles parse exactly as before.
 parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err
   Right (docs :: [Value]) -> case partitionEithers $ map (parseEither parseJSON) docs of
     ([], []) -> Left "no YAML documents found"
     (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
-    (_, lockfiles) -> Right (mconcat lockfiles)
+    (_, lockfile : lockfiles) ->
+      foldl' (\acc next -> acc >>= \acc' -> mergeLockfiles acc' next) (Right lockfile) lockfiles
 
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
