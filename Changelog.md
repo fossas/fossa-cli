@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## 3.20.1
+
+- Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does. ([#1795](https://github.com/fossas/fossa-cli/pull/1795))
+
 ## 3.20.0
 
 - Go (dep): `Gopkg.lock` and `Gopkg.toml` files that declare no dependencies (no `[[projects]]`, `[[constraint]]` or `[[override]]` tables, which is what `dep` writes for a project without dependencies) no longer fail analysis with `missing key: projects in <top-level>` / `missing key: constraint in <top-level>`. ([#1791](https://github.com/fossas/fossa-cli/pull/1791))
