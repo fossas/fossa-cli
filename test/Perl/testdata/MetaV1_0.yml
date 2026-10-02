@@ -1,0 +1,12 @@
+--- #YAML:1.0
+name: Some-App
+version: 1.16
+abstract: 'Some Description'
+license: perl
+distribution_type: module
+requires:
+  Archive::Zip: 0
+  perl: '5.006'
+build_requires:
+  Compress::Zlib: '0'
+generated_by: Module::Build version 0.2808
