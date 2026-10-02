@@ -193,6 +193,11 @@ data PnpmLockfile
 -- one lockfileVersion, so documents always combine within a single constructor;
 -- the mismatched-constructor fallback is defensive only.
 
+-- Not quite a lawful 'Monoid': 'lockfileRawVersion' comes from the left
+-- operand, so 'mempty <>' would lose the right operand's version. Harmless
+-- because documents of one stream share a lockfileVersion and 'mconcat' is
+-- only ever folded over a non-empty parse result, but do not rely on left
+-- identity.
 instance Semigroup PnpmLockfileBase where
   (<>) a b =
     PnpmLockfileBase

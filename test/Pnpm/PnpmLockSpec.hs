@@ -5,6 +5,7 @@ module Pnpm.PnpmLockSpec (
 ) where
 
 import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS8
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -143,6 +144,64 @@ spec = do
   let pnpmLockV11MultiDoc = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-multi-doc/pnpm-lock.yaml")
   describe "works with pnpm v11 multi-document lockfile" $
     checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
+
+  parsePnpmLockfileSpec
+
+-- parsePnpmLockfile folds every document that parses into one lockfile and
+-- skips the rest; these pin the non-happy paths of that fold.
+parsePnpmLockfileSpec :: Spec
+parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
+  it "keeps parsing later documents when an earlier one does not parse" $
+    case parsePnpmLockfile (BS8.pack invalidFirstDoc) of
+      Left err -> expectationFailure (toString err)
+      Right lockfile -> expectDep (mkProdDep "express@4.18.2") (buildGraph lockfile)
+
+  it "lets the later document win when both define the same package" $
+    case parsePnpmLockfile (BS8.pack collidingDocs) of
+      Left err -> expectationFailure (toString err)
+      Right lockfile -> do
+        let graph = buildGraph lockfile
+        -- The later document resolves a@1.0.0 against b@2.0.0; if the earlier
+        -- document's copy won, that edge would not exist.
+        expectEdge graph (mkDep "a@1.0.0" Nothing) (mkDep "b@2.0.0" Nothing)
+
+-- A document without a parseable lockfileVersion (front metadata documents,
+-- or malformed ones) fails to parse and is skipped.
+invalidFirstDoc :: String
+invalidFirstDoc =
+  unlines
+    [ "notALockfile: {}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "importers:"
+    , "  .:"
+    , "    dependencies:"
+    , "      express:"
+    , "        specifier: 4.18.2"
+    , "        version: 4.18.2"
+    , "packages:"
+    , "  express@4.18.2:"
+    , "    resolution: {integrity: sha512-xxxxxxxxxx==}"
+    ]
+
+-- Both documents define a@1.0.0; only the later copy resolves b.
+collidingDocs :: String
+collidingDocs =
+  unlines
+    [ "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-new==}"
+    , "    dependencies:"
+    , "      b: 2.0.0"
+    , "  b@2.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
