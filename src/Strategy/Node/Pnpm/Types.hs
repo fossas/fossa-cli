@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Strategy.Node.Pnpm.Types (
   -- * Lockfile types
   PnpmLockfileBase (..),
@@ -209,11 +211,12 @@ mergeLockfiles _ _ = Left "multi-document lockfile with inconsistent lockfileVer
 instance Semigroup PnpmLockfileBase where
   (<>) a b =
     PnpmLockfileBase
-      { lockfileImporters = Map.unionWith (<>) (lockfileImporters a) (lockfileImporters b)
-      , lockfilePackages = unionPreferringSecond (lockfilePackages a) (lockfilePackages b)
+      { lockfileImporters = Map.unionWith (<>) a.lockfileImporters b.lockfileImporters
+      , lockfilePackages = unionPreferringSecond a.lockfilePackages b.lockfilePackages
       , -- First non-empty: documents of one stream share one lockfileVersion,
         -- and the empty version is the identity, keeping this instance lawful.
-        lockfileRawVersion = if Text.null (lockfileRawVersion a) then lockfileRawVersion b else lockfileRawVersion a
+        lockfileRawVersion =
+          if Text.null a.lockfileRawVersion then b.lockfileRawVersion else a.lockfileRawVersion
       }
 
 instance Semigroup PnpmLockfileV9 where

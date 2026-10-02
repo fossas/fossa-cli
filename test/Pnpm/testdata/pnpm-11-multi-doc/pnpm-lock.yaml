@@ -4,6 +4,10 @@
 # project lockfile, so a reader that keeps only the first document would report
 # the env document and drop the project graph. This fixture exercises the union
 # of both documents.
+#
+# Multi-document means multiple YAML documents in ONE file (--- separators),
+# never multiple files: a pnpm-lock.yaml is always a single file. The
+# single-document control is every other fixture here (e.g. pnpm-9-local-dep).
 ---
 lockfileVersion: '9.0'
 
