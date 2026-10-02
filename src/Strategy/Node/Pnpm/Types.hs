@@ -196,11 +196,7 @@ data PnpmLockfile
 instance Semigroup PnpmLockfileBase where
   (<>) a b =
     PnpmLockfileBase
-      { -- Importers are combined field-wise ('Map.unionWith (<>)' plus the
-        -- 'Semigroup ProjectMap'): the env and the project document both use
-        -- the @.@ importer key, so a whole-value overwrite would drop one
-        -- side's dependency data.
-        lockfileImporters = Map.unionWith (<>) (lockfileImporters a) (lockfileImporters b)
+      { lockfileImporters = Map.unionWith (<>) (lockfileImporters a) (lockfileImporters b)
       , lockfilePackages = unionPreferringSecond (lockfilePackages a) (lockfilePackages b)
       , lockfileRawVersion = lockfileRawVersion a
       }
@@ -312,12 +308,10 @@ data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
   , directDevDependencies :: Map Text ProjectMapDepMetadata
   , configDependencies :: Map Text ProjectMapDepMetadata
-  -- ^ pnpm config dependencies. Recorded under the @.@ importer of the env
-  -- lockfile document (they are real packages, installed into
-  -- @node_modules/.pnpm-config@), so they must be reported too.
+  -- ^ pnpm config dependencies: real packages, installed into
+  -- @node_modules/.pnpm-config@, so they must be reported too.
   , packageManagerDependencies :: Map Text ProjectMapDepMetadata
-  -- ^ The pnpm version resolved for the project, under the @.@ importer of the
-  -- env lockfile document.
+  -- ^ The pnpm version resolved for the project.
   }
   deriving (Show, Eq, Ord)
 

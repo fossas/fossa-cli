@@ -202,12 +202,10 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
                       LabelingOn -> label dep (PnpmEnv EnvDevelopment)
                       LabelingOff -> pure ()
 
-            -- Config and package-manager dependencies live in the env lockfile
-            -- document's importer (not in `dependencies`/`devDependencies`),
-            -- but they are real packages installed for the project, so report
-            -- them as direct dependencies. Marking them direct also keeps them
-            -- in the graph: unreachable deep nodes are pruned before the
-            -- source unit is built.
+            -- Config and package-manager dependencies are real packages
+            -- installed for the project, so report them as direct dependencies.
+            -- Marking them direct also keeps them in the graph: unreachable
+            -- deep nodes are pruned before the source unit is built.
             for_ (Map.toList $ configDependencies projectImporters <> packageManagerDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
