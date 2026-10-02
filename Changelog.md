@@ -2,7 +2,7 @@
 
 ## 3.20.1
 
-- Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does.
+- Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does. ([#1795](https://github.com/fossas/fossa-cli/pull/1795))
 
 ## 3.20.0
 
