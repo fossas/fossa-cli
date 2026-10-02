@@ -9,20 +9,26 @@ lockfileVersion: '9.0'
 
 importers:
   .:
-    configDependencies: {}
+    configDependencies:
+      pnpm-config-plugin: 1.0.0
     packageManagerDependencies:
       pnpm:
         specifier: 12.3.4
         version: 12.3.4
 
 packages:
-  # A config dependency that exists ONLY in the env document. Its presence in
-  # the final graph proves the env document is unioned in rather than dropped.
+  # Config and package-manager dependencies exist ONLY in the env document.
+  # They must be reported alongside the project graph, not dropped.
   pnpm-config-plugin@1.0.0:
     resolution: {integrity: sha256-envconfigintegrity==}
 
+  pnpm@12.3.4:
+    resolution: {integrity: sha512-aaaaaaaaaa==}
+
 snapshots:
   pnpm-config-plugin@1.0.0: {}
+
+  pnpm@12.3.4: {}
 ---
 lockfileVersion: '9.0'
 

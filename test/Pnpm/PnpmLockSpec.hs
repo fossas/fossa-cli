@@ -488,17 +488,26 @@ pnpmLockV9LocalDepSpec graph = do
 -- Regression for multi-document pnpm-lock.yaml (pnpm v11+): the env lockfile
 -- (first document) declares a lockfileVersion just like the project document,
 -- so it parses as a valid lockfile. Unioning every document must (a) keep the
--- project graph — the env document's empty @.@ importer must not shadow the
--- project's — and (b) report packages that exist only in the env document.
+-- project graph — the env document's @.@ importer must not shadow the
+-- project's — and (b) report the env document's config and package-manager
+-- dependencies, which exist only there.
 pnpmLockV11MultiDocSpec :: Graphing Dependency -> Spec
 pnpmLockV11MultiDocSpec graph = do
-  pnpmLockV9LocalDepSpec graph
-  describe "buildGraph with multi-document lockfile" $
-    it "should union packages from the env (front) document into the graph" $
-      -- The env lockfile (first document) carries a config dependency that
-      -- exists only there. It must be reported alongside the project graph,
-      -- not dropped when the env document parses first.
-      expectDep (mkDep "pnpm-config-plugin@1.0.0" Nothing) graph
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with multi-document lockfile" $ do
+    it "should report the project graph and the env document's packages as direct" $ do
+      expectDirect
+        [ mkProdDep "express@4.18.2" -- project document, promoted from local-pkg
+        , mkProdDep "pnpm-config-plugin@1.0.0" -- env document, config dependency
+        , mkProdDep "pnpm@12.3.4" -- env document, package manager dependency
+        ]
+        graph
+
+    it "should keep the project graph's transitive deps and edges" $ do
+      expectDep (mkProdDep "body-parser@1.20.1") graph
+      hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
 
 -- Bug 3 regression: when two workspace packages depend on different versions
 -- of the same package (one prod, one dev), each version must receive only its

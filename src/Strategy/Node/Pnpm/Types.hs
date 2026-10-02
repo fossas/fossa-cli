@@ -196,7 +196,11 @@ data PnpmLockfile
 instance Semigroup PnpmLockfileBase where
   (<>) a b =
     PnpmLockfileBase
-      { lockfileImporters = unionPreferringSecond (lockfileImporters a) (lockfileImporters b)
+      { -- Importers are combined field-wise ('Map.unionWith (<>)' plus the
+        -- 'Semigroup ProjectMap'): the env and the project document both use
+        -- the @.@ importer key, so a whole-value overwrite would drop one
+        -- side's dependency data.
+        lockfileImporters = Map.unionWith (<>) (lockfileImporters a) (lockfileImporters b)
       , lockfilePackages = unionPreferringSecond (lockfilePackages a) (lockfilePackages b)
       , lockfileRawVersion = lockfileRawVersion a
       }
@@ -219,10 +223,9 @@ instance Monoid PnpmLockfileV9 where
   mempty = PnpmLockfileV9 mempty mempty mempty
 
 -- | Union two maps giving precedence to the second argument, so that later
--- documents in a multi-document lockfile win on conflicting keys. Both the env
--- and the project document use the @.@ importer key, so a left-biased union
--- ('Map.union' prefers its first argument) would let the env front-document
--- shadow the project lockfile's importers — the very bug this merge fixes.
+-- documents in a multi-document lockfile win on conflicting keys. ('Map.union'
+-- prefers its first argument instead, which would let the env front-document
+-- shadow the project lockfile's data.)
 unionPreferringSecond :: Ord k => Map k v -> Map k v -> Map k v
 unionPreferringSecond first second = Map.union second first
 
@@ -308,6 +311,13 @@ instance FromJSON PnpmLockFileSnapshots where
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
   , directDevDependencies :: Map Text ProjectMapDepMetadata
+  , configDependencies :: Map Text ProjectMapDepMetadata
+  -- ^ pnpm config dependencies. Recorded under the @.@ importer of the env
+  -- lockfile document (they are real packages, installed into
+  -- @node_modules/.pnpm-config@), so they must be reported too.
+  , packageManagerDependencies :: Map Text ProjectMapDepMetadata
+  -- ^ The pnpm version resolved for the project, under the @.@ importer of the
+  -- env lockfile document.
   }
   deriving (Show, Eq, Ord)
 
@@ -316,6 +326,20 @@ instance FromJSON ProjectMap where
     ProjectMap
       <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
+      <*> obj .:? "configDependencies" .!= mempty
+      <*> obj .:? "packageManagerDependencies" .!= mempty
+
+-- | Union two importers field-wise. The env and the project lockfile document
+-- both use the @.@ importer key; a whole-value overwrite would lose whichever
+-- graph the dropped side held (pnpm's lockfile docs warn about exactly this).
+instance Semigroup ProjectMap where
+  (<>) a b =
+    ProjectMap
+      { directDependencies = unionPreferringSecond (directDependencies a) (directDependencies b)
+      , directDevDependencies = unionPreferringSecond (directDevDependencies a) (directDevDependencies b)
+      , configDependencies = unionPreferringSecond (configDependencies a) (configDependencies b)
+      , packageManagerDependencies = unionPreferringSecond (packageManagerDependencies a) (packageManagerDependencies b)
+      }
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
   { version :: Text
@@ -427,7 +451,7 @@ parseBaseLockfile (TextLike rawVer) obj = do
   packages <- obj .:? "packages" .!= mempty
   dependencies <- obj .:? "dependencies" .!= mempty
   devDependencies <- obj .:? "devDependencies" .!= mempty
-  let virtualRootWs = ProjectMap dependencies devDependencies
+  let virtualRootWs = ProjectMap dependencies devDependencies mempty mempty
   let refinedImporters =
         if Map.null importers
           then Map.insert "." virtualRootWs importers
