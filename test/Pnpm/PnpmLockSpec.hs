@@ -137,11 +137,12 @@ spec = do
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
 
-  -- pnpm v11 can emit a multi-document lockfile: a metadata document
-  -- (pnpmfile checksum, config dependencies) precedes the lockfile document.
+  -- pnpm v11+ can emit a multi-document lockfile: an env lockfile (config /
+  -- package-manager dependencies, which declares a lockfileVersion of its own)
+  -- precedes the project lockfile document.
   let pnpmLockV11MultiDoc = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-multi-doc/pnpm-lock.yaml")
   describe "works with pnpm v11 multi-document lockfile" $
-    checkGraph pnpmLockV11MultiDoc pnpmLockV9LocalDepSpec
+    checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
 
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
@@ -483,6 +484,21 @@ pnpmLockV9LocalDepSpec graph = do
       -- body-parser is a transitive dep of express — must also be prod
       expectDep (mkProdDep "body-parser@1.20.1") graph
       hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
+
+-- Regression for multi-document pnpm-lock.yaml (pnpm v11+): the env lockfile
+-- (first document) declares a lockfileVersion just like the project document,
+-- so it parses as a valid lockfile. Unioning every document must (a) keep the
+-- project graph — the env document's empty @.@ importer must not shadow the
+-- project's — and (b) report packages that exist only in the env document.
+pnpmLockV11MultiDocSpec :: Graphing Dependency -> Spec
+pnpmLockV11MultiDocSpec graph = do
+  pnpmLockV9LocalDepSpec graph
+  describe "buildGraph with multi-document lockfile" $
+    it "should union packages from the env (front) document into the graph" $
+      -- The env lockfile (first document) carries a config dependency that
+      -- exists only there. It must be reported alongside the project graph,
+      -- not dropped when the env document parses first.
+      expectDep (mkDep "pnpm-config-plugin@1.0.0" Nothing) graph
 
 -- Bug 3 regression: when two workspace packages depend on different versions
 -- of the same package (one prod, one dev), each version must receive only its

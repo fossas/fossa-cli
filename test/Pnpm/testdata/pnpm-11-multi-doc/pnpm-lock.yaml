@@ -1,12 +1,33 @@
-pnpmfileChecksum: sha256-cf+5r3ZWOJxzgXmKavdmLHG0t5CZ2JP04zWHTtIHtJo=
-configDependencies:
-  "@pnpm/plugin-esm-node-path": 1.0.0
+# pnpm v11+ writes a multi-document lockfile when a project uses config
+# dependencies or a packageManager pin. The env lockfile (first document) is a
+# structurally valid lockfile that declares the same lockfileVersion as the
+# project lockfile, so a reader that keeps only the first document would report
+# the env document and drop the project graph. This fixture exercises the union
+# of both documents.
+---
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    configDependencies: {}
+    packageManagerDependencies:
+      pnpm:
+        specifier: 12.3.4
+        version: 12.3.4
+
+packages:
+  # A config dependency that exists ONLY in the env document. Its presence in
+  # the final graph proves the env document is unioned in rather than dropped.
+  pnpm-config-plugin@1.0.0:
+    resolution: {integrity: sha256-envconfigintegrity==}
+
+snapshots:
+  pnpm-config-plugin@1.0.0: {}
 ---
 lockfileVersion: '9.0'
 
 settings:
   autoInstallPeers: true
-  excludeLinksFromLockfile: false
 
 importers:
   .:

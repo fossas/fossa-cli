@@ -235,21 +235,21 @@ buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase 
 
 -- | Parse the contents of a pnpm-lock.yaml file.
 --
--- pnpm v11 can write the lockfile as a multi-document YAML stream. In practice
--- the stream is exactly two documents: a metadata front-document (pnpmfile
--- checksum, config dependency integrity, etc. — no dependency data) followed by
--- the lockfile document, which still carries all of the importers\/packages\/
--- snapshots data. Only the lockfile document parses as a 'PnpmLockfile' (the
--- metadata document has no @lockfileVersion@), so selecting the first document
--- that parses as a lockfile analyzes the full dependency data rather than
--- rejecting the stream with "Multiple YAML documents encountered".
+-- pnpm v11+ can write the lockfile as a multi-document YAML stream: an env
+-- lockfile (configDependencies / packageManagerDependencies) followed by the
+-- project lockfile. Both documents carry the same @lockfileVersion@ and each
+-- parses as a 'PnpmLockfile'. We parse every document and 'mconcat' the ones
+-- that succeed, reusing the single-document parser and graph builder. Unioning
+-- every document reports what the whole lockfile installs (pnpm's guidance for
+-- SBOM / vulnerability tools) and, at minimum, never lets the env document
+-- shadow the project graph. Single-document lockfiles parse exactly as before.
 parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err
   Right (docs :: [Value]) -> case partitionEithers $ map (parseEither parseJSON) docs of
-    (_, lockfile : _) -> Right lockfile
     ([], []) -> Left "no YAML documents found"
     (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
+    (_, lockfiles) -> Right (mconcat lockfiles)
 
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
