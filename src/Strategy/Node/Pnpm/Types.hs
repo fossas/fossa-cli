@@ -222,13 +222,13 @@ instance Semigroup PnpmLockfileBase where
 instance Semigroup PnpmLockfileV9 where
   (<>) a b =
     PnpmLockfileV9
-      { lockfileBase = lockfileBase a <> lockfileBase b
-      , lockfileSnapshots = mergeSnapshots (lockfileSnapshots a) (lockfileSnapshots b)
+      { lockfileBase = a.lockfileBase <> b.lockfileBase
+      , lockfileSnapshots = mergeSnapshots a.lockfileSnapshots b.lockfileSnapshots
       , lockfileCatalogs =
           PnpmCatalogs
             ( unionPreferringSecond
-                (catalogEntries (lockfileCatalogs a))
-                (catalogEntries (lockfileCatalogs b))
+                a.lockfileCatalogs.catalogEntries
+                b.lockfileCatalogs.catalogEntries
             )
       }
 
@@ -333,10 +333,10 @@ instance FromJSON ProjectMap where
 instance Semigroup ProjectMap where
   (<>) a b =
     ProjectMap
-      { directDependencies = unionPreferringSecond (directDependencies a) (directDependencies b)
-      , directDevDependencies = unionPreferringSecond (directDevDependencies a) (directDevDependencies b)
-      , configDependencies = unionPreferringSecond (configDependencies a) (configDependencies b)
-      , packageManagerDependencies = unionPreferringSecond (packageManagerDependencies a) (packageManagerDependencies b)
+      { directDependencies = unionPreferringSecond a.directDependencies b.directDependencies
+      , directDevDependencies = unionPreferringSecond a.directDevDependencies b.directDevDependencies
+      , configDependencies = unionPreferringSecond a.configDependencies b.configDependencies
+      , packageManagerDependencies = unionPreferringSecond a.packageManagerDependencies b.packageManagerDependencies
       }
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
