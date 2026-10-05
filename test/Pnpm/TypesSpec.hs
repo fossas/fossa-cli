@@ -48,8 +48,8 @@ baseOf (LockfileV9 v9) = lockfileBase v9
 
 spec :: Spec
 spec = do
-  describe "lockfileVersion dispatch" $
-    for_
+  describe "lockfileVersion dispatch"
+    $ for_
       [ ("1", "v4or5")
       , ("'4.0'", "v4or5")
       , ("5.4", "v4or5")
@@ -62,9 +62,9 @@ spec = do
       , ("0", "rejected")
       , ("not-a-version", "rejected")
       ]
-      $ \(ver, expected) ->
-        it ("lockfileVersion " <> toString ver <> " is " <> expected) $
-          variantOf (decodeLockfile ("lockfileVersion: " <> ver <> "\n")) `shouldBe` expected
+    $ \(ver, expected) ->
+      it ("lockfileVersion " <> toString ver <> " is " <> expected) $
+        variantOf (decodeLockfile ("lockfileVersion: " <> ver <> "\n")) `shouldBe` expected
 
   describe "lockfileVersion" $ do
     it "is rejected when missing" $
@@ -197,8 +197,8 @@ spec = do
     it "rejects a package without a resolution" $
       packageOf "    dev: false\n" `shouldSatisfy` either (const True) (const False)
 
-    describe "resolution" $
-      for_
+    describe "resolution"
+      $ for_
         [ ("{integrity: sha512-abc}", RegistryResolve (RegistryResolution "sha512-abc"))
         , ("{tarball: 'https://example.com/pkg.tgz'}", TarballResolve (TarballResolution "https://example.com/pkg.tgz"))
         , ("{repo: 'https://github.com/o/r.git', commit: abc123}", GitResolve (GitResolution "https://github.com/o/r.git" "abc123"))
@@ -208,9 +208,9 @@ spec = do
         , -- A git resolution takes precedence over every other kind.
           ("{repo: 'https://github.com/o/r.git', commit: abc123, tarball: 'https://example.com/pkg.tgz'}", GitResolve (GitResolution "https://github.com/o/r.git" "abc123"))
         ]
-        $ \(yaml, expected) ->
-          it ("parses " <> toString yaml) $
-            fmap resolution (packageOf ("    resolution: " <> yaml <> "\n")) `shouldBe` Right expected
+      $ \(yaml, expected) ->
+        it ("parses " <> toString yaml) $
+          fmap resolution (packageOf ("    resolution: " <> yaml <> "\n")) `shouldBe` Right expected
 
     it "rejects a resolution that is none of the known kinds" $
       packageOf "    resolution: {type: unknown}\n" `shouldSatisfy` either (const True) (const False)
@@ -269,15 +269,15 @@ spec = do
     it "does not read snapshots or catalogs for an older lockfile" $
       variantOf (decodeLockfile "lockfileVersion: '6.0'\nsnapshots:\n  a@1.0.0: {}\n") `shouldBe` "v678"
 
-  describe "withoutPeerDepSuffix" $
-    for_
+  describe "withoutPeerDepSuffix"
+    $ for_
       ( [ ("1.2.0", "1.2.0")
         , ("1.2.0(babel@1.0.0)", "1.2.0")
         , ("1.2.0(babel@1.0.0)(react@18.0.0)", "1.2.0")
         , ("", "")
-        ]
-          :: [(Text, Text)]
+        ] ::
+          [(Text, Text)]
       )
-      $ \(input, expected) ->
-        it ("strips '" <> toString input <> "' to '" <> toString expected <> "'") $
-          withoutPeerDepSuffix input `shouldBe` expected
+    $ \(input, expected) ->
+      it ("strips '" <> toString input <> "' to '" <> toString expected <> "'") $
+        withoutPeerDepSuffix input `shouldBe` expected
