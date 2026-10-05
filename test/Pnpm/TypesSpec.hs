@@ -267,7 +267,7 @@ spec = do
       fmap (catalogEntries . lockfileCatalogs) lockfile `shouldBe` Right mempty
 
     it "does not read snapshots or catalogs for an older lockfile" $
-      variantOf (decodeLockfile "lockfileVersion: '6.0'\nsnapshots:\n  a@1.0.0: {}\n") `shouldBe` "v678"
+      variantOf (decodeLockfile "lockfileVersion: '6.0'\nsnapshots: []\ncatalogs: []\n") `shouldBe` "v678"
 
   describe "withoutPeerDepSuffix"
     $ for_
