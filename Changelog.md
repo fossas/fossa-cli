@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Swift: `Package.swift` manifests that build `dependencies` or other `Package(...)` arguments in code (e.g. `dependencies: deps`) no longer fail analysis. ([#1800](https://github.com/fossas/fossa-cli/pull/1800))
-- Composer: platform requirements in `composer.lock` (`php`, `php-64bit`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
+- Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
 
 ## 3.20.0
 
