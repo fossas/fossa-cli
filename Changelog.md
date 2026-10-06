@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Swift: `Package.swift` manifests that build `Package(...)` arguments with Swift code instead of literals (e.g. `dependencies: dependencies`, `dependencies: generateDependencies()`, a `[...] + (flag ? [...] : [])` dependency list, a function call among the `.package(...)` entries, or a `targets: { ... }()` closure) no longer fail analysis with parse errors such as `unexpected 'd' expecting '['`; the `.package(...)` entries that are written out are reported, and anything else is skipped.
+
 ## 3.20.0
 
 - Go (dep): `Gopkg.lock` and `Gopkg.toml` files that declare no dependencies (no `[[projects]]`, `[[constraint]]` or `[[override]]` tables, which is what `dep` writes for a project without dependencies) no longer fail analysis with `missing key: projects in <top-level>` / `missing key: constraint in <top-level>`. ([#1791](https://github.com/fossas/fossa-cli/pull/1791))

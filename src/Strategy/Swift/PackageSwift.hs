@@ -40,13 +40,12 @@ import Text.Megaparsec (
   between,
   empty,
   many,
-  noneOf,
   sepEndBy,
   sepEndBy1,
   skipManyTill,
   some,
  )
-import Text.Megaparsec.Char (digitChar, space1)
+import Text.Megaparsec.Char (char, digitChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 -- | Parsing
@@ -269,15 +268,48 @@ parsePackageDependencies = do
             key <- parseKey
             case key of
               "dependencies" -> parseDeps
-              _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
+              -- Any other argument (name, products, targets, ...) is skipped, whatever Swift
+              -- expression it is: a literal, an identifier, or a closure such as
+              -- `targets: { var targets: [Target] = [...]; return targets }()`.
+              _ -> skipExpression $> []
         )
         (symbol ",")
   where
     parseKey = try $ lexeme $ takeWhile1P (Just "package key") (/= ':') <* symbol ":"
-    parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
-    parseIdentifier = takeWhile1P (Just "parse identifier") (`notElem` (",()[]" :: String)) $> []
-    nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: String)))
-    parseNonDepArray = nestedBrackets $> []
+    -- The dependency list is usually an array literal, but manifests also build it in Swift:
+    -- `dependencies: dependencies` or `dependencies: generateDependencies()` (skipped as a whole,
+    -- the dependencies then come from Package.resolved), `[...] + (flag ? [...] : [])` (the
+    -- literal part is parsed, the rest skipped), or an array mixing `.package(...)` entries with
+    -- calls like `googleAppMeasurementDependency()` (only the calls are skipped).
+    parseDeps =
+      (betweenSquareBrackets (catMaybes <$> sepEndBy parseDepOrSkip (symbol ",")) <* skipExpression)
+        <|> (skipExpression $> [])
+    parseDepOrSkip = (Just <$> lexeme parsePackageDep) <|> (Nothing <$ skipExpression1)
+
+-- | Skips a Swift expression we don't need to understand, stopping before the first ',' or closing
+-- bracket that isn't nested inside it. Brackets, string literals and comments are balanced, so a
+-- ',' or ')' inside them doesn't end the expression early. 'skipExpression1' requires a non-empty
+-- expression; 'skipExpression' also accepts an empty one.
+skipExpression :: Parser ()
+skipExpression = void $ many expressionPiece
+
+skipExpression1 :: Parser ()
+skipExpression1 = void $ some expressionPiece
+
+expressionPiece :: Parser ()
+expressionPiece =
+  asum
+    [ Lexer.skipLineComment "//"
+    , Lexer.skipBlockComment "/*" "*/"
+    , void $ char '"' *> skipManyTill (void (char '\\' *> anySingle) <|> void anySingle) (char '"')
+    , nested '(' ')'
+    , nested '[' ']'
+    , nested '{' '}'
+    , void $ takeWhile1P (Just "expression") (`notElem` ("/\",()[]{}" :: String))
+    , void $ char '/'
+    ]
+  where
+    nested open close = between (char open) (char close) skipExpression
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =
