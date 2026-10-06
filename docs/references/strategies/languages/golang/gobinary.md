@@ -1,20 +1,20 @@
 # Go Binaries
 
-Go binaries built with module support contain build information describing the modules linked into the binary. This is the same information shown by:
+Go binaries built with module support include build information listing the modules linked into them. This is the same data shown by:
 
 ```bash
 go version -m <binary>
 ```
 
-FOSSA CLI can read this metadata directly, allowing it to identify Go dependencies even when the binary is distributed without its `go.mod`, `go.sum`, or source code.
+FOSSA can read that metadata directly, so it can report Go dependencies even when the binary is shipped without a `go.mod`, `go.sum`, or Go source.
 
-Examples include:
+This is useful for things like:
 
-- a gomobile SDK containing `jni/<abi>/lib<name>.so` inside an AAR
-- a Go binary vendored into a non-Go repository
-- a Go binary packaged inside a JAR or other archive
+- gomobile SDKs that ship `jni/<abi>/lib<name>.so` inside an AAR
+- Go binaries vendored into otherwise non-Go repositories
+- Go binaries packaged inside JARs or other archives
 
-Because this metadata is written by the Go linker at build time, it reflects the modules present in the compiled artifact rather than a separately maintained dependency list.
+Because the module list comes from the binary itself, it usually reflects what was actually built more accurately than a separately maintained third-party notice file.
 
 ## Enabling
 
@@ -24,61 +24,67 @@ Go binary analysis is opt-in:
 fossa analyze --enable-go-binary-analysis
 ```
 
-To scan binaries contained in archives, also enable archive unpacking:
+If the binary is inside an archive, also pass `--unpack-archives`:
 
 ```bash
 fossa analyze --enable-go-binary-analysis --unpack-archives
 ```
 
-The flags are independent. `--unpack-archives` does not enable Go binary analysis, and enabling Go binary analysis does not unpack archives.
+`--unpack-archives` and `--enable-go-binary-analysis` are independent flags.
 
 ## Project Discovery
 
-FOSSA walks the scan directory and checks eligible binaries for Go build information. A file is reported only when build information is present and contains at least one usable module version.
+FOSSA walks the scan directory and checks eligible files for Go build information. A file is only reported if buildinfo is present and contains at least one module with a usable version.
 
-When `--unpack-archives` is enabled, extracted archive contents are scanned as well. This allows Go binaries inside AARs, JARs, and other supported archives to be discovered.
+With `--unpack-archives`, FOSSA also checks extracted archive contents, including binaries inside AARs and JARs.
 
-Only ELF, Mach-O, and PE files of at least 4 KiB are examined.
+Only ELF, Mach-O, and PE files of at least 4 KiB are checked.
 
-Go binaries in the same directory are grouped into one project. Each binary is retained as an origin path, and their module lists are combined.
+Go binaries in the same directory are grouped into one project. Their module lists are combined, and each binary is recorded as an origin path.
 
-Normal path filtering still applies. For example, binaries under `vendor/` are skipped unless `--without-default-filters` is used.
+Normal path filters still apply. For example, binaries under `vendor/` are skipped unless you pass `--without-default-filters`.
 
 ## Analysis
 
-FOSSA reads the module list directly from the binary. It does not invoke the Go toolchain or execute the binary.
+FOSSA reads the module list directly from the binary. It does not run the binary or invoke the Go toolchain.
 
 Each module is reported as a direct `go+` dependency.
 
-Versions use the same normalization as `go.mod` analysis:
+Versions are normalized the same way as `go.mod` dependencies:
 
 - pseudo-versions are reduced to their commit hash
-- semantic versions retain their `v` prefix
+- semantic versions keep their `v` prefix
 
-The main module is omitted when its version is `(devel)`, as is typical for locally built binaries. If the binary contains a real main-module version, such as one produced by `go install <module>@<version>`, it is reported.
+The main module is skipped when its version is `(devel)`, which is typical for locally built binaries.
+
+If the binary includes a real main-module version, such as one built with:
+
+```bash
+go install <module>@<version>
+```
+
+that module is reported as well.
 
 ## Limitations
 
-- Go binaries built before Go 1.18 use an older pointer-based buildinfo encoding and are not supported.
-- Binaries built without module information, such as GOPATH-mode binaries or CGO-only objects, do not contain a module list.
-- Build information records modules but not dependency edges, so the resulting graph is flat.
-- Stripping a binary does not normally remove build information, but binary rewriting or packing tools such as UPX may make it unavailable.
+- Go binaries built with Go versions before 1.18 use an older pointer-based buildinfo format and are skipped.
+- Binaries built without module information, including GOPATH-mode binaries and CGO-only objects, do not contain a module list.
+- Buildinfo contains the module set, but not dependency edges, so the resulting graph is flat.
+- Stripping a binary does not normally remove buildinfo, but rewriting or packing the binary, for example with UPX, can make it unavailable.
 
 ## FAQ
 
-### How do I analyze only Go binaries?
+### How do I only analyze Go binaries?
 
-Use `--only-target gobinary` together with the enabling flag:
+Use `--only-target gobinary` with the enabling flag:
 
 ```bash
 fossa analyze --enable-go-binary-analysis --only-target gobinary
 ```
 
-`--only-target gobinary` does not enable Go binary analysis by itself.
+`--only-target gobinary` does not enable Go binary analysis on its own.
 
-### How do I inspect the embedded module information manually?
-
-Use:
+### How do I inspect the same data manually?
 
 ```bash
 go version -m path/to/binary
