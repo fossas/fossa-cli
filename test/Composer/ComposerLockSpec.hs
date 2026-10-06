@@ -110,7 +110,7 @@ spec = do
           let graph = buildGraph res
           expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive, dependencySourceless] graph
           expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFour, dependencyFive, dependencySourceless] graph
-          expectEdges [(dependencyOne, dependencyTwo), (dependencyOne, dependencyTwo), (dependencyTwo, dependencyFour)] graph
+          expectEdges [(dependencyOne, dependencyTwo), (dependencyOne, dependencyThree), (dependencyTwo, dependencyFour)] graph
         Left err -> expectationFailure $ show err
 
   describe "platform requirements" $ do
