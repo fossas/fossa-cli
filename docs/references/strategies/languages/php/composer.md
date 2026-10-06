@@ -14,6 +14,8 @@ Find a file named `composer.lock`.
 
 1. Parse `composer.lock` to identify direct and transitive dependencies.
 
+Platform requirements such as `php`, `ext-mbstring` or `composer-runtime-api` are provided by the environment Composer runs in, so they are not reported as dependencies.
+
 ## Example 
 
 1. Execute `composer init` to create a new project or create `composer.json` manually:
