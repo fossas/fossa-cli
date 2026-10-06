@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Go: `fossa analyze` can now report Go module dependencies read from the buildinfo embedded in compiled Go binaries (built with Go >= 1.18), so Go code shipped as a binary with no `go.mod` alongside it is no longer invisible to analysis. Opt in with `--enable-go-binary-analysis`; it is off by default because `fossa analyze` otherwise reports only what package managers declare. To reach binaries nested inside an archive (for example a `.so` inside an AAR or JAR), combine it with `--unpack-archives`.
+
 ## 3.20.0
 
 - Go (dep): `Gopkg.lock` and `Gopkg.toml` files that declare no dependencies (no `[[projects]]`, `[[constraint]]` or `[[override]]` tables, which is what `dep` writes for a project without dependencies) no longer fail analysis with `missing key: projects in <top-level>` / `missing key: constraint in <top-level>`. ([#1791](https://github.com/fossas/fossa-cli/pull/1791))

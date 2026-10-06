@@ -134,7 +134,7 @@ testRunner f env =
     & runReader (mempty :: OverrideDynamicAnalysisBinary)
     & runReader (mempty :: AllFilters)
     & runReader (MavenScopeIncludeFilters mempty)
-    & runReader (StrategyConfig Nothing False (UseGitBackedCargoLocators False))
+    & runReader (StrategyConfig Nothing False (UseGitBackedCargoLocators False) False)
     & runReader NonStrict
     & runFinally
     & runStack

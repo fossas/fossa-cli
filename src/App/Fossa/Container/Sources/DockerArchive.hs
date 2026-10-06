@@ -237,6 +237,7 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
         Nothing
         False -- Discovery has no consequence from path dependency analysis config
         useGitBackedCargo
+        False -- Layers get Go binaries from millhone's own layer scan; running the filesystem strategy here would double-report
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)
@@ -391,6 +392,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           Nothing
           False -- Targets are not impacted by path dependencies.
           (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available
+          False -- Go binaries in layers come from millhone's layer scan, not this strategy
       )
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader NonStrict

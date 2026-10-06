@@ -82,6 +82,11 @@ impl Application {
 enum Commands {
     /// Find and fingerprint JAR files.
     AnalyzeContainer(cmd::analyze_container::Subcommand),
+
+    /// Extract Go module lists from the buildinfo embedded in Go binaries.
+    ///
+    /// Paths are read from stdin (one per line) unless given as arguments.
+    AnalyzeGoBinaries(cmd::go_buildinfo::Subcommand),
 }
 
 fn main() -> stable_eyre::Result<()> {
@@ -121,6 +126,7 @@ fn main() -> stable_eyre::Result<()> {
     // And then dispatch to the subcommand.
     match app.commands {
         Commands::AnalyzeContainer(opts) => cmd::analyze_container::main(opts),
+        Commands::AnalyzeGoBinaries(opts) => cmd::go_buildinfo::main(opts),
     }
 }
 
