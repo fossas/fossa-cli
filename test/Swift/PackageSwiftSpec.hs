@@ -184,11 +184,12 @@ spec = do
         expectedArgumentParser = [GitSource $ gitDepFrom "https://github.com/apple/swift-argument-parser" "1.0.0"]
         cases :: [(String, [Text], [SwiftPackageDep])]
         cases =
-          [ ("dependencies given as an identifier", ["name: \"Example\"", "dependencies: dependencies"], [])
-          , ("dependencies given as a function call", ["name: \"Example\"", "dependencies: generateDependencies()"], [])
-          , ("a function call among the .package entries", ["dependencies: [\n googleAppMeasurementDependency(),\n " <> argumentParser <> ",\n]"], expectedArgumentParser)
-          , ("a dependency array concatenated with a conditional one", ["dependencies: [" <> argumentParser <> "] + (includeDocC ? [.package(url: \"https://github.com/apple/swift-docc-plugin\", from: \"1.0.0\")] : [])"], expectedArgumentParser)
+          [ ("dependencies given as an identifier", ["name: \"Example\"", "dependencies: dependencies"], [SkippedDependencies])
+          , ("dependencies given as a function call", ["name: \"Example\"", "dependencies: generateDependencies()"], [SkippedDependencies])
+          , ("a function call among the .package entries", ["dependencies: [\n googleAppMeasurementDependency(),\n " <> argumentParser <> ",\n]"], SkippedDependencies : expectedArgumentParser)
+          , ("a dependency array concatenated with a conditional one", ["dependencies: [" <> argumentParser <> "] + (includeDocC ? [.package(url: \"https://github.com/apple/swift-docc-plugin\", from: \"1.0.0\")] : [])"], expectedArgumentParser <> [SkippedDependencies])
           , ("an empty string argument", ["name: \"\"", "dependencies: [" <> argumentParser <> "]"], expectedArgumentParser)
+          , ("a nested block comment", ["name: /* outer /* inner */ , */ \"Example\"", "dependencies: [" <> argumentParser <> "]"], expectedArgumentParser)
           ,
             ( "a closure argument"
             ,
@@ -205,6 +206,10 @@ spec = do
           Right result -> result `shouldBe` SwiftPackage "5.7" expected
 
   describe "buildGraph, when no resolved content is discovered" $ do
+    it "should ignore skipped dependencies" $ do
+      let graph = buildGraph (SwiftPackage "5.7" [SkippedDependencies, GitSource $ gitDepExactly "some-url" "1.0.0"]) Nothing
+      expectDeps [Dependency GitType "some-url" (Just $ CEq "1.0.0") [] mempty Map.empty] graph
+
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDeps =
             [ Dependency GitType "some-url" (CEq <$> Just "some-ref") [] mempty Map.empty
