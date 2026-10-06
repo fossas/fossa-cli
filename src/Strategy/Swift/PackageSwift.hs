@@ -291,13 +291,15 @@ parsePackageDependencies = do
 -- ',' or ')' inside them doesn't end the expression early. 'skipExpression1' requires a non-empty
 -- expression; 'skipExpression' also accepts an empty one.
 skipExpression :: Parser ()
-skipExpression = void $ many expressionPiece
+skipExpression = void $ many $ expressionPiece ","
 
 skipExpression1 :: Parser ()
-skipExpression1 = void $ some expressionPiece
+skipExpression1 = void $ some $ expressionPiece ","
 
-expressionPiece :: Parser ()
-expressionPiece =
+-- | One piece of an expression: a comment, a string literal, a bracketed group (inside which a ','
+-- doesn't end the expression) or a run of any other characters except the given terminators.
+expressionPiece :: String -> Parser ()
+expressionPiece terminators =
   asum
     [ Lexer.skipLineComment "//"
     , Lexer.skipBlockComment "/*" "*/"
@@ -305,11 +307,11 @@ expressionPiece =
     , nested '(' ')'
     , nested '[' ']'
     , nested '{' '}'
-    , void $ takeWhile1P (Just "expression") (`notElem` ("/\",()[]{}" :: String))
+    , void $ takeWhile1P (Just "expression") (`notElem` ("/\"()[]{}" <> terminators))
     , void $ char '/'
     ]
   where
-    nested open close = between (char open) (char close) skipExpression
+    nested open close = between (char open) (char close) (void $ many $ expressionPiece "")
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =
