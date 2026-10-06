@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Swift: `Package.swift` manifests that build `Package(...)` arguments with Swift code instead of literals (e.g. `dependencies: dependencies`, `dependencies: generateDependencies()`, a `[...] + (flag ? [...] : [])` dependency list, a function call among the `.package(...)` entries, or a `targets: { ... }()` closure) no longer fail analysis with parse errors such as `unexpected 'd' expecting '['`; the `.package(...)` entries that are written out are reported, anything else is skipped, and a warning names the manifest when dependencies computed by Swift code were skipped (they are only reported through `Package.resolved`). ([#1800](https://github.com/fossas/fossa-cli/pull/1800))
+- Swift: `Package.swift` manifests that build `dependencies` or other `Package(...)` arguments in code (e.g. `dependencies: deps`) no longer fail analysis. ([#1800](https://github.com/fossas/fossa-cli/pull/1800))
 
 ## 3.20.0
 
