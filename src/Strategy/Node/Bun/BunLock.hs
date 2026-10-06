@@ -198,12 +198,11 @@ parseResolution res
 -- >>> splitPackageKey "@acme/lib/@babel/code-frame"
 -- ["@acme/lib", "@babel/code-frame"]
 splitPackageKey :: PackageName -> [PackageName]
-splitPackageKey = go . filter (not . Text.null) . Text.splitOn "/"
+splitPackageKey = foldr joinScope [] . filter (not . Text.null) . Text.splitOn "/"
   where
-    go (scope : name : rest)
-      | "@" `Text.isPrefixOf` scope = (scope <> "/" <> name) : go rest
-    go (name : rest) = name : go rest
-    go [] = []
+    joinScope scope (name : rest)
+      | "@" `Text.isPrefixOf` scope = (scope <> "/" <> name) : rest
+    joinScope segment segments = segment : segments
 
 -- | Analyze a bun.lock file and produce a dependency graph.
 analyze ::
