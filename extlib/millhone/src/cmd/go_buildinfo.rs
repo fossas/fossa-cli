@@ -321,9 +321,6 @@ fn parse_modinfo(modinfo: &str) -> (Option<GoModule>, Vec<GoModule>) {
     (main_module, modules)
 }
 
-/// Observation kind reported for a Go binary, shared by every discovery path.
-pub const GO_BINARY_OBSERVATION: &str = "v1.discover.binary.go";
-
 /// Only sniff regular files at least this large; Go binaries are never tiny.
 pub const MIN_GO_BINARY_SIZE: u64 = 4096;
 
@@ -336,7 +333,6 @@ pub const BINARY_PREFIX_LEN: usize = 64;
 /// with the module list parsed from its embedded buildinfo.
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 pub struct DiscoveredGoBinary {
-    pub kind: &'static str,
     pub path: PathBuf,
     pub go_version: String,
     pub main_module: Option<GoModule>,
@@ -346,7 +342,6 @@ pub struct DiscoveredGoBinary {
 impl DiscoveredGoBinary {
     pub fn new(path: PathBuf, info: GoBuildInfo) -> Self {
         DiscoveredGoBinary {
-            kind: GO_BINARY_OBSERVATION,
             path,
             go_version: info.go_version,
             main_module: info.main_module,
@@ -471,7 +466,6 @@ mod tests {
         let path = write_temp("go-binary", &fake_elf_with_buildinfo());
         let discovered = scan_file(&path).expect("scan fake Go binary");
 
-        assert_eq!(discovered.kind, GO_BINARY_OBSERVATION);
         assert_eq!(discovered.path, path);
         assert_eq!(discovered.go_version, "go1.25.6");
         assert!(

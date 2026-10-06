@@ -13,7 +13,7 @@ millhoneOutput :: ByteString
 millhoneOutput =
   "{\"discovered_jars\":{\"blobs/sha256/aaa\":[]},\
   \\"discovered_go_binaries\":{\"blobs/sha256/aaa\":[\
-  \{\"kind\":\"v1.discover.binary.go\",\"path\":\"app\",\"go_version\":\"go1.25.6\",\
+  \{\"path\":\"app\",\"go_version\":\"go1.25.6\",\
   \\"main_module\":{\"path\":\"example.com/repro-app\",\"version\":\"(devel)\"},\
   \\"modules\":[\
   \{\"path\":\"github.com/google/uuid\",\"version\":\"v1.6.0\"},\

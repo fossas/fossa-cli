@@ -27,7 +27,7 @@ import Test.Hspec (Spec, describe, it, shouldBe)
 millhoneOutput :: ByteString
 millhoneOutput =
   mconcat
-    [ "[{\"kind\":\"v1.discover.binary.go\",\"path\":\"/src/jni/arm64-v8a/libgojni.so\","
+    [ "[{\"path\":\"/src/jni/arm64-v8a/libgojni.so\","
     , "\"go_version\":\"go1.25.6\","
     , "\"main_module\":{\"path\":\"example.com/sdk\",\"version\":\"(devel)\"},"
     , "\"modules\":["
