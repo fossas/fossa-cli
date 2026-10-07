@@ -179,6 +179,17 @@ version: 3
 #       - ".git/**"
 #       - "test/**/*.rb"
 #
+#   # Snippet Scan Configuration
+#   # Only used when running `fossa analyze --snippet-scan`.
+#   # See documentation for details: https://github.com/fossas/fossa-cli/blob/master/docs/features/snippet-scanning.md#skipping-file-headers
+#   snippetScan:
+#     # If true, skips license headers, comments and imports at the start of each file when fingerprinting. Default: false
+#     skipHeaders: false
+#
+#     # The maximum number of lines to skip per file. 0 means no limit. Default: 0
+#     # The --snippet-scan-skip-headers-limit option overrides this value.
+#     skipHeadersLimit: 0
+#
 #
 # # Targets Configuration
 # # Filtering section to specify exact targets to be scanned.
