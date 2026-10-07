@@ -25,6 +25,7 @@ spec = do
     let shouldParseInto = parseMatch conanVersion
 
     it "should parse version" $ do
-      "conan version 2.0.0" `shouldParseInto` (version 2 0 0 [] [])
-      "conan version 1.0.0" `shouldParseInto` (version 1 0 0 [] [])
-      "conan version 1.63.0" `shouldParseInto` (version 1 63 0 [] [])
+      "Conan version 2.0.0-dev" `shouldParseInto` (version 2 0 0 [] [])
+      "Conan version 2.0.0" `shouldParseInto` (version 2 0 0 [] [])
+      "Conan version 1.0.0" `shouldParseInto` (version 1 0 0 [] [])
+      "Conan version 1.63.0" `shouldParseInto` (version 1 63 0 [] [])

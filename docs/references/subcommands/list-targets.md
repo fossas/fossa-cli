@@ -16,6 +16,38 @@ $ fossa list-targets
 
 This output tells us that when `fossa analyze` is run, we will be analyzing `cabal`, `cocoapods`, `pipenv`, and `yarn` projects. This can be useful to determine if there are targets you expect or don't expect to see.
 
+A project that is divided into named build targets, such as a yarn, npm, or pnpm workspace, is listed once per target in the form `type@path:target`:
+
+```bash
+$ fossa list-targets
+[ INFO] Found target: yarn@./:my-monorepo
+[ INFO] Found target: yarn@./:app
+[ INFO] Found target: yarn@./:lib-core
+```
+
+To select `yarn@./:app`, map each part of the output to a filter field:
+
+| Part of `yarn@./:app` | Filter field | Value |
+| --- | --- | --- |
+| Before `@` | `type` | `yarn` |
+| Between `@` and `:` | `path` | `./` |
+| After `:` | `target` | `app` |
+
+Put the resulting filter in `.fossa.yml` at the directory where you ran `fossa list-targets`:
+
+```yaml
+version: 3
+targets:
+  only:
+    - type: yarn
+      path: ./
+      target: app
+```
+
+Running `fossa analyze` with this configuration selects the same workspace member as `fossa analyze --only-target 'yarn@./:app'`. Copy the complete name after `:` into `target`, including any package scope: `yarn@./:@example/app` becomes `target: '@example/app'`.
+
+Use the same filter under `targets.exclude` to leave that member out instead. See [analysis target configuration](../files/fossa-yml.md#analysis-target-configuration) for more examples.
+
 #### Command output formats
 
 The list-targets command supports the following formats (via `fossa list-targets --format=<OPTION>`):

@@ -20,12 +20,13 @@ module Strategy.Go.Gomod (
 import Control.Algebra (Has)
 import Control.Effect.Diagnostics (Diagnostics, context, recover, warnOnErr)
 import Data.Char (isSpace)
+import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.Functor (void, ($>))
 import Data.Hashable (Hashable)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, listToMaybe)
 import Data.SemVer qualified as SemVer
 import Data.SemVer.Internal (Identifier (..), Version (..))
 import Data.String.Conversion (toText)
@@ -53,7 +54,6 @@ import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
   Parsec,
   between,
-  choice,
   chunk,
   count,
   many,
@@ -218,24 +218,25 @@ parsePackageVersion lexify = parseSemOrPseudo <|> parseNonCanonical
 
 gomodParser :: Parser Gomod
 gomodParser = do
-  let emptyGoMod = do
-        eof
-        pure ("", [])
-  let nonEmptyGoMod = do
-        _ <- lexeme (chunk "module")
-        name <- packageName
-        _ <- scn
-        statements <- many (statement <* scn)
-        eof
-        pure (name, statements)
-
   _ <- scn
-  (name, statements) <- choice [nonEmptyGoMod, emptyGoMod]
+  directives <- many (directive <* scn)
+  eof
 
-  let statements' = concat statements
+  -- The go.mod grammar (https://go.dev/ref/mod#go-mod-file-grammar) is a
+  -- sequence of directives in any order, so the module directive need not come
+  -- first; Go accepts it after the require/replace blocks. An empty go.mod has
+  -- no module name at all.
+  let (names, statements) = partitionEithers directives
 
-  pure (toGomod name statements')
+  pure (toGomod (fromMaybe "" (listToMaybe names)) (concat statements))
   where
+    directive = (Left <$> moduleDirective) <|> (Right <$> statement)
+
+    -- module directive
+    -- e.g., module github.com/some/some
+    moduleDirective :: Parser PackageName
+    moduleDirective = lexeme (chunk "module") *> packageName
+
     statement =
       goDebugStatements -- goDebugStatements needs to be first otherwise goVersion parser overrides it.
         <|> (singleton <$> goVersionStatement) -- singleton wraps the Parser Statement into a Parser [Statement]
