@@ -3,23 +3,27 @@
 module App.Fossa.Config.AnalyzeSpec (spec) where
 
 import App.Fossa.Config.Analyze (
-  AnalyzeConfig (filterSet, xWorkflow),
+  AnalyzeConfig (filterSet, snippetScanSkipHeaders, xWorkflow),
+  SkipHeadersOptions (..),
   cliParser,
   loadConfig,
   mergeOpts,
  )
-import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigTargets (..))
+import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigTargets (..), SnippetScanConfigs (..), VendoredDependencyConfigs (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.Utils (itShouldFailWhenLabelsExceedFive, itShouldLoadFromTheConfiguredBaseDir, parseArgString)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import Control.Carrier.Writer.Strict (runWriter)
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Lift (Has, Lift)
 import Control.Exception (throw)
+import Data.Maybe (isNothing)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (..), combinedTargets)
-import Effect.Logger (renderIt)
+import Effect.Logger (Severity (SevWarn), renderIt, withWriterLogger)
+import Options.Applicative (defaultPrefs, execParserPure, getParseResult, info)
 import Path (Abs, File, Path, parseAbsFile)
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
@@ -71,6 +75,21 @@ configFileWithTargets only exclude excludeManifestStrategies =
     , configReachability = Nothing
     , configOrgWideCustomLicenseConfigPolicy = Use
     , configConfigFilePath = configPath
+    }
+
+-- | A config file that only sets @vendoredDependencies.snippetScan@.
+configFileWithSnippetScan :: Bool -> Maybe Int -> ConfigFile
+configFileWithSnippetScan skipHeaders limit =
+  (configFileWithTargets [] [] False)
+    { configTargets = Nothing
+    , configVendoredDependencies =
+        Just $
+          VendoredDependencyConfigs
+            { configForceRescans = False
+            , configLicenseScanMethod = Nothing
+            , configLicenseScanPathFilters = Nothing
+            , configSnippetScan = Just $ SnippetScanConfigs skipHeaders limit
+            }
     }
 
 numberOfStrategies :: Int
@@ -163,6 +182,122 @@ spec = do
     it' "should fail when --x-vendetta and --output are used together" $ do
       cliOpts <- parseArgString cliParser "--x-vendetta --output"
       expectFatal' $ mergeOpts Nothing Nothing envVars cliOpts
+
+  describe "--snippet-scan-skip-headers" $ do
+    it' "should be off by default" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan"
+      skipHeaders <- snippetScanSkipHeaders <$> mergeOpts Nothing Nothing envVars cliOpts
+      skipHeaders `shouldBe'` Nothing
+
+    it' "should enable header skipping without a limit" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan --snippet-scan-skip-headers"
+      skipHeaders <- snippetScanSkipHeaders <$> mergeOpts Nothing Nothing envVars cliOpts
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions Nothing)
+
+    it' "should enable header skipping with a limit" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan --snippet-scan-skip-headers --snippet-scan-skip-headers-limit 20"
+      skipHeaders <- snippetScanSkipHeaders <$> mergeOpts Nothing Nothing envVars cliOpts
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions (Just 20))
+
+    it' "should accept a limit of 0" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan --snippet-scan-skip-headers --snippet-scan-skip-headers-limit 0"
+      skipHeaders <- snippetScanSkipHeaders <$> mergeOpts Nothing Nothing envVars cliOpts
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions (Just 0))
+
+    it' "should work with the deprecated --x-snippet-scan" $ do
+      cliOpts <- parseArgString cliParser "--x-snippet-scan --snippet-scan-skip-headers"
+      skipHeaders <- snippetScanSkipHeaders <$> mergeOpts Nothing Nothing envVars cliOpts
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions Nothing)
+
+    it' "should reject a negative limit at parse time" $ do
+      let parsed = getParseResult $ execParserPure defaultPrefs (info cliParser mempty) ["--snippet-scan", "--snippet-scan-skip-headers", "--snippet-scan-skip-headers-limit=-1"]
+      isNothing parsed `shouldBe'` True
+
+    it' "should reject a non-numeric limit at parse time" $ do
+      let parsed = getParseResult $ execParserPure defaultPrefs (info cliParser mempty) ["--snippet-scan", "--snippet-scan-skip-headers", "--snippet-scan-skip-headers-limit=many"]
+      isNothing parsed `shouldBe'` True
+
+    it' "should fail without --snippet-scan" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan-skip-headers"
+      failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected --snippet-scan-skip-headers without --snippet-scan to be fatal"
+        Just rendered -> Text.isInfixOf "require --snippet-scan" rendered `shouldBe'` True
+
+    it' "should fail when the limit is used without --snippet-scan" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan-skip-headers --snippet-scan-skip-headers-limit 5"
+      failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected --snippet-scan-skip-headers-limit without --snippet-scan to be fatal"
+        Just rendered -> Text.isInfixOf "require --snippet-scan" rendered `shouldBe'` True
+
+    it' "should fail when the limit is used without --snippet-scan-skip-headers" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan --snippet-scan-skip-headers-limit 5"
+      failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected --snippet-scan-skip-headers-limit without --snippet-scan-skip-headers to be fatal"
+        Just rendered -> Text.isInfixOf "has no effect without --snippet-scan-skip-headers" rendered `shouldBe'` True
+
+  describe "vendoredDependencies.snippetScan in the config file" $ do
+    let mergeWithWarnings cfgFile args = do
+          cliOpts <- parseArgString cliParser args
+          (warnings, cfg) <- runWriter . withWriterLogger @[] SevWarn $ mergeOpts Nothing (Just cfgFile) envVars cliOpts
+          pure (map renderIt warnings, snippetScanSkipHeaders cfg)
+
+    it' "should enable header skipping from the config file alone" $ do
+      (warnings, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan True (Just 20)) "--snippet-scan"
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions (Just 20))
+      warnings `shouldBe'` []
+
+    it' "should enable header skipping from the config file without a limit" $ do
+      (_, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan True Nothing) "--snippet-scan"
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions Nothing)
+
+    it' "should use the config file limit with the CLI flag" $ do
+      (_, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan False (Just 20)) "--snippet-scan --snippet-scan-skip-headers"
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions (Just 20))
+
+    it' "should let the CLI limit override the config file limit" $ do
+      (_, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan True (Just 20)) "--snippet-scan --snippet-scan-skip-headers --snippet-scan-skip-headers-limit 5"
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions (Just 5))
+
+    it' "should accept a CLI limit when only the config file enables header skipping" $ do
+      (_, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan True Nothing) "--snippet-scan --snippet-scan-skip-headers-limit 5"
+      skipHeaders `shouldBe'` Just (SkipHeadersOptions (Just 5))
+
+    it' "should leave header skipping off when the config file does not enable it" $ do
+      (warnings, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan False Nothing) "--snippet-scan"
+      skipHeaders `shouldBe'` Nothing
+      warnings `shouldBe'` []
+
+    it' "should silently ignore the config file without --snippet-scan" $ do
+      (warnings, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan True (Just 20)) ""
+      skipHeaders `shouldBe'` Nothing
+      warnings `shouldBe'` []
+
+    it' "should silently ignore a config file limit without skipHeaders when not snippet scanning" $ do
+      (warnings, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan False (Just 20)) ""
+      skipHeaders `shouldBe'` Nothing
+      warnings `shouldBe'` []
+
+    it' "should warn about a config file limit without skipHeaders and not emit it" $ do
+      (warnings, skipHeaders) <- mergeWithWarnings (configFileWithSnippetScan False (Just 20)) "--snippet-scan"
+      skipHeaders `shouldBe'` Nothing
+      any (Text.isInfixOf "skipHeadersLimit") warnings `shouldBe'` True
+
+    it' "should still fail on a CLI limit when neither source enables header skipping" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan --snippet-scan-skip-headers-limit 5"
+      failureText <- renderedFailure $ mergeOpts Nothing (Just $ configFileWithSnippetScan False Nothing) envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected --snippet-scan-skip-headers-limit without header skipping to be fatal"
+        Just rendered -> Text.isInfixOf "has no effect without --snippet-scan-skip-headers" rendered `shouldBe'` True
+
+    it' "should still fail on CLI flags without --snippet-scan when the config file enables header skipping" $ do
+      cliOpts <- parseArgString cliParser "--snippet-scan-skip-headers"
+      failureText <- renderedFailure $ mergeOpts Nothing (Just $ configFileWithSnippetScan True Nothing) envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected --snippet-scan-skip-headers without --snippet-scan to be fatal"
+        Just rendered -> Text.isInfixOf "require --snippet-scan" rendered `shouldBe'` True
 
   describe "--x-workflow" $ do
     it' "should default to False when the flag is absent" $ do

@@ -17,6 +17,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
+  SnippetScanConfigs (..),
   MavenScopeConfig (..),
   ReachabilityConfigFile (..),
   ConfigReleaseGroup (..),
@@ -48,6 +49,7 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
+import Data.Aeson.Types (Parser)
 import Data.Error (createBody, renderErrataStack)
 import Data.Foldable (asum)
 import Data.Functor (($>))
@@ -391,6 +393,7 @@ data VendoredDependencyConfigs = VendoredDependencyConfigs
   { configForceRescans :: Bool
   , configLicenseScanMethod :: Maybe ArchiveUploadType
   , configLicenseScanPathFilters :: Maybe LicenseScanPathFilters
+  , configSnippetScan :: Maybe SnippetScanConfigs
   }
   deriving (Eq, Ord, Show)
 
@@ -400,6 +403,28 @@ instance FromJSON VendoredDependencyConfigs where
       <$> (obj .:? "forceRescans" .!= False)
       <*> (obj .:? "scanMethod")
       <*> (obj .:? "licenseScanPathFilters")
+      <*> (obj .:? "snippetScan")
+
+-- | Snippet scanning options under @vendoredDependencies.snippetScan@.
+-- These only take effect when @fossa analyze@ runs with @--snippet-scan@.
+data SnippetScanConfigs = SnippetScanConfigs
+  { configSnippetScanSkipHeaders :: Bool
+  -- ^ Skip license headers, comments and imports at the start of each file, like @--snippet-scan-skip-headers@.
+  , configSnippetScanSkipHeadersLimit :: Maybe Int
+  -- ^ The maximum number of lines to skip per file, like @--snippet-scan-skip-headers-limit@. 0 means no limit.
+  }
+  deriving (Eq, Ord, Show)
+
+instance FromJSON SnippetScanConfigs where
+  parseJSON = withObject "snippetScan" $ \obj ->
+    SnippetScanConfigs
+      <$> (obj .:? "skipHeaders" .!= False)
+      <*> (obj .:? "skipHeadersLimit" >>= traverse nonNegative)
+    where
+      nonNegative :: Int -> Parser Int
+      nonNegative n
+        | n >= 0 = pure n
+        | otherwise = fail $ "Expected a non-negative integer for skipHeadersLimit. You provided: " <> show n
 
 -- | Configuration for reachability analysis.
 newtype ReachabilityConfigFile = ReachabilityConfigFile

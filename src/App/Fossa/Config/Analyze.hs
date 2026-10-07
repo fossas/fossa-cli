@@ -26,6 +26,7 @@ module App.Fossa.Config.Analyze (
   StrictMode (..),
   ExperimentalSnippetScan (..),
   SnippetScan (..),
+  SkipHeadersOptions (..),
   mkSubCommand,
   loadConfig,
   cliParser,
@@ -66,6 +67,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   OrgWideCustomLicenseConfigPolicy (..),
   ReachabilityConfigFile (..),
+  SnippetScanConfigs (..),
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
@@ -96,7 +98,7 @@ import Control.Monad (void, when)
 import Data.Aeson (ToJSON (toEncoding), defaultOptions, genericToEncoding)
 import Data.Flag (Flag, flagOpt, fromFlag)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, isJust)
 import Data.Monoid.Extra (isMempty)
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -134,6 +136,7 @@ import Path.Extra (SomePath)
 import Prettyprinter (Doc, indent)
 import Prettyprinter.Render.Terminal (AnsiStyle, Color (Green))
 import Style (applyFossaStyle, boldItalicized, coloredBoldItalicized, formatDoc, stringToHelpDoc)
+import Text.Read (readMaybe)
 import Types (ArchiveUploadType (..), DiscoveredProjectType, LicenseScanPathFilters (..), TargetFilter (..))
 
 -- CLI flags, for use with 'Data.Flag'
@@ -196,6 +199,17 @@ instance ToJSON ExperimentalSnippetScan where
 instance ToJSON SnippetScan where
   toEncoding = genericToEncoding defaultOptions
 
+-- | Skip license headers, comments and imports at the start of each file when snippet scanning,
+-- like scanoss-py's @--skip-headers@.
+newtype SkipHeadersOptions = SkipHeadersOptions
+  { skipHeadersLimit :: Maybe Int
+  -- ^ The maximum number of lines to skip per file, if given. 0 means no limit.
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON SkipHeadersOptions where
+  toEncoding = genericToEncoding defaultOptions
+
 data VSIModeOptions = VSIModeOptions
   { vsiAnalysisEnabled :: Flag VSIAnalysis
   , vsiSkipSet :: VSI.SkipResolution
@@ -252,6 +266,8 @@ data AnalyzeCliOpts = AnalyzeCliOpts
   , analyzeStrictMode :: Flag StrictMode
   , analyzeExperimentalSnippetScan :: Flag ExperimentalSnippetScan
   , analyzeSnippetScan :: Flag SnippetScan
+  , analyzeSnippetScanSkipHeaders :: Bool
+  , analyzeSnippetScanSkipHeadersLimit :: Maybe Int
   , analyzeVendetta :: Bool
   , analyzeWorkflow :: Bool
   }
@@ -293,6 +309,7 @@ data AnalyzeConfig = AnalyzeConfig
   , withoutDefaultFilters :: Flag WithoutDefaultFilters
   , mode :: Mode
   , snippetScan :: Bool
+  , snippetScanSkipHeaders :: Maybe SkipHeadersOptions
   , debugDir :: Maybe FilePath
   , xVendetta :: Bool
   , xWorkflow :: Bool
@@ -375,6 +392,8 @@ cliParser =
     <*> flagOpt StrictMode (applyFossaStyle <> long "strict" <> stringToHelpDoc "Enforces strict analysis to ensure the most accurate results by rejecting fallbacks.")
     <*> flagOpt ExperimentalSnippetScan (applyFossaStyle <> long "x-snippet-scan" <> hidden)
     <*> flagOpt SnippetScan (applyFossaStyle <> long "snippet-scan" <> stringToHelpDoc "Enable snippet scanning to identify open source code snippets using fingerprinting.")
+    <*> switch (applyFossaStyle <> long "snippet-scan-skip-headers" <> stringToHelpDoc "Skip license headers, comments and imports at the start of each file when snippet scanning. Off by default. Requires --snippet-scan.")
+    <*> optional (option (eitherReader nonNegativeInt) (applyFossaStyle <> long "snippet-scan-skip-headers-limit" <> metavar "N" <> stringToHelpDoc "The maximum number of lines --snippet-scan-skip-headers skips per file. 0 (the default) means no limit."))
     <*> switch (applyFossaStyle <> long "x-vendetta" <> stringToHelpDoc "Experimental flag to enable vendored dependency scanning to identify open source components using file hashing.")
     <*> switch (applyFossaStyle <> long "x-workflow" <> stringToHelpDoc "Experimental flag to enable extended dependency usage analysis, like linking and distribution methods.")
   where
@@ -385,6 +404,11 @@ cliParser =
           [ "Path to fossa-deps file including filename"
           , boldItalicized "Default:" <> " fossa-deps.{yaml|yml|json}"
           ]
+
+nonNegativeInt :: String -> Either String Int
+nonNegativeInt s = case readMaybe s of
+  Just n | n >= 0 -> Right n
+  _ -> Left ("must be a non-negative integer. Found " <> s)
 
 branchHelp :: Maybe (Doc AnsiStyle)
 branchHelp =
@@ -604,6 +628,8 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
   when (snippetScanEnabled && analyzeOutput == Output) $
     fatalText "The --snippet-scan and --output flags cannot be used together. Snippet scanning requires uploading results to FOSSA and is not compatible with output-only mode."
 
+  snippetScanSkipHeaders <- collectSnippetScanSkipHeaders snippetScanEnabled maybeConfig cliOpts
+
   when (analyzeVendetta && analyzeOutput == Output) $
     fatalText "The --x-vendetta and --output flags cannot be used together. Vendetta scanning requires uploading results to FOSSA and is not compatible with output-only mode."
 
@@ -635,6 +661,7 @@ mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} =
     <*> pure analyzeWithoutDefaultFilters
     <*> pure mode
     <*> pure snippetScanEnabled
+    <*> pure snippetScanSkipHeaders
     <*> pure maybeDebugDir
     <*> pure analyzeVendetta
     <*> pure analyzeWorkflow
@@ -727,6 +754,43 @@ collectVendoredDepsFromConfig maybeCfg =
       defaultScanType = maybeCfg >>= configVendoredDependencies >>= configLicenseScanMethod
       pathFilters = maybeCfg >>= configVendoredDependencies >>= configLicenseScanPathFilters
    in (forceRescans, defaultScanType, pathFilters)
+
+-- | Merge the snippet-scan header skipping options from the CLI and @vendoredDependencies.snippetScan@ in the config file.
+--
+-- Header skipping is enabled if either source enables it, and a limit on the CLI overrides one in the config file.
+-- Misused CLI flags are fatal. The config file is shared with runs that do not snippet scan,
+-- so its options are ignored without @--snippet-scan@, and a limit it sets without enabling header skipping only warns.
+collectSnippetScanSkipHeaders ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  ) =>
+  -- | Whether snippet scanning is enabled.
+  Bool ->
+  Maybe ConfigFile ->
+  AnalyzeCliOpts ->
+  m (Maybe SkipHeadersOptions)
+collectSnippetScanSkipHeaders snippetScanEnabled maybeCfg AnalyzeCliOpts{..} = do
+  let cliLimitUsed = isJust analyzeSnippetScanSkipHeadersLimit
+  when ((analyzeSnippetScanSkipHeaders || cliLimitUsed) && not snippetScanEnabled) $
+    fatalText "The --snippet-scan-skip-headers and --snippet-scan-skip-headers-limit flags require --snippet-scan."
+
+  if not snippetScanEnabled
+    then pure Nothing
+    else do
+      let configOpts = maybeCfg >>= configVendoredDependencies >>= configSnippetScan
+          configSkipHeaders = maybe False configSnippetScanSkipHeaders configOpts
+          configLimit = configOpts >>= configSnippetScanSkipHeadersLimit
+          skipHeadersEnabled = analyzeSnippetScanSkipHeaders || configSkipHeaders
+
+      when (cliLimitUsed && not skipHeadersEnabled) $
+        fatalText "The --snippet-scan-skip-headers-limit flag has no effect without --snippet-scan-skip-headers (or skipHeaders: true under vendoredDependencies.snippetScan in the config file)."
+      when (isJust configLimit && not skipHeadersEnabled) $
+        logWarn "vendoredDependencies.snippetScan.skipHeadersLimit in the config file has no effect because header skipping is not enabled. Set vendoredDependencies.snippetScan.skipHeaders to true or pass --snippet-scan-skip-headers to use it."
+
+      pure $
+        if skipHeadersEnabled
+          then Just . SkipHeadersOptions $ analyzeSnippetScanSkipHeadersLimit <|> configLimit
+          else Nothing
 
 collectGrepOptions :: Maybe ConfigFile -> AnalyzeCliOpts -> GrepOptions
 collectGrepOptions maybeCfg AnalyzeCliOpts{..} =

@@ -151,6 +151,10 @@ Snippet scanning identifies potential open source code snippets within your firs
 | Name                | Description                                                                                                                                                                           |
 |---------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `--snippet-scan`  | Enable snippet scanning during analysis. This feature fingerprints your source files and checks them against FOSSA's snippet database.        |
+| `--snippet-scan-skip-headers` | Skip license headers, comments and imports at the start of each file when fingerprinting. Off by default. Requires `--snippet-scan`. See [Skipping file headers](../../features/snippet-scanning.md#skipping-file-headers). |
+| `--snippet-scan-skip-headers-limit <N>` | The maximum number of lines `--snippet-scan-skip-headers` skips in each file. `0` (the default) means no limit. Requires header skipping to be enabled, by `--snippet-scan-skip-headers` or `.fossa.yml`. |
+
+Both header skipping options can also be set in `.fossa.yml` under [`vendoredDependencies.snippetScan`](../files/fossa-yml.md#vendoreddependenciessnippetscan). Header skipping is enabled if either the flag or `skipHeaders: true` enables it, `--snippet-scan-skip-headers-limit` overrides `skipHeadersLimit`, and the `.fossa.yml` settings are ignored without `--snippet-scan`.
 
 Snippet Scanning must also be enabled for your organization, and is only available for enterprise customers. If you would like to enable it for your organization, please [contact us](https://support.fossa.com).
 

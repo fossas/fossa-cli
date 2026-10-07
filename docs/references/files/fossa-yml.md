@@ -61,6 +61,9 @@ vendoredDependencies:
     exclude:
       - ".git/**"
       - "test/**/*.rb"
+  snippetScan:
+    skipHeaders: true
+    skipHeadersLimit: 20
 
 targets:
   only:
@@ -279,6 +282,25 @@ For a description of what these methods are and the difference between them, see
 Path filtering can be used to omit some files or directories from license scanning.
 
 For more details, see the [vendored-dependencies feature reference](../../features/vendored-dependencies.md#path-filtering).
+
+#### `vendoredDependencies.snippetScan`
+
+The `snippetScan` section configures [snippet scanning](../../features/snippet-scanning.md). Its settings only take effect when `fossa analyze` runs with `--snippet-scan`; otherwise they are ignored, so the same `.fossa.yml` can be used for runs with and without snippet scanning.
+
+```yaml
+vendoredDependencies:
+  snippetScan:
+    skipHeaders: true
+    skipHeadersLimit: 20
+```
+
+#### `vendoredDependencies.snippetScan.skipHeaders`
+
+If `true`, snippet scanning skips license headers, comments and imports at the start of each file when fingerprinting. Defaults to `false`. This is the same as the `--snippet-scan-skip-headers` flag, and header skipping is enabled if either the flag or this setting enables it. See [Skipping file headers](../../features/snippet-scanning.md#skipping-file-headers).
+
+#### `vendoredDependencies.snippetScan.skipHeadersLimit`
+
+The maximum number of lines skipped in each file when header skipping is enabled. Must be a non-negative integer; `0`, the default, means there is no limit. The `--snippet-scan-skip-headers-limit` flag overrides this setting. If header skipping is not enabled by `skipHeaders` or `--snippet-scan-skip-headers`, this setting has no effect and the CLI logs a warning.
 
 ### `targets:`
 The targets filtering section allows you to specify the exact targets which be should be scanned.

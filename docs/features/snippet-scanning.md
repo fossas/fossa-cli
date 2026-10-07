@@ -75,6 +75,51 @@ vendoredDependencies:
 - These exclude patterns are passed directly to the Ficus fingerprinting engine as `--exclude` arguments.
 - Default exclusions (hidden files, `.gitignore` patterns) are applied in addition to custom excludes.
 
+## Skipping file headers
+
+By default, snippet scanning fingerprints every line of each file. Most files begin with lines that are rarely meaningful when looking for copied code, such as license headers, comments and import statements, and these lines can produce matches against unrelated open source projects that share the same license header or imports.
+
+To leave these lines out of the fingerprints, add the `--snippet-scan-skip-headers` flag:
+
+```
+fossa analyze --snippet-scan --snippet-scan-skip-headers
+```
+
+This option is off by default. When it is enabled, for each file in a supported language snippet scanning skips everything before the first line of implementation code:
+
+- A shebang line (such as `#!/usr/bin/env python`) at the start of the file.
+- Blank lines.
+- Comments, including license headers.
+- Import and package declarations, such as `import`, `package`, `#include`, `use` or `require`, including imports that span multiple lines.
+
+Files in languages the filter does not recognize are fingerprinted in full. This option mirrors the `--skip-headers` option of [scanoss-py](https://github.com/scanoss/scanoss.py), and produces the same fingerprints for the same files.
+
+To cap how many lines are skipped in each file, add `--snippet-scan-skip-headers-limit` with a non-negative number of lines. A limit of `0`, the default, means there is no cap:
+
+```
+fossa analyze --snippet-scan --snippet-scan-skip-headers --snippet-scan-skip-headers-limit 50
+```
+
+Both flags require `--snippet-scan`, and `--snippet-scan-skip-headers-limit` requires header skipping to be enabled, by `--snippet-scan-skip-headers` or by `.fossa.yml`; using them otherwise is an error.
+
+These options can also be set in [`.fossa.yml`](../references/files/fossa-yml.md#vendoreddependenciessnippetscan):
+
+```yaml
+vendoredDependencies:
+  snippetScan:
+    skipHeaders: true      # Defaults to false.
+    skipHeadersLimit: 50   # A non-negative number of lines. Defaults to 0, meaning no limit.
+```
+
+When both the command line and `.fossa.yml` set these options:
+
+- Header skipping is enabled if either `--snippet-scan-skip-headers` or `skipHeaders: true` enables it.
+- `--snippet-scan-skip-headers-limit` overrides `skipHeadersLimit`.
+- The `.fossa.yml` settings are ignored when `fossa analyze` runs without `--snippet-scan`, so the same file can be used for runs with and without snippet scanning.
+- A `skipHeadersLimit` without header skipping enabled has no effect, and the CLI logs a warning instead of failing.
+
+These options rely on support in the snippet scanning engine (Ficus) that ships with the CLI. If you use a build of the CLI whose bundled Ficus predates this support, Ficus rejects the setting and the snippet scan fails.
+
 ## A note on scan times
 
 The first time you run a snippet scan on a codebase, it may take a long time to scan. For example, scanning [Linux](https://github.com/torvalds/linux) for the first time takes around 60 minutes. This is because most of the files in your codebase will not exist in FOSSA's knowledge base, and we will need to fingerprint and compare all of them to our snippet scan corpus.

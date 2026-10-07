@@ -716,6 +716,7 @@ standardAnalyzeConfig =
     , ANZ.withoutDefaultFilters = toFlag WithoutDefaultFilters False
     , ANZ.mode = NonStrict
     , ANZ.snippetScan = False
+    , ANZ.snippetScanSkipHeaders = Nothing
     , ANZ.debugDir = Nothing
     , ANZ.xVendetta = False
     , ANZ.xWorkflow = False

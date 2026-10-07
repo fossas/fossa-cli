@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Snippet scanning: `fossa analyze --snippet-scan --snippet-scan-skip-headers` skips license headers, comments and imports at the start of each file when fingerprinting, like scanoss-py's `--skip-headers`. It is off by default; `--snippet-scan-skip-headers-limit <N>` caps how many lines are skipped per file (`0`, the default, means no limit). Both options can also be set in `.fossa.yml` as `vendoredDependencies.snippetScan.skipHeaders` and `vendoredDependencies.snippetScan.skipHeadersLimit`; the `.fossa.yml` settings are ignored without `--snippet-scan`, and the command-line limit overrides the one in `.fossa.yml`. These options need a release of the bundled Ficus engine that supports them.
+
 ## 3.20.0
 
 - Go (dep): `Gopkg.lock` and `Gopkg.toml` files that declare no dependencies (no `[[projects]]`, `[[constraint]]` or `[[override]]` tables, which is what `dep` writes for a project without dependencies) no longer fail analysis with `missing key: projects in <top-level>` / `missing key: constraint in <top-level>`. ([#1791](https://github.com/fossas/fossa-cli/pull/1791))
