@@ -1,6 +1,7 @@
 module Strategy.Swift.Errors (
   MissingPackageResolvedFile (..),
   MissingPackageResolvedFileHelp (..),
+  SkippedComputedDependencies (..),
 
   -- * docs
   swiftFossaDocUrl,
@@ -37,3 +38,14 @@ instance ToDiagnostic MissingPackageResolvedFileHelp where
   renderDiagnostic MissingPackageResolvedFileHelp = do
     let header = "Ensure valid Package.resolved exists, and is readable by user"
     Errata (Just header) [] Nothing
+
+-- | Package.swift builds (some of) its dependencies with Swift code the CLI cannot evaluate,
+-- e.g. `dependencies: dependencies` or `dependencies: generateDependencies()`.
+newtype SkippedComputedDependencies = SkippedComputedDependencies (Path Abs File)
+
+instance ToDiagnostic SkippedComputedDependencies where
+  renderDiagnostic :: SkippedComputedDependencies -> Errata
+  renderDiagnostic (SkippedComputedDependencies path) = do
+    let header = "Some dependencies in " <> toText (show path) <> " are computed by Swift code, which FOSSA CLI cannot evaluate"
+    let body = "Those dependencies are only reported from Package.resolved, as transitive dependencies. Declare them as `.package(...)` literals to have them reported as direct dependencies."
+    Errata (Just header) [] (Just body)

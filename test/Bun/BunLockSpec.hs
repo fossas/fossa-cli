@@ -31,6 +31,7 @@ import Strategy.Node.Bun.BunLock (
   BunWorkspace (..),
   buildGraph,
   parseResolution,
+  splitPackageKey,
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
@@ -45,14 +46,28 @@ spec = do
   let bunProjectPath = testdata </> $(mkRelFile "bun-project/bun.lock")
   let gitDepsPath = testdata </> $(mkRelFile "git-deps/bun.lock")
   let mixedEnvsPath = testdata </> $(mkRelFile "mixed-envs/bun.lock")
+  let nestedKeysPath = testdata </> $(mkRelFile "nested-keys/bun.lock")
 
   parseResolutionSpec
+  splitPackageKeySpec
   jsoncSpec jsoncPath
   dependenciesSpec depsPath
   workspacesSpec wsPath
   bunProjectSpec bunProjectPath
   gitDepsSpec gitDepsPath
   mixedEnvsSpec mixedEnvsPath
+  nestedKeysSpec nestedKeysPath
+
+splitPackageKeySpec :: Spec
+splitPackageKeySpec = describe "splitPackageKey" $ do
+  it "splits a top-level key into a single segment" $
+    splitPackageKey "lodash" `shouldBe` ["lodash"]
+
+  it "splits a nested key into its parent path" $
+    splitPackageKey "cross-spawn/which" `shouldBe` ["cross-spawn", "which"]
+
+  it "keeps scoped names as single segments" $
+    splitPackageKey "@acme/lib/@babel/code-frame" `shouldBe` ["@acme/lib", "@babel/code-frame"]
 
 parseResolutionSpec :: Spec
 parseResolutionSpec = describe "parseResolution" $ do
@@ -237,6 +252,45 @@ mixedEnvsSpec path =
         it "produces a single vertex for the package" $ do
           let lodashVertices = filter (\d -> dependencyName d == "lodash") (Graphing.vertexList graph)
           length lodashVertices `shouldBe` 1
+
+-- | Nested keys: bun stores extra versions of a package under keys like
+-- @"express/path-to-regexp"@. Each dependency should resolve to the most
+-- deeply nested entry visible from its parent, as in node_modules resolution.
+nestedKeysSpec :: Path Abs File -> Spec
+nestedKeysSpec path =
+  describe "nested-keys" $ do
+    describe "graph" $ do
+      checkGraph path $ \graph -> do
+        let directDeps = Graphing.directList graph
+        let versionsOf name = Set.fromList . map dependencyVersion . filter ((== name) . dependencyName) $ Graphing.vertexList graph
+
+        it "reports every version of a package" $ do
+          versionsOf "path-to-regexp" `shouldBe` Set.fromList [Just (CEq "8.3.0"), Just (CEq "0.1.12")]
+          versionsOf "ms" `shouldBe` Set.fromList [Just (CEq "2.0.0"), Just (CEq "2.1.3")]
+
+        it "resolves a dependency nested under its parent package" $ do
+          expectEdge graph (mkProdDep "express" "4.21.2") (mkProdDep "path-to-regexp" "0.1.12")
+          expectEdge graph (mkProdDep "send" "0.19.0") (mkProdDep "ms" "2.1.3")
+
+        it "does not link the parent to the top-level version" $
+          Graphing.hasEdge (mkProdDep "express" "4.21.2") (mkProdDep "path-to-regexp" "8.3.0") graph `shouldBe` False
+
+        it "falls back to the top-level entry when there is no nested one" $
+          expectEdge graph (mkProdDep "debug" "2.6.9") (mkProdDep "ms" "2.0.0")
+
+        it "resolves a workspace's direct dependency nested under the workspace name" $ do
+          directDeps `shouldContainDep` mkProdDep "path-to-regexp" "0.1.12"
+          directDeps `shouldContainDep` mkProdDep "@babel/code-frame" "7.0.0"
+
+        it "resolves the root workspace's direct dependencies to top-level entries" $ do
+          directDeps `shouldContainDep` mkProdDep "path-to-regexp" "8.3.0"
+          directDeps `shouldContainDep` mkProdDep "@babel/code-frame" "7.27.1"
+
+        it "resolves a sibling nested under the same scoped parent" $
+          expectEdge graph (mkProdDep "@babel/code-frame" "7.0.0") (mkProdDep "@babel/helper-validator-identifier" "7.9.0")
+
+        it "walks up past every ancestor to the top-level entry" $
+          expectEdge graph (mkProdDep "@babel/code-frame" "7.0.0") (mkProdDep "@babel/highlight" "7.25.9")
 
 -- | Parse a bun.lock in IO for graph tests (outside the effect stack).
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec

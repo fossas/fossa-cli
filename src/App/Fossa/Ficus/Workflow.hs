@@ -10,8 +10,8 @@ import App.Fossa.Ficus.Types (
   FicusMessage (FicusMessageFinding),
   WorkflowEvent (..),
   WorkflowRunArtifact (..),
+  downloadedWorkflowExecutable,
   findingToWorkflowEvent,
-  toWorkflowExecutable,
   workflowResultJson,
  )
 import Control.Effect.Debug (Debug, debugMetadata)
@@ -29,9 +29,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess))
 import Effect.Logger (Logger, logDebug, logError, logInfo, pretty)
-import Path (Abs, Dir, File, Path, toFilePath)
+import Path (Abs, Dir, Path)
 
--- | Run the workflow analyzer at the given path over @target@ through
+-- | Download the workflow analyzer and run it over @target@ through
 -- @ficus x-workflow@, streaming its observations. The result is recorded in
 -- the debug bundle and returned for upload once the server has issued the
 -- revision locator; nothing is sent from here.
@@ -42,12 +42,11 @@ analyzeWithWorkflow ::
   , Has Logger sig m
   ) =>
   Path Abs Dir ->
-  Path Abs File ->
   Maybe FilePath ->
   m Aeson.Value
-analyzeWithWorkflow target analyzer maybeDebugDir =
+analyzeWithWorkflow target maybeDebugDir =
   withFicusBinary $ \bin ->
-    runWorkflowWith (workflowCommand . toText $ toPath bin) target analyzer maybeDebugDir
+    runWorkflowWith (workflowCommand . toText $ toPath bin) target maybeDebugDir
 
 -- | @--config -@ puts the run artifact on stdin, so it never lands on the
 -- process table.
@@ -68,14 +67,13 @@ runWorkflowWith ::
   ) =>
   Command ->
   Path Abs Dir ->
-  Path Abs File ->
   Maybe FilePath ->
   m Aeson.Value
-runWorkflowWith cmd target analyzer maybeDebugDir =
+runWorkflowWith cmd target maybeDebugDir =
   -- The child writes a step cache and a per-run temp directory relative to its
   -- working directory, so it must not be the repository under analysis.
   withSystemTempDir "fossa-workflow" $ \scratch -> do
-    let artifact = WorkflowRunArtifact (toWorkflowExecutable analyzer) target scratch
+    let artifact = WorkflowRunArtifact downloadedWorkflowExecutable target scratch
         artifactBytes = BL.toStrict $ Aeson.encode artifact
     logDebug $ "Workflow run artifact: " <> pretty (decodeUtf8 artifactBytes :: Text)
 
@@ -91,7 +89,7 @@ runWorkflowWith cmd target analyzer maybeDebugDir =
         logDebug $ "Workflow result: " <> pretty (decodeUtf8 (Aeson.encode result) :: Text)
         logInfo "Workflow analysis complete"
         pure result
-      _ -> failWorkflow analyzer exitCode events stdErrLines
+      _ -> failWorkflow exitCode events stdErrLines
 
 workflowResult :: WorkflowEvent -> Maybe Aeson.Value
 workflowResult (WorkflowResult value) = Just value
@@ -125,25 +123,22 @@ reportEvent = \case
 -- observation per run, so an observation usually supplies the reason, but the
 -- exit code is the signal a truncated stream cannot lose and is what decides.
 -- A clean exit with no result is a bug, not an empty answer: the user asked for
--- this run by naming a path, so it must not pass silently.
+-- this run with @--x-workflow@, so it must not pass silently.
 failWorkflow ::
   ( Has Diagnostics sig m
   , Has Logger sig m
   ) =>
-  Path Abs File ->
   ExitCode ->
   [WorkflowEvent] ->
   [Text] ->
   m a
-failWorkflow analyzer exitCode events stdErrLines = do
+failWorkflow exitCode events stdErrLines = do
   logError . pretty $ Text.unlines (summary : stderrTail)
   fatalText summary
   where
     summary :: Text
     summary =
-      "The workflow analyzer at "
-        <> toText (toFilePath analyzer)
-        <> " did not produce a result ("
+      "The workflow analyzer did not produce a result ("
         <> reason
         <> ")."
 
