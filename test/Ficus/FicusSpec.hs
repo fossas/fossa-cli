@@ -3,8 +3,9 @@
 
 module Ficus.FicusSpec (spec) where
 
-import App.Fossa.Ficus.Analyze (analyzeWithFicus, vendoredDepsToSourceUnit)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependency (..), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults), FicusVendoredLocation (..))
+import App.Fossa.EmbeddedBinary (BinaryPaths (..))
+import App.Fossa.Ficus.Analyze (analyzeWithFicus, ficusCommand, vendoredDepsToSourceUnit)
+import App.Fossa.Ficus.Types (FicusAllFlag (..), FicusAnalysisFlag (..), FicusAnalysisResults (..), FicusConfig (..), FicusPerStrategyFlag (..), FicusSnippetScanFlag (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependency (..), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults), FicusVendoredLocation (..), renderFicusPerStrategyFlag)
 import App.Types (ProjectRevision (..))
 import Control.Effect.Lift (sendIO)
 import Control.Timeout (Duration (Seconds))
@@ -12,9 +13,11 @@ import Data.Aeson qualified as Aeson
 import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.String.Conversion (toText)
+import Data.Text (Text)
 import Data.Vector qualified
+import Effect.Exec (Command (cmdArgs))
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
-import Path (Dir, Path, Rel, reldir, (</>))
+import Path (Abs, Dir, Path, Rel, reldir, relfile, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..))
 import System.Environment (lookupEnv)
@@ -24,6 +27,47 @@ import Text.URI (mkURI)
 
 fixtureDir :: Path Rel Dir
 fixtureDir = [reldir|test/Ficus/testdata|]
+
+ficusConfigWith :: Path Abs Dir -> [FicusSnippetScanFlag] -> FicusConfig
+ficusConfigWith rootDir snippetScanFlags =
+  FicusConfig
+    { ficusConfigRootDir = rootDir
+    , ficusConfigExclude = []
+    , ficusConfigEndpoint = Nothing
+    , ficusConfigSecret = Just $ ApiKey "test-key"
+    , ficusConfigRevision = ProjectRevision "project" "revision" Nothing
+    , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
+    , ficusConfigSnippetScanFlags = snippetScanFlags
+    , ficusConfigSnippetScanRetentionDays = Nothing
+    , ficusConfigStrategies = [FicusStrategySnippetScan]
+    }
+
+-- | The ficus arguments emitted before any snippet-scan flags were supported.
+baseArgsBefore :: [Text]
+baseArgsBefore =
+  [ "analyze"
+  , "--secret"
+  , "test-key"
+  , "--endpoint"
+  , "https://app.fossa.com/api/proxy/analysis"
+  , "--locator"
+  , "custom+project$revision"
+  , "--set"
+  , "all:skip-hidden-files"
+  , "--set"
+  , "all:gitignore"
+  ]
+
+baseArgsAfter :: Path Abs Dir -> [Text]
+baseArgsAfter rootDir =
+  [ "--exclude"
+  , ".git"
+  , "--exclude"
+  , ".git/**"
+  , "--strategy"
+  , "snippet-scanning"
+  , toText (toFilePath rootDir)
+  ]
 
 spec :: Spec
 spec = do
@@ -54,7 +98,7 @@ spec = do
 
       let strategies = [FicusStrategySnippetScan, FicusStrategyVendetta]
 
-      result <- analyzeWithFicus testDataDir apiOpts revision strategies Nothing (Just 10) Nothing
+      result <- analyzeWithFicus testDataDir apiOpts revision strategies [] Nothing (Just 10) Nothing
 
       case result of
         Just results -> do
@@ -72,6 +116,37 @@ spec = do
               -- No vendetta results returned - this is acceptable for integration testing
               True `shouldBe'` True
         _ -> expectationFailure' "Ficus analysis returned no results unexpectedly."
+
+  describe "ficusCommand" $ do
+    let argsFor flags = do
+          rootDir <- sendIO PIO.getCurrentDir
+          let bin = BinaryPaths rootDir [relfile|ficus|]
+          cmd <- ficusCommand (ficusConfigWith rootDir flags) bin False
+          pure (rootDir, cmdArgs cmd)
+
+    it' "emits no snippet-scan flags when none are requested" $ do
+      (rootDir, args) <- argsFor []
+      args `shouldBe'` (baseArgsBefore <> baseArgsAfter rootDir)
+
+    it' "emits skip-headers when header skipping is enabled" $ do
+      (rootDir, args) <- argsFor [SnippetScanSkipHeaders]
+      args `shouldBe'` (baseArgsBefore <> ["--set", "snippet-scan:skip-headers"] <> baseArgsAfter rootDir)
+
+    it' "emits skip-headers and its limit when both are requested" $ do
+      (rootDir, args) <- argsFor [SnippetScanSkipHeaders, SnippetScanSkipHeadersLimit 20]
+      let expected =
+            baseArgsBefore
+              <> ["--set", "snippet-scan:skip-headers", "--set", "snippet-scan:skip-headers-limit=20"]
+              <> baseArgsAfter rootDir
+      args `shouldBe'` expected
+
+  describe "renderFicusPerStrategyFlag" $ do
+    it "renders flags as ficus parses them" $ do
+      renderFicusPerStrategyFlag (All $ FicusAllFlag SkipHiddenFiles) `shouldBe` "all:skip-hidden-files"
+      renderFicusPerStrategyFlag (SnippetScan $ SnippetScanCommonFlag AllExtensions) `shouldBe` "snippet-scan:all-extensions"
+      renderFicusPerStrategyFlag (SnippetScan $ SnippetScanBatchLen 50) `shouldBe` "snippet-scan:batch-len=50"
+      renderFicusPerStrategyFlag (SnippetScan SnippetScanSkipHeaders) `shouldBe` "snippet-scan:skip-headers"
+      renderFicusPerStrategyFlag (SnippetScan $ SnippetScanSkipHeadersLimit 0) `shouldBe` "snippet-scan:skip-headers-limit=0"
 
   describe "vendoredDepsToSourceUnit" $ do
     it "serializes classified locations into vendored metadata" $ do

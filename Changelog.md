@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
+- Snippet scanning: `fossa analyze --snippet-scan --snippet-scan-skip-headers` skips license headers, comments and imports at the start of each file when fingerprinting, like scanoss-py's `--skip-headers`. It is off by default; `--snippet-scan-skip-headers-limit <N>` caps how many lines are skipped per file (`0`, the default, means no limit). Both options can also be set in `.fossa.yml` as `vendoredDependencies.snippetScan.skipHeaders` and `vendoredDependencies.snippetScan.skipHeadersLimit`; the `.fossa.yml` settings are ignored without `--snippet-scan`, and the command-line limit overrides the one in `.fossa.yml`. These options need a release of the bundled Ficus engine that supports them. ([#1803](https://github.com/fossas/fossa-cli/pull/1803))
 
 ## 3.20.7
 

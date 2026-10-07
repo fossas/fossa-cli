@@ -17,6 +17,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
   MavenScopeConfig (..),
+  SnippetScanConfigs (..),
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
@@ -24,9 +25,12 @@ import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import App.Types (Policy (PolicyName), ReleaseGroupMetadata (..))
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Stack (runStack)
+import Data.ByteString.Char8 qualified as BS
 import Data.Set qualified as Set
-import Diag.Result (Result)
-import Effect.Logger (ignoreLogger)
+import Data.Text qualified as Text
+import Data.Yaml qualified as Yaml
+import Diag.Result (Result (Failure, Success), renderFailure)
+import Effect.Logger (ignoreLogger, renderIt)
 import Effect.ReadFS (runReadFSIO)
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
@@ -133,6 +137,7 @@ expectedVendoredDependencies =
     { configForceRescans = True
     , configLicenseScanMethod = Just ArchiveUpload
     , configLicenseScanPathFilters = Just expectedVendoredDependencyFilters
+    , configSnippetScan = Just $ SnippetScanConfigs{configSnippetScanSkipHeaders = True, configSnippetScanSkipHeadersLimit = Just 20}
     }
 
 expectedVendoredDependencyFilters :: LicenseScanPathFilters
@@ -193,6 +198,28 @@ invalidScanMethodDir = maintestdir </> $(mkRelDir "invalid-scan-method")
 invalidPoliciesDir :: Path Rel Dir
 invalidPoliciesDir = maintestdir </> $(mkRelDir "invalid-policies")
 
+invalidSnippetScanLimitNegativeDir :: Path Rel Dir
+invalidSnippetScanLimitNegativeDir = maintestdir </> $(mkRelDir "invalid-snippet-scan-limit-negative")
+
+invalidSnippetScanLimitFractionDir :: Path Rel Dir
+invalidSnippetScanLimitFractionDir = maintestdir </> $(mkRelDir "invalid-snippet-scan-limit-fraction")
+
+invalidSnippetScanLimitStringDir :: Path Rel Dir
+invalidSnippetScanLimitStringDir = maintestdir </> $(mkRelDir "invalid-snippet-scan-limit-string")
+
+invalidSnippetScanSkipHeadersTypeDir :: Path Rel Dir
+invalidSnippetScanSkipHeadersTypeDir = maintestdir </> $(mkRelDir "invalid-snippet-scan-skip-headers-type")
+
+-- | Expect a failure whose rendered message contains every given fragment.
+expectFailureMentioning :: [Text.Text] -> Result a -> T.Expectation
+expectFailureMentioning _ (Success _ _) = T.expectationFailure "expected a failure"
+expectFailureMentioning fragments (Failure ws eg) = do
+  let rendered = renderIt $ renderFailure ws eg "An issue occurred"
+  mapM_ (\fragment -> (fragment, Text.isInfixOf fragment rendered) `T.shouldBe` (fragment, True)) fragments
+
+decodeSnippetScanConfigs :: String -> Either Yaml.ParseException SnippetScanConfigs
+decodeSnippetScanConfigs = Yaml.decodeEither' . BS.pack
+
 expectSuccessfulParse :: Result (Maybe ConfigFile) -> Path Abs File -> T.Expectation
 expectSuccessfulParse act configFilePath =
   assertOnSuccess act $ \_ a -> case a of
@@ -221,6 +248,10 @@ spec = do
   invalidDefault <- runIt invalidDefaultDir Nothing
   invalidScanMethod <- runIt invalidScanMethodDir Nothing
   invalidPolicies <- runIt invalidPoliciesDir Nothing
+  invalidSnippetScanLimitNegative <- runIt invalidSnippetScanLimitNegativeDir Nothing
+  invalidSnippetScanLimitFraction <- runIt invalidSnippetScanLimitFractionDir Nothing
+  invalidSnippetScanLimitString <- runIt invalidSnippetScanLimitStringDir Nothing
+  invalidSnippetScanSkipHeadersType <- runIt invalidSnippetScanSkipHeadersTypeDir Nothing
 
   -- @Just file@ informs us that the file is specified manually, so we fail
   -- instead of trying to recover, so we don't ignore the file and do the wrong thing
@@ -255,3 +286,33 @@ spec = do
 
     T.it "fails for incompatible specified file" $
       expectFailure ver2Specified
+
+  T.describe "vendoredDependencies.snippetScan" $ do
+    T.it "defaults skipHeaders to false and skipHeadersLimit to nothing" $
+      decodeSnippetScanConfigs "{}" `shouldDecodeTo` SnippetScanConfigs False Nothing
+
+    T.it "parses skipHeaders without a limit" $
+      decodeSnippetScanConfigs "skipHeaders: true" `shouldDecodeTo` SnippetScanConfigs True Nothing
+
+    T.it "parses a limit of 0" $
+      decodeSnippetScanConfigs "skipHeaders: true\nskipHeadersLimit: 0" `shouldDecodeTo` SnippetScanConfigs True (Just 0)
+
+    T.it "parses a limit without skipHeaders" $
+      decodeSnippetScanConfigs "skipHeadersLimit: 5" `shouldDecodeTo` SnippetScanConfigs False (Just 5)
+
+    T.it "fails on a negative limit" $
+      expectFailureMentioning ["skipHeadersLimit", "non-negative integer", "-1"] invalidSnippetScanLimitNegative
+
+    T.it "fails on a fractional limit" $
+      expectFailureMentioning ["skipHeadersLimit"] invalidSnippetScanLimitFraction
+
+    T.it "fails on a non-numeric limit" $
+      expectFailureMentioning ["skipHeadersLimit"] invalidSnippetScanLimitString
+
+    T.it "fails on a non-boolean skipHeaders" $
+      expectFailureMentioning ["skipHeaders"] invalidSnippetScanSkipHeadersType
+  where
+    shouldDecodeTo :: Either Yaml.ParseException SnippetScanConfigs -> SnippetScanConfigs -> T.Expectation
+    shouldDecodeTo decoded expected = case decoded of
+      Left err -> T.expectationFailure $ Yaml.prettyPrintParseException err
+      Right actual -> actual `T.shouldBe` expected
