@@ -143,6 +143,27 @@ spec = do
   describe "works with pnpm v11 multi-document lockfile" $
     checkGraph pnpmLockV11MultiDoc pnpmLockV9LocalDepSpec
 
+  -- Both fixtures declare sharp as an optional dependency of the project and
+  -- fsevents as an optional dependency of chokidar.
+  let pnpmLockV9Optional = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-optional-deps/pnpm-lock.yaml")
+  let pnpmLockV6Optional = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6-optional.yaml")
+
+  describe "optional dependencies in a v9 lockfile" $
+    checkGraph pnpmLockV9Optional optionalDepsSpec
+
+  describe "optional dependencies in a v6 lockfile" $
+    checkGraph pnpmLockV6Optional optionalDepsSpec
+
+optionalDepsSpec :: Graphing Dependency -> Spec
+optionalDepsSpec graph = do
+  it "should report the project's own optional dependencies as direct" $
+    expectDirect [mkProdDep "chokidar@3.6.0", mkProdDep "sharp@0.33.0"] graph
+
+  it "should connect a package's optional dependencies to it" $ do
+    expectEdge graph (mkProdDep "chokidar@3.6.0") (mkProdDep "readdirp@3.6.0")
+    expectEdge graph (mkProdDep "chokidar@3.6.0") (mkProdDep "fsevents@2.3.3")
+    expectDep (mkProdDep "fsevents@2.3.3") graph
+
 pnpmLockGraphSpec :: Graphing Dependency -> Spec
 pnpmLockGraphSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
