@@ -85,7 +85,7 @@ newtype PackageItem = PackageItem {unPackageItem :: Maybe Package}
 instance FromXML PackageItem where
   parseElement el = do
     name <- optional (attr "Include" el <|> attr "Update" el)
-    version <- optional (attr "Version" el <|> child "Version" el)
+    version <- optional (attr "VersionOverride" el <|> attr "Version" el <|> child "Version" el)
     pure . PackageItem $ (`Package` version) <$> name
 
 buildGraph :: PackageReference -> Graphing Dependency
