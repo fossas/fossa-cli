@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Container scanning: `fossa container analyze` and `fossa container list-targets` no longer fail with `An exception occurred:thread blocked indefinitely in an STM transaction` when the registry rejects a token request while image layers are being downloaded in parallel; the error from the registry is reported instead. ([#1804](https://github.com/fossas/fossa-cli/pull/1804))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 
 ## 3.20.1
