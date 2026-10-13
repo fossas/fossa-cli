@@ -181,11 +181,11 @@ spec = do
                        ,
                          ( PackageName "laminar-cloud-utils"
                          , Map.fromList
-                            [ ("celeriac", ObjectVersionSpec $ ObjectVersion Nothing)
-                            , ("lamipy", ObjectVersionSpec $ ObjectVersion Nothing)
-                            , ("requests", ObjectVersionSpec $ ObjectVersion (Just ">=2.0"))
-                            , ("some-archive", ObjectVersionSpec $ ObjectVersion Nothing)
-                            , ("typing-extensions", TextVersion "^4.0")
-                            ]
+                             [ ("celeriac", ObjectVersionSpec $ ObjectVersion Nothing)
+                             , ("lamipy", ObjectVersionSpec $ ObjectVersion Nothing)
+                             , ("requests", ObjectVersionSpec $ ObjectVersion (Just ">=2.0"))
+                             , ("some-archive", ObjectVersionSpec $ ObjectVersion Nothing)
+                             , ("typing-extensions", TextVersion "^4.0")
+                             ]
                          )
                        ]
