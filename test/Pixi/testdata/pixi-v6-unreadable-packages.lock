@@ -1,0 +1,18 @@
+# Every `packages` entry unreadable -- what a restructured `packages` shape
+# looks like from here. Entry-level parsing cannot fail, so without a guard
+# this reports zero dependencies and reads exactly like success.
+version: 6
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://example.invalid/nonsense
+packages:
+- some-future-ecosystem: https://example.invalid/from-a-newer-pixi
+  name: not-yet-supported
+  version: 1.0.0
+- another-future-ecosystem: https://example.invalid/also-unknown
+  name: also-not-supported
+  version: 2.0.0

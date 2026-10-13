@@ -36,13 +36,14 @@
 module Strategy.Pixi.PixiLock (
   analyze,
   buildGraph,
-  supportedLockVersions,
+  knownLockVersions,
+  outOfRangeVersionWarning,
   PixiLockFile (..),
   PixiEnvironment (..),
   PixiLocator (..),
   PixiPackage (..),
   PixiPackageEntry (..),
-  UnsupportedPixiLockVersion (..),
+  PixiLockYieldedNoDeps (..),
   -- exposed for testing
   parseCondaArtifactUrl,
   CondaArtifact (..),
@@ -83,23 +84,34 @@ import Graphing qualified
 import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
 
--- | Lock versions this parser understands. An unrecognised version fails
--- loudly rather than producing an empty graph: reporting zero dependencies for
--- a project that plainly has them is the bug this strategy exists to fix, and
--- it is indistinguishable from success.
-supportedLockVersions :: [Int]
-supportedLockVersions = [5, 6, 7]
+-- | Oldest and newest lock versions this parser was written against.
+--
+-- Not a gate. The format has been additive -- v7 is v6's @packages@ shape plus
+-- an inert top-level @platforms@ block -- so an unseen version is far likelier
+-- to parse than not, and refusing one outright reports nothing for a project
+-- that plainly has dependencies. Out-of-range versions are parsed anyway and
+-- only warn, matching pnpm.
+knownLockVersions :: (Int, Int)
+knownLockVersions = (5, 7)
 
-newtype UnsupportedPixiLockVersion = UnsupportedPixiLockVersion Int
+-- | The lockfile listed packages and not one of them produced a dependency.
+--
+-- Fatal, where a lockfile with no entries at all is not: an empty graph is
+-- indistinguishable from a clean scan of a workspace that has no
+-- dependencies, so whether there was anything to read is the only thing that
+-- separates the two. Every entry failing at once is what a restructured
+-- @packages@ shape looks like from here.
+data PixiLockYieldedNoDeps = PixiLockYieldedNoDeps
+  { noDepsVersion :: Int
+  , noDepsEntries :: Int
+  }
 
-instance ToDiagnostic UnsupportedPixiLockVersion where
-  renderDiagnostic (UnsupportedPixiLockVersion v) =
+instance ToDiagnostic PixiLockYieldedNoDeps where
+  renderDiagnostic (PixiLockYieldedNoDeps version entries) =
     Errata
-      (Just $ "Unsupported pixi.lock version: " <> toText (show v))
+      (Just $ "pixi.lock lists " <> toText (show entries) <> " packages, but none of them could be read")
       []
-      (Just $ "fossa-cli supports pixi lock versions " <> supported <> ". Re-run `pixi install` with a pixi release that writes one of those versions, or upgrade fossa-cli.")
-    where
-      supported = Text.intercalate ", " (map (toText . show) supportedLockVersions)
+      (Just $ "The lockfile is version " <> toText (show version) <> ". Its `packages` entries are shaped in a way this fossa-cli does not recognise; the warnings above name each one. Upgrading fossa-cli may help.")
 
 -- | The value of a @conda:@ or @pypi:@ key: a URL for a published artifact, or
 -- a path\/VCS spec for a source dependency.
@@ -362,6 +374,29 @@ toDependency metadata locator env = case locator of
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze lockPath = do
   lockFile <- readContentsYaml @PixiLockFile lockPath
-  if pixiLockVersion lockFile `elem` supportedLockVersions
-    then buildGraph lockFile
-    else fatal . UnsupportedPixiLockVersion $ pixiLockVersion lockFile
+  for_ (outOfRangeVersionWarning $ pixiLockVersion lockFile) warn
+  graph <- buildGraph lockFile
+  -- Checked for every version, not just unknown ones: entries go unreadable
+  -- because the `packages` shape moved, which a pixi release can do without
+  -- touching `version:`. Keying this off the version number would reinstate
+  -- the brittleness it replaces.
+  let entries = length $ pixiLockPackages lockFile
+  if entries > 0 && null (Graphing.vertexList graph)
+    then fatal $ PixiLockYieldedNoDeps (pixiLockVersion lockFile) entries
+    else pure graph
+
+-- | What to say about a version outside 'knownLockVersions', if anything.
+-- Pure so the wording is testable without standing up the diagnostics stack.
+outOfRangeVersionWarning :: Int -> Maybe Text
+outOfRangeVersionWarning version
+  | version > newest =
+      Just $
+        "pixi: lock version " <> shown version <> " is newer than any version this fossa-cli knows about (" <> shown newest <> "). It was parsed anyway, so results may be incomplete; upgrade fossa-cli."
+  | version < oldest =
+      Just $
+        "pixi: lock version " <> shown version <> " is older than " <> shown oldest <> ", which is not officially supported!"
+  | otherwise = Nothing
+  where
+    (oldest, newest) = knownLockVersions
+    shown :: Int -> Text
+    shown = toText . show

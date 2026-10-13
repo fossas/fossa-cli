@@ -19,12 +19,15 @@ Conda packages are reported as conda dependencies named `'<channel>':<subdir>:<n
 
 ### Lock format versions
 
-The `version:` field at the top of `pixi.lock` is checked against the versions this strategy understands:
+Every `pixi.lock` is analyzed, whatever its `version:` says. The format has so far only ever been additive, so a version this strategy has not seen is far likelier to parse than not, and refusing one outright reports nothing for a project that plainly has dependencies.
 
 | `version:` | Behaviour |
 | ---------- | --------- |
 | `5`, `6`, `7` | Analyzed. |
-| anything else | Analysis fails with an error naming the version. It does not silently report an empty dependency graph. |
+| newer than `7` | Analyzed, with a warning that the version is newer than this fossa-cli knows about and that results may be incomplete. Upgrade fossa-cli. |
+| older than `5` | Analyzed, with a warning that the version is not officially supported. |
+
+Analysis fails only when the lockfile lists `packages` and not one of them can be read, which is what a restructured `packages` shape looks like. That check applies to every version, because a pixi release can change the shape without changing `version:`. A lockfile with no packages at all is a workspace with no dependencies, and reports an empty graph without failing.
 
 Version 5 spells out `name`, `version`, `build` and `subdir` on each package and locates it by `url` or `path`. Versions 6 and 7 replace that with a single `conda:`/`pypi:` key holding the locator, and record no `name` or `version` for conda packages. Version 7 adds a top-level `platforms` block, which carries no dependency information.
 

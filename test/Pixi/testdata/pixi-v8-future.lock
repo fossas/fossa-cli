@@ -1,0 +1,25 @@
+# A version newer than any this parser was written against, shaped exactly
+# like v7 (v6's `packages` plus the inert `platforms` block). The format has
+# only ever been additive, so this must parse and warn rather than fail: the
+# point of the fixture is that an unseen version number costs a warning, not
+# the project's dependencies.
+version: 8
+platforms:
+- linux-64
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
+      - pypi: https://files.pythonhosted.org/packages/ab/cd/certifi-2024.2.2-py3-none-any.whl
+packages:
+- conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
+  sha256: 5d7c0e5f0005f74112a34a7425179f4eb6e73c92f5d109e6af4ddeca407c92ab
+  license: Zlib
+  purls: []
+  size: 92286
+- pypi: https://files.pythonhosted.org/packages/ab/cd/certifi-2024.2.2-py3-none-any.whl
+  name: certifi
+  version: 2024.2.2

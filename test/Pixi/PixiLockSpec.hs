@@ -8,6 +8,7 @@ module Pixi.PixiLockSpec (
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (CondaType, GitType, PipType),
@@ -25,11 +26,16 @@ import Strategy.Pixi.PixiLock (
   analyze,
   classifyPypiSource,
   environmentToDepEnvironment,
+  outOfRangeVersionWarning,
   parseCondaArtifactUrl,
  )
 import Test.Effect (expectFatal', it')
 import Test.Hspec
 import Text.Megaparsec (parse)
+
+-- | A warning was emitted and it says what we meant it to say.
+warns :: Text -> Maybe Text -> Bool
+warns needle = maybe False (Text.isInfixOf needle)
 
 mkDep :: DepType -> Text -> Maybe Text -> [DepEnvironment] -> Dependency
 mkDep depType name version envs =
@@ -187,9 +193,51 @@ spec = do
 
       expectDeps' [condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]] graph
 
-  describe "analyze an unsupported lock version" $
-    it' "fails loudly instead of reporting an empty graph" $ do
-      -- Reporting zero dependencies for a project that plainly has them is the
-      -- bug this strategy exists to fix, and it looks exactly like success.
-      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-unsupported.lock|]
+  describe "analyze a lock version newer than any we know" $
+    it' "parses it anyway rather than reporting nothing" $ do
+      -- The format has only ever been additive, so refusing an unseen version
+      -- number costs the project its dependencies for no gain. v8 here is
+      -- shaped like v7; it reports, and the warning is asserted separately
+      -- below because the test effect stack discards warnings.
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v8-future.lock|]
+      graph <- analyze path
+
+      expectDeps'
+        [ condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]
+        , mkDep PipType "certifi" (Just "2024.2.2") [EnvProduction]
+        ]
+        graph
+
+  describe "outOfRangeVersionWarning" $
+    it "warns above and below the known range, and stays quiet inside it" $ do
+      outOfRangeVersionWarning 8 `shouldSatisfy` warns "is newer than any version this fossa-cli knows about"
+      outOfRangeVersionWarning 4 `shouldSatisfy` warns "is not officially supported!"
+      outOfRangeVersionWarning 5 `shouldBe` Nothing
+      outOfRangeVersionWarning 6 `shouldBe` Nothing
+      outOfRangeVersionWarning 7 `shouldBe` Nothing
+
+  describe "analyze a malformed lockfile whose version is also out of range" $
+    it' "still fails loudly: parsing an unseen version is not accepting anything" $ do
+      -- `environments` is a list where a map belongs. Dropping the version
+      -- gate must not drop the structural checks underneath it.
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v8-malformed.lock|]
       expectFatal' $ analyze path
+
+  describe "analyze a lockfile whose every package entry is unreadable" $
+    it' "fails rather than reporting an empty graph" $ do
+      -- Entry-level parsing cannot fail by design, so a restructured
+      -- `packages` shape surfaces here as every entry being skipped at once.
+      -- Zero dependencies for a project that has them is indistinguishable
+      -- from success, which is the one thing this strategy must never do.
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-unreadable-packages.lock|]
+      expectFatal' $ analyze path
+
+  describe "analyze a lockfile with no packages at all" $
+    it' "reports an empty graph instead of failing" $ do
+      -- A workspace with no dependencies is legitimate and graphs to nothing.
+      -- The guard above keys off whether there were entries to read, so this
+      -- has to pass -- otherwise it would be a false positive on valid input.
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-no-packages.lock|]
+      graph <- analyze path
+
+      expectDeps' [] graph
