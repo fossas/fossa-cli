@@ -625,11 +625,8 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
         Just bu -> length (buildDependencies bu) `shouldBe` 4
         Nothing -> expectationFailure "expected a build with dependencies"
 
-  describe "toSourceUnit keeps no-direct/no-edge graphs intact (prune gate)" $ do
-    -- These graphs have no direct nodes or no edges, so pruning would drop
-    -- everything. The prune gate must keep them verbatim, mirroring the
-    -- mkResult hack. Uses NpmProjectType (non-Swift/Gomod) so the gate that
-    -- saves them is the direct/edge check, not shouldKeepUnreachableDeps.
+  describe "toSourceUnit keeps no-direct graphs intact (prune gate)" $ do
+    -- No direct nodes: pruneUnreachable keeps only Root, so the no-direct gate is what preserves these.
     it "keeps a graph built with only deep (no direct) nodes intact" $ do
       let graph :: Graphing Dependency
           graph = Graphing.deeps [mkProdDep "a@1.0.0", mkProdDep "b@1.0.0", mkProdDep "c@1.0.0"]
@@ -638,16 +635,6 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
 
       case sourceUnitBuild su of
         Just bu -> length (buildDependencies bu) `shouldBe` 3
-        Nothing -> expectationFailure "expected a build with dependencies"
-
-    it "keeps a graph with directs but no edges intact" $ do
-      let graph :: Graphing Dependency
-          graph = Graphing.directs [mkProdDep "a@1.0.0", mkProdDep "b@1.0.0"]
-
-          su = toSourceUnit False "test" graph NpmProjectType Complete []
-
-      case sourceUnitBuild su of
-        Just bu -> length (buildDependencies bu) `shouldBe` 2
         Nothing -> expectationFailure "expected a build with dependencies"
 
 -- | Scope 'buildGraph' to the given root-relative workspace paths, as

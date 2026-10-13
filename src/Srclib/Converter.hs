@@ -80,18 +80,13 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     }
   where
     filteredGraph :: Graphing Dependency
-    -- Shrink out dev/non-publishable deps, then prune any nodes that become
-    -- unreachable (e.g. transitive deps of a devDep that had no other path to
-    -- the production dependency tree). Without this prune, those nodes
-    -- remain in the SBOM as orphaned entries with no parent edge (ANE-3077).
-    --
-    -- Graphs with no direct nodes or no edges are kept verbatim: such graphs
-    -- can't be pruned meaningfully (pruning would drop everything), and this
-    -- mirrors the mkResult FIXME hack for analyzers that can't determine
-    -- direct/edge structure. Note this still runs when leaveUnfiltered is True;
-    -- that flag promises inclusion of non-production deps, not preservation of
-    -- unreachable orphans, and shouldKeepUnreachableDeps already covers the
-    -- analyzer types (Swift, Gomod) that need it.
+    -- After shrinking out dev/non-publishable deps, prune any that become
+    -- unreachable so their transitive deps don't linger as orphaned SBOM
+    -- entries (ANE-3077). Keep the graph verbatim when it has no direct nodes
+    -- (pruning would drop everything), no edges, or is Swift/Gomod — the same
+    -- gate mkResult uses for analyzers that can't classify direct vs. edge.
+    -- Still prunes when leaveUnfiltered is True: that flag keeps non-production
+    -- deps, not unreachable orphans.
     filteredGraph =
       if null (Graphing.directList dependencies) || null (Graphing.edgesList dependencies) || shouldKeepUnreachableDeps projectType
         then shrunk
