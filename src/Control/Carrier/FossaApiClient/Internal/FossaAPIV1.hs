@@ -46,6 +46,11 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysisWorkflow,
   AnalysisService (..),
   APIClientEffs,
+  FossaError (..),
+  FossaPublicFacingError (..),
+  InvalidApiKeyErr (..),
+  isApiKeyFailure,
+  fatalFossaError,
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -81,7 +86,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getOrgLabels,
 ) where
 
-import App.Docs (fossaSslCertDocsUrl)
+import App.Docs (apiKeyUrl, fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Report.Attribution qualified as Attr
@@ -120,7 +125,7 @@ import Container.Types qualified as NativeContainer
 import Control.Algebra (type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Debug (Debug, debugLog)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, errDoc, errHelp, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Exception (Exception (displayException), SomeException, evaluate)
@@ -140,7 +145,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.Data (Proxy (Proxy))
-import Data.Error (SourceLocation, createBody, createEmptyBlock, getSourceLocation)
+import Data.Error (SourceLocation, createBody, createEmptyBlock, createErrataWithHeaderOnly, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -273,7 +278,42 @@ type APIClientEffs sig m = (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostic
 
 instance APIClientEffs sig m => MonadHttp (FossaReq m) where
   getHttpConfig = setMgrFromReader
-  handleHttpException = FossaReq . fatal . mangleError
+  handleHttpException = FossaReq . fatalFossaError . mangleError
+
+-- | Does this error actually say the API key is the problem?
+--
+-- Only a 401 does. Everything else reaching here -- a decode failure, a
+-- timeout, a TLS fault, a refused connection, a proxy error -- has its own
+-- cause, and answering it with \"check your API key\" sends people off to
+-- regenerate a key that already works.
+--
+-- Deliberately excluded:
+--
+-- * 403, because the renderer below argues at length that it more likely
+--   means a network appliance intercepted the request than that the key is
+--   bad. Blaming the key here would contradict the message we print there.
+--
+-- * 'BackendPublicFacingError', which renders the backend's own description
+--   of what went wrong. That text is authoritative where this help is a
+--   guess, and the status code is not retained on that branch (see
+--   'mangleError') so an auth failure cannot be told from any other.
+isApiKeyFailure :: FossaError -> Bool
+isApiKeyFailure (StatusCodeError _ res) = statusCode (responseStatus res) == 401
+isApiKeyFailure _ = False
+
+-- | Raise a 'FossaError', attaching the API-key help only to errors that
+-- genuinely implicate the key.
+fatalFossaError :: Has Diagnostics sig m => FossaError -> m a
+fatalFossaError err
+  | isApiKeyFailure err = errHelp InvalidApiKeyErr . errDoc apiKeyUrl $ fatal err
+  | otherwise = fatal err
+
+data InvalidApiKeyErr = InvalidApiKeyErr
+
+instance ToDiagnostic InvalidApiKeyErr where
+  renderDiagnostic :: InvalidApiKeyErr -> Errata
+  renderDiagnostic InvalidApiKeyErr =
+    createErrataWithHeaderOnly "Ensure that you are using a valid FOSSA_API_KEY. Refer to the provided documentation for guidance on how to generate and retrieve your API key."
 
 newtype FossaReqAllow401 m a = FossaReqAllow401 {unFossaReqAllow401 :: EmptyC m a}
   deriving (Functor, Applicative, Monad, Algebra (Empty :+: sig))
@@ -401,7 +441,7 @@ instance ToDiagnostic FossaError where
           body = createBody (Just content) (Just fossaSslCertDocsUrl) (Just support) (Just help) Nothing
       Errata (Just header) [] (Just body)
     JsonDeserializeError err -> do
-      let header = "An error occurred when deserializing a response from the FOSSA API:" <> toText err
+      let header = "An error occurred when deserializing a response from the FOSSA API: " <> toText err
       Errata (Just header) [] Nothing
     BackendPublicFacingError pfe -> do
       let header = fpeMessage pfe

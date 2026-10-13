@@ -6,7 +6,7 @@ module App.Fossa.PreflightChecks (
   guardWithPreflightChecks,
 ) where
 
-import App.Docs (apiKeyUrl, apiTokenDocsUrl, fossaConfigDocsUrl, rolesDocsUrl)
+import App.Docs (apiTokenDocsUrl, fossaConfigDocsUrl, rolesDocsUrl)
 import App.Support (reportDefectMsg)
 import App.Types (ProjectMetadata, ProjectRevision)
 import Control.Carrier.Debug (ignoreDebug)
@@ -17,7 +17,6 @@ import Control.Effect.Diagnostics (ToDiagnostic, errSupport, fatal, fatalOnIOExc
 import Control.Effect.FossaApiClient (FossaApiClient, getCustomBuildPermissions, getOrganization, getTokenType)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Monad (void, when)
-import Data.Error (createErrataWithHeaderOnly)
 import Data.Text
 import Data.Text.IO qualified as TIO
 import Data.UUID qualified as UUID (toString)
@@ -68,8 +67,13 @@ preflightChecks cmd = context "preflight-checks" $ do
   fatalOnIOException "Failed to write to temp directory" . sendIO $ TIO.writeFile (fromAbsFile file) "Writing to temp dir"
   sendIO $ removeFile file
 
-  -- Check for valid API Key and if user can connect to fossa app
-  org <- errHelp InvalidApiKeyErr $ errDoc apiKeyUrl getOrganization
+  -- Check that the user can reach the FOSSA app at all.
+  --
+  -- This used to attach "your API key is invalid" to every error escaping
+  -- getOrganization, so a decode failure, a timeout or a TLS fault all told
+  -- people to regenerate a key that was fine. The API carrier now attaches
+  -- that help itself, and only to a genuine 401.
+  org <- getOrganization
 
   when (orgSupportsPreflightChecks org) $
     void $
@@ -137,12 +141,6 @@ preflightCheckFileName :: Has (Lift IO) sig m => m (Path Rel File)
 preflightCheckFileName = do
   suffix <- sendIO $ UUID.toString <$> UUID.nextRandom
   sendIO $ parseRelFile $ "preflight-check-" <> suffix <> ".txt"
-
-data InvalidApiKeyErr = InvalidApiKeyErr
-instance ToDiagnostic InvalidApiKeyErr where
-  renderDiagnostic :: InvalidApiKeyErr -> Errata
-  renderDiagnostic InvalidApiKeyErr =
-    createErrataWithHeaderOnly "Ensure that you are using a valid FOSSA_API_KEY. Refer to the provided documentation for guidance on how to generate and retrieve your API key."
 
 data TokenTypeErr = TokenTypeErr
 instance ToDiagnostic TokenTypeErr where

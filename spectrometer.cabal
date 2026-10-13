@@ -651,6 +651,7 @@ test-suite unit-tests
     Container.TarballReadFSSpec
     Container.TarballSpec
     Control.Carrier.DiagnosticsSpec
+    Control.Carrier.FossaApiClient.Internal.FossaAPIV1Spec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
     Dart.PubDepsSpec
