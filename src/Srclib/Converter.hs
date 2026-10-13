@@ -13,7 +13,7 @@ module Srclib.Converter (
 import Prelude
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), shouldKeepUnreachableDeps)
 import Control.Applicative ((<|>))
 import Data.Aeson qualified as Aeson
 import Data.Set qualified as Set
@@ -83,9 +83,21 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     -- Shrink out dev/non-publishable deps, then prune any nodes that become
     -- unreachable (e.g. transitive deps of a devDep that had no other path to
     -- the production dependency tree). Without this prune, those nodes
-    -- remain in the SBOM as orphaned entries with no parent edge.
-    filteredGraph = Graphing.pruneUnreachable (Graphing.shrinkWithoutPromotionToDirect ff dependencies)
+    -- remain in the SBOM as orphaned entries with no parent edge (ANE-3077).
+    --
+    -- Graphs with no direct nodes or no edges are kept verbatim: such graphs
+    -- can't be pruned meaningfully (pruning would drop everything), and this
+    -- mirrors the mkResult FIXME hack for analyzers that can't determine
+    -- direct/edge structure. Note this still runs when leaveUnfiltered is True;
+    -- that flag promises inclusion of non-production deps, not preservation of
+    -- unreachable orphans, and shouldKeepUnreachableDeps already covers the
+    -- analyzer types (Swift, Gomod) that need it.
+    filteredGraph =
+      if null (Graphing.directList dependencies) || null (Graphing.edgesList dependencies) || shouldKeepUnreachableDeps projectType
+        then shrunk
+        else Graphing.pruneUnreachable shrunk
       where
+        shrunk = Graphing.shrinkWithoutPromotionToDirect ff dependencies
         ff =
           if leaveUnfiltered
             then isSupportedType

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Npm: After filtering out dev dependencies, unreachable transitive dependencies are pruned so they no longer appear as orphaned entries in the SBOM (ANE-3077). Pruning is gated to preserve graphs with no direct nodes or no edges, and Swift/Gomod projects, which emit such graphs.
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
 
 ## 3.17.17

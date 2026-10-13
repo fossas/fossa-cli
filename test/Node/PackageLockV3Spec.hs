@@ -29,6 +29,11 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
+import Srclib.Converter (toSourceUnit)
+import Srclib.Types (
+  SourceUnit (sourceUnitBuild),
+  SourceUnitBuild (buildDependencies),
+ )
 import Strategy.Node.Npm.PackageLockV3 (
   NpmLockV3Resolved (unNpmLockV3Resolved),
   PackageLockV3 (packages),
@@ -40,14 +45,9 @@ import Strategy.Node.Npm.PackageLockV3 (
   parsePathKey,
   vendorPrefixes,
  )
-import Srclib.Converter (toSourceUnit)
-import Srclib.Types (
-  SourceUnit (sourceUnitBuild),
-  SourceUnitBuild (buildDependencies),
- )
-import Types (DiscoveredProjectType (NpmProjectType), GraphBreadth (Complete))
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
+import Types (DiscoveredProjectType (NpmProjectType), GraphBreadth (Complete))
 
 fixtureSimplePackageLockPath :: Path Rel File
 fixtureSimplePackageLockPath = $(mkRelFile "simple-package-lock.json")
@@ -623,6 +623,31 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
 
       case sourceUnitBuild su of
         Just bu -> length (buildDependencies bu) `shouldBe` 4
+        Nothing -> expectationFailure "expected a build with dependencies"
+
+  describe "toSourceUnit keeps no-direct/no-edge graphs intact (prune gate)" $ do
+    -- These graphs have no direct nodes or no edges, so pruning would drop
+    -- everything. The prune gate must keep them verbatim, mirroring the
+    -- mkResult hack. Uses NpmProjectType (non-Swift/Gomod) so the gate that
+    -- saves them is the direct/edge check, not shouldKeepUnreachableDeps.
+    it "keeps a graph built with only deep (no direct) nodes intact" $ do
+      let graph :: Graphing Dependency
+          graph = Graphing.deeps [mkProdDep "a@1.0.0", mkProdDep "b@1.0.0", mkProdDep "c@1.0.0"]
+
+          su = toSourceUnit False "test" graph NpmProjectType Complete []
+
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 3
+        Nothing -> expectationFailure "expected a build with dependencies"
+
+    it "keeps a graph with directs but no edges intact" $ do
+      let graph :: Graphing Dependency
+          graph = Graphing.directs [mkProdDep "a@1.0.0", mkProdDep "b@1.0.0"]
+
+          su = toSourceUnit False "test" graph NpmProjectType Complete []
+
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 2
         Nothing -> expectationFailure "expected a build with dependencies"
 
 -- | Scope 'buildGraph' to the given root-relative workspace paths, as
