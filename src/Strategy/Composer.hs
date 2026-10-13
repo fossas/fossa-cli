@@ -221,10 +221,12 @@ buildGraph lock = run . withLabeling toDependency $ do
 
 -- | Platform requirements (PHP itself, its extensions, system libraries and
 -- Composer) come from the environment Composer runs in, not from a package
--- registry, so they are not dependencies. Registry package names always have a
--- vendor prefix (@vendor/name@), so a name with a @/@ is never one. Composer
--- compares these names case-insensitively
--- (@PlatformRepository::PLATFORM_PACKAGE_REGEX@).
+-- registry, so they are not dependencies. The names follow Composer's own
+-- definition, @PLATFORM_PACKAGE_REGEX@ in
+-- <https://github.com/composer/composer/blob/main/src/Composer/Repository/PlatformRepository.php>,
+-- and like it ignore case. Its exact @php-@, @ext-@ and @lib-@ forms are
+-- widened to prefixes, which is safe because registry package names always
+-- have a vendor prefix (@vendor/name@), so a name with a @/@ is never one.
 isPlatformPackage :: Text -> Bool
 isPlatformPackage name =
   not ("/" `Text.isInfixOf` name) && (isPlatformName || hasPlatformPrefix)
