@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`.
+- Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`. ([#1805](https://github.com/fossas/fossa-cli/pull/1805))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 
 ## 3.20.1
