@@ -1,0 +1,78 @@
+# Edge construction, and the cases that decide whether an edge is real.
+#
+# `app` names four things in `depends`: one in its own subdir, one in noarch,
+# one that is only built for another platform, and one absent from the locked
+# set. Only the first two are edges -- every platform is unioned into one
+# graph, so without the subdir rule a linux-64 package would reach the
+# osx-arm64 build of its dependency.
+#
+# `cyc-a`/`cyc-b` depend on each other; neither may hang the traversal nor end
+# up direct. `gadget` is a path dependency with a dependency of its own.
+version: 6
+environments:
+  default:
+    channels:
+      - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+        - conda: https://conda.anaconda.org/conda-forge/linux-64/app-1.0-h0_0.conda
+        - conda: https://conda.anaconda.org/conda-forge/linux-64/libfoo-1.2-h0_0.conda
+        - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024a-h0_0.conda
+        - conda: https://conda.anaconda.org/conda-forge/linux-64/cyc-a-1.0-h0_0.conda
+        - conda: https://conda.anaconda.org/conda-forge/linux-64/cyc-b-1.0-h0_0.conda
+        - pypi: ./libs/gadget
+        - pypi: https://files.pythonhosted.org/packages/ab/cd/widget-1.0.0-py3-none-any.whl
+        - pypi: https://files.pythonhosted.org/packages/ab/cd/zope_interface-6.0-py3-none-any.whl
+        - pypi: https://files.pythonhosted.org/packages/ab/cd/charset_normalizer-3.3.2-py3-none-any.whl
+        - pypi: https://files.pythonhosted.org/packages/ab/cd/guarded-0.1.0-py3-none-any.whl
+      osx-arm64:
+        - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libonlyosx-1.0-h0_0.conda
+packages:
+  - conda: https://conda.anaconda.org/conda-forge/linux-64/app-1.0-h0_0.conda
+    depends:
+      - libfoo >=1.0
+      - tzdata
+      - libonlyosx >=1.0
+      - missing-pkg >=2
+    license: MIT
+    size: 1
+  - conda: https://conda.anaconda.org/conda-forge/linux-64/libfoo-1.2-h0_0.conda
+    license: MIT
+    size: 1
+  - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024a-h0_0.conda
+    license: LicenseRef-Public-Domain
+    size: 1
+  - conda: https://conda.anaconda.org/conda-forge/linux-64/cyc-a-1.0-h0_0.conda
+    depends:
+      - cyc-b
+    license: MIT
+    size: 1
+  - conda: https://conda.anaconda.org/conda-forge/linux-64/cyc-b-1.0-h0_0.conda
+    depends:
+      - cyc-a
+    license: MIT
+    size: 1
+  - conda: https://conda.anaconda.org/conda-forge/osx-arm64/libonlyosx-1.0-h0_0.conda
+    license: MIT
+    size: 1
+  - pypi: ./libs/gadget
+    name: gadget
+    version: 0.2.0
+    requires_dist:
+      - widget
+  - pypi: https://files.pythonhosted.org/packages/ab/cd/widget-1.0.0-py3-none-any.whl
+    name: widget
+    version: 1.0.0
+    requires_dist:
+      - zope.interface>=5
+      - charset_normalizer
+      - guarded; python_version < "3.9"
+  - pypi: https://files.pythonhosted.org/packages/ab/cd/zope_interface-6.0-py3-none-any.whl
+    name: zope-interface
+    version: '6.0'
+  - pypi: https://files.pythonhosted.org/packages/ab/cd/charset_normalizer-3.3.2-py3-none-any.whl
+    name: charset-normalizer
+    version: 3.3.2
+  - pypi: https://files.pythonhosted.org/packages/ab/cd/guarded-0.1.0-py3-none-any.whl
+    name: guarded
+    version: 0.1.0

@@ -58,11 +58,13 @@ import Data.Aeson (
   FromJSON (parseJSON),
   Object,
   withObject,
+  (.!=),
   (.:),
   (.:?),
  )
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (Parser, parseEither)
+import Data.Char (isAlphaNum, isSpace)
 import Data.Foldable (for_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -126,6 +128,11 @@ data PixiPackage = PixiPackage
   -- ^ Explicit for every v5 entry and for v6\/v7 pypi entries; absent for
   -- v6\/v7 conda entries, where it comes from the artifact filename.
   , pixiPkgVersion :: Maybe Text
+  , pixiPkgDepends :: [Text]
+  -- ^ Conda match-specs (@"python >=3.9,<3.10"@), naming a package rather
+  -- than resolving one. Empty for pypi entries.
+  , pixiPkgRequiresDist :: [Text]
+  -- ^ PEP 508 requirements. Empty for conda entries.
   }
   deriving (Eq, Ord, Show)
 
@@ -198,13 +205,20 @@ instance FromJSON PixiPackage where
           "conda" -> pure $ CondaLocator source
           "pypi" -> pure $ PypiLocator source
           other -> fail $ "unknown package kind: " <> toString other
-        PixiPackage locator <$> obj .:? "name" <*> obj .:? "version"
+        pkgFields obj locator
 
       -- v6/v7: the ecosystem key holds the locator.
       parseV6 :: Object -> Parser PixiPackage
       parseV6 obj = do
         locator <- parseLocatorKeys obj
-        PixiPackage locator <$> obj .:? "name" <*> obj .:? "version"
+        pkgFields obj locator
+
+      pkgFields obj locator =
+        PixiPackage locator
+          <$> obj .:? "name"
+          <*> obj .:? "version"
+          <*> obj .:? "depends" .!= []
+          <*> obj .:? "requires_dist" .!= []
 
 -- | Name, version and build recovered from a conda artifact URL, plus the
 -- channel and subdir the URL path encodes.
@@ -325,17 +339,110 @@ buildGraph PixiLockFile{..} = do
         , locators <- Map.elems platforms
         , locator <- locators
         ]
-      (skipped, deps) = foldr (collect packageIndex) ([], Map.empty) slots
+      (skipped, deps, keyOf) = foldr (collect packageIndex) ([], Map.empty, Map.empty) slots
+      depOf locator = (`Map.lookup` deps) =<< Map.lookup locator keyOf
+
+      -- How each locator is addressed from someone else's dependency list.
+      -- Only locators that became dependencies are addressable, which is why
+      -- a skipped entry can never be an edge target.
+      condaKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [condaMatchKey (Map.lookup l packageIndex) l]]
+      pypiKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [pypiMatchKey (Map.lookup l packageIndex) l]]
+
+      condaByName = Map.fromListWith (<>) [(name, [(subdir, l)]) | (l, (name, subdir)) <- Map.toList condaKeys]
+      pypiByName = Map.fromListWith (<>) [(name, [l]) | (l, name) <- Map.toList pypiKeys]
+
+      -- A conda package resolves within its own subdir plus `noarch`. Without
+      -- that, a linux-64 package would edge to the osx-arm64 build of the same
+      -- dependency, because every platform is unioned into one graph.
+      subdirMatches (Just from) (Just to) = to == from || to == "noarch"
+      subdirMatches _ _ = True
+
+      targetsOf locator pkg = case locator of
+        CondaLocator{} ->
+          [ target
+          | spec <- pixiPkgDepends pkg
+          , (subdir, target) <- Map.findWithDefault [] (condaSpecName spec) condaByName
+          , subdirMatches (snd =<< Map.lookup locator condaKeys) subdir
+          ]
+        PypiLocator{} ->
+          [ target
+          | spec <- pixiPkgRequiresDist pkg
+          , target <- Map.findWithDefault [] (normalizePypiName $ pypiSpecName spec) pypiByName
+          ]
+
+      graphEdges =
+        [ (parent, child)
+        | (locator, pkg) <- Map.toList packageIndex
+        , Just parent <- [depOf locator]
+        , target <- targetsOf locator pkg
+        , Just child <- [depOf target]
+        , parent /= child
+        ]
+
+      graph = Graphing.deeps (Map.elems deps) <> Graphing.edges graphEdges
   for_ (Set.toList . Set.fromList $ unreadable <> skipped) warn
-  pure . Graphing.fromList . Map.elems $ deps
+  -- The roots ARE the direct set. pixi's environments list is the full
+  -- resolved closure, so nothing in the file says which packages were asked
+  -- for -- but a package nothing else depends on is one that was. No second
+  -- file to read, and nothing to do when there is no pixi.toml.
+  pure $ Graphing.promoteToDirect (not . Graphing.hasPredecessors graph) graph
   where
-    collect index (locator, env) (skips, acc) =
+    collect index (locator, env) (skips, acc, keys) =
       case toDependency (Map.lookup locator index) locator env of
-        Left skip -> (skip : skips, acc)
-        Right dep -> (skips, Map.insertWith mergeEnvironments (depKey dep) dep acc)
+        Left skip -> (skip : skips, acc, keys)
+        Right dep ->
+          ( skips
+          , Map.insertWith mergeEnvironments (depKey dep) dep acc
+          , Map.insert locator (depKey dep) keys
+          )
 
     mergeEnvironments new old =
       old{dependencyEnvironments = dependencyEnvironments old <> dependencyEnvironments new}
+
+-- | The bare name and subdir a conda locator is addressed by. @depends@
+-- entries are never subdir-qualified, so the subdir is matched separately
+-- rather than folded into the name the way the dependency name is.
+condaMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe (Text, Maybe Text)
+condaMatchKey meta = \case
+  PypiLocator{} -> Nothing
+  CondaLocator url -> case localSourcePath url of
+    -- A local package has no artifact filename to read a subdir out of, so it
+    -- answers to any subdir that names it.
+    Just _ -> (,Nothing) <$> (pixiPkgName =<< meta)
+    Nothing -> do
+      CondaArtifact{..} <- parseCondaArtifactUrl url
+      pure (fromMaybe condaArtifactName (pixiPkgName =<< meta), Just condaArtifactPlatform)
+
+pypiMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe Text
+pypiMatchKey meta = \case
+  CondaLocator{} -> Nothing
+  PypiLocator{} -> normalizePypiName <$> (pixiPkgName =<< meta)
+
+-- | The package named at the head of a conda match-spec:
+-- @"conda-forge::python >=3.9,<3.10"@ is @python@. Channel prefix, version
+-- and build glob are all separated from the name by a character that cannot
+-- appear in one.
+condaSpecName :: Text -> Text
+condaSpecName spec = Text.takeWhile (\c -> not (isSpace c) && c `notElem` ['=', '>', '<', '!', '~']) afterChannel
+  where
+    afterChannel = case Text.breakOn "::" (Text.strip spec) of
+      (before, rest) | Text.null rest -> before
+      (_, rest) -> Text.drop 2 rest
+
+-- | The distribution named at the head of a PEP 508 requirement:
+-- @"requests[socks]>=2 ; python_version<'3.9'"@ is @requests@.
+--
+-- Markers are deliberately ignored rather than evaluated. We have no
+-- interpreter to evaluate them against, and an edge reported on a platform
+-- that would not install it is a far smaller error than dropping a real one.
+pypiSpecName :: Text -> Text
+pypiSpecName = Text.takeWhile (\c -> isAlphaNum c || c `elem` ['-', '_', '.']) . Text.stripStart
+
+-- | PEP 503 normalization, so @zope.interface@ in a @requires_dist@ finds the
+-- package the lockfile spells @zope-interface@. Used only for matching; the
+-- reported dependency name is whatever the lockfile said.
+normalizePypiName :: Text -> Text
+normalizePypiName = Text.toLower . Text.intercalate "-" . filter (not . Text.null) . Text.split (`elem` ['-', '_', '.'])
 
 toDependency :: Maybe PixiPackage -> PixiLocator -> DepEnvironment -> Either Text Dependency
 toDependency metadata locator env = case locator of

@@ -48,7 +48,15 @@ A `packages` entry this strategy cannot read — an unrecognised ecosystem key f
 
 - **All platforms are unioned.** `pixi.lock` pins a separate package set for every platform the workspace targets, and fossa-cli has no reliable notion of which platform you intend to build for. Every platform's packages are reported. Scanning on macOS still reports the `linux-64` conda packages. Conda dependency names embed the subdir, so per-platform builds of the same package remain distinct dependencies and are not double-counted; a `noarch` package listed under several platforms is reported once.
 
-- **The graph is flat.** Every locked package is reported as a direct dependency with no edges. `pixi.lock` does record `depends` for conda packages and `requires_dist` for PyPI packages, and the direct set could be read from `pixi.toml`, but neither is used yet. The set of dependencies is complete; the relationships between them are not represented.
+- **Edges are resolved by name, not by locator.** `depends` (conda) and `requires_dist` (PyPI) name a package rather than pointing at a locked artifact, so each is matched against a name index over the locked set. A lockfile holds one resolved version per name per subdir, which makes the name close enough to a unique key; the version constraints in the spec are not re-checked, because the lockfile already decided them.
+
+  A conda dependency resolves within its own subdir plus `noarch`. Every platform is unioned into one graph, so without that restriction a `linux-64` package would link to the `osx-arm64` build of its own dependency.
+
+  PyPI names are matched after [PEP 503](https://peps.python.org/pep-0503/) normalization, so `zope.interface` in a `requires_dist` finds a package the lockfile spells `zope-interface`.
+
+- **PEP 508 environment markers are ignored.** A marker-guarded requirement still produces an edge. There is no interpreter to evaluate the marker against, and an edge reported on a platform that would not install it is a smaller error than dropping a real dependency.
+
+- **Direct dependencies are the graph roots.** `pixi.lock` records the full resolved closure and never says which packages were asked for, so a package that nothing else in the lockfile depends on is treated as direct. No `pixi.toml` is read.
 
 - **Environments are reported, not filtered.** The `default` environment maps to the production environment. `dev`/`development` and `test`/`testing` map to the development and testing environments; any other environment name is preserved verbatim so it can be filtered by name. A package present in several environments is reported once, carrying all of them.
 

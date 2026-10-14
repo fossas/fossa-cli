@@ -15,7 +15,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import GraphUtil (expectDeps')
+import GraphUtil (expectDeps', expectDirect', expectEdge')
 import Path (relfile)
 import Path.IO (makeAbsolute)
 import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), parseCondaEnvDep)
@@ -148,6 +148,13 @@ spec = do
         ]
         graph
 
+      -- Trimmed from a real lockfile, and it carries one real edge: the
+      -- workspace package requires absl-py, which therefore is not direct.
+      expectEdge'
+        graph
+        (mkDep UnresolvedPathType "./" (Just "0.1.0") [EnvDevelopment])
+        (mkDep PipType "absl-py" (Just "2.1.0") [EnvProduction])
+
   describe "analyze a v5 lockfile" $
     it' "uses the explicit name and version fields v5 provides" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v5.lock|]
@@ -218,6 +225,67 @@ spec = do
         , -- file:// and the bare path are one package in two environments.
           mkDep UnresolvedPathType "/home/me/pkgs/widget" (Just "1.0.0") [EnvProduction, EnvDevelopment]
         , mkDep UnresolvedPathType "./local/gadget" (Just "0.2.0") [EnvDevelopment]
+        ]
+        graph
+
+  describe "edges from depends and requires_dist" $ do
+    let conda name version = condaDep "conda-forge" "linux-64" name version [EnvProduction]
+        pypi name version = mkDep PipType name (Just version) [EnvProduction]
+        edges' = makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-edges.lock|] >>= analyze
+
+    it' "a conda depends entry naming a locked package is a real edge" $ do
+      graph <- edges'
+      expectEdge' graph (conda "app" "1.0") (conda "libfoo" "1.2")
+      -- noarch is in scope from every subdir, so this one resolves too.
+      expectEdge' graph (conda "app" "1.0") (condaDep "conda-forge" "noarch" "tzdata" "2024a" [EnvProduction])
+
+    it' "a transitively-reached package is NOT direct" $ do
+      -- The whole point: before edges existed every package was direct, so a
+      -- lockfile of 600 packages claimed 600 direct dependencies.
+      graph <- edges'
+      expectDirect'
+        [ conda "app" "1.0"
+        , -- Nothing reaches it: app's `libonlyosx` names another subdir.
+          condaDep "conda-forge" "osx-arm64" "libonlyosx" "1.0" [EnvProduction]
+        , -- A path dependency is a root like any other node.
+          mkDep UnresolvedPathType "./libs/gadget" (Just "0.2.0") [EnvProduction]
+        ]
+        graph
+
+    it' "a path dependency keeps its own edges" $ do
+      graph <- edges'
+      expectEdge' graph (mkDep UnresolvedPathType "./libs/gadget" (Just "0.2.0") [EnvProduction]) (pypi "widget" "1.0.0")
+
+    it' "requires_dist resolves through PEP 503 normalization, markers and all" $ do
+      graph <- edges'
+      -- `zope.interface` and `charset_normalizer` are spelled with a dot and
+      -- an underscore in requires_dist, and with hyphens in the locked set.
+      expectEdge' graph (pypi "widget" "1.0.0") (pypi "zope-interface" "6.0")
+      expectEdge' graph (pypi "widget" "1.0.0") (pypi "charset-normalizer" "3.3.2")
+      -- Marker-guarded, and kept: a spurious edge beats a dropped dependency.
+      expectEdge' graph (pypi "widget" "1.0.0") (pypi "guarded" "0.1.0")
+
+    it' "a cycle neither hangs nor becomes direct" $ do
+      graph <- edges'
+      expectEdge' graph (conda "cyc-a" "1.0") (conda "cyc-b" "1.0")
+      expectEdge' graph (conda "cyc-b" "1.0") (conda "cyc-a" "1.0")
+
+    it' "an absent or out-of-subdir match-spec yields no edge and no crash" $ do
+      -- `missing-pkg` is in no lockfile at all; `libonlyosx` is locked only
+      -- for osx-arm64, and app is linux-64.
+      graph <- edges'
+      expectDeps'
+        [ conda "app" "1.0"
+        , conda "libfoo" "1.2"
+        , condaDep "conda-forge" "noarch" "tzdata" "2024a" [EnvProduction]
+        , conda "cyc-a" "1.0"
+        , conda "cyc-b" "1.0"
+        , condaDep "conda-forge" "osx-arm64" "libonlyosx" "1.0" [EnvProduction]
+        , mkDep UnresolvedPathType "./libs/gadget" (Just "0.2.0") [EnvProduction]
+        , pypi "widget" "1.0.0"
+        , pypi "zope-interface" "6.0"
+        , pypi "charset-normalizer" "3.3.2"
+        , pypi "guarded" "0.1.0"
         ]
         graph
 
