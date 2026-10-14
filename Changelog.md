@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- pixi: Added static analysis support for `pixi.lock` (conda + PyPI packages) ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+- pixi: Local path packages are reported as path dependencies instead of skipped. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+- pixi: Dependency graphs now carry edges, so only true roots are reported as direct. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 
 ## 3.20.1

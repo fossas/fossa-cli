@@ -1,0 +1,47 @@
+# Local packages, spelled every way pixi spells them.
+#
+# `widget` appears twice -- once as a file:// URL in default, once as the bare
+# path in dev -- because both must normalize to one dependency carrying both
+# environments. The two conda entries are the interesting ones: neither is a
+# URL, so parseCondaArtifactUrl had nothing to read. The shallow one yielded
+# Nothing and the package vanished; the deeper one had enough segments to
+# produce a name built out of directories ('shared':pkgs:openblas).
+version: 6
+environments:
+  default:
+    channels:
+      - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+        - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
+        - conda: ./vendor/openssl-3.2.1-hd590300_0.conda
+        - conda: ../shared/pkgs/openblas-0.3.26-pthreads_h413a1c8_0.conda
+        - pypi: file:///home/me/pkgs/widget
+  dev:
+    channels:
+      - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+        - pypi: /home/me/pkgs/widget
+        - pypi: ./local/gadget
+packages:
+  - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
+    sha256: 5d7c0e5f0005f74112a34a7425179f4eb6e73c92f5d109e6af4ddeca407c92ab
+    license: Zlib
+    purls: []
+    size: 92286
+  - conda: ./vendor/openssl-3.2.1-hd590300_0.conda
+    license: Apache-2.0
+    size: 2891789
+  - conda: ../shared/pkgs/openblas-0.3.26-pthreads_h413a1c8_0.conda
+    license: BSD-3-Clause
+    size: 5461231
+  - pypi: file:///home/me/pkgs/widget
+    name: widget
+    version: 1.0.0
+  - pypi: /home/me/pkgs/widget
+    name: widget
+    version: 1.0.0
+  - pypi: ./local/gadget
+    name: gadget
+    version: 0.2.0
