@@ -9,6 +9,7 @@ import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   looksLikeSignInPath,
  )
 import Data.Maybe (isJust, isNothing)
+import Data.String.Conversion (toText)
 import Data.Text (Text, isInfixOf)
 import Data.Text qualified as Text
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
@@ -49,7 +50,7 @@ renderedText err = Text.unlines $ catHeader (renderDiagnostic err)
     catHeader e = maybe [] pure (errataHeader e) <> foldMap bodyText (errataBody e)
 
     bodyText :: Body -> [Text]
-    bodyText = pure . Text.pack . show
+    bodyText = pure . toText . show
 
 signInError :: FossaError
 signInError = SignInPageError $ SignInPageResponse apiRequest loginRequest (HTTP.mkStatus 200 "OK")
