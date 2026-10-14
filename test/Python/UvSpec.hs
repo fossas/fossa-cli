@@ -31,15 +31,15 @@ lock =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = ["dep1", "dep2"]
-            , uvlockPackageDevDependencies = ["dep3", "dep4"]
+            , uvlockPackageDependencies = map mkPackageDep ["dep1", "dep2"]
+            , uvlockPackageDevDependencies = map mkPackageDep ["dep3", "dep4"]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
             , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = ["dep4"]
+            , uvlockPackageDependencies = [mkPackageDep "dep4"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -55,7 +55,7 @@ lock =
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = ["dep6"]
+            , uvlockPackageDependencies = [mkPackageDep "dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -63,7 +63,7 @@ lock =
             { uvlockPackageName = "dep4"
             , uvlockPackageVersion = Just "1.0.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = ["dep5"]
+            , uvlockPackageDependencies = [mkPackageDep "dep5"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -99,9 +99,9 @@ lockNewStyleDevDeps =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = ["dep1", "dep2"]
+            , uvlockPackageDependencies = map mkPackageDep ["dep1", "dep2"]
             , uvlockPackageDevDependencies = []
-            , uvlockPackageOptionalDependencies = Map.fromList [("dev", ["dep3"])]
+            , uvlockPackageOptionalDependencies = Map.fromList [("dev", [mkPackageDep "dep3"])]
             }
         , UvLockPackage
             { uvlockPackageName = "dep1"
@@ -115,7 +115,7 @@ lockNewStyleDevDeps =
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = ["dep6"]
+            , uvlockPackageDependencies = [mkPackageDep "dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -143,8 +143,8 @@ lockEditableNoVersion =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Nothing
             , uvlockPackageSource = SourceEditable "."
-            , uvlockPackageDependencies = ["dep1"]
-            , uvlockPackageDevDependencies = ["dep3"]
+            , uvlockPackageDependencies = [mkPackageDep "dep1"]
+            , uvlockPackageDevDependencies = [mkPackageDep "dep3"]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -159,7 +159,7 @@ lockEditableNoVersion =
             { uvlockPackageName = "dep3"
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
-            , uvlockPackageDependencies = ["dep6"]
+            , uvlockPackageDependencies = [mkPackageDep "dep6"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -185,7 +185,7 @@ lockWithDirectory =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = ["dep1", "local-lib"]
+            , uvlockPackageDependencies = map mkPackageDep ["dep1", "local-lib"]
             , uvlockPackageDevDependencies = []
             , uvlockPackageOptionalDependencies = mempty
             }
@@ -207,6 +207,53 @@ lockWithDirectory =
             }
         ]
     }
+
+--       my-project
+--      /          \
+--   foo 1.0    foo 2.0 (dev)
+--                  |
+--                 bar
+lockSplitVersions :: UvLock
+lockSplitVersions =
+  UvLock
+    { uvlockPackages =
+        [ UvLockPackage
+            { uvlockPackageName = "my-project"
+            , uvlockPackageVersion = Just "0.1.0"
+            , uvlockPackageSource = SourceVirtual "."
+            , uvlockPackageDependencies = [UvLockPackageDependency "foo" (Just "1.0.0") Nothing]
+            , uvlockPackageDevDependencies = [UvLockPackageDependency "foo" (Just "2.0.0") Nothing]
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "foo"
+            , uvlockPackageVersion = Just "1.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "foo"
+            , uvlockPackageVersion = Just "2.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = [mkPackageDep "bar"]
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        , UvLockPackage
+            { uvlockPackageName = "bar"
+            , uvlockPackageVersion = Just "1.0.0"
+            , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
+            , uvlockPackageDependencies = []
+            , uvlockPackageDevDependencies = []
+            , uvlockPackageOptionalDependencies = mempty
+            }
+        ]
+    }
+
+mkPackageDep :: Text -> UvLockPackageDependency
+mkPackageDep name = UvLockPackageDependency name Nothing Nothing
 
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
@@ -303,6 +350,16 @@ spec = do
       expectDeps [dep1, localLib] result
       expectEdges [] result
 
+    it "should label each locked version with the environment that references it" $ do
+      let result = buildGraph lockSplitVersions
+      let fooProd = mkDep "foo" "1.0.0" [EnvProduction]
+      let fooDev = mkDep "foo" "2.0.0" [EnvDevelopment]
+      let bar = mkDep "bar" "1.0.0" [EnvDevelopment]
+
+      expectDirect [fooProd, fooDev] result
+      expectDeps [fooProd, fooDev, bar] result
+      expectEdges [(fooDev, bar)] result
+
   describe "parse uv.lock" $ do
     it' "correctly parse and interpret uv.lock" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv.lock|]
@@ -363,5 +420,30 @@ spec = do
       expectEdges'
         [ (anyio', idna')
         , (anyio', sniffio')
+        ]
+        result
+
+    it' "resolves dependencies on packages with multiple locked versions" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-multiple-versions.lock|]
+      uvlock <- readContentsToml path
+      let result = buildGraph uvlock
+      let numpyOld = mkDep "numpy" "2.2.6" [EnvProduction]
+      let numpyNew = mkDep "numpy" "2.4.6" [EnvProduction]
+      let pandasOld = mkDep "pandas" "2.3.3" [EnvProduction]
+      let pandasNew = mkDep "pandas" "3.0.3" [EnvProduction]
+      let pytestOld = mkDep "pytest" "8.4.2" [EnvDevelopment]
+      let pytestNew = mkDep "pytest" "9.0.3" [EnvDevelopment]
+      let pytz = mkDep "pytz" "2026.2" [EnvProduction]
+      let tomli = mkDep "tomli" "2.4.1" [EnvDevelopment]
+
+      expectDirect' [numpyOld, numpyNew, pandasOld, pandasNew, pytestOld, pytestNew] result
+      expectDeps'
+        [numpyOld, numpyNew, pandasOld, pandasNew, pytestOld, pytestNew, pytz, tomli]
+        result
+      expectEdges'
+        [ (pandasOld, numpyOld)
+        , (pandasOld, pytz)
+        , (pandasNew, numpyNew)
+        , (pytestOld, tomli)
         ]
         result

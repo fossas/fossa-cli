@@ -38,8 +38,9 @@ instance Toml.Schema.FromValue Gopkg where
   fromValue =
     Toml.Schema.parseTableFromValue $
       Gopkg
-        <$> Toml.Schema.reqKey "constraint"
-        <*> Toml.Schema.reqKey "override"
+        -- `dep` omits the `[[constraint]]` and `[[override]]` arrays entirely when there are none.
+        <$> Toml.Schema.pickKey [Toml.Schema.Key "constraint" Toml.Schema.fromValue, Toml.Schema.Else $ pure []]
+        <*> Toml.Schema.pickKey [Toml.Schema.Key "override" Toml.Schema.fromValue, Toml.Schema.Else $ pure []]
 
 data PkgConstraint = PkgConstraint
   { constraintName :: Text

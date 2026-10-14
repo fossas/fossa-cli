@@ -13,15 +13,15 @@ import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.Utils (itShouldFailWhenLabelsExceedFive, itShouldLoadFromTheConfiguredBaseDir, parseArgString)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
-import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Effect.Lift (Has, Lift)
 import Control.Exception (throw)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (..), combinedTargets)
 import Effect.Logger (renderIt)
-import Path (Abs, Dir, File, Path, parseAbsFile, parseRelFile, toFilePath, (</>))
-import Test.Effect (expectFatal', expectationFailure', it', itWithTempDir', shouldBe', shouldEndWith')
+import Path (Abs, File, Path, parseAbsFile)
+import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Types (DiscoveredProjectType, TargetFilter (TypeTarget))
 
@@ -165,37 +165,41 @@ spec = do
       expectFatal' $ mergeOpts Nothing Nothing envVars cliOpts
 
   describe "--x-workflow" $ do
-    it' "should default to Nothing when the flag is absent" $ do
+    it' "should default to False when the flag is absent" $ do
       cliOpts <- parseArgString cliParser ""
       workflow <- xWorkflow <$> mergeOpts Nothing Nothing envVars cliOpts
-      workflow `shouldBe'` Nothing
+      workflow `shouldBe'` False
 
-    itWithTempDir' "should resolve the flag to an absolute path" $ \tmpDir -> do
-      analyzer <- writeAnalyzer tmpDir
-      cliOpts <- parseArgString cliParser $ "--x-workflow " <> toFilePath analyzer
+    it' "should enable the workflow when the flag is present" $ do
+      cliOpts <- parseArgString cliParser "--x-workflow"
       workflow <- xWorkflow <$> mergeOpts Nothing Nothing envVars cliOpts
-      case workflow of
-        Nothing -> expectationFailure' "expected --x-workflow to resolve to a path"
-        Just resolved -> toFilePath resolved `shouldEndWith'` "analyzer.js"
+      workflow `shouldBe'` True
 
-    it' "should fail when the named analyzer does not exist" $ do
-      cliOpts <- parseArgString cliParser "--x-workflow /definitely/not/here/analyzer.js"
-      expectFatal' $ mergeOpts Nothing Nothing envVars cliOpts
+    -- The flag takes no argument, so a stray one is a target directory rather
+    -- than an analyzer path. Pinned because it used to name the analyzer, and
+    -- an old invocation must not silently analyze that path instead.
+    it' "should treat a following path as the scan target, not an analyzer" $ do
+      cliOpts <- parseArgString cliParser "--x-workflow /definitely/not/here"
+      failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected the trailing path to be read as the scan target"
+        -- Don't assert on the full POSIX path literal: Windows normalises
+        -- separators/drive letters, so "/definitely/not/here" never appears
+        -- verbatim in the rendered message there. Instead assert (a) the
+        -- failure is a missing-*directory* error -- the platform-independent
+        -- marker that the argument reached 'validateDir' (the scan-target
+        -- path), not the flag itself -- and (b) it still names a distinctive,
+        -- separator-free fragment of the path, so this can't pass on some
+        -- unrelated directory-not-found error.
+        Just rendered ->
+          (Text.isInfixOf "Directory does not exist" rendered && Text.isInfixOf "definitely" rendered) `shouldBe'` True
 
-    itWithTempDir' "should fail when combined with --static-only-analysis" $ \tmpDir -> do
-      analyzer <- writeAnalyzer tmpDir
-      cliOpts <- parseArgString cliParser $ "--static-only-analysis --x-workflow " <> toFilePath analyzer
+    it' "should fail when combined with --static-only-analysis" $ do
+      cliOpts <- parseArgString cliParser "--static-only-analysis --x-workflow"
       failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
       case failureText of
         Nothing -> expectationFailure' "expected --static-only-analysis with --x-workflow to be fatal"
         Just rendered -> Text.isInfixOf "--static-only-analysis" rendered `shouldBe'` True
-
--- | Create a file the CLI can resolve, so path resolution is never the reason a test fails.
-writeAnalyzer :: (Has (Lift IO) sig m) => Path Abs Dir -> m (Path Abs File)
-writeAnalyzer tmpDir = do
-  let analyzer = tmpDir </> mustParse parseRelFile "analyzer.js"
-  sendIO $ writeFile (toFilePath analyzer) "// stub\n"
-  pure analyzer
 
 -- | 'expectFatal'' only reports that a failure happened; the message is what
 -- distinguishes the flag conflict from an unrelated failure on the same path.

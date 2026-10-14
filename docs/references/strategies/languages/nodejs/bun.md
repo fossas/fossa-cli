@@ -45,6 +45,13 @@ Package keys use a slash-delimited path for nested `node_modules`:
 
 - `"lodash"` — top-level package
 - `"cross-spawn/which"` — `which` nested under `cross-spawn`
+- `"app/react"` — `react` nested under the workspace package `app`
+- `"@acme/lib/@babel/core"` — scoped names count as one path segment
+
+Bun nests a package this way when more than one version of it is installed.
+The CLI resolves each dependency the way Node's `node_modules` lookup does.
+It tries the parent's own nested key first, then each ancestor's, and finally
+the top-level key, so every installed version is reported.
 
 Package values are variable-length arrays depending on the resolution type:
 
