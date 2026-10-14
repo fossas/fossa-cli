@@ -277,7 +277,7 @@ setMgrFromReader = do
       , httpConfigCheckResponse = checkResponseOrSignIn
       }
 
--- | An API call that landed on a sign-in page; the landing URL is the diagnosis.
+-- | An API request that was redirected to a sign-in page.
 data SignInPageResponse = SignInPageResponse
   { signInRequested :: HTTP.Request
   , signInLanded :: HTTP.Request
@@ -286,28 +286,23 @@ data SignInPageResponse = SignInPageResponse
 
 instance Exception SignInPageResponse
 
--- | The configured check runs first, so a non-2xx keeps its own diagnosis.
+-- | The default response check, then sign-in page detection.
 checkResponseOrSignIn :: HTTP.Request -> HTTP.Response b -> BS.ByteString -> Maybe HTTP.HttpExceptionContent
 checkResponseOrSignIn sent res preview =
   case httpConfigCheckResponse httpConfigRetryTimeouts sent res preview of
     Just hec -> Just hec
     Nothing -> checkForSignInPage sent res
 
--- | Did FOSSA redirect this API call to its login page? It 401s a bad key, so
--- landing on @\/auth\/login@ means the credential never arrived -- in
--- practice a proxy stripping @Authorization@.
---
--- Keyed on the redirect TARGET rather than on @text\/html@. A content-type
--- check would also fire on @fossa report attribution --format html@, which
--- returns HTML through this same client, and 'httpConfigCheckResponse' is
--- type-erased over the response body so it cannot tell which was expected.
+-- | A redirect to a login page means the API key never arrived, usually
+-- because a proxy stripped it. Matches the path, not @text\/html@, since
+-- attribution reports legitimately return HTML.
 checkForSignInPage :: HTTP.Request -> HTTP.Response b -> Maybe HTTP.HttpExceptionContent
 checkForSignInPage sent res
   | redirected && "/login" `Text.isInfixOf` Text.toLower (decodeUtf8 $ HTTP.path landed) =
       Just . HTTP.InternalException . toException $ SignInPageResponse sent landed
   | otherwise = Nothing
   where
-    -- Set per response, so after a redirect chain this is the final hop.
+    -- Despite the name, this is the final request after redirects.
     landed :: HTTP.Request
     landed = HTTP.getOriginalRequest res
 
@@ -404,7 +399,7 @@ responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
 data FossaError
   = JsonDeserializeError String
   | InternalException SomeException
-  | -- | The transport status, so a decoded 401 can still be told apart.
+  | -- | The HTTP status, so a 401 can show API key help.
     BackendPublicFacingError HTTP.Status FossaPublicFacingError
   | InvalidUrlError String String
   | StatusCodeError HTTP.Request (HTTP.Response ())
@@ -451,7 +446,6 @@ instance ToDiagnostic FossaError where
       let header = "An error occurred when deserializing a response from the FOSSA API: " <> toText err
       Errata (Just header) [] Nothing
     SignInPageError SignInPageResponse{..} -> do
-      -- One thing to check: a longer list would put "verify your API key" back.
       let header = "The FOSSA endpoint returned a sign-in page instead of API data"
           content =
             renderIt $
@@ -473,7 +467,6 @@ instance ToDiagnostic FossaError where
       let header = fpeMessage pfe
           content = "Error UUID from API: " <> fpeUuid pfe
           support = (renderIt reportDefectMsg) <> ". Please include the error UUID in your request."
-          -- Only a 401 implicates the key; anything wider is the misdirection this fixes.
           isUnauthorized = statusCode status == 401
           documentation = if isUnauthorized then Just apiKeyUrl else Nothing
           help =

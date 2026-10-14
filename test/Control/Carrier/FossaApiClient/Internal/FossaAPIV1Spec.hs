@@ -20,7 +20,7 @@ import Network.HTTP.Client.Internal qualified as HTTP
 import Network.HTTP.Types qualified as HTTP
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 
--- | A 200 whose only interesting field is where the redirect chain ended.
+-- | A 200 response whose redirect chain ended at the given URL.
 responseLandingOn :: HTTP.Request -> HTTP.Response ()
 responseLandingOn landed =
   HTTP.Response
@@ -34,7 +34,7 @@ responseLandingOn landed =
     , HTTP.responseEarlyHints = []
     }
 
--- Both ends of the real ANE-3292 redirect, from app.fossa.com with no Authorization header.
+-- What app.fossa.com does when no Authorization header arrives (ANE-3292).
 apiRequest :: HTTP.Request
 apiRequest = HTTP.parseRequest_ "https://app.fossa.com/api/cli/organization"
 
@@ -78,7 +78,7 @@ spec = do
       renderedText (backendError 401) `shouldSatisfy` isInfixOf "generating-an-api-key"
 
     it "attaches neither on any other status" $ do
-      -- Checked for the backend message first, so a blank render cannot pass.
+      -- So a blank render can't pass.
       renderedText (backendError 500) `shouldSatisfy` isInfixOf "API token is invalid"
       renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "FOSSA_API_KEY")
       renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "generating-an-api-key")

@@ -67,8 +67,7 @@ preflightChecks cmd = context "preflight-checks" $ do
   fatalOnIOException "Failed to write to temp directory" . sendIO $ TIO.writeFile (fromAbsFile file) "Writing to temp dir"
   sendIO $ removeFile file
 
-  -- Unwrapped deliberately: key help here attached to every failure, not just
-  -- a 401. 'BackendPublicFacingError' now attaches it on a 401 alone.
+  -- Check for valid API Key and if user can connect to fossa app
   org <- getOrganization
 
   when (orgSupportsPreflightChecks org) $
