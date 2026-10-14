@@ -457,14 +457,12 @@ instance ToDiagnostic FossaError where
             renderIt $
               vsep
                 [ newlineTrailing "Response:" <+> renderRequest signInLanded
-                , "The request was redirected to a sign-in page. FOSSA rejects an invalid API key"
-                , "with a 401 and a JSON error, so a sign-in page means the request arrived"
-                , "without credentials -- the Authorization header was most likely removed in"
-                , "transit by a proxy or other network appliance."
+                , "The request was redirected to a sign-in page. This normally means the request"
+                , "arrived without credentials. The Authorization header was most likely removed"
+                , "in transit by a proxy or other network appliance."
                 , ""
-                , "Your API key is probably fine. Check whether anything between this machine and"
-                , "the endpoint strips or rewrites the Authorization header, and allow it through"
-                , "for this endpoint."
+                , "The supplied API key is likel fine. Check whether anything, like a proxy,"
+                , "between this machine and the endpoint strips or rewrites the Authorization header."
                 , ""
                 , reportNetworkErrorMsg
                 ]
