@@ -461,7 +461,7 @@ instance ToDiagnostic FossaError where
                 , "arrived without credentials. The Authorization header was most likely removed"
                 , "in transit by a proxy or other network appliance."
                 , ""
-                , "The supplied API key is likel fine. Check whether anything, like a proxy,"
+                , "The supplied API key is likely fine. Check whether anything, like a proxy,"
                 , "between this machine and the endpoint strips or rewrites the Authorization header."
                 , ""
                 , reportNetworkErrorMsg
