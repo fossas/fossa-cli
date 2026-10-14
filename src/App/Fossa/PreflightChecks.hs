@@ -71,10 +71,10 @@ preflightChecks cmd = context "preflight-checks" $ do
   --
   -- Unwrapped deliberately. This used to carry "ensure you are using a valid
   -- FOSSA_API_KEY", which attached to EVERY error escaping getOrganization --
-  -- decode failures, timeouts, TLS faults, refused connections. A genuine 401
-  -- already renders the backend's own "API token is invalid", so the
-  -- diagnosis survives; what is lost is the key-generation docs link on that
-  -- one case, which is worth it to stop misdirecting every other case.
+  -- decode failures, timeouts, TLS faults, refused connections. The key help
+  -- and its docs link now come from the 401 branch of
+  -- 'BackendPublicFacingError' instead, so they still reach the one case that
+  -- earns them without being spread over the ones that do not.
   org <- getOrganization
 
   when (orgSupportsPreflightChecks org) $

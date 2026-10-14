@@ -4,6 +4,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1Spec (spec) where
 
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   FossaError (..),
+  FossaPublicFacingError (..),
   SignInPageResponse (..),
   checkForSignInPage,
   looksLikeSignInPath,
@@ -55,6 +56,13 @@ renderedText err = Text.unlines $ catHeader (renderDiagnostic err)
 signInError :: FossaError
 signInError = SignInPageError $ SignInPageResponse apiRequest loginRequest (HTTP.mkStatus 200 "OK")
 
+-- | A decoded backend error, as FOSSA returns for a rejected credential.
+backendError :: Int -> FossaError
+backendError code =
+  BackendPublicFacingError
+    (HTTP.mkStatus code "")
+    (FossaPublicFacingError "API token is invalid" "a1b2c3")
+
 spec :: Spec
 spec = do
   describe "looksLikeSignInPath" $ do
@@ -105,6 +113,26 @@ spec = do
     it "points at the one thing worth checking" $
       renderedText signInError `shouldSatisfy` isInfixOf "Authorization header"
 
+  describe "a decoded backend error" $ do
+    it "blames the key on a 401, where the key really is the problem" $ do
+      -- The help and the docs link used to come from a blanket errHelp in
+      -- PreflightChecks that fired on everything; they now ride the one
+      -- status that implicates the credential.
+      renderedText (backendError 401) `shouldSatisfy` isInfixOf "FOSSA_API_KEY"
+      renderedText (backendError 401) `shouldSatisfy` isInfixOf "generating-an-api-key"
+
+    it "says nothing about the key on any other status" $ do
+      renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "FOSSA_API_KEY")
+      renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "generating-an-api-key")
+
+    it "still renders the backend message and UUID whatever the status" $
+      mapM_
+        ( \code -> do
+            renderedText (backendError code) `shouldSatisfy` isInfixOf "API token is invalid"
+            renderedText (backendError code) `shouldSatisfy` isInfixOf "a1b2c3"
+        )
+        [401, 500]
+
   describe "errors that are not about the API key" $
     it "never tells the user to regenerate their key" $
       -- These all used to inherit "ensure you are using a valid
@@ -123,4 +151,5 @@ spec = do
         , TlsNotSupportedError apiRequest
         , ConnectionClosedError apiRequest
         , ProxyConnectError apiRequest "proxy.invalid" 8080 (HTTP.mkStatus 502 "")
+        , backendError 500
         ]

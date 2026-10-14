@@ -86,7 +86,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getOrgLabels,
 ) where
 
-import App.Docs (fossaSslCertDocsUrl)
+import App.Docs (apiKeyUrl, fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Report.Attribution qualified as Attr
@@ -426,7 +426,11 @@ responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
 data FossaError
   = JsonDeserializeError String
   | InternalException SomeException
-  | BackendPublicFacingError FossaPublicFacingError
+  | -- | Carries the TRANSPORT status, not the body's self-reported
+    -- @httpStatusCode@: it is what the server actually answered with, and
+    -- it is the only thing that distinguishes a rejected credential from
+    -- any other backend failure once the body has been decoded.
+    BackendPublicFacingError HTTP.Status FossaPublicFacingError
   | InvalidUrlError String String
   | StatusCodeError HTTP.Request (HTTP.Response ())
   | TooManyRedirectsError [(HTTP.Request, HTTP.Response ByteString)]
@@ -494,11 +498,21 @@ instance ToDiagnostic FossaError where
           ctx = "Provided request: " <> renderIt (renderRequest signInRequested)
           body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
       Errata (Just header) [] (Just body)
-    BackendPublicFacingError pfe -> do
+    BackendPublicFacingError status pfe -> do
       let header = fpeMessage pfe
           content = "Error UUID from API: " <> fpeUuid pfe
           support = (renderIt reportDefectMsg) <> ". Please include the error UUID in your request."
-          body = createBody (Just content) Nothing (Just support) Nothing Nothing
+          -- 401 is the only status that implicates the credential, so it is
+          -- the only one that gets the key help and the generation docs.
+          -- Attaching them any wider is what sent users rotating a key that
+          -- was never the problem.
+          isUnauthorized = statusCode status == 401
+          documentation = if isUnauthorized then Just apiKeyUrl else Nothing
+          help =
+            if isUnauthorized
+              then Just "Ensure that you are using a valid FOSSA_API_KEY. Refer to the provided documentation for guidance on how to generate and retrieve your API key."
+              else Nothing
+          body = createBody (Just content) documentation (Just support) help Nothing
       Errata (Just header) [] (Just body)
     InvalidUrlError url reason -> do
       let header = "The URL provided is invalid"
@@ -898,7 +912,7 @@ mangleError err = case errWithoutSensitiveInfo of
   VanillaHttpException he -> case he of
     HTTP.HttpExceptionRequest ereq hec -> case hec of
       HTTP.StatusCodeException res respBody -> case decodeStrict respBody of
-        Just pfe -> BackendPublicFacingError pfe
+        Just pfe -> BackendPublicFacingError (HTTP.responseStatus res) pfe
         Nothing -> StatusCodeError ereq res
       HTTP.TooManyRedirects res -> TooManyRedirectsError $ fmap (ereq,) res
       HTTP.OverlongHeaders -> OverlongHeadersError ereq
