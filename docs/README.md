@@ -45,7 +45,6 @@ Concept guides explain the nuances behind how basic FOSSA primitives work. If yo
 - [Debugging an Integration](./references/debugging/README.md)
 - [Analysis target configuration](./walkthroughs/analysis-target-configuration.md)
 - [Custom integration](./walkthroughs/custom-integrating-with-bower-example.md)
-- [Integrating a Conan Project](./walkthroughs/conan.md)
 - [Configuring SSL/TLS Support Manually](./walkthroughs/ssl-cert.md)
 - [Using FOSSA CLI with HTTP Proxies](./walkthroughs/proxy-configuration.md)
 - [Integrating Container Scanning in CI](./walkthroughs/container-scanning-generic-ci.md)

@@ -15,13 +15,13 @@ module Strategy.Swift.PackageSwift (
 ) where
 
 import Control.Applicative (Alternative ((<|>)), optional)
-import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
-import Control.Monad (void)
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warn, warnOnErr)
+import Control.Monad (void, when)
 import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.List (foldl')
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, mapMaybe)
 import Data.Set (Set, fromList, member)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text, intercalate)
@@ -31,7 +31,7 @@ import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
 import Path
-import Strategy.Swift.Errors (MissingPackageResolvedFile (..), MissingPackageResolvedFileHelp (..), swiftFossaDocUrl, swiftPackageResolvedRef, xcodeCoordinatePkgVersion)
+import Strategy.Swift.Errors (MissingPackageResolvedFile (..), MissingPackageResolvedFileHelp (..), SkippedComputedDependencies (..), swiftFossaDocUrl, swiftPackageResolvedRef, xcodeCoordinatePkgVersion)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile, resolvedDependenciesOf)
 import Text.Megaparsec (
   MonadParsec (takeWhile1P, try),
@@ -40,13 +40,13 @@ import Text.Megaparsec (
   between,
   empty,
   many,
-  noneOf,
+  option,
   sepEndBy,
   sepEndBy1,
   skipManyTill,
   some,
  )
-import Text.Megaparsec.Char (digitChar, space1)
+import Text.Megaparsec.Char (char, digitChar, space1)
 import Text.Megaparsec.Char.Lexer qualified as Lexer
 
 -- | Parsing
@@ -58,7 +58,7 @@ sc =
   Lexer.space
     space1
     (Lexer.skipLineComment "//")
-    (Lexer.skipBlockComment "/*" "*/")
+    (Lexer.skipBlockCommentNested "/*" "*/")
 
 lexeme :: Parser a -> Parser a
 lexeme = Lexer.lexeme sc
@@ -151,6 +151,9 @@ data SwiftPackage = SwiftPackage
 data SwiftPackageDep
   = GitSource SwiftPackageGitDep
   | PathSource Text
+  | -- | Stands for dependencies written as Swift code the parser cannot evaluate (see
+    -- 'parsePackageDependencies'); they are only reported through Package.resolved.
+    SkippedDependencies
   deriving (Show, Eq, Ord)
 
 data SwiftPackageGitDep = SwiftPackageGitDep
@@ -269,15 +272,47 @@ parsePackageDependencies = do
             key <- parseKey
             case key of
               "dependencies" -> parseDeps
-              _ -> parseNonDepArray <|> (parseQuotedText $> []) <|> parseIdentifier
+              -- Any other argument (name, products, targets, ...) is skipped, whatever Swift
+              -- expression it is: a literal, an identifier, or a closure such as
+              -- `targets: { var targets: [Target] = [...]; return targets }()`.
+              _ -> skipExpression $> []
         )
         (symbol ",")
   where
     parseKey = try $ lexeme $ takeWhile1P (Just "package key") (/= ':') <* symbol ":"
-    parseDeps = betweenSquareBrackets (sepEndBy (lexeme parsePackageDep) $ symbol ",")
-    parseIdentifier = takeWhile1P (Just "parse identifier") (`notElem` (",()[]" :: String)) $> []
-    nestedBrackets = void $ betweenSquareBrackets $ many (nestedBrackets <|> void (noneOf ("[]" :: String)))
-    parseNonDepArray = nestedBrackets $> []
+    -- The dependency list is usually an array literal, but manifests also build it in Swift:
+    -- `dependencies: dependencies` or `dependencies: generateDependencies()` (skipped as a whole),
+    -- `[...] + (flag ? [...] : [])` (the literal part is parsed, the rest skipped), or an array
+    -- mixing `.package(...)` entries with calls like `googleAppMeasurementDependency()` (only the
+    -- calls are skipped). Whatever is skipped is recorded as a 'SkippedDependencies' entry so that
+    -- the analysis can warn about it.
+    parseDeps = literalDeps <|> skipped
+    literalDeps = (<>) <$> betweenSquareBrackets (sepEndBy (lexeme parsePackageDep <|> skippedDep) (symbol ",")) <*> option [] skipped
+    skipped = skipExpression $> [SkippedDependencies]
+    skippedDep = skipExpression $> SkippedDependencies
+
+-- | Skips a (non-empty) Swift expression we don't need to understand, stopping before the first ','
+-- or closing bracket that isn't nested inside it. Brackets, string literals and comments are
+-- balanced, so a ',' or ')' inside them doesn't end the expression early.
+skipExpression :: Parser ()
+skipExpression = void $ some $ expressionPiece ","
+
+-- | One piece of an expression: a comment, a string literal, a bracketed group (inside which a ','
+-- doesn't end the expression) or a run of any other characters except the given terminators.
+expressionPiece :: String -> Parser ()
+expressionPiece terminators =
+  asum
+    [ Lexer.skipLineComment "//"
+    , Lexer.skipBlockCommentNested "/*" "*/"
+    , void $ char '"' *> skipManyTill (void (char '\\' *> anySingle) <|> void anySingle) (char '"')
+    , nested '(' ')'
+    , nested '[' ']'
+    , nested '{' '}'
+    , void $ takeWhile1P (Just "expression") (`notElem` ("/\"()[]{}" <> terminators))
+    , void $ char '/'
+    ]
+  where
+    nested open close = between (char open) (char close) (void $ many $ expressionPiece "")
 
 parseSwiftToolVersion :: Parser Text
 parseSwiftToolVersion =
@@ -298,6 +333,9 @@ parsePackageSwiftFile = do
 analyzePackageSwift :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> Maybe (Path Abs File) -> m (Graphing.Graphing Dependency)
 analyzePackageSwift manifestFile resolvedFile = do
   manifestContent <- context "Identifying dependencies in Package.swift" $ readContentsParser parsePackageSwiftFile manifestFile
+  when (SkippedDependencies `elem` packageDependencies manifestContent) $
+    warn $
+      SkippedComputedDependencies manifestFile
 
   packageResolvedContent <- case resolvedFile of
     Nothing ->
@@ -332,14 +370,16 @@ buildGraph manifestContent maybeResolvedContent =
     isDirect s dep = (dependencyName dep) `member` s
 
     depInManifest :: Set Text
-    depInManifest = fromList $ map getName $ packageDependencies manifestContent
+    depInManifest = fromList $ mapMaybe getName $ packageDependencies manifestContent
 
-    getName :: SwiftPackageDep -> Text
-    getName (PathSource path) = path
-    getName (GitSource pkg) = srcOf pkg
+    getName :: SwiftPackageDep -> Maybe Text
+    getName (PathSource path) = Just path
+    getName (GitSource pkg) = Just $ srcOf pkg
+    getName SkippedDependencies = Nothing
 
 toDependency :: SwiftPackageDep -> Maybe Dependency
 toDependency (PathSource _) = Nothing
+toDependency SkippedDependencies = Nothing
 toDependency (GitSource pkgDep) =
   Just $
     Dependency

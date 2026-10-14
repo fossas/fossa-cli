@@ -66,7 +66,7 @@ spec :: Spec
 spec = do
   contents <- runIO (TIO.readFile "test/Go/testdata/Gopkg.lock")
 
-  describe "analyze" $
+  describe "analyze" $ do
     it "should produce expected output" $ do
       case Toml.decode contents of
         Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
@@ -87,6 +87,12 @@ spec = do
                        , "32:3: unexpected key: packages in projects[2]"
                        , "33:3: unexpected key: pruneopts in projects[2]"
                        ]
+
+    it "should parse a Gopkg.lock without any projects" $ do
+      noDeps <- TIO.readFile "test/Go/testdata/Gopkg.lock.nodeps"
+      case Toml.decode noDeps of
+        Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
+        Toml.Success _ golock -> lockProjects golock `shouldBe` []
 
   describe "buildGraph" $
     it "should produce expected output" $ do

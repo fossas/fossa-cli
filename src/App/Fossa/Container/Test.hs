@@ -3,6 +3,7 @@
 
 module App.Fossa.Container.Test (
   test,
+  reportIssues,
 ) where
 
 import App.Fossa.API.BuildWait (
@@ -20,14 +21,15 @@ import App.Types (LocatorType (..), OverrideProject (OverrideProject, overrideBr
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (logSticky, runStickyLogger)
-import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Lift (Has, Lift, sendIO)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Lift (Has, Lift)
 import Control.Monad (void)
 import Control.Timeout (timeout')
 import Data.Aeson qualified as Aeson
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
+import Data.Text.Extra (showT)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -39,7 +41,6 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS)
 import Fossa.API.Types (Issues (..))
-import System.Exit (exitFailure)
 
 extractRevision :: OverrideProject -> Text -> Text -> ProjectRevision
 extractRevision OverrideProject{..} imageTag imageDigest =
@@ -78,13 +79,32 @@ test ContainerTestConfig{..} = do
       issues <- waitForIssues revision Nothing LocatorTypeCustom cancelToken
       logSticky ""
 
-      case issuesCount issues of
-        0 -> logInfo "Test passed! 0 issues found"
-        n -> do
-          logError $ "Test failed. Number of issues found: " <> pretty n
-          if null (issuesIssues issues)
-            then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
-            else case outputFormat of
-              TestOutputPretty -> logError $ pretty issues
-              TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
-          sendIO exitFailure
+      reportIssues outputFormat issues
+
+-- | Report the issues found for the scanned image, failing the command when
+-- there are any.
+--
+-- The failure goes through 'Diagnostics' (as @fossa test@ does) rather than
+-- 'System.Exit.exitFailure': the subcommand runner catches every synchronous
+-- exception thrown inside its effect stack, @ExitCode@ included, and reports it
+-- as a diagnostic, so exiting from here surfaced a spurious
+-- @An exception occurred:ExitFailure 1@ instead of the failure message.
+reportIssues ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  TestOutputFormat ->
+  Issues ->
+  m ()
+reportIssues outputFormat issues =
+  case issuesCount issues of
+    0 -> logInfo "Test passed! 0 issues found"
+    n -> do
+      logError $ "Test failed. Number of issues found: " <> pretty n
+      if null (issuesIssues issues)
+        then logError "Check webapp for more details, or use a full-access API key (currently using a push-only API key)"
+        else case outputFormat of
+          TestOutputPretty -> logError $ pretty issues
+          TestOutputJson -> logStdout . decodeUtf8 . Aeson.encode $ issues
+      fatalText $ "The scan has revealed issues. Number of issues found: " <> showT n

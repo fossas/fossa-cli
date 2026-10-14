@@ -105,6 +105,14 @@ manifestWithDependencies deps =
          , ")"
          ]
 
+-- | A minimal Package.swift whose `Package(...)` call takes the given arguments verbatim.
+manifestWithArguments :: [Text] -> Text
+manifestWithArguments arguments =
+  Text.unlines $
+    ["// swift-tools-version:5.7", "import PackageDescription", "", "let package = Package("]
+      <> [Text.intercalate ",\n" arguments]
+      <> [")"]
+
 spec :: Spec
 spec = do
   packageDotSwiftFile <- runIO (TIO.readFile "test/Swift/testdata/Package.swift")
@@ -166,7 +174,42 @@ spec = do
               , PathSource "../local"
               ]
 
+  -- Manifests also build `Package(...)` arguments with Swift code instead of literals. These used to
+  -- fail the whole analysis with `unexpected 'd' expecting '['` (GRDB.swift, BlueRSA),
+  -- `unexpected 'g' expecting ".package" or ']'` (firebase-ios-sdk), `unexpected '+' expecting ')' or ','`
+  -- (tidal-sdk-ios), `unexpected '[' expecting ')', ',', or parse identifier` (Quick, Nimble) or
+  -- `unexpected '"' expecting quoted text` (swift-navigation's Examples).
+  describe "Parses Package.swift arguments that are Swift expressions" $ do
+    let argumentParser = ".package(url: \"https://github.com/apple/swift-argument-parser\", from: \"1.0.0\")"
+        expectedArgumentParser = [GitSource $ gitDepFrom "https://github.com/apple/swift-argument-parser" "1.0.0"]
+        cases :: [(String, [Text], [SwiftPackageDep])]
+        cases =
+          [ ("dependencies given as an identifier", ["name: \"Example\"", "dependencies: dependencies"], [SkippedDependencies])
+          , ("dependencies given as a function call", ["name: \"Example\"", "dependencies: generateDependencies()"], [SkippedDependencies])
+          , ("a function call among the .package entries", ["dependencies: [\n googleAppMeasurementDependency(),\n " <> argumentParser <> ",\n]"], SkippedDependencies : expectedArgumentParser)
+          , ("a dependency array concatenated with a conditional one", ["dependencies: [" <> argumentParser <> "] + (includeDocC ? [.package(url: \"https://github.com/apple/swift-docc-plugin\", from: \"1.0.0\")] : [])"], expectedArgumentParser <> [SkippedDependencies])
+          , ("an empty string argument", ["name: \"\"", "dependencies: [" <> argumentParser <> "]"], expectedArgumentParser)
+          , ("a nested block comment", ["name: /* outer /* inner */ , */ \"Example\"", "dependencies: [" <> argumentParser <> "]"], expectedArgumentParser)
+          ,
+            ( "a closure argument"
+            ,
+              [ "targets: {\n var targets: [Target] = [.target(name: \"Example\", dependencies: [\"Nimble\"])]\n#if os(macOS)\n targets.append(.target(name: \"ExampleObjC\")) // (macOS only)\n#endif\n return targets\n}()"
+              , "dependencies: [" <> argumentParser <> "]"
+              ]
+            , expectedArgumentParser
+            )
+          ]
+    for_ cases $ \(description, arguments, expected) ->
+      it ("should parse " <> description) $
+        case runParser parsePackageSwiftFile "" (manifestWithArguments arguments) of
+          Left failCode -> expectationFailure $ show failCode
+          Right result -> result `shouldBe` SwiftPackage "5.7" expected
+
   describe "buildGraph, when no resolved content is discovered" $ do
+    it "should ignore skipped dependencies" $ do
+      let graph = buildGraph (SwiftPackage "5.7" [SkippedDependencies, GitSource $ gitDepExactly "some-url" "1.0.0"]) Nothing
+      expectDeps [Dependency GitType "some-url" (Just $ CEq "1.0.0") [] mempty Map.empty] graph
+
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDeps =
             [ Dependency GitType "some-url" (CEq <$> Just "some-ref") [] mempty Map.empty
