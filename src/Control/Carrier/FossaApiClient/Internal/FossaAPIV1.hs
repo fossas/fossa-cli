@@ -50,7 +50,6 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   FossaPublicFacingError (..),
   SignInPageResponse (..),
   checkForSignInPage,
-  looksLikeSignInPath,
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -278,37 +277,25 @@ setMgrFromReader = do
       , httpConfigCheckResponse = checkResponseOrSignIn
       }
 
--- | The endpoint answered an API call with a sign-in page.
---
--- Carries both ends of the redirect because the landing URL is the whole
--- diagnosis: it is what distinguishes "your credential never arrived" from
--- every other way a response can fail to parse.
+-- | An API call that landed on a sign-in page; the landing URL is the diagnosis.
 data SignInPageResponse = SignInPageResponse
   { signInRequested :: HTTP.Request
   , signInLanded :: HTTP.Request
-  , signInStatus :: HTTP.Status
   }
   deriving (Show)
 
 instance Exception SignInPageResponse
 
--- | Fall back to the configured check, then look for a sign-in page.
---
--- Ordered so a non-2xx keeps the diagnosis it already has; this only claims
--- responses that otherwise look like success.
+-- | The configured check runs first, so a non-2xx keeps its own diagnosis.
 checkResponseOrSignIn :: HTTP.Request -> HTTP.Response b -> BS.ByteString -> Maybe HTTP.HttpExceptionContent
 checkResponseOrSignIn sent res preview =
   case httpConfigCheckResponse httpConfigRetryTimeouts sent res preview of
     Just hec -> Just hec
     Nothing -> checkForSignInPage sent res
 
--- | Was this request answered by a sign-in page rather than by the API?
---
--- FOSSA rejects an invalid key with a 401 and a JSON body, so a sign-in page
--- means the credential never arrived at all -- in practice a proxy stripping
--- @Authorization@, after which FOSSA 302s to @\/auth\/login@ and http-client
--- follows the redirect. What surfaced before was aeson failing on
--- @\<!DOCTYPE html>@, which names neither the proxy nor the missing header.
+-- | Did FOSSA redirect this API call to its login page? It 401s a bad key, so
+-- landing on @\/auth\/login@ means the credential never arrived -- in
+-- practice a proxy stripping @Authorization@.
 --
 -- Keyed on the redirect TARGET rather than on @text\/html@. A content-type
 -- check would also fire on @fossa report attribution --format html@, which
@@ -316,9 +303,8 @@ checkResponseOrSignIn sent res preview =
 -- type-erased over the response body so it cannot tell which was expected.
 checkForSignInPage :: HTTP.Request -> HTTP.Response b -> Maybe HTTP.HttpExceptionContent
 checkForSignInPage sent res
-  | redirected && looksLikeSignInPath (decodeUtf8 $ HTTP.path landed) =
-      Just . HTTP.InternalException . toException $
-        SignInPageResponse sent landed (HTTP.responseStatus res)
+  | redirected && "/login" `Text.isInfixOf` Text.toLower (decodeUtf8 $ HTTP.path landed) =
+      Just . HTTP.InternalException . toException $ SignInPageResponse sent landed
   | otherwise = Nothing
   where
     -- Set per response, so after a redirect chain this is the final hop.
@@ -327,14 +313,6 @@ checkForSignInPage sent res
 
     redirected :: Bool
     redirected = HTTP.path landed /= HTTP.path sent || HTTP.host landed /= HTTP.host sent
-
--- | Does this path look like somewhere a human signs in?
---
--- Only ever asked of a path we were redirected to while calling a JSON API,
--- which is what keeps the list this blunt without matching real endpoints.
-looksLikeSignInPath :: Text -> Bool
-looksLikeSignInPath path' =
-  any (`Text.isInfixOf` Text.toLower path') ["/auth/login", "/login", "/signin", "/sign-in", "/sso/"]
 
 type APIClientEffs sig m = (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m, Has (Reader HTTP.Manager) sig m)
 
@@ -426,10 +404,7 @@ responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
 data FossaError
   = JsonDeserializeError String
   | InternalException SomeException
-  | -- | Carries the TRANSPORT status, not the body's self-reported
-    -- @httpStatusCode@: it is what the server actually answered with, and
-    -- it is the only thing that distinguishes a rejected credential from
-    -- any other backend failure once the body has been decoded.
+  | -- | The transport status, so a decoded 401 can still be told apart.
     BackendPublicFacingError HTTP.Status FossaPublicFacingError
   | InvalidUrlError String String
   | StatusCodeError HTTP.Request (HTTP.Response ())
@@ -476,14 +451,12 @@ instance ToDiagnostic FossaError where
       let header = "An error occurred when deserializing a response from the FOSSA API: " <> toText err
       Errata (Just header) [] Nothing
     SignInPageError SignInPageResponse{..} -> do
-      -- Deliberately ONE thing to check. The whole point is removing the
-      -- false lead, and any list long enough to be a checklist would have to
-      -- put "verify your API key" back on it.
+      -- One thing to check: a longer list would put "verify your API key" back.
       let header = "The FOSSA endpoint returned a sign-in page instead of API data"
           content =
             renderIt $
               vsep
-                [ newlineTrailing "Response:" <+> renderResponse' signInStatus <+> "from" <+> renderRequestUrl signInLanded
+                [ newlineTrailing "Response:" <+> renderRequest signInLanded
                 , "The request was redirected to a sign-in page. FOSSA rejects an invalid API key"
                 , "with a 401 and a JSON error, so a sign-in page means the request arrived"
                 , "without credentials -- the Authorization header was most likely removed in"
@@ -502,10 +475,7 @@ instance ToDiagnostic FossaError where
       let header = fpeMessage pfe
           content = "Error UUID from API: " <> fpeUuid pfe
           support = (renderIt reportDefectMsg) <> ". Please include the error UUID in your request."
-          -- 401 is the only status that implicates the credential, so it is
-          -- the only one that gets the key help and the generation docs.
-          -- Attaching them any wider is what sent users rotating a key that
-          -- was never the problem.
+          -- Only a 401 implicates the key; anything wider is the misdirection this fixes.
           isUnauthorized = statusCode status == 401
           documentation = if isUnauthorized then Just apiKeyUrl else Nothing
           help =
@@ -951,19 +921,6 @@ renderRequestResponse request response = renderRequest request <> " -> " <> rend
 -- TODO: Possibly render it 'viaShow' in debug mode for more info.
 renderResponse :: HTTP.Response a -> Doc AnsiStyle
 renderResponse = pretty . show . HTTP.statusCode . HTTP.responseStatus
-
-renderResponse' :: HTTP.Status -> Doc AnsiStyle
-renderResponse' = pretty . show . HTTP.statusCode
-
--- | 'renderRequest' without the method, for naming a URL we did not choose.
-renderRequestUrl :: HTTP.Request -> Doc AnsiStyle
-renderRequestUrl req' =
-  pretty $
-    (if HTTP.secure req' then "https" else "http" :: String)
-      <> "://"
-      <> decodeUtf8 (HTTP.host req')
-      <> decodeUtf8 (HTTP.path req')
-      <> decodeUtf8 (HTTP.queryString req')
 
 -- Render request details for humans to read.
 -- TODO: Possibly render it 'viaShow' in debug mode for more info.

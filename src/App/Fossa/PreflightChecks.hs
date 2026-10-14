@@ -67,14 +67,8 @@ preflightChecks cmd = context "preflight-checks" $ do
   fatalOnIOException "Failed to write to temp directory" . sendIO $ TIO.writeFile (fromAbsFile file) "Writing to temp dir"
   sendIO $ removeFile file
 
-  -- Check that the user can reach the FOSSA app at all.
-  --
-  -- Unwrapped deliberately. This used to carry "ensure you are using a valid
-  -- FOSSA_API_KEY", which attached to EVERY error escaping getOrganization --
-  -- decode failures, timeouts, TLS faults, refused connections. The key help
-  -- and its docs link now come from the 401 branch of
-  -- 'BackendPublicFacingError' instead, so they still reach the one case that
-  -- earns them without being spread over the ones that do not.
+  -- Unwrapped deliberately: key help here attached to every failure, not just
+  -- a 401. 'BackendPublicFacingError' now attaches it on a 401 alone.
   org <- getOrganization
 
   when (orgSupportsPreflightChecks org) $
