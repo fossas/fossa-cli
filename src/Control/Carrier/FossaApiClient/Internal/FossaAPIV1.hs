@@ -48,9 +48,9 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   APIClientEffs,
   FossaError (..),
   FossaPublicFacingError (..),
-  InvalidApiKeyErr (..),
-  isApiKeyFailure,
-  fatalFossaError,
+  SignInPageResponse (..),
+  checkForSignInPage,
+  looksLikeSignInPath,
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -86,7 +86,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getOrgLabels,
 ) where
 
-import App.Docs (apiKeyUrl, fossaSslCertDocsUrl)
+import App.Docs (fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Report.Attribution qualified as Attr
@@ -125,10 +125,10 @@ import Container.Types qualified as NativeContainer
 import Control.Algebra (type (:+:))
 import Control.Carrier.Empty.Maybe (Empty, EmptyC, runEmpty)
 import Control.Effect.Debug (Debug, debugLog)
-import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, errDoc, errHelp, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Exception (Exception (displayException), SomeException, evaluate)
+import Control.Exception (Exception (displayException), SomeException, evaluate, fromException, toException)
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (
@@ -145,7 +145,7 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString qualified as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.Data (Proxy (Proxy))
-import Data.Error (SourceLocation, createBody, createEmptyBlock, createErrataWithHeaderOnly, getSourceLocation)
+import Data.Error (SourceLocation, createBody, createEmptyBlock, getSourceLocation)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
@@ -205,7 +205,7 @@ import Network.HTTP.Req (
   DELETE (DELETE),
   GET (GET),
   HttpBody (..),
-  HttpConfig (httpConfigAltManager),
+  HttpConfig (httpConfigAltManager, httpConfigCheckResponse),
   HttpException (..),
   LbsResponse,
   MonadHttp (..),
@@ -272,48 +272,75 @@ instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
 setMgrFromReader :: Has (Reader HTTP.Manager) sig m => m HttpConfig
 setMgrFromReader = do
   mgr <- ask
-  pure httpConfigRetryTimeouts{httpConfigAltManager = Just mgr}
+  pure
+    httpConfigRetryTimeouts
+      { httpConfigAltManager = Just mgr
+      , httpConfigCheckResponse = checkResponseOrSignIn
+      }
+
+-- | The endpoint answered an API call with a sign-in page.
+--
+-- Carries both ends of the redirect because the landing URL is the whole
+-- diagnosis: it is what distinguishes "your credential never arrived" from
+-- every other way a response can fail to parse.
+data SignInPageResponse = SignInPageResponse
+  { signInRequested :: HTTP.Request
+  , signInLanded :: HTTP.Request
+  , signInStatus :: HTTP.Status
+  }
+  deriving (Show)
+
+instance Exception SignInPageResponse
+
+-- | Fall back to the configured check, then look for a sign-in page.
+--
+-- Ordered so a non-2xx keeps the diagnosis it already has; this only claims
+-- responses that otherwise look like success.
+checkResponseOrSignIn :: HTTP.Request -> HTTP.Response b -> BS.ByteString -> Maybe HTTP.HttpExceptionContent
+checkResponseOrSignIn sent res preview =
+  case httpConfigCheckResponse httpConfigRetryTimeouts sent res preview of
+    Just hec -> Just hec
+    Nothing -> checkForSignInPage sent res
+
+-- | Was this request answered by a sign-in page rather than by the API?
+--
+-- FOSSA rejects an invalid key with a 401 and a JSON body, so a sign-in page
+-- means the credential never arrived at all -- in practice a proxy stripping
+-- @Authorization@, after which FOSSA 302s to @\/auth\/login@ and http-client
+-- follows the redirect. What surfaced before was aeson failing on
+-- @\<!DOCTYPE html>@, which names neither the proxy nor the missing header.
+--
+-- Keyed on the redirect TARGET rather than on @text\/html@. A content-type
+-- check would also fire on @fossa report attribution --format html@, which
+-- returns HTML through this same client, and 'httpConfigCheckResponse' is
+-- type-erased over the response body so it cannot tell which was expected.
+checkForSignInPage :: HTTP.Request -> HTTP.Response b -> Maybe HTTP.HttpExceptionContent
+checkForSignInPage sent res
+  | redirected && looksLikeSignInPath (decodeUtf8 $ HTTP.path landed) =
+      Just . HTTP.InternalException . toException $
+        SignInPageResponse sent landed (HTTP.responseStatus res)
+  | otherwise = Nothing
+  where
+    -- Set per response, so after a redirect chain this is the final hop.
+    landed :: HTTP.Request
+    landed = HTTP.getOriginalRequest res
+
+    redirected :: Bool
+    redirected = HTTP.path landed /= HTTP.path sent || HTTP.host landed /= HTTP.host sent
+
+-- | Does this path look like somewhere a human signs in?
+--
+-- Only ever asked of a path we were redirected to while calling a JSON API,
+-- which is what keeps the list this blunt without matching real endpoints.
+looksLikeSignInPath :: Text -> Bool
+looksLikeSignInPath path' =
+  any (`Text.isInfixOf` Text.toLower path') ["/auth/login", "/login", "/signin", "/sign-in", "/sso/"]
 
 type APIClientEffs sig m = (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m, Has (Reader HTTP.Manager) sig m)
 
 instance APIClientEffs sig m => MonadHttp (FossaReq m) where
   getHttpConfig = setMgrFromReader
-  handleHttpException = FossaReq . fatalFossaError . mangleError
-
--- | Does this error actually say the API key is the problem?
---
--- Only a 401 does. Everything else reaching here -- a decode failure, a
--- timeout, a TLS fault, a refused connection, a proxy error -- has its own
--- cause, and answering it with \"check your API key\" sends people off to
--- regenerate a key that already works.
---
--- Deliberately excluded:
---
--- * 403, because the renderer below argues at length that it more likely
---   means a network appliance intercepted the request than that the key is
---   bad. Blaming the key here would contradict the message we print there.
---
--- * 'BackendPublicFacingError', which renders the backend's own description
---   of what went wrong. That text is authoritative where this help is a
---   guess, and the status code is not retained on that branch (see
---   'mangleError') so an auth failure cannot be told from any other.
-isApiKeyFailure :: FossaError -> Bool
-isApiKeyFailure (StatusCodeError _ res) = statusCode (responseStatus res) == 401
-isApiKeyFailure _ = False
-
--- | Raise a 'FossaError', attaching the API-key help only to errors that
--- genuinely implicate the key.
-fatalFossaError :: Has Diagnostics sig m => FossaError -> m a
-fatalFossaError err
-  | isApiKeyFailure err = errHelp InvalidApiKeyErr . errDoc apiKeyUrl $ fatal err
-  | otherwise = fatal err
-
-data InvalidApiKeyErr = InvalidApiKeyErr
-
-instance ToDiagnostic InvalidApiKeyErr where
-  renderDiagnostic :: InvalidApiKeyErr -> Errata
-  renderDiagnostic InvalidApiKeyErr =
-    createErrataWithHeaderOnly "Ensure that you are using a valid FOSSA_API_KEY. Refer to the provided documentation for guidance on how to generate and retrieve your API key."
+  handleHttpException = FossaReq . fatal . mangleError
 
 newtype FossaReqAllow401 m a = FossaReqAllow401 {unFossaReqAllow401 :: EmptyC m a}
   deriving (Functor, Applicative, Monad, Algebra (Empty :+: sig))
@@ -422,6 +449,7 @@ data FossaError
   | InvalidProxyEnvironmentVariableError HTTP.Request Text Text
   | ConnectionClosedError HTTP.Request
   | InvalidProxySettingsError HTTP.Request Text
+  | SignInPageError SignInPageResponse
   deriving (Show)
 
 instance ToDiagnostic FossaError where
@@ -443,6 +471,29 @@ instance ToDiagnostic FossaError where
     JsonDeserializeError err -> do
       let header = "An error occurred when deserializing a response from the FOSSA API: " <> toText err
       Errata (Just header) [] Nothing
+    SignInPageError SignInPageResponse{..} -> do
+      -- Deliberately ONE thing to check. The whole point is removing the
+      -- false lead, and any list long enough to be a checklist would have to
+      -- put "verify your API key" back on it.
+      let header = "The FOSSA endpoint returned a sign-in page instead of API data"
+          content =
+            renderIt $
+              vsep
+                [ newlineTrailing "Response:" <+> renderResponse' signInStatus <+> "from" <+> renderRequestUrl signInLanded
+                , "The request was redirected to a sign-in page. FOSSA rejects an invalid API key"
+                , "with a 401 and a JSON error, so a sign-in page means the request arrived"
+                , "without credentials -- the Authorization header was most likely removed in"
+                , "transit by a proxy or other network appliance."
+                , ""
+                , "Your API key is probably fine. Check whether anything between this machine and"
+                , "the endpoint strips or rewrites the Authorization header, and allow it through"
+                , "for this endpoint."
+                , ""
+                , reportNetworkErrorMsg
+                ]
+          ctx = "Provided request: " <> renderIt (renderRequest signInRequested)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+      Errata (Just header) [] (Just body)
     BackendPublicFacingError pfe -> do
       let header = fpeMessage pfe
           content = "Error UUID from API: " <> fpeUuid pfe
@@ -857,7 +908,9 @@ mangleError err = case errWithoutSensitiveInfo of
       HTTP.InvalidStatusLine bs -> InvalidStatusLineError ereq $ show bs
       HTTP.InvalidHeader bs -> InvalidResponseHeaderError ereq $ show bs
       HTTP.InvalidRequestHeader bs -> InvalidRequestHeaderError ereq $ show bs
-      HTTP.InternalException se -> InternalException se
+      HTTP.InternalException se
+        | Just signIn <- fromException se -> SignInPageError signIn
+        | otherwise -> InternalException se
       HTTP.ProxyConnectException host port status -> ProxyConnectError ereq (show host) port status
       HTTP.NoResponseDataReceived -> NoResponseDataError ereq
       HTTP.TlsNotSupported -> TlsNotSupportedError ereq
@@ -884,6 +937,19 @@ renderRequestResponse request response = renderRequest request <> " -> " <> rend
 -- TODO: Possibly render it 'viaShow' in debug mode for more info.
 renderResponse :: HTTP.Response a -> Doc AnsiStyle
 renderResponse = pretty . show . HTTP.statusCode . HTTP.responseStatus
+
+renderResponse' :: HTTP.Status -> Doc AnsiStyle
+renderResponse' = pretty . show . HTTP.statusCode
+
+-- | 'renderRequest' without the method, for naming a URL we did not choose.
+renderRequestUrl :: HTTP.Request -> Doc AnsiStyle
+renderRequestUrl req' =
+  pretty $
+    (if HTTP.secure req' then "https" else "http" :: String)
+      <> "://"
+      <> decodeUtf8 (HTTP.host req')
+      <> decodeUtf8 (HTTP.path req')
+      <> decodeUtf8 (HTTP.queryString req')
 
 -- Render request details for humans to read.
 -- TODO: Possibly render it 'viaShow' in debug mode for more info.

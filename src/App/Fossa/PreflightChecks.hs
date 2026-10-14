@@ -69,10 +69,12 @@ preflightChecks cmd = context "preflight-checks" $ do
 
   -- Check that the user can reach the FOSSA app at all.
   --
-  -- This used to attach "your API key is invalid" to every error escaping
-  -- getOrganization, so a decode failure, a timeout or a TLS fault all told
-  -- people to regenerate a key that was fine. The API carrier now attaches
-  -- that help itself, and only to a genuine 401.
+  -- Unwrapped deliberately. This used to carry "ensure you are using a valid
+  -- FOSSA_API_KEY", which attached to EVERY error escaping getOrganization --
+  -- decode failures, timeouts, TLS faults, refused connections. A genuine 401
+  -- already renders the backend's own "API token is invalid", so the
+  -- diagnosis survives; what is lost is the key-generation docs link on that
+  -- one case, which is worth it to stop misdirecting every other case.
   org <- getOrganization
 
   when (orgSupportsPreflightChecks org) $

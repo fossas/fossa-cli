@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- FOSSA API: only a 401 blames the API key; other errors keep their own diagnosis. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
+- FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 
 ## 3.20.1
