@@ -42,6 +42,7 @@ A `packages` entry this strategy cannot read — an unrecognised ecosystem key f
 | conda packages        | `conda` dependency                 |
 | PyPI wheels and sdists| `pip` dependency                   |
 | `git+` PyPI sources   | `git` dependency, pinned to the locked commit |
+| local path packages   | path dependency, license-scanned in place     |
 
 ## Limitations
 
@@ -53,6 +54,8 @@ A `packages` entry this strategy cannot read — an unrecognised ecosystem key f
 
 - **Conda names come from the artifact filename.** Lock versions 6 and 7 do not record a `name` or `version` for conda packages — the only place those exist is the artifact URL, so they are parsed out of `<name>-<version>-<build>.conda`. This follows conda's filename convention and handles names containing hyphens, but it is a convention rather than a guarantee. Version 5 records `name` and `version` explicitly and those are used when present.
 
-- **Local path dependencies are skipped.** pixi can resolve a PyPI dependency from a path in the workspace — written as `.` or `./…` under `pypi:` in versions 6 and 7, or as a `path:` key in version 5. These have no registry coordinates, so they are skipped with a warning naming the package rather than reported as a PyPI package that does not exist.
+- **Local path dependencies are reported, not resolved from a registry.** pixi can resolve a package from a path in the workspace — written as `.`, `./…` or a `file://` URL under `pypi:`/`conda:` in versions 6 and 7, or as a `path:` key in version 5. These have no registry coordinates, so they are reported as path dependencies and license-scanned where they sit, the same treatment uv and PDM path dependencies get. A `file://` spelling and the equivalent bare path are one dependency, not two.
+
+  Path dependencies are only uploaded when path dependency scanning is enabled; otherwise the CLI notes that it found them. See [path dependencies](../../../experimental/path-dependency.md).
 
 - **Labeled channels are kept whole.** A package from `conda-forge/label/broken` is named `'conda-forge/label/broken':<subdir>:<name>`, not `'broken':…`. This matches how the [conda](conda.md) strategy names the same package, so one package resolved by both strategies is one dependency in FOSSA.

@@ -11,7 +11,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
-  DepType (CondaType, GitType, PipType),
+  DepType (CondaType, GitType, PipType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -110,9 +110,12 @@ spec = do
       classifyPypiSource "git+https://github.com/squidfunk/mike#2d4ad79"
         `shouldBe` PypiGit "https://github.com/squidfunk/mike#2d4ad79"
       -- pixi writes a bare `.` or `./` for the workspace package itself.
-      classifyPypiSource "." `shouldBe` PypiLocalPath
-      classifyPypiSource "./" `shouldBe` PypiLocalPath
-      classifyPypiSource "file:///home/me/pkg" `shouldBe` PypiLocalPath
+      classifyPypiSource "." `shouldBe` PypiLocalPath "."
+      classifyPypiSource "./" `shouldBe` PypiLocalPath "./"
+      -- The scheme comes off so both spellings name one package; the path is
+      -- resolved against the project directory downstream, where a URL would
+      -- not resolve at all.
+      classifyPypiSource "file:///home/me/pkg" `shouldBe` PypiLocalPath "/home/me/pkg"
 
   describe "environmentToDepEnvironment" $
     it "maps default to production and keeps arbitrary names filterable" $ do
@@ -139,6 +142,9 @@ spec = do
         , -- The same wheel under two platforms collapses to one dep.
           mkDep PipType "absl-py" (Just "2.1.0") [EnvProduction]
         , mkDep GitType "https://github.com/laurentS/slowapi.git" (Just "a72bcc66597f620f04bf5be3676e40ed308d3a6a") [EnvDevelopment]
+        , -- The workspace package itself, which pixi writes as a bare `./`.
+          -- Previously skipped, so this fixture under-reported by one.
+          mkDep UnresolvedPathType "./" (Just "0.1.0") [EnvDevelopment]
         ]
         graph
 
@@ -166,10 +172,12 @@ spec = do
         graph
 
   describe "analyze a v5 lockfile with a local path package" $
-    it' "skips only the path-sourced package and keeps every other one" $ do
+    it' "reports the path-sourced package instead of dropping it" $ do
       -- Trimmed from the Rattler v5 conda-lock fixture. The `requests` entry
       -- has `path:` and no `url:`; requiring `url:` failed the whole document
       -- with `key "url" not found`, so the project reported nothing at all.
+      -- It was then warned-and-skipped, which under-reported the workspace;
+      -- it is now handed to the path-dependency scanner.
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v5-local-path.lock|]
       graph <- analyze path
 
@@ -178,6 +186,7 @@ spec = do
         , condaDep "conda-forge" "noarch" "tzdata" "2024a" [EnvProduction]
         , mkDep PipType "certifi" (Just "2024.2.2") [EnvProduction]
         , mkDep PipType "idna" (Just "3.7") [EnvProduction]
+        , mkDep UnresolvedPathType "./links/requests-2.31.0-py3-none-any.whl" (Just "2.31.0") [EnvProduction]
         ]
         graph
 
@@ -192,6 +201,25 @@ spec = do
       graph <- analyze path
 
       expectDeps' [condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]] graph
+
+  describe "analyze local path packages" $ do
+    it' "reports conda and pypi paths alike, and keeps their environments" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-path-deps.lock|]
+      graph <- analyze path
+
+      expectDeps'
+        [ condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]
+        , -- Shallow conda path: parseCondaArtifactUrl returned Nothing, so
+          -- this package used to disappear from the graph entirely.
+          mkDep UnresolvedPathType "./vendor/openssl-3.2.1-hd590300_0.conda" Nothing [EnvProduction]
+        , -- Deeper conda path: enough segments to parse, so this one used to
+          -- be reported under the invented name 'shared':pkgs:openblas.
+          mkDep UnresolvedPathType "../shared/pkgs/openblas-0.3.26-pthreads_h413a1c8_0.conda" Nothing [EnvProduction]
+        , -- file:// and the bare path are one package in two environments.
+          mkDep UnresolvedPathType "/home/me/pkgs/widget" (Just "1.0.0") [EnvProduction, EnvDevelopment]
+        , mkDep UnresolvedPathType "./local/gadget" (Just "0.2.0") [EnvDevelopment]
+        ]
+        graph
 
   describe "analyze a lock version newer than any we know" $
     it' "parses it anyway rather than reporting nothing" $ do

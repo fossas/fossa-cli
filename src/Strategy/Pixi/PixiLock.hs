@@ -73,7 +73,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
-  DepType (CondaType, GitType, PipType),
+  DepType (CondaType, GitType, PipType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -272,16 +272,27 @@ data PypiSource
     PypiRegistry
   | -- | @git+https:\/\/…@, optionally with @?rev=@ and a @#@ commit.
     PypiGit Text
-  | -- | A path relative to the workspace, or a @file:\/\/@ URL.
-    PypiLocalPath
+  | -- | Something on disk, carrying the path with any @file:\/\/@ removed.
+    PypiLocalPath Text
   deriving (Eq, Ord, Show)
 
 classifyPypiSource :: Text -> PypiSource
 classifyPypiSource locator
   | "git+" `Text.isPrefixOf` locator = PypiGit (Text.drop 4 locator)
-  | "file://" `Text.isPrefixOf` locator = PypiLocalPath
-  | any (`Text.isPrefixOf` locator) ["http://", "https://"] = PypiRegistry
-  | otherwise = PypiLocalPath
+  | otherwise = maybe PypiRegistry PypiLocalPath (localSourcePath locator)
+
+-- | The path a locator names on disk, if it names one at all rather than an
+-- artifact to fetch.
+--
+-- @file:\/\/@ is stripped so both spellings of one package produce one
+-- dependency. That is not cosmetic: the name is resolved against the project
+-- directory downstream (@App.Fossa.PathDependency.absPathOf@), which fails
+-- outright on a URL. pdm and cargo strip it for the same reason.
+localSourcePath :: Text -> Maybe Text
+localSourcePath locator
+  | Just path <- Text.stripPrefix "file://" locator = Just path
+  | any (`Text.isPrefixOf` locator) ["http://", "https://"] = Nothing
+  | otherwise = Just locator
 
 -- | pixi environment names are arbitrary. @default@ is the one with fixed
 -- meaning; the two conventional names map to the constructors a user would
@@ -346,23 +357,32 @@ toDependency metadata locator env = case locator of
     -- a scan log than "skipping requests".
     described fallback = maybe fallback (\n -> n <> " (" <> fallback <> ")") (pixiPkgName =<< metadata)
 
+    -- Resolved later by the path-dependency scanner, which license-scans the
+    -- directory the name points at. See 'App.Fossa.PathDependency'.
+    pathDep path = mkDep UnresolvedPathType path (pixiPkgVersion =<< metadata)
+
+    -- Classify before parsing. parseCondaArtifactUrl reads channel, subdir and
+    -- filename out of URL segments, and a path has none of those: a shallow one
+    -- yielded Nothing and the package vanished, while a deeper one had enough
+    -- segments to produce a name built from directories ('shared':pkgs:zlib).
+    --
     -- v5 spells name and version out; v6/v7 leave the filename as the only
     -- source for them. Prefer the explicit fields when the lockfile has them.
-    condaDep url = case parseCondaArtifactUrl url of
-      Nothing -> Left $ "pixi: could not read a package name from conda artifact URL, skipping: " <> described url
-      Just CondaArtifact{..} ->
-        let name = fromMaybe condaArtifactName (pixiPkgName =<< metadata)
-            version = (pixiPkgVersion =<< metadata) <|> Just condaArtifactVersion
-         in Right $ mkDep CondaType (condaDependencyName condaArtifactChannel condaArtifactPlatform name) version
+    condaDep url = case localSourcePath url of
+      Just path -> Right $ pathDep path
+      Nothing -> case parseCondaArtifactUrl url of
+        Nothing -> Left $ "pixi: could not read a package name from conda artifact URL, skipping: " <> described url
+        Just CondaArtifact{..} ->
+          let name = fromMaybe condaArtifactName (pixiPkgName =<< metadata)
+              version = (pixiPkgVersion =<< metadata) <|> Just condaArtifactVersion
+           in Right $ mkDep CondaType (condaDependencyName condaArtifactChannel condaArtifactPlatform name) version
 
     pypiDep source = case classifyPypiSource source of
       PypiRegistry -> case pixiPkgName =<< metadata of
         Nothing -> Left $ "pixi: pypi entry has no name, skipping: " <> source
         Just name -> Right $ mkDep PipType name (pixiPkgVersion =<< metadata)
       PypiGit url -> Right $ mkDep GitType (Text.takeWhile (/= '?') $ Text.takeWhile (/= '#') url) (gitRevision url)
-      PypiLocalPath ->
-        Left $
-          "pixi: skipping pypi dependency from a local source, which has no registry coordinates: " <> described source
+      PypiLocalPath path -> Right $ pathDep path
 
     -- The fragment is the resolved commit; pixi also writes a `?rev=` query
     -- that names the same commit less precisely.
