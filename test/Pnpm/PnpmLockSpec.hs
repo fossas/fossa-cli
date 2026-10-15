@@ -154,6 +154,20 @@ spec = do
   describe "optional dependencies in a v6 lockfile" $
     checkGraph pnpmLockV6Optional optionalDepsSpec
 
+  let pnpmPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
+  describe "unfiltered peer resolution contexts" $
+    checkGraph pnpmPeerContexts $ \graph -> do
+      it "keeps both peer versions in whole-workspace analysis" $ do
+        expectDep (mkProdDep "peer@1.0.0") graph
+        expectDep (mkDevDep "peer@2.0.0") graph
+      it "combines package environments only after traversing each context" $ do
+        expectDirect [mkBothEnvDep "parent@1.0.0"] graph
+        expectDep (mkBothEnvDep "widget@1.0.0") graph
+      it "retains both contexts' transitive edges" $ do
+        expectEdge graph (mkBothEnvDep "parent@1.0.0") (mkBothEnvDep "widget@1.0.0")
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
+
 optionalDepsSpec :: Graphing Dependency -> Spec
 optionalDepsSpec graph = do
   it "should report the project's own optional dependencies as direct" $

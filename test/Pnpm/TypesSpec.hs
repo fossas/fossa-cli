@@ -245,13 +245,13 @@ spec = do
         v9Of (Right _) = Left "not v9"
         v9Of (Left err) = Left err
 
-    it "keys snapshots without the peer dependency suffix" $
+    it "keeps the peer-resolution context in snapshot keys" $
       fmap (snapshots . lockfileSnapshots) (v9Of v9Lockfile)
         `shouldBe` Right
           ( HashMap.fromList
               [ ("uri-js@4.4.1", [("punycode", "2.3.1")])
               , ("punycode@2.3.1", [])
-              , ("react-dom@19.0.0", [("react", "19.0.0")])
+              , ("react-dom@19.0.0(react@19.0.0)", [("react", "19.0.0")])
               ]
           )
 
