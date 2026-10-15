@@ -17,14 +17,15 @@ import DepTypes (
  )
 import GraphUtil (
   expectDep,
+  expectDeps,
   expectDirect,
   expectEdge,
  )
 import Graphing (Graphing)
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
+import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile, resolveImporterKey)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -89,10 +90,16 @@ lodash =
     mempty
 
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
-checkGraph pathToFixture buildGraphSpec = do
+checkGraph = checkScopedGraph Nothing
+
+-- | Like 'checkGraph', but scoping the graph to a set of workspace importer
+-- keys, as 'Strategy.Node.resolvePnpmImporterKeys' would from selected build
+-- targets.
+checkScopedGraph :: Maybe (Set.Set Text) -> Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkScopedGraph selection pathToFixture buildGraphSpec = do
   lockFileContents <- runIO $ BS.readFile (toString pathToFixture)
   case parsePnpmLockfile lockFileContents of
-    Right pnpmLock -> buildGraphSpec (buildGraph pnpmLock)
+    Right pnpmLock -> buildGraphSpec (buildGraph selection pnpmLock)
     Left err ->
       describe "pnpm-lock" $
         it "should parse lockfile" (expectationFailure $ toString err)
@@ -167,6 +174,172 @@ spec = do
         expectEdge graph (mkBothEnvDep "parent@1.0.0") (mkBothEnvDep "widget@1.0.0")
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
+
+  let pnpmOptionalWorkspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-optional-workspace-links/pnpm-lock.yaml")
+  describe "scoped optional workspace links" $
+    checkScopedGraph (Just $ Set.singleton "app") pnpmOptionalWorkspace $ \graph -> do
+      optionalDepsSpec graph
+      it "should follow optional links transitively and retain optional packages when pruning" $
+        expectDeps
+          [ mkProdDep "chokidar@3.6.0"
+          , mkProdDep "sharp@0.33.0"
+          , mkProdDep "readdirp@3.6.0"
+          , mkProdDep "fsevents@2.3.3"
+          ]
+          graph
+
+  let pnpmScopedPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
+  describe "peer resolution contexts" $ do
+    checkScopedGraph (Just $ Set.singleton "a") pnpmScopedPeerContexts $ \graph ->
+      it "keeps only the production member's transitive peer resolution" $
+        expectDeps [mkProdDep "parent@1.0.0", mkProdDep "widget@1.0.0", mkProdDep "peer@1.0.0"] graph
+    checkScopedGraph (Just $ Set.singleton "b") pnpmScopedPeerContexts $ \graph ->
+      it "keeps only the development member's transitive peer resolution" $
+        expectDeps [mkDevDep "parent@1.0.0", mkDevDep "widget@1.0.0", mkDevDep "peer@2.0.0"] graph
+    checkScopedGraph (Just $ Set.fromList ["a", "b"]) pnpmScopedPeerContexts $ \graph -> do
+      it "merges package environments without leaking them across peer contexts" $
+        expectDeps [mkBothEnvDep "parent@1.0.0", mkBothEnvDep "widget@1.0.0", mkProdDep "peer@1.0.0", mkDevDep "peer@2.0.0"] graph
+      it "retains both contexts' edges after collapsing their reportable identities" $ do
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
+
+  let environmentFixtures =
+        [ currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-6-workspace-environments/pnpm-lock.yaml")
+        , currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-environments/pnpm-lock.yaml")
+        ]
+  mapM_
+    ( \fixture -> describe ("workspace environments: " <> toString fixture) $ do
+        checkScopedGraph (Just $ Set.singleton "dev") fixture $ \graph ->
+          it "propagates development through linked workspaces, cycles, and external transitives" $
+            expectDeps [mkDevDep "leaf@1.0.0", mkDevDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+        checkScopedGraph (Just $ Set.singleton "prod") fixture $ \graph ->
+          it "keeps optional links production and a linked package's own dev dependencies development" $
+            expectDeps [mkProdDep "leaf@1.0.0", mkProdDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+        checkScopedGraph (Just $ Set.fromList ["dev", "prod"]) fixture $ \graph ->
+          it "propagates both environments when a workspace is reached through both paths" $
+            expectDeps [mkBothEnvDep "leaf@1.0.0", mkBothEnvDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+    )
+    environmentFixtures
+
+  let allViaDev = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-dev-link-all-importers/pnpm-lock.yaml")
+  checkScopedGraph (Just $ Set.singleton ".") allViaDev $ \graph ->
+    it "retains development provenance even when links reach every importer" $
+      expectDeps [mkDevDep "leaf@1.0.0"] graph
+
+  -- Workspace scoping. The fixture has four importers: the root (colorjs),
+  -- browser (left-pad, plus a link: to shared), server (is-odd -> is-number)
+  -- and shared (uri-js -> punycode).
+  let pnpmWorkspace = currentDir </> $(mkRelFile "test/Node/testdata/pnpm-workspaces/pnpm-lock.yaml")
+
+  describe "workspace scoping" $ do
+    describe "unscoped" $
+      checkScopedGraph Nothing pnpmWorkspace $ \graph ->
+        it "should merge every importer's direct dependencies" $
+          expectDirect
+            [ mkDevDep "colorjs@0.1.9"
+            , mkProdDep "left-pad@1.3.0"
+            , mkProdDep "is-odd@3.0.1"
+            , mkProdDep "uri-js@4.4.1"
+            ]
+            graph
+
+    describe "scoped to one member" $
+      checkScopedGraph (Just $ Set.fromList ["server"]) pnpmWorkspace $ \graph -> do
+        it "should keep the selected member's dependencies and their transitives" $ do
+          expectDirect [mkProdDep "is-odd@3.0.1"] graph
+          expectDep (mkProdDep "is-number@6.0.0") graph
+
+        it "should drop every other importer's dependencies" $
+          expectDeps [mkProdDep "is-odd@3.0.1", mkProdDep "is-number@6.0.0"] graph
+
+    describe "scoped to a member that links to a sibling" $
+      checkScopedGraph (Just $ Set.fromList ["browser"]) pnpmWorkspace $ \graph -> do
+        it "should include the linked sibling's dependencies" $
+          -- browser declares `@fossa-test/shared: link:../shared`, so shared's
+          -- own dependencies are part of browser's result. They are reported as
+          -- direct because the lockfile records no per-importer provenance.
+          expectDirect [mkProdDep "left-pad@1.3.0", mkProdDep "uri-js@4.4.1"] graph
+
+        it "should not emit the workspace link itself as a dependency" $
+          expectDeps
+            [ mkProdDep "left-pad@1.3.0"
+            , mkProdDep "uri-js@4.4.1"
+            , mkProdDep "punycode@2.3.1"
+            ]
+            graph
+
+    describe "scoped to every importer" $
+      checkScopedGraph (Just $ Set.fromList [".", "browser", "server", "shared"]) pnpmWorkspace $ \graph ->
+        it "should match the unscoped graph" $
+          expectDirect
+            [ mkDevDep "colorjs@0.1.9"
+            , mkProdDep "left-pad@1.3.0"
+            , mkProdDep "is-odd@3.0.1"
+            , mkProdDep "uri-js@4.4.1"
+            ]
+            graph
+
+    describe "scoped to an importer the lockfile does not have" $
+      checkScopedGraph (Just $ Set.fromList ["nonexistent"]) pnpmWorkspace $ \graph ->
+        it "should report an empty graph rather than the whole workspace" $
+          expectDeps [] graph
+
+  -- Link following over a deeper workspace, see the comment in the fixture:
+  -- apps/web links to libs/ui, which links to libs/core, which links back to
+  -- libs/ui; apps/web also links to libs/testkit from devDependencies, and
+  -- testkit carries a link: to a path with no importer. libs/orphan and the
+  -- root are linked by nobody.
+  let pnpmWorkspaceLinks = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-links/pnpm-lock.yaml")
+
+  describe "workspace link following" $
+    checkScopedGraph (Just $ Set.fromList ["apps/web"]) pnpmWorkspaceLinks $ \graph -> do
+      it "should follow a chain of links transitively" $ do
+        -- is-odd is declared only by libs/core, two links away from apps/web.
+        expectDep (mkProdDep "is-odd@3.0.1") graph
+        expectDep (mkProdDep "is-number@6.0.0") graph
+
+      it "should terminate on a link cycle and keep both sides" $ do
+        -- libs/ui and libs/core link to each other.
+        expectDep (mkProdDep "uri-js@4.4.1") graph
+        expectDep (mkProdDep "is-odd@3.0.1") graph
+
+      it "should follow a link declared under devDependencies" $
+        expectDep (mkDevDep "colorjs@0.1.9") graph
+
+      it "should exclude external links even when their suffix names an internal member" $
+        -- The dangling and escaping links in libs/testkit resolve to no importer; neither
+        -- libs/orphan's lodash nor the root's typescript is reachable.
+        expectDeps
+          [ mkProdDep "left-pad@1.3.0"
+          , mkProdDep "uri-js@4.4.1"
+          , mkProdDep "punycode@2.3.1"
+          , mkProdDep "is-odd@3.0.1"
+          , mkProdDep "is-number@6.0.0"
+          , mkDevDep "colorjs@0.1.9"
+          ]
+          graph
+
+  describe "resolveImporterKey" $ do
+    it "should resolve a sibling link to the sibling's importer key" $
+      resolveImporterKey "browser" "../shared" `shouldBe` "shared"
+
+    it "should collapse repeated parent segments" $
+      resolveImporterKey "apps/web" "../../libs/ui" `shouldBe` "libs/ui"
+
+    it "should resolve a link back to the workspace root" $
+      resolveImporterKey "browser" ".." `shouldBe` "."
+
+    it "should preserve a parent segment outside the workspace" $
+      resolveImporterKey "browser" "../../shared" `shouldBe` "../shared"
+
+    it "should preserve repeated parent segments outside the workspace" $
+      resolveImporterKey "." "../../shared" `shouldBe` "../../shared"
+
+    it "should collapse ordinary segments after leaving the workspace" $
+      resolveImporterKey "browser" "../../outside/../shared" `shouldBe` "../shared"
+
+    it "should resolve a link relative to the root importer" $
+      resolveImporterKey "." "packages/a" `shouldBe` "packages/a"
 
 optionalDepsSpec :: Graphing Dependency -> Spec
 optionalDepsSpec graph = do

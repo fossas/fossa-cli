@@ -1,0 +1,7 @@
+{
+  "name": "@fossa-test/shared",
+  "version": "1.0.0",
+  "dependencies": {
+    "uri-js": "^4.4.1"
+  }
+}
