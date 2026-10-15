@@ -1,5 +1,14 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
+
+## 3.20.1
+
+- Vendored Dependencies and Snippet Scanning: Fix a bug that caused snippet scanning and vendored dependency scanning to scan hidden and gitignore files ([#1801](https://github.com/fossas/fossa-cli/pull/1801))
+- Swift: `Package.swift` manifests that build `dependencies` or other `Package(...)` arguments in code (e.g. `dependencies: deps`) no longer fail analysis. ([#1800](https://github.com/fossas/fossa-cli/pull/1800))
+
 ## 3.20.0
 
 - Go (dep): `Gopkg.lock` and `Gopkg.toml` files that declare no dependencies (no `[[projects]]`, `[[constraint]]` or `[[override]]` tables, which is what `dep` writes for a project without dependencies) no longer fail analysis with `missing key: projects in <top-level>` / `missing key: constraint in <top-level>`. ([#1791](https://github.com/fossas/fossa-cli/pull/1791))

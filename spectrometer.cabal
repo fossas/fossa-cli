@@ -720,6 +720,7 @@ test-suite unit-tests
     Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
+    Pnpm.TypesSpec
     Python.PipenvSpec
     Python.PipSpec
     Python.Poetry.CommonSpec
