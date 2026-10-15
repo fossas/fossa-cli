@@ -1,8 +1,12 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.20.2
 
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
+- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
+- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
+- Pnpm: workspace members are now individual build targets, so a single member can be analyzed on its own with `--only-target 'pnpm@./:my-package'` or a `target:` entry in `.fossa.yml`. Previously every member's dependencies were merged into one result with no way to scope them. Dependencies a selected member reaches through the workspace protocol (`link:` in the lockfile) are included. Scoped analysis preserves development-only workspace links and each member's resolved peer versions. Unfiltered analysis retains the whole workspace. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
+- Node: when a yarn, npm, or pnpm workspace root or member has no `name` in its `package.json`, discovery now warns that no build targets can be offered for the workspace and that adding a `name` enables them. This also preserves unnamed members' dependencies during unfiltered analysis. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
 
 ## 3.20.1
 
@@ -36,10 +40,6 @@
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
 - NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
 - Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
-- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions.
-- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
-- Pnpm: workspace members are now individual build targets, so a single member can be analyzed on its own with `--only-target 'pnpm@./:my-package'` or a `target:` entry in `.fossa.yml`. Previously every member's dependencies were merged into one result with no way to scope them. Dependencies a selected member reaches through the workspace protocol (`link:` in the lockfile) are included. Scoped analysis preserves development-only workspace links and each member's resolved peer versions. Unfiltered analysis retains the whole workspace. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
-- Node: when a yarn, npm, or pnpm workspace root or member has no `name` in its `package.json`, discovery now warns that no build targets can be offered for the workspace and that adding a `name` enables them. This also preserves unnamed members' dependencies during unfiltered analysis. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
 
 ## 3.18.4
 
