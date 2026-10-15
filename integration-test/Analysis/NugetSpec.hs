@@ -59,13 +59,15 @@ testDotnetCoreTwoExampleForProjectAssetsJson :: Spec
 testDotnetCoreTwoExampleForProjectAssetsJson =
   aroundAll (withAnalysisOf NonStrict $ dotnetCoreTwoExample NuGet.discover) $ do
     describe "dotnet-core-2.0-example" $ do
-      it "should find targets" $ \(result, _) -> do
-        length result `shouldBe` 2
+      -- example.csproj has been restored (obj/project.assets.json exists beside it),
+      -- so only the assets file is reported to avoid analyzing the project twice.
+      it "should find only the project.assets.json target" $ \(result, _) -> do
+        length result `shouldBe` 1
         let projectDataPaths = Set.fromList $ map (fileName . NuGet.nugetProjectFile . Types.projectData . fst) result
         let doesProjectAssetsJsonTargetExist = member "project.assets.json" projectDataPaths
         let doesCsprojTargetExist = member "example.csproj" projectDataPaths
         doesProjectAssetsJsonTargetExist `shouldBe` True
-        doesCsprojTargetExist `shouldBe` True
+        doesCsprojTargetExist `shouldBe` False
 
 -- | DapperAOT uses NuGet Central Package Management (CPM).
 -- PackageReference entries in .csproj files omit Version attributes;
