@@ -1,8 +1,10 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.20.2
 
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
+- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
+- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
 
 ## 3.20.1
 
@@ -36,8 +38,6 @@
 - `fossa analyze --x-workflow` (experimental) no longer takes a path to the analyzer. ficus downloads the workflow analyzer itself, so the path was validated and then discarded; the flag is now a switch, and a path following it is read as the scan target. ([#1781](https://github.com/fossas/fossa-cli/pull/1781))
 - NuGet: project files (`.csproj`, `.fsproj`, `.vbproj`, ...) containing `<PackageReference>` items that name no package (e.g. `<PackageReference Remove="..." />`) no longer fail analysis with `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`; such items are skipped. ([#1780](https://github.com/fossas/fossa-cli/pull/1780))
 - Swift: `Package.swift` manifests declaring package-registry dependencies (`.package(id: "scope.name", from: "1.0.0")` and the other `id:` forms introduced in SwiftPM 5.7) no longer fail analysis with `unexpected "id: "" expecting "name:", "path:", or "url:"`; the dependency is reported under its registry identifier. ([#1773](https://github.com/fossas/fossa-cli/pull/1773))
-- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions.
-- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
 
 ## 3.18.4
 
