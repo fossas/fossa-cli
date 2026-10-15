@@ -203,12 +203,13 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
                       LabelingOn -> label dep (PnpmEnv EnvDevelopment)
                       LabelingOff -> pure ()
 
-            -- Config and package-manager dependencies are real packages installed for the
-            -- project. Marking them direct also keeps them in the graph: unreachable deep
-            -- nodes are pruned before the source unit is built. The two maps are
-            -- concatenated, not merged by name: on a collision Map.<> would silently drop
-            -- one side's version.
-            for_ (Map.toList (configDependencies projectImporters) <> Map.toList (packageManagerDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
+            -- Config dependencies are real packages installed for the project.
+            -- Marking them direct also keeps them in the graph: unreachable deep
+            -- nodes are pruned before the source unit is built.
+            -- packageManagerDependencies is deliberately not reported: it holds
+            -- pnpm itself (the version pnpm resolved for the project), not a
+            -- project dependency.
+            for_ (Map.toList (configDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep

@@ -22,10 +22,11 @@ import GraphUtil (
   expectEdge,
  )
 import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldContain)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldContain, shouldNotContain)
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -584,21 +585,23 @@ pnpmLockV9LocalDepSpec graph = do
 -- (first document) declares a lockfileVersion just like the project document,
 -- so it parses as a valid lockfile. Unioning every document must (a) keep the
 -- project graph — the env document's @.@ importer must not shadow the
--- project's — and (b) report the env document's config and package-manager
--- dependencies, which exist only there.
+-- project's — and (b) report the env document's config dependencies, which
+-- exist only there.
 pnpmLockV11MultiDocSpec :: Graphing Dependency -> Spec
 pnpmLockV11MultiDocSpec graph = do
   let hasEdge :: Dependency -> Dependency -> Expectation
       hasEdge = expectEdge graph
 
   describe "buildGraph with multi-document lockfile" $ do
-    it "should report the project graph and the env document's packages as direct" $ do
+    it "should report the project graph and the env document's config dependencies as direct" $
       expectDirect
         [ mkProdDep "express@4.18.2" -- project document, promoted from local-pkg
         , mkProdDep "pnpm-config-plugin@1.0.0" -- env document, config dependency
-        , mkProdDep "pnpm@12.3.4" -- env document, package manager dependency
         ]
         graph
+
+    it "should not report the package manager itself as a dependency" $
+      Graphing.vertexList graph `shouldNotContain` [mkProdDep "pnpm@12.3.4"]
 
     it "should keep the project graph's transitive deps and edges" $ do
       expectDep (mkProdDep "body-parser@1.20.1") graph
