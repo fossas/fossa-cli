@@ -151,15 +151,15 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
   it "keeps parsing later documents when an earlier one does not parse" $
     case parsePnpmLockfile (BS8.pack invalidFirstDoc) of
       Left err -> expectationFailure (toString err)
-      Right lockfile -> expectDep (mkProdDep "express@4.18.2") (buildGraph lockfile)
+      Right lockfiles -> expectDep (mkProdDep "express@4.18.2") (buildGraph lockfiles)
 
-  it "lets the later document win when both define the same package" $
+  it "unions the graphs of documents that define the same package" $
     case parsePnpmLockfile (BS8.pack collidingDocs) of
       Left err -> expectationFailure (toString err)
-      Right lockfile -> do
-        let graph = buildGraph lockfile
-        -- The later document resolves a@1.0.0 against b@2.0.0; if the earlier
-        -- document's copy won, that edge would not exist.
+      Right lockfiles -> do
+        let graph = buildGraph lockfiles
+        -- Each document is processed as its own inventory, so the later
+        -- document's edges survive the union.
         expectEdge graph (mkDep "a@1.0.0" Nothing) (mkDep "b@2.0.0" Nothing)
 
   it "rejects a stream whose documents disagree on lockfileVersion" $
@@ -172,8 +172,13 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
       Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
       Right _ -> expectationFailure "expected an inconsistent-version error"
 
+  it "rejects a stream with more than two documents" $
+    case parsePnpmLockfile (BS8.pack threeDocumentDocs) of
+      Left err -> toString err `shouldContain` "more than two YAML documents"
+      Right _ -> expectationFailure "expected a too-many-documents error"
+
 -- A document that fails to parse (no readable lockfileVersion) is dropped;
--- later documents still merge.
+-- later documents are still parsed.
 invalidFirstDoc :: String
 invalidFirstDoc =
   unlines
@@ -207,6 +212,28 @@ collidingDocs =
     , "      b: 2.0.0"
     , "  b@2.0.0:"
     , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Three valid v9 documents. pnpm writes one or two documents — an env
+-- lockfile and a project lockfile (https://pnpm.io/lockfile) — so this stream
+-- is not pnpm output and must be rejected.
+threeDocumentDocs :: String
+threeDocumentDocs =
+  unlines
+    [ "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-a==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  b@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  c@1.0.0:"
+    , "    resolution: {integrity: sha512-c==}"
     ]
 
 -- A v6 document followed by a v9 document.

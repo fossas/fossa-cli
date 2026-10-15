@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Strategy.Node.Pnpm.Types (
   -- * Lockfile types
   PnpmLockfileBase (..),
@@ -7,7 +5,6 @@ module Strategy.Node.Pnpm.Types (
   PnpmLockfileV678 (..),
   PnpmLockfileV9 (..),
   PnpmLockfile (..),
-  mergeLockfiles,
 
   -- * Catalogs
   PnpmCatalogs (..),
@@ -156,11 +153,11 @@ data PnpmLockfileBase = PnpmLockfileBase
 
 -- | Version-specific extension for v4\/v5 lockfiles.
 newtype PnpmLockfileV4Or5 = PnpmLockfileV4Or5 PnpmLockfileBase
-  deriving (Show, Eq, Ord, Semigroup)
+  deriving (Show, Eq, Ord)
 
 -- | Version-specific extension for v6\/v7\/v8 lockfiles.
 newtype PnpmLockfileV678 = PnpmLockfileV678 PnpmLockfileBase
-  deriving (Show, Eq, Ord, Semigroup)
+  deriving (Show, Eq, Ord)
 
 -- | Version-specific extension for v9+ lockfiles.
 data PnpmLockfileV9 = PnpmLockfileV9
@@ -179,59 +176,6 @@ data PnpmLockfile
   | LockfileV678 PnpmLockfileV678
   | LockfileV9 PnpmLockfileV9
   deriving (Show, Eq, Ord)
-
---
--- Merging multi-document lockfiles
---
-
--- | Union two documents of one multi-document stream, later document winning
--- on conflicts (pnpm writes the env document first, the project document last).
---
--- A plain function rather than a 'Semigroup' instance: variants of different
--- versions have nothing sensible to merge, and every total fallback (keep
--- left, keep right) is non-associative and silently drops one document's graph.
-mergeLockfiles :: PnpmLockfile -> PnpmLockfile -> Either Text PnpmLockfile
-mergeLockfiles (LockfileV4Or5 (PnpmLockfileV4Or5 a)) (LockfileV4Or5 (PnpmLockfileV4Or5 b))
-  | a.lockfileRawVersion == b.lockfileRawVersion = Right (LockfileV4Or5 (PnpmLockfileV4Or5 (a <> b)))
-mergeLockfiles (LockfileV678 (PnpmLockfileV678 a)) (LockfileV678 (PnpmLockfileV678 b))
-  | a.lockfileRawVersion == b.lockfileRawVersion = Right (LockfileV678 (PnpmLockfileV678 (a <> b)))
-mergeLockfiles (LockfileV9 a) (LockfileV9 b)
-  | a.lockfileBase.lockfileRawVersion == b.lockfileBase.lockfileRawVersion = Right (LockfileV9 (a <> b))
-mergeLockfiles _ _ = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
-
-instance Semigroup PnpmLockfileBase where
-  (<>) a b =
-    PnpmLockfileBase
-      { lockfileImporters = Map.unionWith (<>) a.lockfileImporters b.lockfileImporters
-      , lockfilePackages = unionPreferringSecond a.lockfilePackages b.lockfilePackages
-      , -- First non-empty: mergeLockfiles enforces one lockfileVersion per stream.
-        lockfileRawVersion =
-          if Text.null a.lockfileRawVersion then b.lockfileRawVersion else a.lockfileRawVersion
-      }
-
-instance Semigroup PnpmLockfileV9 where
-  (<>) a b =
-    PnpmLockfileV9
-      { lockfileBase = a.lockfileBase <> b.lockfileBase
-      , lockfileSnapshots = mergeSnapshots a.lockfileSnapshots b.lockfileSnapshots
-      , lockfileCatalogs =
-          PnpmCatalogs
-            ( unionPreferringSecond
-                a.lockfileCatalogs.catalogEntries
-                b.lockfileCatalogs.catalogEntries
-            )
-      }
-
--- | Union preferring the second argument: later documents of a multi-document
--- lockfile win on conflicting keys (pnpm writes the env document first).
-unionPreferringSecond :: Ord k => Map k v -> Map k v -> Map k v
-unionPreferringSecond first second = Map.union second first
-
--- | On a shared key the later document's snapshot wins (HashMap.fromList
--- keeps the last occurrence).
-mergeSnapshots :: PnpmLockFileSnapshots -> PnpmLockFileSnapshots -> PnpmLockFileSnapshots
-mergeSnapshots (PnpmLockFileSnapshots a) (PnpmLockFileSnapshots b) =
-  PnpmLockFileSnapshots (HashMap.fromList (HashMap.toList a <> HashMap.toList b))
 
 --
 -- Catalogs
@@ -312,18 +256,6 @@ instance FromJSON ProjectMap where
       <*> obj .:? "devDependencies" .!= mempty
       <*> obj .:? "configDependencies" .!= mempty
       <*> obj .:? "packageManagerDependencies" .!= mempty
-
--- | Union importers field-wise: the env and the project document both use the
--- @.@ importer key, and a whole-value overwrite would lose whichever graph the
--- dropped side held (pnpm's lockfile docs warn about exactly this).
-instance Semigroup ProjectMap where
-  (<>) a b =
-    ProjectMap
-      { directDependencies = unionPreferringSecond a.directDependencies b.directDependencies
-      , directDevDependencies = unionPreferringSecond a.directDevDependencies b.directDevDependencies
-      , configDependencies = unionPreferringSecond a.configDependencies b.configDependencies
-      , packageManagerDependencies = unionPreferringSecond a.packageManagerDependencies b.packageManagerDependencies
-      }
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
   { version :: Text

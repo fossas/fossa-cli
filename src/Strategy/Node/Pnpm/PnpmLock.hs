@@ -11,11 +11,13 @@ import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
 import Data.Aeson.Types (Value, parseEither, parseJSON)
 import Data.ByteString (ByteString)
 import Data.Either (partitionEithers)
-import Data.Foldable (foldl', for_)
+import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
+import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Semigroup (sconcat)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -54,7 +56,6 @@ import Strategy.Node.Pnpm.Types (
   ProjectMapDepMetadata (..),
   Resolution (..),
   TarballResolution (..),
-  mergeLockfiles,
   withoutPeerDepSuffix,
  )
 import Strategy.Node.Pnpm.V4_8 (
@@ -240,40 +241,58 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
 -- Top-level dispatch
 --
 
--- | Build the dependency graph, labeling direct deps with their environment
--- (prod\/dev). hydrateDepEnvs then propagates those environments to all
--- transitive successors.
-buildGraph :: PnpmLockfile -> Graphing Dependency
-buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphConfigV4or5 base
-buildGraph (LockfileV678 (PnpmLockfileV678 base)) = buildGraphCore buildGraphConfigV678 base
-buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
+-- | Union of each document's graph — 'Graphing' is a 'Monoid'.
+buildGraph :: NonEmpty PnpmLockfile -> Graphing Dependency
+buildGraph = sconcat . fmap buildGraphOne
 
--- | Parse the contents of a pnpm-lock.yaml file, folding every document that
--- parses into one lockfile. The fold is right-biased: on conflicts the later
--- document wins. pnpm v11+ writes a multi-document stream — an env lockfile
--- (configDependencies / packageManagerDependencies) followed by the project
--- lockfile — and each document parses as a 'PnpmLockfile', so keeping only the
--- first would drop the project graph.
-parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
+buildGraphOne :: PnpmLockfile -> Graphing Dependency
+buildGraphOne (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphConfigV4or5 base
+buildGraphOne (LockfileV678 (PnpmLockfileV678 base)) = buildGraphCore buildGraphConfigV678 base
+buildGraphOne (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
+
+-- | Parse every document of a pnpm-lock.yaml stream. pnpm writes one or two
+-- documents — an env lockfile (configDependencies) followed by the project
+-- lockfile — and each is a valid 'PnpmLockfile' on its own
+-- (https://pnpm.io/lockfile), so they are returned for per-document processing
+-- rather than merged into one object. Documents that fail to parse are
+-- skipped, as long as at least one parses.
+parsePnpmLockfile :: ByteString -> Either Text (NonEmpty PnpmLockfile)
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err
   Right (docs :: [Value]) -> case partitionEithers $ map (parseEither parseJSON) docs of
     ([], []) -> Left "no YAML documents found"
     (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
-    (_, lockfile : lockfiles) ->
-      foldl' (\acc next -> acc >>= \acc' -> mergeLockfiles acc' next) (Right lockfile) lockfiles
+    (_, lockfile : lockfiles)
+      -- pnpm writes one or two documents — an env lockfile and a project
+      -- lockfile (https://pnpm.io/lockfile) — so more is not pnpm output.
+      | length lockfiles > 1 ->
+          Left "pnpm-lock.yaml contains more than two YAML documents; pnpm writes at most two, an env lockfile and a project lockfile (see https://pnpm.io/lockfile)"
+      -- Both documents of one stream declare the same lockfileVersion
+      -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
+      | any (\d -> lockfileVersion d /= lockfileVersion lockfile) lockfiles ->
+          Left "multi-document lockfile with inconsistent lockfileVersions across documents"
+      | otherwise -> Right (lockfile :| lockfiles)
+
+-- Both documents of one stream declare the same lockfileVersion
+-- (https://pnpm.io/lockfile); disagreement is not pnpm output.
+lockfileVersion :: PnpmLockfile -> Text
+lockfileVersion (LockfileV4Or5 (PnpmLockfileV4Or5 b)) = lockfileRawVersion b
+lockfileVersion (LockfileV678 (PnpmLockfileV678 b)) = lockfileRawVersion b
+lockfileVersion (LockfileV9 v) = lockfileRawVersion (lockfileBase v)
 
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
 analyze file = context "Analyzing Pnpm Lockfile" $ do
-  pnpmLockFile <- context "Parsing pnpm-lock file" $
+  lockfiles <- context "Parsing pnpm-lock file" $
     context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
       contents <- readContentsBS file
       case parsePnpmLockfile contents of
         Left err -> errSupport (fileParseErrorSupportMsg file) . fatal $ FileParseError (toString file) err
-        Right lockfile -> pure lockfile
+        Right lockfiles -> pure lockfiles
 
   -- Warn about unsupported versions (v1-v3).
-  case pnpmLockFile of
+  -- Documents of one stream share one lockfileVersion, so warning once is enough.
+  let (lockfile :| _) = lockfiles
+  case lockfile of
     LockfileV4Or5 (PnpmLockfileV4Or5 base) ->
       case Text.uncons (lockfileRawVersion base) of
         Just (c, _)
@@ -283,4 +302,4 @@ analyze file = context "Analyzing Pnpm Lockfile" $ do
     LockfileV678 _ -> pure ()
     LockfileV9 _ -> pure ()
 
-  context "Building dependency graph" $ pure $ buildGraph pnpmLockFile
+  context "Building dependency graph" $ pure $ buildGraph lockfiles
