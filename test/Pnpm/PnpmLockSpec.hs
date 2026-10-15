@@ -138,17 +138,13 @@ spec = do
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
 
-  -- pnpm v11+ can emit a multi-document lockfile: an env lockfile (config /
-  -- package-manager dependencies, which declares a lockfileVersion of its own)
-  -- precedes the project lockfile document.
   let pnpmLockV11MultiDoc = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-multi-doc/pnpm-lock.yaml")
   describe "works with pnpm v11 multi-document lockfile" $
     checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
 
   parsePnpmLockfileSpec
 
--- parsePnpmLockfile folds every document that parses into one lockfile and
--- skips the rest; these pin the non-happy paths of that fold.
+-- Pins the non-happy paths of parsePnpmLockfile.
 parsePnpmLockfileSpec :: Spec
 parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
   it "keeps parsing later documents when an earlier one does not parse" $
@@ -175,8 +171,8 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
       Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
       Right _ -> expectationFailure "expected an inconsistent-version error"
 
--- A document without a parseable lockfileVersion (front metadata documents,
--- or malformed ones) fails to parse and is skipped.
+-- A document that fails to parse (no readable lockfileVersion) is dropped;
+-- later documents still merge.
 invalidFirstDoc :: String
 invalidFirstDoc =
   unlines
@@ -194,7 +190,6 @@ invalidFirstDoc =
     , "    resolution: {integrity: sha512-xxxxxxxxxx==}"
     ]
 
--- Both documents define a@1.0.0; only the later copy resolves b.
 collidingDocs :: String
 collidingDocs =
   unlines
@@ -213,9 +208,7 @@ collidingDocs =
     , "    resolution: {integrity: sha512-b==}"
     ]
 
--- Documents of one stream must share one lockfileVersion; each constructor
--- parses as a different PnpmLockfile variant, so a v6 document followed by a
--- v9 document has nothing to merge.
+-- A v6 document followed by a v9 document.
 mixedVersionDocs :: String
 mixedVersionDocs =
   unlines

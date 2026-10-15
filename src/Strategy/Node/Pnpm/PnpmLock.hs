@@ -203,11 +203,11 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
                       LabelingOn -> label dep (PnpmEnv EnvDevelopment)
                       LabelingOff -> pure ()
 
-            -- Config and package-manager dependencies are real packages
-            -- installed for the project, so report them as direct dependencies.
-            -- Marking them direct also keeps them in the graph: unreachable
-            -- deep nodes are pruned before the source unit is built.
-            -- Not merged by name: on a collision Map.<> would silently drop one side's version.
+            -- Config and package-manager dependencies are real packages installed for the
+            -- project. Marking them direct also keeps them in the graph: unreachable deep
+            -- nodes are pruned before the source unit is built. The two maps are
+            -- concatenated, not merged by name: on a collision Map.<> would silently drop
+            -- one side's version.
             for_ (Map.toList (configDependencies projectImporters) <> Map.toList (packageManagerDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
@@ -247,16 +247,12 @@ buildGraph (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = buildGraphCore buildGraphC
 buildGraph (LockfileV678 (PnpmLockfileV678 base)) = buildGraphCore buildGraphConfigV678 base
 buildGraph (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBase v)
 
--- | Parse the contents of a pnpm-lock.yaml file.
---
--- pnpm v11+ can write the lockfile as a multi-document YAML stream: an env
--- lockfile (configDependencies / packageManagerDependencies) followed by the
--- project lockfile. Both documents carry the same @lockfileVersion@ and each
--- parses as a 'PnpmLockfile'. We parse every document and merge the ones that
--- succeed, reusing the single-document parser and graph builder. Merging every
--- document reports what the whole lockfile installs (pnpm's guidance for SBOM /
--- vulnerability tools) and, at minimum, never lets the env document shadow the
--- project graph. Single-document lockfiles parse exactly as before.
+-- | Parse the contents of a pnpm-lock.yaml file, folding every document that
+-- parses into one lockfile. The fold is right-biased: on conflicts the later
+-- document wins. pnpm v11+ writes a multi-document stream — an env lockfile
+-- (configDependencies / packageManagerDependencies) followed by the project
+-- lockfile — and each document parses as a 'PnpmLockfile', so keeping only the
+-- first would drop the project graph.
 parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err

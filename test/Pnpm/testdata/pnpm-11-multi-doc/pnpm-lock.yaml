@@ -22,7 +22,6 @@ importers:
 
 packages:
   # Config and package-manager dependencies exist ONLY in the env document.
-  # They must be reported alongside the project graph, not dropped.
   pnpm-config-plugin@1.0.0:
     resolution: {integrity: sha256-envconfigintegrity==}
 

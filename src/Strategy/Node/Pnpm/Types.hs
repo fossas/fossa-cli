@@ -183,25 +183,13 @@ data PnpmLockfile
 --
 -- Merging multi-document lockfiles
 --
---
--- pnpm v11+ can write pnpm-lock.yaml as a multi-document YAML stream: an env
--- lockfile (config / package-manager dependencies) followed by the project
--- lockfile. Both documents carry the same lockfileVersion and each parses as a
--- valid 'PnpmLockfile'. A tool that reports everything the lockfile installs
--- (SBOM generators, vulnerability scanners) must union the documents rather
--- than keep only the first one: the env document parses successfully and would
--- otherwise shadow the project graph.
 
--- | Combine two documents of one multi-document stream. Documents are unioned
--- with the later document winning on conflicts, since pnpm writes the env
--- document first and the project document last.
+-- | Union two documents of one multi-document stream, later document winning
+-- on conflicts (pnpm writes the env document first, the project document last).
 --
--- This is a plain function rather than a 'Semigroup' instance because the sum
--- type has no lawful combination across constructors: 'PnpmLockfile' variants
--- of different versions have nothing sensible to merge, and every total
--- fallback (keep left, keep right) is non-associative — and would silently
--- drop one document's graph, the very bug class this fixes. A stream whose
--- documents disagree on lockfileVersion is malformed and must be rejected.
+-- A plain function rather than a 'Semigroup' instance: variants of different
+-- versions have nothing sensible to merge, and every total fallback (keep
+-- left, keep right) is non-associative and silently drops one document's graph.
 mergeLockfiles :: PnpmLockfile -> PnpmLockfile -> Either Text PnpmLockfile
 mergeLockfiles a b
   | pnpmLockfileVersion a /= pnpmLockfileVersion b = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
@@ -222,8 +210,7 @@ instance Semigroup PnpmLockfileBase where
     PnpmLockfileBase
       { lockfileImporters = Map.unionWith (<>) a.lockfileImporters b.lockfileImporters
       , lockfilePackages = unionPreferringSecond a.lockfilePackages b.lockfilePackages
-      , -- First non-empty: documents of one stream share one lockfileVersion,
-        -- and the empty version is the identity, keeping this instance lawful.
+      , -- First non-empty: mergeLockfiles enforces one lockfileVersion per stream.
         lockfileRawVersion =
           if Text.null a.lockfileRawVersion then b.lockfileRawVersion else a.lockfileRawVersion
       }
@@ -241,15 +228,13 @@ instance Semigroup PnpmLockfileV9 where
             )
       }
 
--- | Union two maps giving precedence to the second argument, so that later
--- documents in a multi-document lockfile win on conflicting keys. ('Map.union'
--- prefers its first argument instead, which would let the env front-document
--- shadow the project lockfile's data.)
+-- | Union preferring the second argument: later documents of a multi-document
+-- lockfile win on conflicting keys (pnpm writes the env document first).
 unionPreferringSecond :: Ord k => Map k v -> Map k v -> Map k v
 unionPreferringSecond first second = Map.union second first
 
--- | Union two snapshot maps by key. On a shared key the later document's
--- dependency list wins (List.fromList keeps the last occurrence for a key).
+-- | On a shared key the later document's snapshot wins (HashMap.fromList
+-- keeps the last occurrence).
 mergeSnapshots :: PnpmLockFileSnapshots -> PnpmLockFileSnapshots -> PnpmLockFileSnapshots
 mergeSnapshots (PnpmLockFileSnapshots a) (PnpmLockFileSnapshots b) =
   PnpmLockFileSnapshots (HashMap.fromList (HashMap.toList a <> HashMap.toList b))
@@ -321,10 +306,8 @@ data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
   , directDevDependencies :: Map Text ProjectMapDepMetadata
   , configDependencies :: Map Text ProjectMapDepMetadata
-  -- ^ pnpm config dependencies: real packages, installed into
-  -- @node_modules/.pnpm-config@, so they must be reported too.
+  -- ^ pnpm config dependencies: real packages, installed into @node_modules/.pnpm-config@.
   , packageManagerDependencies :: Map Text ProjectMapDepMetadata
-  -- ^ The pnpm version resolved for the project.
   }
   deriving (Show, Eq, Ord)
 
@@ -336,9 +319,9 @@ instance FromJSON ProjectMap where
       <*> obj .:? "configDependencies" .!= mempty
       <*> obj .:? "packageManagerDependencies" .!= mempty
 
--- | Union two importers field-wise. The env and the project lockfile document
--- both use the @.@ importer key; a whole-value overwrite would lose whichever
--- graph the dropped side held (pnpm's lockfile docs warn about exactly this).
+-- | Union importers field-wise: the env and the project document both use the
+-- @.@ importer key, and a whole-value overwrite would lose whichever graph the
+-- dropped side held (pnpm's lockfile docs warn about exactly this).
 instance Semigroup ProjectMap where
   (<>) a b =
     ProjectMap
