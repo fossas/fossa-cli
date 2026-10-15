@@ -207,7 +207,8 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
             -- installed for the project, so report them as direct dependencies.
             -- Marking them direct also keeps them in the graph: unreachable
             -- deep nodes are pruned before the source unit is built.
-            for_ (Map.toList $ configDependencies projectImporters <> packageManagerDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+            -- Not merged by name: on a collision Map.<> would silently drop one side's version.
+            for_ (Map.toList (configDependencies projectImporters) <> Map.toList (packageManagerDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep

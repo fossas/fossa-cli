@@ -203,10 +203,19 @@ data PnpmLockfile
 -- drop one document's graph, the very bug class this fixes. A stream whose
 -- documents disagree on lockfileVersion is malformed and must be rejected.
 mergeLockfiles :: PnpmLockfile -> PnpmLockfile -> Either Text PnpmLockfile
+mergeLockfiles a b
+  | pnpmLockfileVersion a /= pnpmLockfileVersion b = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
 mergeLockfiles (LockfileV4Or5 a) (LockfileV4Or5 b) = Right (LockfileV4Or5 (a <> b))
 mergeLockfiles (LockfileV678 a) (LockfileV678 b) = Right (LockfileV678 (a <> b))
 mergeLockfiles (LockfileV9 a) (LockfileV9 b) = Right (LockfileV9 (a <> b))
 mergeLockfiles _ _ = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
+
+-- Raw lockfileVersion of a parsed document. Always non-empty: classifyVersion
+-- fails on anything it cannot read, and failed documents are dropped.
+pnpmLockfileVersion :: PnpmLockfile -> Text
+pnpmLockfileVersion (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = base.lockfileRawVersion
+pnpmLockfileVersion (LockfileV678 (PnpmLockfileV678 base)) = base.lockfileRawVersion
+pnpmLockfileVersion (LockfileV9 v9) = v9.lockfileBase.lockfileRawVersion
 
 instance Semigroup PnpmLockfileBase where
   (<>) a b =

@@ -170,6 +170,11 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
       Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
       Right _ -> expectationFailure "expected an inconsistent-version error"
 
+  it "rejects versions that share a constructor but differ in raw version" $
+    case parsePnpmLockfile (BS8.pack sameConstructorVersionMismatchDocs) of
+      Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
+      Right _ -> expectationFailure "expected an inconsistent-version error"
+
 -- A document without a parseable lockfileVersion (front metadata documents,
 -- or malformed ones) fails to parse and is skipped.
 invalidFirstDoc :: String
@@ -222,6 +227,22 @@ mixedVersionDocs =
     , "lockfileVersion: '9.0'"
     , "packages:"
     , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Both documents classify as the same variant (LockfileV678), but the raw
+-- lockfileVersions differ, so the stream must still be rejected.
+sameConstructorVersionMismatchDocs :: String
+sameConstructorVersionMismatchDocs =
+  unlines
+    [ "lockfileVersion: '6.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '8.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
     , "    resolution: {integrity: sha512-b==}"
     ]
 
