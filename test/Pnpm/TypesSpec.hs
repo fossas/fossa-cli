@@ -91,6 +91,8 @@ spec = do
               ProjectMap
                 { directDependencies = Map.singleton "aws-sdk" (ProjectMapDepMetadata "2.1148.0")
                 , directDevDependencies = Map.singleton "react" (ProjectMapDepMetadata "18.1.0")
+                , configDependencies = mempty
+                , packageManagerDependencies = mempty
                 }
           )
 
@@ -115,6 +117,8 @@ spec = do
               ProjectMap
                 { directDependencies = Map.singleton "commander" (ProjectMapDepMetadata "9.2.0")
                 , directDevDependencies = mempty
+                , configDependencies = mempty
+                , packageManagerDependencies = mempty
                 }
           )
 
@@ -141,6 +145,8 @@ spec = do
               ProjectMap
                 { directDependencies = Map.singleton "aws-sdk" (ProjectMapDepMetadata "2.1148.0")
                 , directDevDependencies = Map.singleton "react" (ProjectMapDepMetadata "18.1.0")
+                , configDependencies = mempty
+                , packageManagerDependencies = mempty
                 }
           )
 
