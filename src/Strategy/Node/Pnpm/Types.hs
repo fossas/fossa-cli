@@ -191,19 +191,13 @@ data PnpmLockfile
 -- versions have nothing sensible to merge, and every total fallback (keep
 -- left, keep right) is non-associative and silently drops one document's graph.
 mergeLockfiles :: PnpmLockfile -> PnpmLockfile -> Either Text PnpmLockfile
-mergeLockfiles a b
-  | pnpmLockfileVersion a /= pnpmLockfileVersion b = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
-mergeLockfiles (LockfileV4Or5 a) (LockfileV4Or5 b) = Right (LockfileV4Or5 (a <> b))
-mergeLockfiles (LockfileV678 a) (LockfileV678 b) = Right (LockfileV678 (a <> b))
-mergeLockfiles (LockfileV9 a) (LockfileV9 b) = Right (LockfileV9 (a <> b))
+mergeLockfiles (LockfileV4Or5 (PnpmLockfileV4Or5 a)) (LockfileV4Or5 (PnpmLockfileV4Or5 b))
+  | a.lockfileRawVersion == b.lockfileRawVersion = Right (LockfileV4Or5 (PnpmLockfileV4Or5 (a <> b)))
+mergeLockfiles (LockfileV678 (PnpmLockfileV678 a)) (LockfileV678 (PnpmLockfileV678 b))
+  | a.lockfileRawVersion == b.lockfileRawVersion = Right (LockfileV678 (PnpmLockfileV678 (a <> b)))
+mergeLockfiles (LockfileV9 a) (LockfileV9 b)
+  | a.lockfileBase.lockfileRawVersion == b.lockfileBase.lockfileRawVersion = Right (LockfileV9 (a <> b))
 mergeLockfiles _ _ = Left "multi-document lockfile with inconsistent lockfileVersions across documents"
-
--- Raw lockfileVersion of a parsed document. Always non-empty: classifyVersion
--- fails on anything it cannot read, and failed documents are dropped.
-pnpmLockfileVersion :: PnpmLockfile -> Text
-pnpmLockfileVersion (LockfileV4Or5 (PnpmLockfileV4Or5 base)) = base.lockfileRawVersion
-pnpmLockfileVersion (LockfileV678 (PnpmLockfileV678 base)) = base.lockfileRawVersion
-pnpmLockfileVersion (LockfileV9 v9) = v9.lockfileBase.lockfileRawVersion
 
 instance Semigroup PnpmLockfileBase where
   (<>) a b =
