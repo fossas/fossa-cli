@@ -186,7 +186,10 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
         run . withLabeling applyLabels $ do
           -- Direct dependencies from each importer (workspace package).
           for_ (toList (lockfileImporters base)) $ \(_, projectImporters) -> do
-            for_ (Map.toList $ directDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
+            -- Optional dependencies are production dependencies an install may
+            -- skip on a platform that cannot use them; see 'ProjectMap'.
+            let prodDependencies = Map.toList (directDependencies projectImporters) <> Map.toList (directOptionalDependencies projectImporters)
+            for_ prodDependencies $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep

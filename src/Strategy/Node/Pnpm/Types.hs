@@ -227,7 +227,8 @@ instance FromJSON PnpmLockFileSnapshots where
       let readTransitiveDepPairs = withObject "Parse dependencies" $
             \ds -> do
               deps <- ds .:? "dependencies" .!= mempty
-              pure . HashMap.toList $ deps
+              optionalDeps <- ds .:? "optionalDependencies" .!= mempty
+              pure . HashMap.toList $ deps <> optionalDeps
       snapshots <- traverse readTransitiveDepPairs o
 
       -- Remove the peer dependency suffix. It's present in the snapshot entry, but it's not present in packages
@@ -240,9 +241,16 @@ instance FromJSON PnpmLockFileSnapshots where
 -- Project map
 --
 
+-- | The direct dependencies of one importer (workspace package).
+--
+-- pnpm lists optional dependencies separately only so that an install can skip
+-- the ones its platform cannot use; for analysis they are direct dependencies
+-- like any other, and leaving them out of the graph is what made platform
+-- packages such as fsevents appear as unrelated transitive dependencies.
 data ProjectMap = ProjectMap
   { directDependencies :: Map Text ProjectMapDepMetadata
   , directDevDependencies :: Map Text ProjectMapDepMetadata
+  , directOptionalDependencies :: Map Text ProjectMapDepMetadata
   }
   deriving (Show, Eq, Ord)
 
@@ -251,6 +259,7 @@ instance FromJSON ProjectMap where
     ProjectMap
       <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
+      <*> obj .:? "optionalDependencies" .!= mempty
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
   { version :: Text
@@ -283,7 +292,9 @@ instance FromJSON PackageData where
       <$> (obj .:? "dev" .!= False)
       <*> obj .:? "name"
       <*> obj .: "resolution"
-      <*> (obj .:? "dependencies" .!= mempty)
+      -- A package's optional dependencies are edges like any other; see
+      -- 'ProjectMap'.
+      <*> ((<>) <$> (obj .:? "dependencies" .!= mempty) <*> (obj .:? "optionalDependencies" .!= mempty))
       <*> (obj .:? "peerDependencies" .!= mempty)
 
 data Resolution
@@ -362,7 +373,8 @@ parseBaseLockfile (TextLike rawVer) obj = do
   packages <- obj .:? "packages" .!= mempty
   dependencies <- obj .:? "dependencies" .!= mempty
   devDependencies <- obj .:? "devDependencies" .!= mempty
-  let virtualRootWs = ProjectMap dependencies devDependencies
+  optionalDependencies <- obj .:? "optionalDependencies" .!= mempty
+  let virtualRootWs = ProjectMap dependencies devDependencies optionalDependencies
   let refinedImporters =
         if Map.null importers
           then Map.insert "." virtualRootWs importers
