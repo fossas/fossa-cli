@@ -1,8 +1,13 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- VSI: `paths.only` and path globs now apply to `--detect-vendored`. ([#1812](https://github.com/fossas/fossa-cli/pull/1812))
+
 ## 3.20.4
 
 - Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
+- FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
 
 
 ## 3.20.3
@@ -13,7 +18,6 @@
 
 ## 3.20.2
 
-- FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 - Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
 - Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
