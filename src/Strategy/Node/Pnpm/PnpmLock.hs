@@ -12,13 +12,14 @@ import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
 import Control.Monad (when)
 import Data.Aeson.Types (Value, parseEither, parseJSON)
 import Data.ByteString (ByteString)
-import Data.Either (partitionEithers)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List (foldl')
+import Data.List.NonEmpty (NonEmpty (..), last)
 import Data.Map (Map, toList)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Semigroup (sconcat)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -224,6 +225,19 @@ buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgc
                       LabelingOn -> label dep (PnpmEnv EnvDevelopment)
                       LabelingOff -> pure ()
 
+            -- Config dependencies are real packages installed for the project.
+            -- Marking them direct also keeps them in the graph: unreachable deep
+            -- nodes are pruned before the source unit is built. (The env
+            -- document's packageManagerDependencies — pnpm itself — is not
+            -- parsed at all, so it is never reported.)
+            for_ (Map.toList (configDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
+              let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
+               in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+                    direct dep
+                    case labelingMode of
+                      LabelingOn -> label dep (PnpmEnv EnvProduction)
+                      LabelingOff -> pure ()
+
           -- Deep dependencies and edges from the packages section.
           for_ (toList pkgs) $ \(pkgKey, pkgMeta) -> do
             let deepDependencies =
@@ -325,37 +339,49 @@ resolveImporterKey fromKey relPath = toKey $ foldl' step [] segments
 -- Top-level dispatch
 --
 
--- | Build the dependency graph, labeling direct deps with their environment
--- (prod\/dev). Hydration propagates those environments to all
--- transitive successors.
---
--- The first argument scopes the graph to a set of workspace importer keys; see
--- 'scopedImporters'.
-buildGraph :: Maybe (Set.Set Text) -> PnpmLockfile -> Graphing Dependency
-buildGraph selection lockfile = case lockfile of
+-- | Union of each document's graph ('Graphing' is a 'Semigroup'). The first
+-- argument scopes each document's graph to a set of workspace importer keys;
+-- see 'scopedImporters'.
+buildGraph :: Maybe (Set.Set Text) -> NonEmpty PnpmLockfile -> Graphing Dependency
+buildGraph selection = sconcat . fmap (buildGraphOne selection)
+
+buildGraphOne :: Maybe (Set.Set Text) -> PnpmLockfile -> Graphing Dependency
+buildGraphOne selection lockfile = case lockfile of
   LockfileV4Or5 (PnpmLockfileV4Or5 base) -> withSelection buildGraphConfigV4or5 base
   LockfileV678 (PnpmLockfileV678 base) -> withSelection buildGraphConfigV678 base
   LockfileV9 v -> withSelection (buildGraphConfigV9 v) (lockfileBase v)
   where
     withSelection config base = buildGraphCore (scopedImporters selection base) config base
 
--- | Parse the contents of a pnpm-lock.yaml file.
---
--- pnpm v11 can write the lockfile as a multi-document YAML stream. In practice
--- the stream is exactly two documents: a metadata front-document (pnpmfile
--- checksum, config dependency integrity, etc. — no dependency data) followed by
--- the lockfile document, which still carries all of the importers\/packages\/
--- snapshots data. Only the lockfile document parses as a 'PnpmLockfile' (the
--- metadata document has no @lockfileVersion@), so selecting the first document
--- that parses as a lockfile analyzes the full dependency data rather than
--- rejecting the stream with "Multiple YAML documents encountered".
-parsePnpmLockfile :: ByteString -> Either Text PnpmLockfile
+-- | Parse every document of a pnpm-lock.yaml stream. pnpm writes one or two
+-- documents — an env lockfile (configDependencies) followed by the project
+-- lockfile — and each is a valid 'PnpmLockfile' on its own
+-- (https://pnpm.io/lockfile), so they are returned for per-document processing
+-- rather than merged into one object.
+parsePnpmLockfile :: ByteString -> Either Text (NonEmpty PnpmLockfile)
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err
-  Right (docs :: [Value]) -> case partitionEithers $ map (parseEither parseJSON) docs of
-    (_, lockfile : _) -> Right lockfile
-    ([], []) -> Left "no YAML documents found"
-    (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
+  Right (docs :: [Value]) -> case traverse (parseEither parseJSON) docs of
+    Left err -> Left . toText $ "malformed lockfile document: " <> err
+    Right [] -> Left "no YAML documents found"
+    Right [one] -> Right (one :| [])
+    Right [one, two] ->
+      -- Both documents of one stream declare the same lockfileVersion
+      -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
+      if lockfileVersion one == lockfileVersion two
+        then Right (one :| [two])
+        else Left "multi-document lockfile with inconsistent lockfileVersions across documents"
+    Right _ ->
+      -- pnpm writes one or two documents — an env lockfile and a project
+      -- lockfile (https://pnpm.io/lockfile) — so more is not pnpm output.
+      Left "pnpm-lock.yaml contains more than two YAML documents; pnpm writes at most two, an env lockfile and a project lockfile (see https://pnpm.io/lockfile)"
+
+-- Both documents of one stream declare the same lockfileVersion
+-- (https://pnpm.io/lockfile); disagreement is not pnpm output.
+lockfileVersion :: PnpmLockfile -> Text
+lockfileVersion (LockfileV4Or5 (PnpmLockfileV4Or5 b)) = lockfileRawVersion b
+lockfileVersion (LockfileV678 (PnpmLockfileV678 b)) = lockfileRawVersion b
+lockfileVersion (LockfileV9 v) = lockfileRawVersion (lockfileBase v)
 
 -- | Analyze a pnpm lockfile, optionally scoped to the given workspace importer
 -- keys (@"."@ for the root, @"packages/a"@ for a member), as resolved from the
@@ -363,15 +389,18 @@ parsePnpmLockfile contents = case decodeAllEither' contents of
 -- means no target filter is applied, so the whole workspace is graphed.
 analyze :: (Has ReadFS sig m, Has Logger sig m, Has Diagnostics sig m) => Maybe (Set.Set Text) -> Path Abs File -> m (Graphing Dependency)
 analyze selectedImporters file = context "Analyzing Pnpm Lockfile" $ do
-  pnpmLockFile <- context "Parsing pnpm-lock file" $
+  lockfiles <- context "Parsing pnpm-lock file" $
     context ("Parsing YAML file '" <> toText (toString file) <> "'") $ do
       contents <- readContentsBS file
       case parsePnpmLockfile contents of
         Left err -> errSupport (fileParseErrorSupportMsg file) . fatal $ FileParseError (toString file) err
-        Right lockfile -> pure lockfile
+        Right lockfiles -> pure lockfiles
 
   -- Warn about unsupported versions (v1-v3).
-  case pnpmLockFile of
+  -- parsePnpmLockfile rejects streams whose documents disagree on
+  -- lockfileVersion, so checking the first document suffices.
+  let (lockfile :| _) = lockfiles
+  case lockfile of
     LockfileV4Or5 (PnpmLockfileV4Or5 base) ->
       case Text.uncons (lockfileRawVersion base) of
         Just (c, _)
@@ -381,7 +410,9 @@ analyze selectedImporters file = context "Analyzing Pnpm Lockfile" $ do
     LockfileV678 _ -> pure ()
     LockfileV9 _ -> pure ()
 
-  let scoped = scopedImporters selectedImporters (lockfileBaseOf pnpmLockFile)
+  -- The project document is last, and its importers are the workspace members
+  -- the selection keys refer to.
+  let scoped = scopedImporters selectedImporters (lockfileBaseOf (Data.List.NonEmpty.last lockfiles))
   case (selectedImporters, scoped) of
     (Just keys, Just selected) ->
       when (Map.null selected) . logWarn . pretty $
@@ -390,4 +421,4 @@ analyze selectedImporters file = context "Analyzing Pnpm Lockfile" $ do
           <> ") did not match any importer in the pnpm lockfile; reporting an empty dependency graph."
     _ -> pure ()
 
-  context "Building dependency graph" $ pure $ buildGraph selectedImporters pnpmLockFile
+  context "Building dependency graph" $ pure $ buildGraph selectedImporters lockfiles

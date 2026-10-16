@@ -2,7 +2,12 @@
 
 ## Unreleased
 
-- Npm: After filtering out dev dependencies, unreachable transitive dependencies are pruned so they no longer appear as orphaned entries in the SBOM (ANE-3077). Pruning is gated to preserve graphs with no direct nodes or no edges, and Swift/Gomod projects, which emit such graphs.
+- After filtering out development dependencies, transitive dependencies that are no longer reachable from any production dependency are pruned, so they no longer appear as orphaned entries in the SBOM. This applies to every project type whose source unit is built from a dependency graph; pruning is skipped for graphs with no direct nodes or no edges, and for Swift/Gomod projects, which emit such graphs.
+
+## 3.20.4
+
+- Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
+
 
 ## 3.20.3
 
@@ -82,7 +87,6 @@
 ## 3.18.0
 
 - Container scanning: `fossa container analyze` now reports Go module dependencies embedded in Go binaries (built with Go >= 1.18) found in container image layers as regular Go dependencies, supporting images without package manager metadata such as `scratch` and distroless images ([#1740](https://github.com/fossas/fossa-cli/pull/1740))
->>>>>>> origin/master
 - Bun: Dependencies reachable only through a `devDependencies` entry are now reported as development dependencies instead of production dependencies.
 - Analysis: JSON manifest files with a leading UTF-8 byte order mark (commonly written by Windows tooling, e.g. in NuGet `project.json`) no longer fail to parse.
 - NuGet: `project.json` files that are not NuGet manifests (e.g. Nx project configuration) are no longer claimed by the NuGet analyzer, so they no longer fail analysis with `key "dependencies" not found`.
