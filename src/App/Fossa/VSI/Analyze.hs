@@ -25,19 +25,22 @@ import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
+import Control.Monad (when)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
+import Data.Maybe (fromMaybe, isJust)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
-import Discovery.Filters (AllFilters, combinedPaths, excludeFilters, includeFilters)
+import Discovery.Filters (AllFilters (..), applyFilters, combinedPathGlobs, combinedPaths, comboExcludeWithGlobs, comboIncludeWithGlobs, pathAllowed)
 import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
 import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, hsep, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, File, Path, Rel, isProperPrefixOf, (</>))
+import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
+import Types (FoundTargets (ProjectWithoutTargets))
 
 runVsiAnalysis ::
   ( Has (Lift IO) sig m
@@ -102,8 +105,7 @@ runFingerprintDiscovery ::
   m ()
 runFingerprintDiscovery capabilities files dir filters = do
   runStickyLogger SevInfo . withTaskPool capabilities (updateProgress " > Fingerprint files") . runAtomicCounter $ do
-    let pathFilters = withDefaultFilters dir $ toPathFilters dir filters
-    res <- runDiagnosticsIO $ discover files pathFilters dir ancestryDirect
+    res <- runDiagnosticsIO $ discover files (withDefaultFilters filters) dir ancestryDirect
     withResult SevError SevWarn res (const (pure ()))
 
   logDebug "Finished processing files"
@@ -231,7 +233,7 @@ discover ::
   ) =>
   TBMChan (Path Rel File, Combined) ->
   -- | Filters used to exclude scanned directories
-  PathFilters ->
+  AllFilters ->
   -- | Root to discover at
   Path Abs Dir ->
   -- | Path rendering
@@ -242,10 +244,16 @@ discover output filters root renderAncestry =
     logDebug . pretty $ "walking new root: " <> toText root
     flip walk root $ \dir _ files -> handle dir files
   where
-    handle dir files | filters `allow` dir = do
-      logDebug . pretty $ "processing dir: " <> toText dir
-      traverse_ (forkTask . process) files
-      pure WalkContinue
+    -- Walk and scan like the analyzers: the root is always walked, and a dir's files are scanned only where a project
+    -- there would be kept, so the parents of a `paths.only` entry are walked but not scanned.
+    handle dir files
+      | maybe True (pathAllowed filters) relDir = do
+          logDebug . pretty $ "processing dir: " <> toText dir
+          when (isJust $ applyFilters filters "vsi" (fromMaybe $(P.mkRelDir ".") relDir) ProjectWithoutTargets) $
+            traverse_ (forkTask . process) files
+          pure WalkContinue
+      where
+        relDir = P.stripProperPrefix root dir
     handle dir _ = do
       logDebug . pretty $ "skip dir: " <> toText dir
       pure WalkSkipAll
@@ -260,7 +268,7 @@ discover output filters root renderAncestry =
       forkTask . recover . fatalOnSomeException "extract archive" . withArchive' file $ \archiveRoot -> context "walking into child archive" $ do
         logDebug . pretty $ "walking into " <> toText file <> " as archive"
         logicalParent <- convertArchiveSuffix logicalPath
-        discover output filters archiveRoot $ ancestryDerived $ FileAncestry logicalParent
+        discover output mempty archiveRoot $ ancestryDerived $ FileAncestry logicalParent
 
       -- Report the fingerprint and logical path for computing this chunk.
       logDebug . pretty $ "report logical path: " <> toText logicalPath
@@ -307,35 +315,13 @@ waitForAnalysis scanID = do
   where
     pollDelaySeconds = 8
 
--- | PathFilters is a specialized filter mechanism that operates only on absolute directory paths.
-data PathFilters = PathFilters
-  { include :: [Path Abs Dir]
-  , exclude :: [Path Abs Dir]
-  }
-  deriving (Show)
-
-toPathFilters :: Path Abs Dir -> AllFilters -> PathFilters
-toPathFilters root filters =
-  PathFilters
-    { include = map (root </>) (combinedPaths $ includeFilters filters)
-    , exclude = map (root </>) (combinedPaths $ excludeFilters filters)
+-- | The user's path filters, without target filters since VSI doesn't apply them, plus the root @.git@.
+withDefaultFilters :: AllFilters -> AllFilters
+withDefaultFilters AllFilters{..} =
+  AllFilters
+    { includeFilters = comboIncludeWithGlobs [] (combinedPaths includeFilters) (combinedPathGlobs includeFilters)
+    , excludeFilters = comboExcludeWithGlobs [] ($(P.mkRelDir ".git") : combinedPaths excludeFilters) (combinedPathGlobs excludeFilters)
     }
-
-withDefaultFilters :: Path Abs Dir -> PathFilters -> PathFilters
-withDefaultFilters root filters =
-  PathFilters
-    { include = include filters
-    , exclude = dotgit : exclude filters
-    }
-  where
-    dotgit = root </> $(P.mkRelDir ".git")
-
-allow :: PathFilters -> Path Abs Dir -> Bool
-allow filters dir = (not shouldExclude) && shouldInclude
-  where
-    shouldExclude = (isPrefixedOrEqual dir) `any` (exclude filters)
-    shouldInclude = null (include filters) || (isPrefixedOrEqual dir) `any` (include filters)
-    isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
 updateProgress :: Has StickyLogger sig m => Text -> Progress -> m ()
 updateProgress status Progress{..} =
