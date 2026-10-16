@@ -205,10 +205,9 @@ buildGraphCore BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgcToEnv, bgc
 
             -- Config dependencies are real packages installed for the project.
             -- Marking them direct also keeps them in the graph: unreachable deep
-            -- nodes are pruned before the source unit is built.
-            -- packageManagerDependencies is deliberately not reported: it holds
-            -- pnpm itself (the version pnpm resolved for the project), not a
-            -- project dependency.
+            -- nodes are pruned before the source unit is built. (The env
+            -- document's packageManagerDependencies — pnpm itself — is not
+            -- parsed at all, so it is never reported.)
             for_ (Map.toList (configDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
                in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do

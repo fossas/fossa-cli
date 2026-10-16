@@ -245,7 +245,6 @@ data ProjectMap = ProjectMap
   , directDevDependencies :: Map Text ProjectMapDepMetadata
   , configDependencies :: Map Text ProjectMapDepMetadata
   -- ^ pnpm config dependencies: real packages, installed into @node_modules/.pnpm-config@.
-  , packageManagerDependencies :: Map Text ProjectMapDepMetadata
   }
   deriving (Show, Eq, Ord)
 
@@ -255,7 +254,10 @@ instance FromJSON ProjectMap where
       <$> obj .:? "dependencies" .!= mempty
       <*> obj .:? "devDependencies" .!= mempty
       <*> obj .:? "configDependencies" .!= mempty
-      <*> obj .:? "packageManagerDependencies" .!= mempty
+
+-- The lockfile's packageManagerDependencies key (the pnpm version pnpm
+-- resolved for the project) is ignored: pnpm itself is not a dependency
+-- of the project and is not reported.
 
 newtype ProjectMapDepMetadata = ProjectMapDepMetadata
   { version :: Text
@@ -367,7 +369,7 @@ parseBaseLockfile (TextLike rawVer) obj = do
   packages <- obj .:? "packages" .!= mempty
   dependencies <- obj .:? "dependencies" .!= mempty
   devDependencies <- obj .:? "devDependencies" .!= mempty
-  let virtualRootWs = ProjectMap dependencies devDependencies mempty mempty
+  let virtualRootWs = ProjectMap dependencies devDependencies mempty
   let refinedImporters =
         if Map.null importers
           then Map.insert "." virtualRootWs importers
