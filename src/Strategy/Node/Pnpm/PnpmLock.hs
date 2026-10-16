@@ -10,7 +10,6 @@ import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, errSupport, fatal)
 import Data.Aeson.Types (Value, parseEither, parseJSON)
 import Data.ByteString (ByteString)
-import Data.Either (partitionEithers)
 import Data.Foldable (for_)
 import Data.HashMap.Strict qualified as HashMap
 import Data.List.NonEmpty (NonEmpty (..))
@@ -254,24 +253,24 @@ buildGraphOne (LockfileV9 v) = buildGraphCore (buildGraphConfigV9 v) (lockfileBa
 -- documents — an env lockfile (configDependencies) followed by the project
 -- lockfile — and each is a valid 'PnpmLockfile' on its own
 -- (https://pnpm.io/lockfile), so they are returned for per-document processing
--- rather than merged into one object. Documents that fail to parse are
--- skipped, as long as at least one parses.
+-- rather than merged into one object.
 parsePnpmLockfile :: ByteString -> Either Text (NonEmpty PnpmLockfile)
 parsePnpmLockfile contents = case decodeAllEither' contents of
   Left err -> Left . toText $ prettyPrintParseException err
-  Right (docs :: [Value]) -> case partitionEithers $ map (parseEither parseJSON) docs of
-    ([], []) -> Left "no YAML documents found"
-    (errs, []) -> Left . Text.intercalate "\n" $ map toText errs
-    (_, lockfile : lockfiles)
+  Right (docs :: [Value]) -> case traverse (parseEither parseJSON) docs of
+    Left err -> Left . toText $ "malformed lockfile document: " <> err
+    Right [] -> Left "no YAML documents found"
+    Right (lockfile : more) -> case more of
+      [] -> Right (lockfile :| [])
+      [second]
+        -- Both documents of one stream declare the same lockfileVersion
+        -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
+        | lockfileVersion lockfile == lockfileVersion second ->
+            Right (lockfile :| [second])
+        | otherwise -> Left "multi-document lockfile with inconsistent lockfileVersions across documents"
       -- pnpm writes one or two documents — an env lockfile and a project
       -- lockfile (https://pnpm.io/lockfile) — so more is not pnpm output.
-      | length lockfiles > 1 ->
-          Left "pnpm-lock.yaml contains more than two YAML documents; pnpm writes at most two, an env lockfile and a project lockfile (see https://pnpm.io/lockfile)"
-      -- Both documents of one stream declare the same lockfileVersion
-      -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
-      | any (\d -> lockfileVersion d /= lockfileVersion lockfile) lockfiles ->
-          Left "multi-document lockfile with inconsistent lockfileVersions across documents"
-      | otherwise -> Right (lockfile :| lockfiles)
+      _ -> Left "pnpm-lock.yaml contains more than two YAML documents; pnpm writes at most two, an env lockfile and a project lockfile (see https://pnpm.io/lockfile)"
 
 -- Both documents of one stream declare the same lockfileVersion
 -- (https://pnpm.io/lockfile); disagreement is not pnpm output.

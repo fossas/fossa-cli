@@ -148,10 +148,10 @@ spec = do
 -- Pins the non-happy paths of parsePnpmLockfile.
 parsePnpmLockfileSpec :: Spec
 parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
-  it "keeps parsing later documents when an earlier one does not parse" $
+  it "rejects the stream when a document fails to parse" $
     case parsePnpmLockfile (BS8.pack invalidFirstDoc) of
-      Left err -> expectationFailure (toString err)
-      Right lockfiles -> expectDep (mkProdDep "express@4.18.2") (buildGraph lockfiles)
+      Left err -> toString err `shouldContain` "malformed lockfile document"
+      Right _ -> expectationFailure "expected a malformed-document error"
 
   it "unions the graphs of documents that define the same package" $
     case parsePnpmLockfile (BS8.pack collidingDocs) of
@@ -177,8 +177,7 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
       Left err -> toString err `shouldContain` "more than two YAML documents"
       Right _ -> expectationFailure "expected a too-many-documents error"
 
--- A document that fails to parse (no readable lockfileVersion) is dropped;
--- later documents are still parsed.
+-- A document that is valid YAML but not a valid lockfile fails the whole parse.
 invalidFirstDoc :: String
 invalidFirstDoc =
   unlines
