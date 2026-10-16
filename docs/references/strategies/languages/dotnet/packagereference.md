@@ -39,3 +39,19 @@ Projects using [NuGet Central Package Management](https://learn.microsoft.com/en
 ```
 
 Inline `Version` attributes on `PackageReference` always take precedence over the centrally managed version.
+
+`PackageVersion` versions may reference MSBuild properties defined in a `<PropertyGroup>` of the same `Directory.Packages.props`. FOSSA expands `$(Name)` references (including properties that reference other properties) before reporting the version:
+
+```xml
+<!-- Directory.Packages.props -->
+<Project>
+  <PropertyGroup>
+    <SomeVar>10.0.9</SomeVar>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="$(SomeVar)" />
+  </ItemGroup>
+</Project>
+```
+
+Only properties defined in `Directory.Packages.props` itself are known; `Condition` attributes on property groups are ignored. A version that references an undefined property, or uses MSBuild property functions such as `$(Foo.Trim())`, cannot be expanded and are reported without a version.
