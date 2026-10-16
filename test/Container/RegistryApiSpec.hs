@@ -5,13 +5,20 @@ module Container.RegistryApiSpec (spec) where
 import Container.Docker.OciManifest (OciManifestConfig (configDigest), OciManifestV2 (ociConfig))
 import Container.Docker.SourceParser (RegistryImageSource, RepoDigest (RepoDigest), parseImageUrl)
 import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), parseAuthChallenge)
+import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, safeReplaceToken, updateToken)
+import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
+import Control.Concurrent.STM (newEmptyTMVarIO)
 import Control.Effect.ContainerRegistryApi (ContainerRegistryApi, getImageManifest)
-import Control.Effect.Diagnostics (Diagnostics, Has, fromEitherShow)
+import Control.Effect.Diagnostics (Diagnostics, Has, fatalText, fromEitherShow)
 import Control.Effect.Lift (Lift)
+import Data.Foldable (for_, traverse_)
 import Data.Text (Text)
 import Data.Void (Void)
+import ResultUtil (expectFailure)
+import System.Timeout (timeout)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Expectation, Spec, describe, it)
+import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 import Text.Megaparsec.Error (ParseErrorBundle)
@@ -45,6 +52,25 @@ spec :: Spec
 spec = do
   registryApiSpec
   parseAuthChallengeSpec
+  safeReplaceTokenSpec
+
+-- Blob downloads share one 'RegistryCtx' across the task pool's threads, and 'getToken' waits
+-- while another thread is replacing the token. A failed replacement therefore has to put the
+-- previous state back, otherwise every other thread blocks forever.
+safeReplaceTokenSpec :: Spec
+safeReplaceTokenSpec =
+  describe "safeReplaceToken" $
+    for_ [("no token", Nothing), ("an existing token", Just (BearerAuthToken "old-token"))] $ \(previousDesc, previous) ->
+      it ("should restore " <> previousDesc <> " when fetching the new token fails") $ do
+        ctx <- RegistryCtx <$> newEmptyTMVarIO
+        traverse_ (updateToken ctx) previous
+
+        result <- runStack . runDiagnostics $ safeReplaceToken ctx (fatalText "registry rejected the token request")
+        expectFailure result
+
+        -- Without the fix this never returns, since the context is left as "updating".
+        token <- timeout 5_000_000 (getToken ctx)
+        token `shouldBe` Just previous
 
 parseAuthChallengeSpec :: Spec
 parseAuthChallengeSpec =
