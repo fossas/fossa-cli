@@ -575,25 +575,17 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
       expectDeps [mkProdDep "root-dep@1.0.0"] graph
 
   describe "toSourceUnit filters transitive devDeps after shrink" $ do
+    let devDep = mkDevDep "dev@1.0.0"
+        prodDep = mkProdDep "prod@1.0.0"
+        trans1 = mkProdDep "trans1@1.0.0"
+        trans2 = mkProdDep "trans2@1.0.0"
+
+        graph :: Graphing Dependency
+        graph =
+          Graphing.directs [prodDep, devDep]
+            <> Graphing.edges [(devDep, trans1), (trans1, trans2)]
+
     it "should remove transitive deps of devDeps that have no prod path" $ do
-      let makeDep :: Text -> DepEnvironment -> Dependency
-          makeDep name env =
-            Dependency
-              NodeJSType
-              name
-              (Just $ CEq "1.0.0")
-              ["https://registry.npmjs.org/" <> name <> "/-/" <> name <> "-1.0.0.tgz"]
-              (Set.singleton env)
-              mempty
-
-          devDep = makeDep "dev" EnvDevelopment
-          prodDep = makeDep "prod" EnvProduction
-          trans1 = makeDep "trans1" EnvProduction
-          trans2 = makeDep "trans2" EnvProduction
-
-          graph :: Graphing Dependency
-          graph = Graphing.directs [prodDep, devDep] <> Graphing.edges [(devDep, trans1), (trans1, trans2)]
-
       let su = toSourceUnit False "test" graph NpmProjectType Complete []
 
       case sourceUnitBuild su of
@@ -601,24 +593,6 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
         Nothing -> expectationFailure "expected a build with dependencies"
 
     it "should keep transitive deps of devDeps when leaveUnfiltered is True" $ do
-      let makeDep :: Text -> DepEnvironment -> Dependency
-          makeDep name env =
-            Dependency
-              NodeJSType
-              name
-              (Just $ CEq "1.0.0")
-              ["https://registry.npmjs.org/" <> name <> "/-/" <> name <> "-1.0.0.tgz"]
-              (Set.singleton env)
-              mempty
-
-          devDep = makeDep "dev" EnvDevelopment
-          prodDep = makeDep "prod" EnvProduction
-          trans1 = makeDep "trans1" EnvProduction
-          trans2 = makeDep "trans2" EnvProduction
-
-          graph :: Graphing Dependency
-          graph = Graphing.directs [prodDep, devDep] <> Graphing.edges [(devDep, trans1), (trans1, trans2)]
-
       let su = toSourceUnit True "test" graph NpmProjectType Complete []
 
       case sourceUnitBuild su of
