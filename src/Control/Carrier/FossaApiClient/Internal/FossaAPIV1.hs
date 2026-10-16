@@ -399,8 +399,7 @@ responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
 data FossaError
   = JsonDeserializeError String
   | InternalException SomeException
-  | -- | The HTTP status, so a 401 can show API key help.
-    BackendPublicFacingError HTTP.Status FossaPublicFacingError
+  | BackendPublicFacingError HTTP.Status FossaPublicFacingError
   | InvalidUrlError String String
   | StatusCodeError HTTP.Request (HTTP.Response ())
   | TooManyRedirectsError [(HTTP.Request, HTTP.Response ByteString)]
