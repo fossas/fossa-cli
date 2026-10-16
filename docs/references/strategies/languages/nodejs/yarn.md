@@ -55,6 +55,11 @@ yarn@./:lib-core
 When a subset of targets is selected, only those packages' dependencies are
 included in the analysis.
 
+Every workspace member and the root need a `name` in `package.json`. If any
+package is unnamed, no build targets are offered: `fossa list-targets` shows a
+bare `yarn@./`, the whole workspace is analyzed as a single unit, and a warning lists the files
+that need a `name` to enable per-package targets.
+
 When no filtering is applied, all targets are selected and all dependencies
 from every workspace package are included in the analysis.
 
