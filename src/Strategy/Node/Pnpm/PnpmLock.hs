@@ -260,17 +260,17 @@ parsePnpmLockfile contents = case decodeAllEither' contents of
   Right (docs :: [Value]) -> case traverse (parseEither parseJSON) docs of
     Left err -> Left . toText $ "malformed lockfile document: " <> err
     Right [] -> Left "no YAML documents found"
-    Right (lockfile : more) -> case more of
-      [] -> Right (lockfile :| [])
-      [second]
-        -- Both documents of one stream declare the same lockfileVersion
-        -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
-        | lockfileVersion lockfile == lockfileVersion second ->
-            Right (lockfile :| [second])
-        | otherwise -> Left "multi-document lockfile with inconsistent lockfileVersions across documents"
+    Right [one] -> Right (one :| [])
+    Right [one, two] ->
+      -- Both documents of one stream declare the same lockfileVersion
+      -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
+      if lockfileVersion one == lockfileVersion two
+        then Right (one :| [two])
+        else Left "multi-document lockfile with inconsistent lockfileVersions across documents"
+    Right _ ->
       -- pnpm writes one or two documents — an env lockfile and a project
       -- lockfile (https://pnpm.io/lockfile) — so more is not pnpm output.
-      _ -> Left "pnpm-lock.yaml contains more than two YAML documents; pnpm writes at most two, an env lockfile and a project lockfile (see https://pnpm.io/lockfile)"
+      Left "pnpm-lock.yaml contains more than two YAML documents; pnpm writes at most two, an env lockfile and a project lockfile (see https://pnpm.io/lockfile)"
 
 -- Both documents of one stream declare the same lockfileVersion
 -- (https://pnpm.io/lockfile); disagreement is not pnpm output.
