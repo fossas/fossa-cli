@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Go: `go.mod` files that require, replace or declare a module whose path contains a `~` (sourcehut paths such as `git.sr.ht/~sbinet/gg`) no longer fail analysis with `unexpected '~'`.
 - Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
 - NuGet: a `.csproj` (or other project file) is no longer analyzed when `obj/project.assets.json` exists beside it to avoid analyzing projects twice
 - NuGet: `PackageVersion` entries in `Directory.Packages.props` whose `Version` references an MSBuild property are now expanded.
