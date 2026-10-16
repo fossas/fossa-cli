@@ -5,6 +5,7 @@ module Pnpm.PnpmLockSpec (
 ) where
 
 import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS8
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -22,10 +23,11 @@ import GraphUtil (
   expectEdge,
  )
 import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile, resolveImporterKey)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain, shouldNotContain)
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -144,11 +146,11 @@ spec = do
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
 
-  -- pnpm v11 can emit a multi-document lockfile: a metadata document
-  -- (pnpmfile checksum, config dependencies) precedes the lockfile document.
   let pnpmLockV11MultiDoc = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-multi-doc/pnpm-lock.yaml")
   describe "works with pnpm v11 multi-document lockfile" $
-    checkGraph pnpmLockV11MultiDoc pnpmLockV9LocalDepSpec
+    checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
+
+  parsePnpmLockfileSpec
 
   -- Both fixtures declare sharp as an optional dependency of the project and
   -- fsevents as an optional dependency of chokidar.
@@ -340,6 +342,127 @@ spec = do
 
     it "should resolve a link relative to the root importer" $
       resolveImporterKey "." "packages/a" `shouldBe` "packages/a"
+
+-- Pins the non-happy paths of parsePnpmLockfile.
+parsePnpmLockfileSpec :: Spec
+parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
+  it "rejects the stream when a document fails to parse" $
+    case parsePnpmLockfile (BS8.pack invalidFirstDoc) of
+      Left err -> toString err `shouldContain` "malformed lockfile document"
+      Right _ -> expectationFailure "expected a malformed-document error"
+
+  it "unions the graphs of documents that define the same package" $
+    case parsePnpmLockfile (BS8.pack collidingDocs) of
+      Left err -> expectationFailure (toString err)
+      Right lockfiles -> do
+        let graph = buildGraph Nothing lockfiles
+        -- Each document is processed as its own inventory, so the later
+        -- document's edges survive the union.
+        expectEdge graph (mkDep "a@1.0.0" Nothing) (mkDep "b@2.0.0" Nothing)
+
+  it "rejects a stream whose documents disagree on lockfileVersion" $
+    case parsePnpmLockfile (BS8.pack mixedVersionDocs) of
+      Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
+      Right _ -> expectationFailure "expected an inconsistent-version error"
+
+  it "rejects versions that share a constructor but differ in raw version" $
+    case parsePnpmLockfile (BS8.pack sameConstructorVersionMismatchDocs) of
+      Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
+      Right _ -> expectationFailure "expected an inconsistent-version error"
+
+  it "rejects a stream with more than two documents" $
+    case parsePnpmLockfile (BS8.pack threeDocumentDocs) of
+      Left err -> toString err `shouldContain` "more than two YAML documents"
+      Right _ -> expectationFailure "expected a too-many-documents error"
+
+-- A document that is valid YAML but not a valid lockfile fails the whole parse.
+invalidFirstDoc :: String
+invalidFirstDoc =
+  unlines
+    [ "notALockfile: {}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "importers:"
+    , "  .:"
+    , "    dependencies:"
+    , "      express:"
+    , "        specifier: 4.18.2"
+    , "        version: 4.18.2"
+    , "packages:"
+    , "  express@4.18.2:"
+    , "    resolution: {integrity: sha512-xxxxxxxxxx==}"
+    ]
+
+collidingDocs :: String
+collidingDocs =
+  unlines
+    [ "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-new==}"
+    , "    dependencies:"
+    , "      b: 2.0.0"
+    , "  b@2.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Three valid v9 documents. pnpm writes one or two documents — an env
+-- lockfile and a project lockfile (https://pnpm.io/lockfile) — so this stream
+-- is not pnpm output and must be rejected.
+threeDocumentDocs :: String
+threeDocumentDocs =
+  unlines
+    [ "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-a==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  b@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  c@1.0.0:"
+    , "    resolution: {integrity: sha512-c==}"
+    ]
+
+-- A v6 document followed by a v9 document.
+mixedVersionDocs :: String
+mixedVersionDocs =
+  unlines
+    [ "lockfileVersion: '6.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Both documents classify as the same variant (LockfileV678), but the raw
+-- lockfileVersions differ, so the stream must still be rejected.
+sameConstructorVersionMismatchDocs :: String
+sameConstructorVersionMismatchDocs =
+  unlines
+    [ "lockfileVersion: '6.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '8.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
 
 optionalDepsSpec :: Graphing Dependency -> Spec
 optionalDepsSpec graph = do
@@ -689,6 +812,32 @@ pnpmLockV9LocalDepSpec graph = do
       -- express is a transitive dep of local-pkg (prod) — must be prod
       expectDep (mkProdDep "express@4.18.2") graph
       -- body-parser is a transitive dep of express — must also be prod
+      expectDep (mkProdDep "body-parser@1.20.1") graph
+      hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
+
+-- Regression for multi-document pnpm-lock.yaml (pnpm v11+): the env lockfile
+-- (first document) declares a lockfileVersion just like the project document,
+-- so it parses as a valid lockfile. Unioning every document must (a) keep the
+-- project graph — the env document's @.@ importer must not shadow the
+-- project's — and (b) report the env document's config dependencies, which
+-- exist only there.
+pnpmLockV11MultiDocSpec :: Graphing Dependency -> Spec
+pnpmLockV11MultiDocSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with multi-document lockfile" $ do
+    it "should report the project graph and the env document's config dependencies as direct" $
+      expectDirect
+        [ mkProdDep "express@4.18.2" -- project document, promoted from local-pkg
+        , mkProdDep "pnpm-config-plugin@1.0.0" -- env document, config dependency
+        ]
+        graph
+
+    it "should not report the package manager itself as a dependency" $
+      Graphing.vertexList graph `shouldNotContain` [mkProdDep "pnpm@12.3.4"]
+
+    it "should keep the project graph's transitive deps and edges" $ do
       expectDep (mkProdDep "body-parser@1.20.1") graph
       hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
 
