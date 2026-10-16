@@ -155,10 +155,11 @@ valueParser = many segment <* eof
     isNameChar c = isAlphaNum c || c == '_'
 
 -- | Expand every @$(Name)@ reference in a value. Property values may themselves
--- reference other properties, so expansion recurses, bounded to stop on cycles.
+-- reference other properties, so expansion recurses but the depth is capped in
+-- order to avoid any possible cycles.
 --
 -- Returns 'Nothing' when the value does not parse (see 'valueParser'), when a
--- referenced property is not defined in the map, or when expansion is cyclic.
+-- referenced property is not defined in the map, or we hit the max recursion depth.
 expandProperties :: Map Text Text -> Text -> Maybe Text
 expandProperties props = go maxDepth
   where

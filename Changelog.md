@@ -4,10 +4,10 @@
 
 - Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
 - NuGet: a `.csproj` (or other project file) is no longer analyzed when `obj/project.assets.json` exists beside it to avoid analyzing projects twice
+- NuGet: `PackageVersion` entries in `Directory.Packages.props` whose `Version` references an MSBuild property are now expanded.
 
 ## 3.20.2
 
-- NuGet: `PackageVersion` entries in `Directory.Packages.props` whose `Version` references an MSBuild property are now expanded.
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 - Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
 - Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
