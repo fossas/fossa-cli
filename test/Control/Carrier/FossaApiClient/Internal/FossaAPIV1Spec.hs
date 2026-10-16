@@ -66,10 +66,10 @@ spec = do
       checkForSignInPage apiRequest (responseLandingOn apiRequest) `shouldSatisfy` isNothing
 
   describe "the sign-in page message" $
-    it "names the landing URL and rules the API key out" $ do
+    it "names the landing URL and points at the proxy" $ do
       let msg = renderedText (SignInPageError $ SignInPageResponse apiRequest loginRequest)
       msg `shouldSatisfy` isInfixOf "auth/login"
-      msg `shouldSatisfy` isInfixOf "The supplied API key is likely fine"
+      msg `shouldSatisfy` isInfixOf "strips the Authorization header"
       msg `shouldSatisfy` (not . isInfixOf "FOSSA_API_KEY")
 
   describe "a decoded backend error" $ do

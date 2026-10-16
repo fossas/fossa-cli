@@ -446,21 +446,10 @@ instance ToDiagnostic FossaError where
       Errata (Just header) [] Nothing
     SignInPageError SignInPageResponse{..} -> do
       let header = "The FOSSA endpoint returned a sign-in page instead of API data"
-          content =
-            renderIt $
-              vsep
-                [ newlineTrailing "Response:" <+> renderRequest signInLanded
-                , "The request was redirected to a sign-in page. This normally means the request"
-                , "arrived without credentials. The Authorization header was most likely removed"
-                , "in transit by a proxy or other network appliance."
-                , ""
-                , "The supplied API key is likely fine. Check whether anything, like a proxy,"
-                , "between this machine and the endpoint strips or rewrites the Authorization header."
-                , ""
-                , reportNetworkErrorMsg
-                ]
+          content = renderIt $ newlineTrailing "Response:" <+> renderRequest signInLanded
+          help = "Check whether a proxy between this machine and FOSSA strips the Authorization header."
           ctx = "Provided request: " <> renderIt (renderRequest signInRequested)
-          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) Nothing (Just ctx)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) (Just help) (Just ctx)
       Errata (Just header) [] (Just body)
     BackendPublicFacingError status pfe -> do
       let header = fpeMessage pfe
