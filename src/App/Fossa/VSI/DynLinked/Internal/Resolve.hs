@@ -9,7 +9,7 @@ module App.Fossa.VSI.DynLinked.Internal.Resolve (
 ) where
 
 import App.Fossa.Analyze.Project (ProjectResult (..))
-import App.Fossa.BinaryDeps (analyzeSingleBinary)
+import App.Fossa.BinaryDeps (analyzeSingleBinary, isAdditionalDep)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
 import Control.Algebra (Has)
@@ -17,7 +17,7 @@ import Control.Effect.Diagnostics (Diagnostics, (<||>))
 import Control.Effect.Lift (Lift)
 import Data.Either (partitionEithers)
 import Data.Map qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Set (Set, toList)
 import Data.String.Conversion (toText)
 import Data.Text (Text, intercalate)
@@ -54,7 +54,8 @@ toSourceUnit root distro dependencies = do
 
   let project = toProject root . Graphing.directs $ map (toDependency distro) resolved
   let unit = Srclib.projectToSourceUnit False project
-  pure $ unit{additionalData = fmap toDepData (Just binaries)}
+  let additionalDeps = mapMaybe isAdditionalDep binaries
+  pure $ unit{additionalData = fmap toDepData (Just additionalDeps)}
   where
     toDepData :: [SourceUserDefDep] -> AdditionalDepData
     toDepData d = AdditionalDepData (Just $ fmap updatedDesc d) Nothing

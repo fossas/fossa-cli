@@ -240,6 +240,10 @@ data PoetryDependency
   | PyProjectPoetryGitDependencySpec PyProjectPoetryGitDependency
   | PyProjectPoetryPathDependencySpec PyProjectPoetryPathDependency
   | PyProjectPoetryUrlDependencySpec PyProjectPoetryUrlDependency
+  | -- | A table with none of @version@, @git@, @path@ or @url@, e.g. @{ source = "private" }@.
+    -- Poetry 2.x uses these to attach settings to a dependency whose version is declared in
+    -- PEP 621 @[project].dependencies@.
+    PyProjectPoetryUnversionedDependencySpec
   deriving (Show, Eq, Ord)
 
 instance Toml.Schema.FromValue PoetryDependency where
@@ -251,7 +255,7 @@ instance Toml.Schema.FromValue PoetryDependency where
           , Toml.Schema.Key "git" (const (PyProjectPoetryGitDependencySpec <$> Toml.Schema.fromValue v))
           , Toml.Schema.Key "path" (const (PyProjectPoetryPathDependencySpec <$> Toml.Schema.fromValue v))
           , Toml.Schema.Key "url" (const (PyProjectPoetryUrlDependencySpec <$> Toml.Schema.fromValue v))
-          , Toml.Schema.Else (Toml.Schema.failAt (Toml.valueAnn v) "invalid spec")
+          , Toml.Schema.Else (pure PyProjectPoetryUnversionedDependencySpec)
           ]
       )
       l

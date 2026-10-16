@@ -8,6 +8,7 @@ module Srclib.Types (
   SourceUnitNoticeFile (..),
   AdditionalDepData (..),
   SourceUserDefDep (..),
+  BinaryDiscoveredDep (..),
   SourceRemoteDep (..),
   LocatorWithMetadata (..),
   Locator (..),
@@ -43,17 +44,17 @@ module Srclib.Types (
 import Data.Aeson
 import Data.Char qualified as Char
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
+import Data.Set qualified as Set
 import Data.String (IsString)
 import Data.String.Conversion (ToString (toString), ToText, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Path (File, Path, SomeBase (..), toFilePath)
 import Path.Extra (SomePath (..))
-import Types (GraphBreadth (..))
+import Types (DepType, GraphBreadth (..))
 
 data LicenseScanType = CliLicenseScanned
   deriving (Eq, Ord, Show)
@@ -265,8 +266,17 @@ instance Semigroup LicenseUnit where
   licenseUnit1 <> licenseUnit2 =
     licenseUnit1
       { licenseUnitData = licenseUnitData licenseUnit1 <> licenseUnitData licenseUnit2
-      , licenseUnitFiles = NE.nub $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
+      , licenseUnitFiles = nubOrd $ licenseUnitFiles licenseUnit1 <> licenseUnitFiles licenseUnit2
       }
+
+nubOrd :: Ord a => NonEmpty a -> NonEmpty a
+nubOrd (x :| xs) = x :| go (Set.singleton x) xs
+  where
+    go _ [] = []
+    go seen (y : ys) =
+      if Set.member y seen
+        then go seen ys
+        else y : go (Set.insert y seen) ys
 
 instance ToJSON LicenseUnit where
   toJSON LicenseUnit{..} =
@@ -441,6 +451,8 @@ data SourceRemoteDep = SourceRemoteDep
   , srcRemoteDepHomepage :: Maybe Text
   }
   deriving (Eq, Ord, Show)
+
+data BinaryDiscoveredDep = UserDep SourceUserDefDep | LocatorDep (DepType, SourceUserDefDep) deriving (Eq, Ord, Show)
 
 -- | Labels are side channel information about dependencies,
 -- used to communicate information about the dependency in some way.

@@ -134,7 +134,6 @@ isSupportedType :: Dependency -> Bool
 isSupportedType Dependency{dependencyType} =
   dependencyType /= SubprojectType
     && dependencyType /= GooglesourceType
-    && dependencyType /= ConanType
     && dependencyType /= UnresolvedPathType
 
 toLocator :: Dependency -> Locator
@@ -200,6 +199,7 @@ fetcherToDepType fetcher | depTypeToFetcher BowerType == fetcher = Just BowerTyp
 fetcherToDepType fetcher | depTypeToFetcher CarthageType == fetcher = Just CarthageType
 fetcherToDepType fetcher | depTypeToFetcher CargoType == fetcher = Just CargoType
 fetcherToDepType fetcher | depTypeToFetcher ComposerType == fetcher = Just ComposerType
+fetcherToDepType fetcher | depTypeToFetcher ConanType == fetcher = Just ConanType
 fetcherToDepType fetcher | depTypeToFetcher CondaType == fetcher = Just CondaType
 fetcherToDepType fetcher | depTypeToFetcher CpanType == fetcher = Just CpanType
 fetcherToDepType fetcher | depTypeToFetcher CranType == fetcher = Just CranType

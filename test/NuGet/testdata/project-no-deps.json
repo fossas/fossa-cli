@@ -1,0 +1,10 @@
+{
+      "name": "agent-registry-client",
+      "sourceRoot": "modules/shared/typescript/agent-registry-client/src",
+      "projectType": "library",
+      "targets": {
+            "build": {
+                  "executor": "@nx/js:tsc"
+            }
+      }
+}

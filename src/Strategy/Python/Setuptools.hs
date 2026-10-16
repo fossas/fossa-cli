@@ -2,6 +2,7 @@ module Strategy.Python.Setuptools (
   discover,
   findProjects,
   getDeps,
+  getDepsStatically,
   mkProject,
   SetuptoolsProject (..),
 ) where
@@ -71,7 +72,7 @@ getDeps project = do
       Diag.combineSuccessful @Text @Text
         "Analysis failed for all requirements.txt/setup.py in the project"
         "Failed to parse python file"
-        [analyzeReqTxts packages project, analyzeSetupPy packages project]
+        (analyzers packages project)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -86,7 +87,7 @@ getDepsStatically project = do
       Diag.combineSuccessful @Text @Text
         "Analysis failed for all requirements.txt/setup.py in the project"
         "Failed to parse python file"
-        [analyzeReqTxts Nothing project, analyzeSetupPy Nothing project]
+        (analyzers Nothing project)
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -94,14 +95,21 @@ getDepsStatically project = do
       , dependencyManifestFiles = maybeToList (setuptoolsSetupPy project) ++ setuptoolsReqTxt project
       }
 
+-- Projects are discovered when they have requirements.txt files OR a setup.py
+-- (see 'findProjects'), so setup.py is only analyzed when it actually exists;
+-- otherwise every requirements.txt-only project would warn about a missing
+-- setup.py.
+analyzers :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> [m (Graphing Dependency)]
+analyzers packages project =
+  analyzeReqTxts packages project
+    : maybeToList (analyzeSetupPy packages project <$> setuptoolsSetupPy project)
+
 analyzeReqTxts :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> m (Graphing Dependency)
 analyzeReqTxts packages project = context "Analyzing requirements.txt files" $ do
   mconcat <$> traverse (ReqTxt.analyze' packages) (setuptoolsReqTxt project)
 
-analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> m (Graphing Dependency)
-analyzeSetupPy packages project = context "Analyzing setup.py" $ do
-  setupPy <- Diag.fromMaybeText "No setup.py found in this project" (setuptoolsSetupPy project)
-  SetupPy.analyze' packages setupPy (setuptoolsSetupCfg project)
+analyzeSetupPy :: (Has ReadFS sig m, Has Diagnostics sig m) => Maybe ([PythonPackage]) -> SetuptoolsProject -> Path Abs File -> m (Graphing Dependency)
+analyzeSetupPy packages project setupPy = context "Analyzing setup.py" $ SetupPy.analyze' packages setupPy (setuptoolsSetupCfg project)
 
 data SetuptoolsProject = SetuptoolsProject
   { setuptoolsReqTxt :: [Path Abs File]

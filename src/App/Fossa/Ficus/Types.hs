@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module App.Fossa.Ficus.Types (
   FicusConfig (..),
   FicusMessage (..),
@@ -22,15 +24,23 @@ module App.Fossa.Ficus.Types (
   FicusVendoredLocation (..),
   ficusVendoredLocationPath,
   FicusVendoredDependencyScanResults (..),
+  WorkflowExecutable (..),
+  WorkflowRunArtifact (..),
+  WorkflowEvent (..),
+  downloadedWorkflowExecutable,
+  findingToWorkflowEvent,
+  workflowResultJson,
 ) where
 
 import App.Types (ProjectRevision)
-import Data.Aeson (FromJSON (parseJSON), Value (Object), withObject, withText)
+import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decodeStrictText, object, withObject, withText, (.=))
 import Data.Aeson.Types (Parser, (.:), (.:?))
+import Data.String.Conversion (toString)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Fossa.API.Types
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, Path, toFilePath)
 import Srclib.Types (SourceUnit)
 import Text.URI
 import Types (GlobFilter)
@@ -271,3 +281,96 @@ data FicusVendettaFlag
   = VendettaCommonFlag FicusAnalysisFlag
   | VendettaBatchLen Int
   deriving (Show, Eq)
+
+-- | The program ficus should run, and the arguments that lead its command line.
+-- ficus appends the target and its own @--output@ after these.
+data WorkflowExecutable = WorkflowExecutable
+  { workflowExecutableProgram :: Text
+  , workflowExecutableArgs :: [Text]
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+-- | @Executable@ is the one type in the run artifact serde does /not/ rename, so
+-- its keys stay lowercase while the artifact around it is camelCase.
+instance ToJSON WorkflowExecutable where
+  toJSON WorkflowExecutable{..} =
+    object
+      [ "program" .= workflowExecutableProgram
+      , "args" .= workflowExecutableArgs
+      ]
+
+-- | The run artifact handed to @ficus x-workflow@ on stdin.
+data WorkflowRunArtifact = WorkflowRunArtifact
+  { workflowArtifactExecutable :: WorkflowExecutable
+  , workflowArtifactTarget :: Path Abs Dir
+  , workflowArtifactWorkingDirectory :: Path Abs Dir
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+-- | @version@ must be exactly 1: ficus rejects any other value rather than
+-- defaulting. @idleTimeoutSeconds@ and @totalTimeoutSeconds@ carry serde
+-- defaults on the ficus side and are deliberately omitted.
+instance ToJSON WorkflowRunArtifact where
+  toJSON WorkflowRunArtifact{..} =
+    object
+      [ "version" .= (1 :: Int)
+      , "executable" .= workflowArtifactExecutable
+      , "target" .= toFilePath workflowArtifactTarget
+      , "workingDirectory" .= toFilePath workflowArtifactWorkingDirectory
+      ]
+
+-- | The executable section ficus expects in a run artifact.
+--
+-- ficus downloads the workflow executable itself and ignores what this names,
+-- but the artifact schema still requires a non-empty @program@, so name the
+-- executable that actually runs rather than inventing a placeholder. @args@
+-- stays empty: ficus places them before the target on the downloaded
+-- program's command line, where anything this side invented would be a stray
+-- argument.
+downloadedWorkflowExecutable :: WorkflowExecutable
+downloadedWorkflowExecutable = WorkflowExecutable "fossa-dependency-usage-analyzer" []
+
+-- | What ficus reports about a workflow run, carried as a JSON string in the
+-- observation payload of a @workflow@-strategy finding.
+data WorkflowEvent
+  = WorkflowStarted
+      { workflowResolvedProgram :: Text
+      , workflowAnalyzerVersion :: Text
+      }
+  | WorkflowStepCompleted Text
+  | WorkflowResult Value
+  | WorkflowFailed
+      { workflowFailureReason :: Text
+      , workflowFailureStderrTail :: Text
+      }
+  deriving (Eq, Show, Generic)
+
+-- | @exitCode@ and @timeout@ are dropped: both are optional on the wire and
+-- @reason@ already renders them in prose.
+instance FromJSON WorkflowEvent where
+  parseJSON = withObject "WorkflowEvent" $ \obj -> do
+    eventType <- obj .: "type" :: Parser Text
+    case eventType of
+      "workflow-started" ->
+        WorkflowStarted
+          <$> obj .: "resolvedProgram"
+          <*> obj .: "analyzerVersion"
+      "step-completed" -> WorkflowStepCompleted <$> obj .: "step"
+      "workflow-result" -> WorkflowResult <$> obj .: "result"
+      "workflow-failed" ->
+        WorkflowFailed
+          <$> obj .: "reason"
+          <*> obj .: "stderrTail"
+      other -> fail $ "unknown workflow event type: " <> toString other
+
+-- | Findings on any other strategy belong to another consumer. A workflow
+-- payload this version cannot decode comes back as 'Left' holding it verbatim:
+-- dropping it silently reports version skew as "ficus produced no result".
+findingToWorkflowEvent :: FicusFinding -> Maybe (Either Text WorkflowEvent)
+findingToWorkflowEvent (FicusFinding (FicusMessageData strategy payload))
+  | Text.toLower strategy == "workflow" = Just $ maybe (Left payload) Right (decodeStrictText payload)
+findingToWorkflowEvent _ = Nothing
+
+-- | Debug-bundle key the workflow result is recorded under.
+workflowResultJson :: Text
+workflowResultJson = "workflow.result.json"

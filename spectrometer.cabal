@@ -203,6 +203,8 @@ library
     App.Fossa.ArchiveUploader
     App.Fossa.BinaryDeps
     App.Fossa.BinaryDeps.Jar
+    App.Fossa.BinaryDeps.Nupkg
+    App.Fossa.BinaryDeps.Whl
     App.Fossa.Config.Analyze
     App.Fossa.Config.Common
     App.Fossa.Config.ConfigFile
@@ -239,6 +241,7 @@ library
     App.Fossa.Container.Sources.Discovery
     App.Fossa.Container.Sources.DockerArchive
     App.Fossa.Container.Sources.DockerEngine
+    App.Fossa.Container.Sources.GoBinary
     App.Fossa.Container.Sources.JarAnalysis
     App.Fossa.Container.Sources.Podman
     App.Fossa.Container.Sources.Registry
@@ -249,6 +252,7 @@ library
     App.Fossa.EmbeddedBinary
     App.Fossa.Ficus.Analyze
     App.Fossa.Ficus.Types
+    App.Fossa.Ficus.Workflow
     App.Fossa.FirstPartyScan
     App.Fossa.Init
     App.Fossa.Lernie.Analyze
@@ -428,8 +432,8 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conan
     Strategy.Conan.ConanGraph
-    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
@@ -578,6 +582,8 @@ test-suite unit-tests
     App.Fossa.ApiUtilsSpec
     App.Fossa.ArchiveUploaderSpec
     App.Fossa.BinaryDeps.JarSpec
+    App.Fossa.BinaryDeps.NupkgSpec
+    App.Fossa.BinaryDeps.WhlSpec
     App.Fossa.CirceSpec
     App.Fossa.Config.AnalyzeSpec
     App.Fossa.Config.ReleaseGroup.CreateSpec
@@ -587,6 +593,8 @@ test-suite unit-tests
     App.Fossa.Configuration.TelemetryConfigSpec
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
+    App.Fossa.Container.GoBinarySpec
+    App.Fossa.Container.TestSpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec
@@ -629,7 +637,6 @@ test-suite unit-tests
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conan.ConanGraphSpec
-    Conan.EnrichSpec
     Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
@@ -653,18 +660,22 @@ test-suite unit-tests
     Data.IndexFileTreeSpec
     Data.RpmDbHeaderBlobSpec
     Data.Text.JsoncSpec
+    Diag.ResultSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
     Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
+    Effect.ReadFSSpec
     Elixir.MixTreeSpec
     Erlang.ConfigParserSpec
     Erlang.Rebar3TreeSpec
     Extra.ListSpec
     Extra.TextSpec
     Ficus.FicusSpec
+    Ficus.WorkflowProcessSpec
+    Ficus.WorkflowSpec
     Fortran.FpmTomlSpec
     Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec
@@ -688,7 +699,9 @@ test-suite unit-tests
     Maven.PluginSpec
     Maven.PluginStrategySpec
     Maven.PluginTreeSpec
+    Maven.PomClosureSpec
     Maven.PomStrategySpec
+    Maven.StaticAnalysisSpec
     Ndb.NdbSpec
     Nim.NimbleSpec
     Node.NodeSpec
@@ -707,6 +720,7 @@ test-suite unit-tests
     Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
+    Pnpm.TypesSpec
     Python.PipenvSpec
     Python.PipSpec
     Python.Poetry.CommonSpec
@@ -716,6 +730,7 @@ test-suite unit-tests
     Python.ReqTxtSpec
     Python.RequirementsSpec
     Python.SetupPySpec
+    Python.SetuptoolsSpec
     Python.UvSpec
     R.DescriptionSpec
     R.RenvSpec
@@ -730,6 +745,7 @@ test-suite unit-tests
     Ruby.ParseSpec
     Scala.CommonSpec
     Scala.PluginSpec
+    Scala.PomFallbackSpec
     Scala.SbtDependencyTreeJsonSpec
     Scala.SbtDependencyTreeParsingSpec
     Scala.SbtDependencyTreeSpec
@@ -780,6 +796,7 @@ test-suite integration-tests
     Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
+    Analysis.PnpmWorkspaceSpec
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec

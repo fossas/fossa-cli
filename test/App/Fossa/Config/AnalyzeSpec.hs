@@ -1,10 +1,9 @@
 {-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.Config.AnalyzeSpec (spec) where
 
 import App.Fossa.Config.Analyze (
-  AnalyzeConfig (filterSet),
+  AnalyzeConfig (filterSet, xWorkflow),
   cliParser,
   loadConfig,
   mergeOpts,
@@ -13,12 +12,24 @@ import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigTargets (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.Utils (itShouldFailWhenLabelsExceedFive, itShouldLoadFromTheConfiguredBaseDir, parseArgString)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
+import Control.Effect.Lift (Has, Lift)
+import Control.Exception (throw)
 import Data.Text (Text)
+import Data.Text qualified as Text
+import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (..), combinedTargets)
-import Path (Abs, File, Path, mkAbsFile)
+import Effect.Logger (renderIt)
+import Path (Abs, File, Path, parseAbsFile)
 import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
 import Test.Hspec (Spec, describe)
 import Types (DiscoveredProjectType, TargetFilter (TypeTarget))
+
+-- | The fixtures below are valid paths on the platform the tests run on; a
+-- parse failure means the fixture itself is broken, so fail with the parse
+-- error rather than carrying it on to an assertion.
+mustParse :: (Show e) => (String -> Either e p) -> String -> p
+mustParse f s = either (throw . userError . show) id (f s)
 
 envVars :: EnvVars
 envVars =
@@ -33,9 +44,9 @@ envVars =
 
 configPath :: Path Abs File
 #ifdef mingw32_HOST_OS
-configPath = $(mkAbsFile "C:/.fossa.yml")
+configPath = mustParse parseAbsFile "C:/.fossa.yml"
 #else
-configPath = $(mkAbsFile "/tmp/.fossa.yml")
+configPath = mustParse parseAbsFile "/tmp/.fossa.yml"
 #endif
 
 configFileWithTargets :: [Text] -> [Text] -> Bool -> ConfigFile
@@ -152,3 +163,48 @@ spec = do
     it' "should fail when --x-vendetta and --output are used together" $ do
       cliOpts <- parseArgString cliParser "--x-vendetta --output"
       expectFatal' $ mergeOpts Nothing Nothing envVars cliOpts
+
+  describe "--x-workflow" $ do
+    it' "should default to False when the flag is absent" $ do
+      cliOpts <- parseArgString cliParser ""
+      workflow <- xWorkflow <$> mergeOpts Nothing Nothing envVars cliOpts
+      workflow `shouldBe'` False
+
+    it' "should enable the workflow when the flag is present" $ do
+      cliOpts <- parseArgString cliParser "--x-workflow"
+      workflow <- xWorkflow <$> mergeOpts Nothing Nothing envVars cliOpts
+      workflow `shouldBe'` True
+
+    -- The flag takes no argument, so a stray one is a target directory rather
+    -- than an analyzer path. Pinned because it used to name the analyzer, and
+    -- an old invocation must not silently analyze that path instead.
+    it' "should treat a following path as the scan target, not an analyzer" $ do
+      cliOpts <- parseArgString cliParser "--x-workflow /definitely/not/here"
+      failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected the trailing path to be read as the scan target"
+        -- Don't assert on the full POSIX path literal: Windows normalises
+        -- separators/drive letters, so "/definitely/not/here" never appears
+        -- verbatim in the rendered message there. Instead assert (a) the
+        -- failure is a missing-*directory* error -- the platform-independent
+        -- marker that the argument reached 'validateDir' (the scan-target
+        -- path), not the flag itself -- and (b) it still names a distinctive,
+        -- separator-free fragment of the path, so this can't pass on some
+        -- unrelated directory-not-found error.
+        Just rendered ->
+          (Text.isInfixOf "Directory does not exist" rendered && Text.isInfixOf "definitely" rendered) `shouldBe'` True
+
+    it' "should fail when combined with --static-only-analysis" $ do
+      cliOpts <- parseArgString cliParser "--static-only-analysis --x-workflow"
+      failureText <- renderedFailure $ mergeOpts Nothing Nothing envVars cliOpts
+      case failureText of
+        Nothing -> expectationFailure' "expected --static-only-analysis with --x-workflow to be fatal"
+        Just rendered -> Text.isInfixOf "--static-only-analysis" rendered `shouldBe'` True
+
+-- | 'expectFatal'' only reports that a failure happened; the message is what
+-- distinguishes the flag conflict from an unrelated failure on the same path.
+renderedFailure :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m a -> m (Maybe Text)
+renderedFailure act =
+  errorBoundary act >>= \case
+    Failure ws eg -> pure . Just . renderIt $ renderFailure ws eg "An issue occurred"
+    Success _ _ -> pure Nothing
