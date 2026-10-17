@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- After filtering out development dependencies, transitive dependencies that are no longer reachable from any production dependency are pruned, so they no longer appear as orphaned entries in the SBOM. This applies to every project type whose source unit is built from a dependency graph; pruning is skipped for graphs with no direct nodes or no edges, and for Swift/Gomod projects, which emit such graphs.
+- Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
 
 ## 3.20.4
 
