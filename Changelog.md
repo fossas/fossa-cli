@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
+
 ## 3.20.4
 
 - Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
