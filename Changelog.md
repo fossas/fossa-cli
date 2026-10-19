@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Go: `fossa analyze` can now report dependencies from the module list embedded in compiled Go binaries (Go >= 1.18), for Go code shipped with no `go.mod`. Opt in with `--enable-go-binary-analysis`; add `--unpack-archives` to reach binaries inside archives such as an AAR. ([#1757](https://github.com/fossas/fossa-cli/pull/1757))
+
 ## 3.20.4
 
 - Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
