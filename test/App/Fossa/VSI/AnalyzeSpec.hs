@@ -3,9 +3,9 @@
 
 module App.Fossa.VSI.AnalyzeSpec (spec) where
 
-import App.Fossa.VSI.Analyze (DirAction (..), dirAction, withDefaultFilters)
+import App.Fossa.VSI.Analyze (scanDir, withDefaultFilters)
 import Data.Glob qualified as Glob
-import Discovery.Filters (AllFilters (..), comboExclude, comboExcludeWithGlobs, comboInclude, comboIncludeWithGlobs)
+import Discovery.Filters (AllFilters (..), comboExcludeWithGlobs, comboInclude, comboIncludeWithGlobs)
 import Path (Abs, Dir, Path, mkAbsDir, mkRelDir, (</>))
 import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
 
@@ -17,30 +17,23 @@ root :: Path Abs Dir
 root = $(mkAbsDir "/tmp/root")
 #endif
 
-actionFor :: AllFilters -> Path Abs Dir -> DirAction
-actionFor filters = dirAction (withDefaultFilters filters) root
+scanned :: AllFilters -> Path Abs Dir -> Bool
+scanned filters = scanDir (withDefaultFilters filters) root
 
 -- | `paths.only: [src]`, as a path or a glob.
 onlySrc :: AllFilters -> Expectation
 onlySrc filters = do
-  actionFor filters root `shouldBe` WalkDir
-  actionFor filters (root </> $(mkRelDir "src")) `shouldBe` ScanDir
-  actionFor filters (root </> $(mkRelDir "src/lib")) `shouldBe` ScanDir
-  actionFor filters (root </> $(mkRelDir "docs")) `shouldBe` SkipDir
+  scanned filters root `shouldBe` False
+  scanned filters (root </> $(mkRelDir "src")) `shouldBe` True
+  scanned filters (root </> $(mkRelDir "src/lib")) `shouldBe` True
+  scanned filters (root </> $(mkRelDir "docs")) `shouldBe` False
 
 spec :: Spec
-spec = describe "dirAction" $ do
-  it "skips a dir an exclude glob matches, and scans its parent" $ do
-    let filters = AllFilters mempty $ comboExcludeWithGlobs [] [] [Glob.unsafeGlobRel "**/.svn"]
-    actionFor filters (root </> $(mkRelDir "a/b/.svn")) `shouldBe` SkipDir
-    actionFor filters (root </> $(mkRelDir "a/b")) `shouldBe` ScanDir
+spec = describe "scanDir" $ do
+  it "scans a dir an exclude glob doesn't match" $
+    scanned (AllFilters mempty $ comboExcludeWithGlobs [] [] [Glob.unsafeGlobRel "**/.svn"]) (root </> $(mkRelDir "a/b")) `shouldBe` True
 
-  it "skips only the root's dir for a plain exclude path" $ do
-    let filters = AllFilters mempty $ comboExclude [] [$(mkRelDir ".svn")]
-    actionFor filters (root </> $(mkRelDir ".svn")) `shouldBe` SkipDir
-    actionFor filters (root </> $(mkRelDir "a/.svn")) `shouldBe` ScanDir
-
-  it "walks the parents of a paths.only entry without scanning them" $
+  it "scans under a paths.only entry, but not its parents" $
     onlySrc $
       AllFilters (comboInclude [] [$(mkRelDir "src")]) mempty
 
@@ -48,7 +41,5 @@ spec = describe "dirAction" $ do
     onlySrc $
       AllFilters (comboIncludeWithGlobs [] [] [Glob.unsafeGlobRel "src/**"]) mempty
 
-  it "skips the root's .git with no user filters" $ do
-    actionFor mempty (root </> $(mkRelDir ".git")) `shouldBe` SkipDir
-    actionFor mempty root `shouldBe` ScanDir
-    actionFor mempty (root </> $(mkRelDir "a/.git")) `shouldBe` ScanDir
+  it "scans the root with no user filters" $
+    scanned mempty root `shouldBe` True

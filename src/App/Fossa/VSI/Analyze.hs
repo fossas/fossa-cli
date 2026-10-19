@@ -3,8 +3,7 @@
 
 module App.Fossa.VSI.Analyze (
   runVsiAnalysis,
-  DirAction (..),
-  dirAction,
+  scanDir,
   withDefaultFilters,
 ) where
 
@@ -16,6 +15,7 @@ import App.Util (FileAncestry (..), ancestryDerived, ancestryDirect)
 import Control.Algebra (Has)
 import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Diagnostics (runDiagnosticsIO, withResult)
+import Control.Carrier.Reader (runReader)
 import Control.Carrier.StickyLogger (runStickyLogger)
 import Control.Carrier.TaskPool (Progress (..), withTaskPool)
 import Control.Concurrent (getNumCapabilities, threadDelay)
@@ -29,6 +29,7 @@ import Control.Effect.Stack (Stack)
 import Control.Effect.StickyLogger (StickyLogger, logSticky, logSticky')
 import Control.Effect.TaskPool (TaskPool, forkTask)
 import Control.Monad (when)
+import Control.Monad.Trans (lift)
 import Data.Aeson (encode)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
@@ -37,8 +38,8 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Discovery.Archive (withArchive')
-import Discovery.Filters (AllFilters (..), applyFilters, combinedPathGlobs, combinedPaths, comboExcludeWithGlobs, comboIncludeWithGlobs, pathAllowed)
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipAll), walk)
+import Discovery.Filters (AllFilters (..), applyFilters, combinedPathGlobs, combinedPaths, comboExcludeWithGlobs, comboIncludeWithGlobs)
+import Discovery.Walk (WalkStep (WalkContinue), walkWithFilters')
 import Effect.Logger (Color (..), Logger, Severity (SevError, SevInfo, SevWarn), annotate, color, hsep, logDebug, logInfo, plural, pretty)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, File, Path, Rel, (</>))
@@ -245,16 +246,11 @@ discover ::
 discover output filters root renderAncestry =
   context "discover" $ do
     logDebug . pretty $ "walking new root: " <> toText root
-    flip walk root $ \dir _ files -> handle dir files
+    runReader filters . flip walkWithFilters' root $ \dir _ files -> do
+      logDebug . pretty $ "processing dir: " <> toText dir
+      when (scanDir filters root dir) . lift $ traverse_ (forkTask . process) files
+      pure ((), WalkContinue)
   where
-    handle dir files = case dirAction filters root dir of
-      SkipDir -> do
-        logDebug . pretty $ "skip dir: " <> toText dir
-        pure WalkSkipAll
-      action -> do
-        logDebug . pretty $ "processing dir: " <> toText dir
-        when (action == ScanDir) $ traverse_ (forkTask . process) files
-        pure WalkContinue
     process file = context "process file" $ do
       -- Synchronously fingerprint the file and compute its logical path.
       fp <- fingerprint file
@@ -272,17 +268,9 @@ discover output filters root renderAncestry =
       logDebug . pretty $ "report logical path: " <> toText logicalPath
       sendIO . atomically $ writeTBMChan output (logicalPath, fp)
 
-data DirAction = SkipDir | WalkDir | ScanDir
-  deriving (Eq, Show)
-
 -- | Walk and scan similar to application scanning analyzers do.
-dirAction :: AllFilters -> Path Abs Dir -> Path Abs Dir -> DirAction
-dirAction filters root dir
-  | not $ maybe True (pathAllowed filters) relDir = SkipDir
-  | isJust $ applyFilters filters "vsi" (fromMaybe $(P.mkRelDir ".") relDir) ProjectWithoutTargets = ScanDir
-  | otherwise = WalkDir
-  where
-    relDir = P.stripProperPrefix root dir
+scanDir :: AllFilters -> Path Abs Dir -> Path Abs Dir -> Bool
+scanDir filters root dir = isJust $ applyFilters filters "vsi" (fromMaybe $(P.mkRelDir ".") $ P.stripProperPrefix root dir) ProjectWithoutTargets
 
 -- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
 -- In other words, this:
