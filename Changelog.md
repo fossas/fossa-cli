@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.20.5
 
 - VSI: `paths.only` and path globs now apply to `--detect-vendored`. ([#1812](https://github.com/fossas/fossa-cli/pull/1812))
 
