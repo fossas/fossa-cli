@@ -275,8 +275,7 @@ discover output filters root renderAncestry =
 data DirAction = SkipDir | WalkDir | ScanDir
   deriving (Eq, Show)
 
--- | Walk and scan like the analyzers: the root is always walked, and a dir's files are scanned only where a project
--- there would be kept, so the parents of a `paths.only` entry are walked but not scanned.
+-- | Walk and scan similar to application scanning analyzers do.
 dirAction :: AllFilters -> Path Abs Dir -> Path Abs Dir -> DirAction
 dirAction filters root dir
   | not $ maybe True (pathAllowed filters) relDir = SkipDir
@@ -326,7 +325,7 @@ waitForAnalysis scanID = do
   where
     pollDelaySeconds = 8
 
--- | The user's path filters, without target filters since VSI doesn't apply them, plus the root @.git@.
+-- | Path filters, without target filters as VSI can't apply these, plus the root @.git@.
 withDefaultFilters :: AllFilters -> AllFilters
 withDefaultFilters AllFilters{..} =
   AllFilters
