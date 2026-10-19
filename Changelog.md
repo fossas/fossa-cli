@@ -2,7 +2,33 @@
 
 ## Unreleased
 
-- Go: `fossa analyze` can now report Go module dependencies read from the buildinfo embedded in compiled Go binaries (built with Go >= 1.18), so Go code shipped as a binary with no `go.mod` alongside it is no longer invisible to analysis. Opt in with `--enable-go-binary-analysis`; it is off by default because `fossa analyze` otherwise reports only what package managers declare. To reach binaries nested inside an archive (for example a `.so` inside an AAR or JAR), combine it with `--unpack-archives`.
+- Go: `fossa analyze` can now report dependencies from the module list embedded in compiled Go binaries (Go >= 1.18), for Go code shipped with no `go.mod`. Opt in with `--enable-go-binary-analysis`; add `--unpack-archives` to reach binaries inside archives such as an AAR. ([#1757](https://github.com/fossas/fossa-cli/pull/1757))
+
+## 3.20.4
+
+- Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
+
+
+## 3.20.3
+
+- Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
+- NuGet: a `.csproj` (or other project file) is no longer analyzed when `obj/project.assets.json` exists beside it to avoid analyzing projects twice
+- NuGet: `PackageVersion` entries in `Directory.Packages.props` whose `Version` references an MSBuild property are now expanded.
+
+## 3.20.2
+
+- FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
+- Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
+- Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
+- Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
+- Pnpm: workspace members are now individual build targets, so a single member can be analyzed on its own with `--only-target 'pnpm@./:my-package'` or a `target:` entry in `.fossa.yml`. Previously every member's dependencies were merged into one result with no way to scope them. Dependencies a selected member reaches through the workspace protocol (`link:` in the lockfile) are included. Scoped analysis preserves development-only workspace links and each member's resolved peer versions. Unfiltered analysis retains the whole workspace. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
+- Node: when a yarn, npm, or pnpm workspace root or member has no `name` in its `package.json`, discovery now warns that no build targets can be offered for the workspace and that adding a `name` enables them. This also preserves unnamed members' dependencies during unfiltered analysis. ([#1763](https://github.com/fossas/fossa-cli/pull/1763))
+- Node: package.json-only analysis now resolves pnpm `catalog:` references from the nearest `pnpm-workspace.yaml`, including scans started inside a workspace member. Catalog dependencies are reported with their declared versions or ranges. References that remain unresolved, and local `workspace:` or `link:` references, are skipped with a warning rather than reported at literal protocol strings as versions. ([#1765](https://github.com/fossas/fossa-cli/pull/1765))
+
+## 3.20.1
+
+- Vendored Dependencies and Snippet Scanning: Fix a bug that caused snippet scanning and vendored dependency scanning to scan hidden and gitignore files ([#1801](https://github.com/fossas/fossa-cli/pull/1801))
+- Swift: `Package.swift` manifests that build `dependencies` or other `Package(...)` arguments in code (e.g. `dependencies: deps`) no longer fail analysis. ([#1800](https://github.com/fossas/fossa-cli/pull/1800))
 
 ## 3.20.0
 

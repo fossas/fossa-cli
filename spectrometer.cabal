@@ -121,7 +121,7 @@ common deps
     , githash                      ^>=0.1.4.0
     , hashable                     >=1.0.0.1
     , hedn                         ^>=0.3.0.1
-    , http-client                  ^>=0.7.1
+    , http-client                  ^>=0.7.16
     , http-client-tls              ^>=0.3.6
     , http-conduit                 ^>=2.3.0
     , http-types                   ^>=0.12.3
@@ -652,6 +652,7 @@ test-suite unit-tests
     Container.TarballReadFSSpec
     Container.TarballSpec
     Control.Carrier.DiagnosticsSpec
+    Control.Carrier.FossaApiClient.Internal.FossaAPIV1Spec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
     Dart.PubDepsSpec
@@ -722,6 +723,7 @@ test-suite unit-tests
     Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
+    Pnpm.TypesSpec
     Python.PipenvSpec
     Python.PipSpec
     Python.Poetry.CommonSpec
@@ -797,6 +799,7 @@ test-suite integration-tests
     Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
+    Analysis.PnpmWorkspaceSpec
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec

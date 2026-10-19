@@ -1,0 +1,82 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+catalogs:
+  default:
+    left-pad:
+      specifier: 1.3.0
+      version: 1.3.0
+
+importers:
+
+  .:
+    devDependencies:
+      colorjs:
+        specifier: ^0.1.9
+        version: 0.1.9
+
+  browser:
+    dependencies:
+      '@fossa-test/shared':
+        specifier: workspace:*
+        version: link:../shared
+      left-pad:
+        specifier: 'catalog:'
+        version: 1.3.0
+
+  server:
+    dependencies:
+      is-odd:
+        specifier: 3.0.1
+        version: 3.0.1
+
+  shared:
+    dependencies:
+      uri-js:
+        specifier: ^4.4.1
+        version: 4.4.1
+
+packages:
+
+  colorjs@0.1.9:
+    resolution: {integrity: sha512-filDwoNvVLqcLB4zMmWa65rgNHW/ff26wn3/q+XpYrI9EFts6fwnLIPYGOr8G+9cECMsxfCm9a2QzXdf+imY7A==}
+
+  is-number@6.0.0:
+    resolution: {integrity: sha512-Wu1VHeILBK8KAWJUAiSZQX94GmOE45Rg6/538fKwiloUu21KncEkYGPqob2oSZ5mUT73vLGrHQjKw3KMPwfDzg==}
+    engines: {node: '>=0.10.0'}
+
+  is-odd@3.0.1:
+    resolution: {integrity: sha512-CQpnWPrDwmP1+SMHXZhtLtJv90yiyVfluGsX5iNCVkrhQtU3TQHsUWPG9wkdk9Lgd5yNpAg9jQEo90CBaXgWMA==}
+    engines: {node: '>=4'}
+
+  left-pad@1.3.0:
+    resolution: {integrity: sha512-XI5MPzVNApjAyhQzphX8BkmKsKUxD4LdyK24iZeQGinBN9yTQT3bFlCBy/aVx2HrNcqQGsdot8ghrjyrvMCoEA==}
+    deprecated: use String.prototype.padStart()
+
+  punycode@2.3.1:
+    resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
+    engines: {node: '>=6'}
+
+  uri-js@4.4.1:
+    resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
+
+snapshots:
+
+  colorjs@0.1.9: {}
+
+  is-number@6.0.0: {}
+
+  is-odd@3.0.1:
+    dependencies:
+      is-number: 6.0.0
+
+  left-pad@1.3.0: {}
+
+  punycode@2.3.1: {}
+
+  uri-js@4.4.1:
+    dependencies:
+      punycode: 2.3.1

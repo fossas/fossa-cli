@@ -10,6 +10,7 @@ import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil
 import Parse.XML
+import Strategy.NuGet.DirectoryPackagesProps (buildVersionMap)
 import Strategy.NuGet.PackageReference
 import Test.Hspec
 
@@ -95,6 +96,8 @@ projectWithRemoveItems =
 spec :: Spec
 spec = do
   refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
+  cpmProjectFile <- runIO (TIO.readFile "test/NuGet/testdata/cpm-test.csproj")
+  cpmPropsFile <- runIO (TIO.readFile "test/NuGet/testdata/Directory.Packages.props")
 
   describe "Package Reference parser" $ do
     it "reads a file and constructs an accurate list of item groups" $ do
@@ -133,3 +136,21 @@ spec = do
       expectDeps [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
       expectDirect [dependencyOne, dependencyTwo, dependencyThree, dependencyFourResolved] graph
       expectEdges [] graph
+
+    it "resolves versions from a csproj and Directory.Packages.props end to end" $ do
+      case (,) <$> parseXML cpmProjectFile <*> parseXML cpmPropsFile of
+        Right (project, props) -> do
+          let graph = buildGraphWithCPM (buildVersionMap props) project
+              -- "one" has an inline Version, which wins over the central 1.0.0.
+              -- "two" and "four" have no version and come from the props file.
+              -- "three" has VersionOverride, which wins over the central 3.0.0.
+              expected =
+                [ dependencyOne
+                , dependencyTwo
+                , dependencyThree{dependencyVersion = Just (CEq "3.1.0")}
+                , dependencyFour{dependencyVersion = Just (CEq "4.0.0")}
+                ]
+          expectDeps expected graph
+          expectDirect expected graph
+          expectEdges [] graph
+        Left err -> expectationFailure (toString ("could not parse CPM fixtures: " <> xmlErrorPretty err))

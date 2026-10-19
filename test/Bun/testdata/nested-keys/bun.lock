@@ -1,0 +1,56 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "root",
+      "dependencies": {
+        "@babel/code-frame": "7.27.1",
+        "express": "4.21.2",
+        "path-to-regexp": "8.3.0",
+      },
+    },
+    "packages/@acme/lib": {
+      "name": "@acme/lib",
+      "dependencies": {
+        "@babel/code-frame": "7.0.0",
+      },
+    },
+    "packages/app": {
+      "name": "app",
+      "dependencies": {
+        "path-to-regexp": "0.1.12",
+      },
+    },
+  },
+  "packages": {
+    "@acme/lib": ["@acme/lib@workspace:packages/@acme/lib"],
+
+    "@babel/code-frame": ["@babel/code-frame@7.27.1", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.27.1" } }, "sha512-..."],
+
+    "@babel/helper-validator-identifier": ["@babel/helper-validator-identifier@7.29.7", "", {}, "sha512-..."],
+
+    "@babel/highlight": ["@babel/highlight@7.25.9", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.25.9" } }, "sha512-..."],
+
+    "app": ["app@workspace:packages/app"],
+
+    "debug": ["debug@2.6.9", "", { "dependencies": { "ms": "2.0.0" } }, "sha512-..."],
+
+    "express": ["express@4.21.2", "", { "dependencies": { "path-to-regexp": "0.1.12", "send": "0.19.0" } }, "sha512-..."],
+
+    "ms": ["ms@2.0.0", "", {}, "sha512-..."],
+
+    "path-to-regexp": ["path-to-regexp@8.3.0", "", {}, "sha512-..."],
+
+    "send": ["send@0.19.0", "", { "dependencies": { "debug": "2.6.9", "ms": "2.1.3" } }, "sha512-..."],
+
+    "@acme/lib/@babel/code-frame": ["@babel/code-frame@7.0.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.0.0", "@babel/highlight": "^7.0.0" } }, "sha512-..."],
+
+    "@acme/lib/@babel/helper-validator-identifier": ["@babel/helper-validator-identifier@7.9.0", "", {}, "sha512-..."],
+
+    "app/path-to-regexp": ["path-to-regexp@0.1.12", "", {}, "sha512-..."],
+
+    "express/path-to-regexp": ["path-to-regexp@0.1.12", "", {}, "sha512-..."],
+
+    "send/ms": ["ms@2.1.3", "", {}, "sha512-..."],
+  }
+}
