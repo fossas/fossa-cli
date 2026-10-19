@@ -3,6 +3,9 @@
 
 module App.Fossa.VSI.Analyze (
   runVsiAnalysis,
+  DirAction (..),
+  dirAction,
+  withDefaultFilters,
 ) where
 
 import App.Fossa.VSI.Fingerprint (Combined, fingerprint)
@@ -244,19 +247,14 @@ discover output filters root renderAncestry =
     logDebug . pretty $ "walking new root: " <> toText root
     flip walk root $ \dir _ files -> handle dir files
   where
-    -- Walk and scan like the analyzers: the root is always walked, and a dir's files are scanned only where a project
-    -- there would be kept, so the parents of a `paths.only` entry are walked but not scanned.
-    handle dir files
-      | maybe True (pathAllowed filters) relDir = do
-          logDebug . pretty $ "processing dir: " <> toText dir
-          when (isJust $ applyFilters filters "vsi" (fromMaybe $(P.mkRelDir ".") relDir) ProjectWithoutTargets) $
-            traverse_ (forkTask . process) files
-          pure WalkContinue
-      where
-        relDir = P.stripProperPrefix root dir
-    handle dir _ = do
-      logDebug . pretty $ "skip dir: " <> toText dir
-      pure WalkSkipAll
+    handle dir files = case dirAction filters root dir of
+      SkipDir -> do
+        logDebug . pretty $ "skip dir: " <> toText dir
+        pure WalkSkipAll
+      action -> do
+        logDebug . pretty $ "processing dir: " <> toText dir
+        when (action == ScanDir) $ traverse_ (forkTask . process) files
+        pure WalkContinue
     process file = context "process file" $ do
       -- Synchronously fingerprint the file and compute its logical path.
       fp <- fingerprint file
@@ -273,6 +271,19 @@ discover output filters root renderAncestry =
       -- Report the fingerprint and logical path for computing this chunk.
       logDebug . pretty $ "report logical path: " <> toText logicalPath
       sendIO . atomically $ writeTBMChan output (logicalPath, fp)
+
+data DirAction = SkipDir | WalkDir | ScanDir
+  deriving (Eq, Show)
+
+-- | Walk and scan like the analyzers: the root is always walked, and a dir's files are scanned only where a project
+-- there would be kept, so the parents of a `paths.only` entry are walked but not scanned.
+dirAction :: AllFilters -> Path Abs Dir -> Path Abs Dir -> DirAction
+dirAction filters root dir
+  | not $ maybe True (pathAllowed filters) relDir = SkipDir
+  | isJust $ applyFilters filters "vsi" (fromMaybe $(P.mkRelDir ".") relDir) ProjectWithoutTargets = ScanDir
+  | otherwise = WalkDir
+  where
+    relDir = P.stripProperPrefix root dir
 
 -- | Converts a relative file path into a relative directory, where the passed in file path is suffixed by the archive suffix literal.
 -- In other words, this:
