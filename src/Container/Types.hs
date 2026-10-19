@@ -21,6 +21,8 @@ module Container.Types (
   DiscoveredBinaries (..),
 
   -- * Go Binary Analysis Related Types
+
+  -- Defined alongside the filesystem discovery strategy that shares them.
   GoModule (..),
   DiscoveredGoBinary (..),
 
@@ -44,6 +46,7 @@ import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Srclib.Types (SourceUnit)
+import Strategy.Go.GoBinary (DiscoveredGoBinary (..), GoModule (..))
 
 data ContainerImageRaw = ContainerImageRaw
   { layers :: NonEmpty.NonEmpty ContainerLayer
@@ -148,37 +151,6 @@ newtype JarObservation = JarObservation
   {inner :: Value}
   deriving (Eq, Ord, Show, Generic)
   deriving (ToJSON, FromJSON) via Value
-
--- | A Go module parsed from a binary's embedded buildinfo.
-data GoModule = GoModule
-  { goModulePath :: Text
-  , goModuleVersion :: Text
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON GoModule where
-  parseJSON = withObject "GoModule" $ \o ->
-    GoModule
-      <$> o .: "path"
-      <*> o .: "version"
-
--- | A Go binary millhone discovered in a layer, with the module list parsed
--- from its embedded buildinfo (the data @go version -m@ reads).
-data DiscoveredGoBinary = DiscoveredGoBinary
-  { goBinaryPath :: Text
-  , goBinaryGoVersion :: Text
-  , goBinaryMainModule :: Maybe GoModule
-  , goBinaryModules :: [GoModule]
-  }
-  deriving (Eq, Ord, Show)
-
-instance FromJSON DiscoveredGoBinary where
-  parseJSON = withObject "DiscoveredGoBinary" $ \o ->
-    DiscoveredGoBinary
-      <$> o .: "path"
-      <*> o .: "go_version"
-      <*> o .:? "main_module"
-      <*> o .: "modules"
 
 -- | Output parse type for millhone: everything (jars and Go binaries) it
 -- discovered per layer.

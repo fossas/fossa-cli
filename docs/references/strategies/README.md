@@ -46,6 +46,7 @@ See the linked documentation above for details.
 ### go
 
 - [gomodules (`go mod`)](languages/golang/gomodules.md)
+- [gobinary (compiled Go binaries)](languages/golang/gobinary.md)
 - [dep](languages/golang/godep.md)
 - [glide](languages/golang/glide.md)
 
@@ -176,6 +177,7 @@ Invoke strict analysis with the `--strict` flag when running `fossa analyze`.
 | [Erlang (rebar3)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/erlang/erlang.md)                        | Dynamic                      | ❌                    |
 | [Fortran](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/fortran/fortran.md)                              | Static                       | ❌                    |
 | [Go (dep)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/godep.md)                                | Static                       | ❌                    |
+| [Go (gobinary)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/gobinary.md)                        | Static                       | ❌                    |
 | [Go (glide)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/glide.md)                              | Static                       | ❌                    |
 | [Go (gomodules)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/gomodules.md)                      | Dynamic with static fallback | ❌                    |
 | [Gradle](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/gradle/gradle.md)                                 | Dynamic                      | ❌                    |
