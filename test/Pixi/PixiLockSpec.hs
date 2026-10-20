@@ -348,3 +348,12 @@ spec = do
       graph <- analyze path
 
       expectDeps' [] graph
+
+  describe "analyze a lockfile whose only package is the workspace itself" $
+    it' "reports an empty graph instead of failing" $ do
+      -- The workspace's own package is dropped as the project, not skipped as
+      -- unreadable, so it doesn't count toward the guard above.
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-workspace-only.lock|]
+      graph <- analyze path
+
+      expectDeps' [] graph

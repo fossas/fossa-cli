@@ -404,9 +404,6 @@ buildGraph PixiLockFile{..} = do
   -- the way uv drops its workspace packages.
   pure . Graphing.shrink (not . isWorkspacePackage) $ Graphing.promoteToDirect (`Set.member` roots) graph
   where
-    -- pixi writes the lockfile's own directory as `.` or `./`.
-    isWorkspacePackage dep = dependencyType dep == UnresolvedPathType && dependencyName dep `elem` [".", "./"]
-
     collect index (locator, env) (skips, acc, keys) =
       case toDependency (Map.lookup locator index) locator env of
         Left skip -> (skip : skips, acc, keys)
@@ -418,6 +415,10 @@ buildGraph PixiLockFile{..} = do
 
     mergeEnvironments new old =
       old{dependencyEnvironments = dependencyEnvironments old <> dependencyEnvironments new}
+
+-- | pixi writes the lockfile's own directory as @.@ or @./@.
+isWorkspacePackage :: Dependency -> Bool
+isWorkspacePackage dep = dependencyType dep == UnresolvedPathType && dependencyName dep `elem` [".", "./"]
 
 -- | The bare name and subdir a conda locator is addressed by. @depends@
 -- entries are never subdir-qualified, so the subdir is matched separately
@@ -526,8 +527,11 @@ analyze lockPath = do
   -- Checked for every version, not just unknown ones: entries go unreadable
   -- because the `packages` shape moved, which a pixi release can do without
   -- touching `version:`. Keying this off the version number would reinstate
-  -- the brittleness it replaces.
-  let entries = length $ pixiLockPackages lockFile
+  -- the brittleness it replaces. The workspace's own package isn't counted,
+  -- since the graph drops it as the project rather than as unreadable.
+  let isWorkspaceEntry (PackageEntry p) = either (const False) isWorkspacePackage $ toDependency (Just p) (pixiPkgLocator p) EnvProduction
+      isWorkspaceEntry (UnreadableEntry _) = False
+      entries = length . filter (not . isWorkspaceEntry) $ pixiLockPackages lockFile
   if entries > 0 && null (Graphing.vertexList graph)
     then fatal $ PixiLockYieldedNoDeps (pixiLockVersion lockFile) entries
     else pure graph
