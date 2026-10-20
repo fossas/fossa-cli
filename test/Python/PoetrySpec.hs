@@ -497,10 +497,10 @@ discoverySpec = do
       let dir = testdata </> $(mkRelDir "pep621")
           requests = Dependency PipType "requests" (Just $ CGreaterOrEq "2.28.0") [] (Set.singleton EnvProduction) Map.empty
           flask = Dependency PipType "flask" (Just $ CGreaterOrEq "2.0") [] (Set.singleton EnvProduction) Map.empty
-          pytest = Dependency PipType "pytest" (Just $ CCompatible "6.0") [] (Set.singleton EnvDevelopment) Map.empty
+          pytestDev = Dependency PipType "pytest" (Just $ CCompatible "6.0") [] (Set.singleton EnvDevelopment) Map.empty
       results <- analyze (project dir Nothing)
       dependencyGraphBreadth results `shouldBe'` Partial
       dependencyManifestFiles results `shouldBe'` [dir </> $(mkRelFile "pyproject.toml")]
-      expectDeps' [requests, flask, pytest] (dependencyGraph results)
-      expectDirect' [requests, flask, pytest] (dependencyGraph results)
+      expectDeps' [requests, flask, pytestDev] (dependencyGraph results)
+      expectDirect' [requests, flask, pytestDev] (dependencyGraph results)
       expectEdges' [] (dependencyGraph results)
