@@ -26,9 +26,11 @@ import Strategy.Python.Poetry.PoetryLock (
   PoetryLock (..),
   PoetryLockDependencySpec (..),
   PoetryLockPackage (..),
+  PoetryLockPackageSource (..),
   PoetryMetadata (..),
  )
-import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectPoetry (..), PyProjectTool (..))
+import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectMetadata (..), PyProjectPoetry (..), PyProjectTool (..))
+import Strategy.Python.Util (Req (NameReq))
 import Test.Effect (it')
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Types (DependencyResults (dependencyGraph))
@@ -111,6 +113,7 @@ spec :: Spec
 spec = do
   poetryV1_5OrGtSpec
   pep621SourceOnlySpec
+  poetryLockMismatchSpec
 
   describe "graphFromPyProjectAndLockFile" $ do
     it "should produce expected graph" $ do
@@ -394,3 +397,47 @@ mkPipProdDep nameAtVersion = mkDep PipType nameAtVersion (Just EnvProduction)
 
 mkPipDevDep :: Text -> Dependency
 mkPipDevDep nameAtVersion = mkDep PipType nameAtVersion (Just EnvDevelopment)
+
+-- Poetry 2.x projects declare their dependencies in the PEP 621 [project] table and need no [tool.poetry] table.
+pep621OnlyPyProject :: PyProject
+pep621OnlyPyProject =
+  PyProject
+    { pyprojectBuildSystem = Just $ PyProjectBuildSystem{buildBackend = Just "poetry.core.masonry.api"}
+    , pyprojectProject = Just $ PyProjectMetadata{pyprojectDependencies = Just [NameReq "requests" Nothing Nothing Nothing], pyprojectOptionalDependencies = Nothing}
+    , pyprojectTool = Nothing
+    }
+
+lockPackage :: Text -> Text -> Map.Map Text PoetryLockDependencySpec -> Maybe PoetryLockPackageSource -> PoetryLockPackage
+lockPackage name version deps source =
+  PoetryLockPackage
+    { poetryLockPackageName = PackageName name
+    , poetryLockPackageVersion = version
+    , poetryLockPackageCategory = Nothing
+    , poetryLockPackageOptional = False
+    , poetryLockPackageDependencies = deps
+    , poetryLockPackagePythonVersions = "*"
+    , poetryLockPackageSource = source
+    }
+
+poetryLockMismatchSpec :: Spec
+poetryLockMismatchSpec =
+  describe "graphFromPyProjectAndLockFile" $ do
+    -- Fails until src/Strategy/Python/Poetry.hs:graphFromPyProjectAndLockFile is fixed: isDirect is False whenever pyproject.toml has no [tool.poetry] table, so a PEP 621 [project].dependencies entry is never direct with a lockfile although pyProjectDeps makes it direct without one. See the PR description.
+    it "marks PEP 621 [project] dependencies direct when there is no [tool.poetry] table" $ do
+      let lock =
+            newPoetryLock
+              [ lockPackage "requests" "2.32.3" (Map.fromList [("certifi", TextVersion ">=2017.4.17")]) Nothing
+              , lockPackage "certifi" "2024.2.2" Map.empty Nothing
+              ]
+          requests = Dependency PipType "requests" (Just $ CEq "2.32.3") [] (Set.singleton EnvProduction) Map.empty
+      Graphing.directList (graphFromPyProjectAndLockFile pep621OnlyPyProject lock) `shouldBe` [requests]
+
+    -- Fails until src/Strategy/Python/Poetry.hs:graphFromPyProjectAndLockFile is fixed: a lock package whose source type is "file" is left out of the lock dependency map and logged as ignored, yet it still reaches the graph as a versionless PyPI dependency. See the PR description.
+    it "does not report a lock package sourced from a local file" $ do
+      let lock = newPoetryLock [lockPackage "localpkg" "0.1.0" Map.empty (Just $ PoetryLockPackageSource "file" "dist/localpkg-0.1.0.tar.gz" Nothing Nothing)]
+      Graphing.vertexList (graphFromPyProjectAndLockFile candidatePyProject lock) `shouldBe` []
+
+    -- Fails until src/Strategy/Python/Poetry.hs:graphFromPyProjectAndLockFile is fixed: a lock package whose source type is "directory" is a path dependency, which the docs say is never reported, but it is emitted as a pip dependency named after its relative path. See the PR description.
+    it "does not report a lock package sourced from a local directory" $ do
+      let lock = newPoetryLock [lockPackage "my-package" "0.1.0" Map.empty (Just $ PoetryLockPackageSource "directory" "../my-package" Nothing Nothing)]
+      Graphing.vertexList (graphFromPyProjectAndLockFile candidatePyProject lock) `shouldBe` []

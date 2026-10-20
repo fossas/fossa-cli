@@ -9,7 +9,7 @@ import Data.Text.IO qualified as TIO
 import DepTypes
 import GraphUtil (expectDeps)
 import Strategy.Python.ReqTxt (requirementsTxtParser)
-import Strategy.Python.Util (buildGraph, requirementParser)
+import Strategy.Python.Util (Marker (..), MarkerOp (..), Req (..), buildGraph, requirementParser)
 import Test.Hspec qualified as T
 import Test.Hspec.Megaparsec
 import Text.Megaparsec
@@ -82,6 +82,7 @@ depFour =
 
 spec :: T.Spec
 spec = do
+  markerOperatorSpec
   T.describe "requirementParser" $
     T.it "can parse the edge case examples" $
       traverse_ (\input -> runParser requirementParser "" `shouldSucceedOn` input) examples
@@ -95,3 +96,13 @@ spec = do
         Right res -> do
           let result = buildGraph Nothing res
           expectDeps [depOne, depTwo, depThree, depFour] result
+
+markerOperatorSpec :: T.Spec
+markerOperatorSpec =
+  T.describe "requirementParser" $ do
+    -- Fails until src/Strategy/Python/Util.hs:requirementParser is fixed: marker_op tries version_cmp first, whose leading whitespace consumes the space before `in`, so the PEP 508 `in` and `not in` operators never parse and the whole requirement is rejected. See the PR description.
+    T.it "parses the PEP 508 in and not in marker operators" $ do
+      parse requirementParser "" "name; sys_platform in \"win32\""
+        `shouldParse` NameReq "name" Nothing Nothing (Just (MarkerExpr "sys_platform" MarkerIn "win32"))
+      parse requirementParser "" "name; python_version not in \"2.6 2.7\""
+        `shouldParse` NameReq "name" Nothing Nothing (Just (MarkerExpr "python_version" MarkerNotIn "2.6 2.7"))

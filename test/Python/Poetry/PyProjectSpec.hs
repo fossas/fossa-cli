@@ -31,12 +31,14 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectPoetryPathDependency (..),
   PyProjectPoetryUrlDependency (..),
   PyProjectTool (..),
+  allPoetryProductionDeps,
   parseConstraintExpr,
  )
 import Test.Hspec (
   Expectation,
   Spec,
   describe,
+  expectationFailure,
   it,
   runIO,
   shouldBe,
@@ -164,6 +166,14 @@ spec = do
             , "6:1: unexpected key: readme in tool.poetry"
             ]
             expectedPyProject3
+
+  describe "pyProjectCodec with a multiple-constraints dependency" $
+    -- Fails until src/Strategy/Python/Poetry/PyProject.hs:FromValue PoetryDependency is fixed: Poetry's documented multiple-constraints form (a list of tables) falls through to the catch-all failAt, so the whole pyproject.toml fails to decode and the Poetry strategy errors out. See the PR description.
+    it "decodes a dependency declared as a list of constraints" $ do
+      let contents = "[tool.poetry]\nname = \"demo\"\n\n[tool.poetry.dependencies]\nfoo = [\n  {version = \"<=1.9\", python = \">=3.6,<3.8\"},\n  {version = \"^2.0\", python = \">=3.8\"}\n]\n"
+      case Toml.decode contents of
+        Toml.Success _ pyproject -> Map.keys (allPoetryProductionDeps pyproject) `shouldBe` ["foo"]
+        Toml.Failure errs -> expectationFailure (unlines errs)
 
   describe "parseConstraintExpr" $ do
     it "should parse equality constraint" $ do
