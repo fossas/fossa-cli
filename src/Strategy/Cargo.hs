@@ -611,7 +611,7 @@ toDependency emitGitBackedLocators sourceMap pkg =
     -- path+file:///some/file/path -> /some/file/path
     -- For a git dependency when the server supports it, use repo-url#crate-name. For example:
     -- git+https://github.com/fossas/locator-rs?tag=v3.0.3#sha -> github.com/fossas/locator-rs#locator
-    -- When the server does not support git-backed locators, fall back to the plain crate name.
+    -- When the server doesn't support git-backed locators, fall back to the plain crate name.
     depName =
       let sourceUrl = Text.drop 2 $ snd $ breakOn "//" $ pkgIdSource pkg
        in case depType of

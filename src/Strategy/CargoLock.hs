@@ -221,7 +221,6 @@ enumerateWorkspaceMembers rootDir = do
   rootM <- readContentsToml @(Map.Map Text Value) (rootDir </> $(mkRelFile "Cargo.toml"))
   case topTable rootM "workspace" of
     Nothing ->
-      -- Non-workspace single crate: the root itself is the only member.
       case rootPackage rootM of
         Just name -> pure [WorkspaceMember name rootDir]
         Nothing -> pure []

@@ -102,17 +102,13 @@ kindAnalysisSpecs =
           pd = manifestPathDeps analysis
           myLocalExpected = root </> $(mkRelDir "crates/libs/my_local")
           kinds k = Map.lookup k km
-      -- string dep + renamed dep (package = "serde") both collapse to "serde".
       kinds ("app", "serde") `shouldBe'` Just (Set.singleton DepProd)
-      -- declared in all three sections.
       kinds ("app", "dual") `shouldBe'` Just (Set.fromList [DepProd, DepBuild, DepDev])
       kinds ("app", "cc") `shouldBe'` Just (Set.singleton DepBuild)
       kinds ("app", "approx") `shouldBe'` Just (Set.singleton DepDev)
       -- a dep under [target.'cfg(unix)'.dev-dependencies].
       kinds ("app", "unixtool") `shouldBe'` Just (Set.singleton DepDev)
-      -- resolvable workspace inheritance keeps the key as the crate name.
       kinds ("app", "shared") `shouldBe'` Just (Set.singleton DepProd)
-      -- unresolvable workspace inheritance still classifies as prod + warns.
       kinds ("app", "mystery") `shouldBe'` Just (Set.singleton DepProd)
       kinds ("app", "foo") `shouldBe'` Just (Set.singleton DepProd)
       -- a non-member path dep is recorded with a resolved absolute directory.
@@ -240,13 +236,11 @@ goldenConversionSpecs =
           let alphaDir = root </> $(mkRelDir "crates/alpha")
               rootPid = PackageId "rootpkg" "0.1.0" ("path+file://" <> toText (toFilePath root))
               alphaPid = PackageId "alpha" "0.1.0" ("path+file://" <> toText (toFilePath alphaDir))
-          -- The root package is a member alongside the glob-matched one.
           members `shouldBe'` [WorkspaceMember "rootpkg" root, WorkspaceMember "alpha" alphaDir]
           let builddPid = mkPkgId "buildd" "1.0.0"
               devdepPid = mkPkgId "devdep" "1.0.0"
               sharedPid = mkPkgId "shared_reg" "1.0.0"
               meta = lockfileToMetadata lock members analysis
-          -- The root package is in the member ids (lockfile order).
           map pkgIdName (metadataWorkspaceMembers meta) `shouldBe'` ["alpha", "rootpkg"]
           let expected =
                 CargoMetadata
@@ -268,14 +262,11 @@ goldenConversionSpecs =
           meta `shouldBe'` expected
 
           let graph = buildGraph False meta
-              -- The root's dev/build dep edges carry their kind-derived
-              -- (non-Production) labels.
               builddDep = mkDep "buildd" "1.0.0" CargoType [EnvDevelopment]
               devdepDep = mkDep "devdep" "1.0.0" CargoType [EnvDevelopment]
               sharedDep = mkDep "shared_reg" "1.0.0" CargoType [EnvProduction]
           expectDeps' [builddDep, devdepDep, sharedDep] graph
           expectDirect' [builddDep, devdepDep, sharedDep] graph
-          -- shrinkRoots: the root package is not a direct dep vertex.
           map dependencyName (Graphing.directList graph) `shouldNotContain'` ["rootpkg"]
 
     it' "git deps: tagged keeps the crate version, untagged uses the commit hash" $ do
@@ -350,10 +341,8 @@ goldenConversionSpecs =
 
           let graph = buildGraph False meta
               extDep = mkDep "ext" "1.0.0" CargoType [EnvProduction]
-              -- Production (not Development) is the accepted gap.
               extBuildDep = mkDep "ext_build" "0.2.0" CargoType [EnvProduction]
           expectDeps' [extDep, extBuildDep] graph
-          -- "ext" is a non-member root; "ext_build" is its (Production) child.
           expectDirect' [extDep] graph
 
     it' "name-version disambiguation: two ansi_term versions stay distinct" $ do
