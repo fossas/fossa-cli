@@ -79,6 +79,7 @@ data DiscoveredProjectType
   | DpkgDatabaseProjectType
   | FpmProjectType
   | GlideProjectType
+  | GoBinaryProjectType
   | GodepProjectType
   | GomodProjectType
   | GradleProjectType
@@ -133,6 +134,7 @@ projectTypeToText = \case
   DpkgDatabaseProjectType -> "dpkgdb"
   FpmProjectType -> "fpm"
   GlideProjectType -> "glide"
+  GoBinaryProjectType -> "gobinary"
   GodepProjectType -> "godep"
   GomodProjectType -> "gomod"
   GradleProjectType -> "gradle"
