@@ -167,7 +167,7 @@ spec = do
         graph
 
   describe "analyze a v7 lockfile" $
-    it' "reads v7, whose extra top-level platforms block carries no dependencies" $ do
+    it' "reads v7, skipping its platforms block and pixi-build source packages" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7.lock|]
       graph <- analyze path
 

@@ -1,7 +1,8 @@
 # Trimmed from pixi's own v7 lockfile (prefix-dev/pixi). v7 keeps v6's
 # `packages` shape and adds a top-level `platforms` block, which carries no
 # dependency information — the point of this fixture is that its presence
-# does not change the result.
+# does not change the result. `pixi-docs` is a pixi-build source package, keyed
+# `conda_source:` in both halves; it is skipped, and must not fail the file.
 version: 7
 platforms:
 - linux-64
@@ -16,6 +17,7 @@ environments:
       linux-64:
       - conda: https://prefix.dev/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
       - conda: https://prefix.dev/conda-forge/linux-64/actionlint-1.7.12-h8bc977c_0.conda
+      - conda_source: pixi-docs[9f3c2a7b] @ .
       - pypi: git+https://github.com/squidfunk/mike#2d4ad799442f4592db8ad53b179bfb33db8c69ac
 packages:
 - conda: https://prefix.dev/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
@@ -41,6 +43,13 @@ packages:
   purls: []
   size: 2404567
   timestamp: 1770939786096
+- conda_source: pixi-docs[9f3c2a7b] @ .
+  version: 0.1.0
+  build: hb0f4dca_0
+  subdir: linux-64
+  depends:
+  - actionlint >=1.7
+  license: BSD-3-Clause
 - pypi: git+https://github.com/squidfunk/mike#2d4ad799442f4592db8ad53b179bfb33db8c69ac
   name: mike
   version: 2.2.0+zensical.0.1.0

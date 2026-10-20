@@ -10,14 +10,16 @@
 -- which is why a package has to be deduped across the join rather than emitted
 -- per slot.
 --
--- Three lock versions are in the wild and they differ only in the @packages@
+-- Three lock versions are in the wild and they differ mostly in the @packages@
 -- half:
 --
 -- * v5 tags each entry @kind: conda@ \/ @kind: pypi@ and spells out @name@,
 --   @version@, @build@ and @subdir@, with @url@ as the locator.
 -- * v6 and v7 key the entry on @conda:@ \/ @pypi:@ whose value IS the locator,
 --   and drop @name@ and @version@ for conda entries entirely. v7 adds a
---   top-level @platforms@ block that has no bearing on dependencies.
+--   top-level @platforms@ block that has no bearing on dependencies, and keys
+--   pixi-build source packages on @conda_source:@ in both halves; those are
+--   skipped.
 --
 -- That dropped name is the one real fragility here: for v6/v7 conda packages
 -- the only place the name and version exist is the artifact filename, so we
@@ -63,7 +65,7 @@ import Data.Aeson (
   (.:?),
  )
 import Data.Aeson.KeyMap qualified as KeyMap
-import Data.Aeson.Types (Parser, parseEither)
+import Data.Aeson.Types (Parser, parseEither, parseMaybe)
 import Data.Char (isAlphaNum, isSpace)
 import Data.Foldable (for_)
 import Data.Map.Strict (Map)
@@ -169,9 +171,11 @@ instance FromJSON PixiLockFile where
       <*> obj .: "environments"
       <*> obj .: "packages"
 
+-- | An entry of a kind this parser doesn't know, such as a v7 @conda_source:@,
+-- is dropped rather than failing the file; its @packages@ entry warns.
 instance FromJSON PixiEnvironment where
   parseJSON = withObject "PixiEnvironment" $ \obj ->
-    PixiEnvironment <$> obj .: "packages"
+    PixiEnvironment . fmap (mapMaybe $ parseMaybe parseJSON) <$> obj .: "packages"
 
 -- | Read the @conda:@ \/ @pypi:@ key that both the environments list and the
 -- v6\/v7 package entries use to name an artifact.

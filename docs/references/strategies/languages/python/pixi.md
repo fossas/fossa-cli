@@ -29,7 +29,7 @@ Every `pixi.lock` is analyzed, whatever its `version:` says. The format has so f
 
 Analysis fails only when the lockfile lists `packages` and not one of them can be read, which is what a restructured `packages` shape looks like. That check applies to every version, because a pixi release can change the shape without changing `version:`. A lockfile with no packages at all is a workspace with no dependencies, and reports an empty graph without failing.
 
-Version 5 spells out `name`, `version`, `build` and `subdir` on each package and locates it by `url` or `path`. Versions 6 and 7 replace that with a single `conda:`/`pypi:` key holding the locator, and record no `name` or `version` for conda packages. Version 7 adds a top-level `platforms` block, which carries no dependency information.
+Version 5 spells out `name`, `version`, `build` and `subdir` on each package and locates it by `url` or `path`. Versions 6 and 7 replace that with a single `conda:`/`pypi:` key holding the locator, and record no `name` or `version` for conda packages. Version 7 adds a top-level `platforms` block, which carries no dependency information. It also lists packages that pixi-build builds from source under `conda_source:`; those are skipped with a warning.
 
 ### Unreadable entries
 
