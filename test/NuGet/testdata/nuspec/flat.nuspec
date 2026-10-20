@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package>
+  <metadata>
+    <id>GenericServices</id>
+    <version>1.0.10</version>
+    <dependencies>
+      <dependency id="GenericLibsBase" version="1.0.1" />
+      <dependency id="EntityFramework" version="6.1.3" />
+    </dependencies>
+  </metadata>
+</package>

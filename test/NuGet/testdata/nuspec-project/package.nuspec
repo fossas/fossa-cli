@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Sample.Project</id>
+    <version>1.2.3</version>
+    <licenseUrl>https://example.com/LICENSE</licenseUrl>
+    <license type="expression">MIT</license>
+    <license type="file">LICENSE.txt</license>
+    <license>BSD-2-Clause</license>
+    <dependencies>
+      <group targetFramework="net6.0">
+        <dependency id="alpha" version="1.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="netstandard2.0">
+        <dependency id="beta" version="2.0.0" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>
