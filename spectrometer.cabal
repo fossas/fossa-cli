@@ -148,6 +148,7 @@ common deps
     , semver                       ^>=0.4.0.1
     , stm                          ^>=2.5.0
     , stm-chans                    ^>=3.0.0
+    , streaming                    ^>=0.2.4.0
     , strip-ansi-escape            ^>=0.1
     , tar                          ^>=0.6.2.0
     , template-haskell
@@ -403,6 +404,7 @@ library
     Discovery.Projects
     Discovery.Simple
     Discovery.Walk
+    Discovery.WalkStream
     Effect.Exec
     Effect.Grapher
     Effect.Logger
@@ -666,6 +668,7 @@ test-suite unit-tests
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
     Discovery.WalkSpec
+    Discovery.WalkStreamSpec
     Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
