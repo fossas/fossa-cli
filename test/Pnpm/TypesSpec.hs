@@ -91,6 +91,8 @@ spec = do
               ProjectMap
                 { directDependencies = Map.singleton "aws-sdk" (ProjectMapDepMetadata "2.1148.0")
                 , directDevDependencies = Map.singleton "react" (ProjectMapDepMetadata "18.1.0")
+                , configDependencies = mempty
+                , directOptionalDependencies = mempty
                 }
           )
 
@@ -115,6 +117,8 @@ spec = do
               ProjectMap
                 { directDependencies = Map.singleton "commander" (ProjectMapDepMetadata "9.2.0")
                 , directDevDependencies = mempty
+                , configDependencies = mempty
+                , directOptionalDependencies = mempty
                 }
           )
 
@@ -141,6 +145,8 @@ spec = do
               ProjectMap
                 { directDependencies = Map.singleton "aws-sdk" (ProjectMapDepMetadata "2.1148.0")
                 , directDevDependencies = Map.singleton "react" (ProjectMapDepMetadata "18.1.0")
+                , configDependencies = mempty
+                , directOptionalDependencies = mempty
                 }
           )
 
@@ -242,13 +248,13 @@ spec = do
         v9Of (Right _) = Left "not v9"
         v9Of (Left err) = Left err
 
-    it "keys snapshots without the peer dependency suffix" $
+    it "keeps the peer-resolution context in snapshot keys" $
       fmap (snapshots . lockfileSnapshots) (v9Of v9Lockfile)
         `shouldBe` Right
           ( HashMap.fromList
               [ ("uri-js@4.4.1", [("punycode", "2.3.1")])
               , ("punycode@2.3.1", [])
-              , ("react-dom@19.0.0", [("react", "19.0.0")])
+              , ("react-dom@19.0.0(react@19.0.0)", [("react", "19.0.0")])
               ]
           )
 

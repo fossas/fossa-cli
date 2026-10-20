@@ -10,11 +10,11 @@ import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.Tagged (applyTag)
-import DepTypes (DepEnvironment (EnvProduction), Dependency (dependencyEnvironments, dependencyName))
+import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), Dependency (dependencyEnvironments, dependencyName, dependencyVersion), VerConstraint (CCompatible))
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths)
+import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -48,7 +48,7 @@ import Types (
   DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType),
   DiscoveredProjectType (NpmProjectType),
   FoundTargets (FoundTargets, ProjectWithoutTargets),
-  GraphBreadth (Complete),
+  GraphBreadth (Complete, Partial),
  )
 
 spec :: Spec
@@ -61,6 +61,9 @@ spec = do
   workspaceBuildTargetsSpec currDir
   extractDepListsForTargetsSpec currDir
   resolveNpmV3WorkspacePathsSpec currDir
+  catalogFallbackSpec currDir
+  resolvePnpmImporterKeysSpec currDir
+  unnamedWorkspaceRootSpec currDir
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =
@@ -311,6 +314,63 @@ resolveNpmV3WorkspacePathsSpec currDir = describe "resolveNpmV3WorkspacePaths" $
   it "resolves no paths when no target matches a manifest" $
     forTargets ["does-not-exist"] `shouldBe` Just Set.empty
 
+resolvePnpmImporterKeysSpec :: Path Abs Dir -> Spec
+resolvePnpmImporterKeysSpec currDir = describe "resolvePnpmImporterKeys" $ do
+  let graph = workspaceGraphWithDeps currDir
+      forTargets names =
+        resolvePnpmImporterKeys
+          (maybe ProjectWithoutTargets FoundTargets . nonEmpty $ Set.fromList (map BuildTarget names))
+          graph
+
+  it "returns Nothing when unscoped" $
+    resolvePnpmImporterKeys ProjectWithoutTargets graph `shouldBe` Nothing
+
+  it "maps the root target to the \".\" importer key" $
+    -- pnpm spells the workspace root "." where npm spells it "".
+    forTargets ["workspace-test"] `shouldBe` Just (Set.fromList ["."])
+
+  it "maps a workspace name to its root-relative importer key" $
+    forTargets ["pkg-b"] `shouldBe` Just (Set.fromList ["nested/pkg-b"])
+
+  it "maps every selected target" $
+    forTargets ["workspace-test", "pkg-a", "pkg-b"]
+      `shouldBe` Just (Set.fromList [".", "pkg-a", "nested/pkg-b"])
+
+  it "resolves no importers when no target matches a manifest" $
+    forTargets ["does-not-exist"] `shouldBe` Just Set.empty
+
+-- | A workspace root with no @name@ cannot be selected by any target filter,
+-- so no targets are offered at all and the whole workspace is analyzed as one.
+-- That is what keeps the root's own dependencies from being dropped.
+unnamedWorkspaceRootSpec :: Path Abs Dir -> Spec
+unnamedWorkspaceRootSpec currDir = describe "workspace root without a name" $ do
+  let graph = unnamedRootWorkspaceGraph currDir
+
+  it "offers no build targets" $
+    findWorkspaceBuildTargets graph `shouldBe` ProjectWithoutTargets
+
+  it "still analyzes every manifest, root included" $
+    directDeps (extractDepListsForTargets (findWorkspaceBuildTargets graph) graph)
+      `shouldBe` applyTag @Production (Set.fromList [NodePackage "husky" "^8.0.0", NodePackage "lodash" "^4.0.0", NodePackage "express" "^4.0.0"])
+
+  it "keeps every dependency when a member, rather than the root, is unnamed" $ do
+    let namedGraph = workspaceGraphWithDeps currDir
+        member = Manifest $ currDir </> $(mkRelFile "test/Node/testdata/workspace-test/pkg-a/package.json")
+        graphWithUnnamedMember = namedGraph{jsonLookup = Map.adjust (\pj -> pj{packageName = Nothing}) member (jsonLookup namedGraph)}
+        targets = findWorkspaceBuildTargets graphWithUnnamedMember
+    targets `shouldBe` ProjectWithoutTargets
+    resolvePnpmImporterKeys targets graphWithUnnamedMember `shouldBe` Nothing
+    directDeps (extractDepListsForTargets targets graphWithUnnamedMember)
+      `shouldBe` directDeps (extractDepListsForTargets ProjectWithoutTargets namedGraph)
+
+-- | 'workspaceGraphWithDeps' with the root's @name@ field removed.
+unnamedRootWorkspaceGraph :: Path Abs Dir -> PkgJsonGraph
+unnamedRootWorkspaceGraph currDir =
+  graph{jsonLookup = Map.adjust (\pj -> pj{packageName = Nothing}) (Manifest rootManifest) (jsonLookup graph)}
+  where
+    graph = workspaceGraphWithDeps currDir
+    rootManifest = currDir </> $(mkRelFile "test/Node/testdata/workspace-test/package.json")
+
 -- | A workspace graph with actual dependencies for testing extractDepListsForTargets.
 workspaceGraphWithDeps :: Path Abs Dir -> PkgJsonGraph
 workspaceGraphWithDeps currDir =
@@ -369,3 +429,52 @@ emptyPackageJson =
     , packageLicenses = Nothing
     , packagePeerDeps = Map.empty
     }
+
+-- Exercise discovery and the actual package.json fallback without a lockfile.
+catalogFallbackSpec :: Path Abs Dir -> Spec
+catalogFallbackSpec currDir = describe "pnpm catalog fallback" $ do
+  let root = currDir </> $(mkRelDir "test/Node/testdata/pnpm-catalog-fallback")
+      browser = root </> $(mkRelDir "packages/browser")
+      expectedBrowser =
+        Set.fromList
+          [ ("left-pad", Just (CCompatible "^1.3.0"), Set.singleton EnvProduction)
+          , ("react", Just (CCompatible "^18.3.1"), Set.singleton EnvProduction)
+          , ("is-odd", Just (CCompatible "^3.0.1"), Set.singleton EnvProduction)
+          , ("typescript", Just (CCompatible "~5.4.0"), Set.singleton EnvDevelopment)
+          ]
+      summarize = Set.fromList . map (\dep -> (dependencyName dep, dependencyVersion dep, dependencyEnvironments dep)) . Graphing.vertexList . dependencyGraph
+      analyzeDir dir = do
+        projects <- discover dir
+        length projects `shouldBe'` 1
+        traverse (\DiscoveredProject{..} -> getDeps projectBuildTargets projectData) projects
+
+  it' "resolves default and named catalogs from a member scan, preserving environments and ranges" $ do
+    results <- analyzeDir browser
+    for_ results $ \result -> do
+      summarize result `shouldBe'` expectedBrowser
+      dependencyGraphBreadth result `shouldBe'` Partial
+      Set.fromList (dependencyManifestFiles result)
+        `shouldBe'` Set.fromList
+          [ browser </> $(mkRelFile "package.json")
+          , root </> $(mkRelFile "pnpm-workspace.yaml")
+          ]
+
+  it' "resolves root and member references when the scan starts at the workspace root" $ do
+    results <- analyzeDir root
+    for_ results $ \result ->
+      summarize result `shouldBe'` Set.insert ("colorjs", Just (CCompatible "0.1.9"), Set.singleton EnvProduction) expectedBrowser
+
+  it' "keeps ordinary dependencies when no workspace file is available" $ do
+    results <- analyzeDir $ currDir </> $(mkRelDir "test/Node/testdata/catalog-without-workspace")
+    for_ results $ \result ->
+      summarize result `shouldBe'` Set.singleton ("is-odd", Just (CCompatible "^3.0.1"), Set.singleton EnvProduction)
+
+  for_ ["isolated", "broken", "missing"] $ \member -> do
+    let dir = case member of
+          "isolated" -> root </> $(mkRelDir "packages/isolated")
+          "broken" -> root </> $(mkRelDir "packages/broken")
+          _ -> root </> $(mkRelDir "packages/missing")
+    it' ("preserves ordinary dependencies without borrowing an unrelated catalog: " <> member) $ do
+      results <- analyzeDir dir
+      for_ results $ \result ->
+        summarize result `shouldBe'` Set.singleton ("is-odd", Just (CCompatible "^3.0.1"), Set.singleton EnvProduction)
