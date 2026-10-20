@@ -2,9 +2,7 @@
 
 ## Unreleased
 
-- pixi: Added static analysis support for `pixi.lock` (conda + PyPI packages) ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
-- pixi: Local path packages are reported as path dependencies instead of skipped. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
-- pixi: Dependency graphs now carry edges, so only true roots are reported as direct. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+- pixi: Added static analysis support for `pixi.lock`, covering conda and PyPI packages. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
 - Go: `fossa analyze` can now report dependencies from the module list embedded in compiled Go binaries (Go >= 1.18), for Go code shipped with no `go.mod`. Opt in with `--enable-go-binary-analysis`; add `--unpack-archives` to reach binaries inside archives such as an AAR. ([#1757](https://github.com/fossas/fossa-cli/pull/1757))
 
 ## 3.20.4
