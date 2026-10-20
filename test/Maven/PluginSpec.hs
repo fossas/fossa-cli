@@ -18,13 +18,17 @@ import Strategy.Maven.Plugin (
   VerboseEdge (..),
   VerboseGraph (..),
   augmentWithDuplicateEdges,
+  depGraphPlugin,
   deriveVerboseGraphPaths,
   parsePluginOutput,
   parseVerboseGraphs,
   textArtifactToPluginOutput,
+  withUnpackedPlugin,
  )
 import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
 import Strategy.Maven.Pom.PomFile (MavenCoordinate (..), Pom (..), PomBuild (..))
+import System.Directory qualified as Dir
+import System.FilePath qualified as FP
 import Test.Effect (
   expectFatal',
   expectationFailure',
@@ -47,6 +51,22 @@ spec = do
   verboseGraphCollectionSpec
   deriveVerboseGraphPathsSpec
   parsePluginOutputSpec
+  withUnpackedPluginSpec
+
+-- | 'withUnpackedPlugin' unpacks the plugin jar into a scratch directory and
+-- must clean it up on a best-effort basis. If the directory is already gone
+-- when cleanup runs (e.g. an OS temp reaper removed it, or a concurrent task
+-- did), cleanup must not turn that into a fatal, analysis-wide error such as
+-- @An exception occurred: /tmp/fossa-maven-... removeDirectoryRecursive:getSymbolicLinkStatus: does not exist@.
+withUnpackedPluginSpec :: Spec
+withUnpackedPluginSpec =
+  describe "withUnpackedPlugin" $
+    it' "does not fail when the scratch directory is already gone at cleanup time" $ do
+      result <- withUnpackedPlugin depGraphPlugin $ \pluginJarFilepath -> do
+        -- Simulate the scratch directory vanishing before cleanup runs.
+        sendIO $ Dir.removeDirectoryRecursive (FP.takeDirectory pluginJarFilepath)
+        pure (42 :: Int)
+      result `shouldBe'` (42 :: Int)
 
 -- | The @graph@ goal is not an aggregator: in a multi-module build it runs once
 -- per reactor module, writing into each module's own build directory.

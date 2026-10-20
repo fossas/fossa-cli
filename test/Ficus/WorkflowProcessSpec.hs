@@ -15,7 +15,7 @@ import App.Fossa.Ficus.Types (
   WorkflowEvent (WorkflowResult, WorkflowStepCompleted),
   WorkflowRunArtifact (WorkflowRunArtifact),
   findingToWorkflowEvent,
-  toWorkflowExecutable,
+  downloadedWorkflowExecutable,
   workflowResultJson,
  )
 import App.Fossa.Ficus.Workflow (runWorkflowWith)
@@ -33,7 +33,7 @@ import Data.String.Conversion (decodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitFailure, ExitSuccess))
-import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, parseRelFile, toFilePath, (</>))
+import Path (Abs, Dir, Path, parseAbsDir, parseRelFile, toFilePath, (</>))
 import System.Directory (getPermissions, setOwnerExecutable, setPermissions)
 import Test.Effect (expectFatal', itWithTempDir', shouldBe', shouldSatisfy')
 import Test.Hspec (Spec, describe)
@@ -123,7 +123,7 @@ runArtifactBytes :: ByteString
 runArtifactBytes =
   BL.toStrict . Aeson.encode $
     WorkflowRunArtifact
-      (toWorkflowExecutable (mustParse parseAbsFile "/abs/dist/analyzer.js"))
+      downloadedWorkflowExecutable
       (mustParse parseAbsDir "/abs/repo")
       (mustParse parseAbsDir "/abs/scratch")
 
@@ -140,9 +140,6 @@ decodedEvents = rights . mapMaybe toEvent
   where
     toEvent (FicusMessageFinding finding) = findingToWorkflowEvent finding
     toEvent _ = Nothing
-
-analyzerBundle :: Path Abs Dir -> Path Abs File
-analyzerBundle dir = dir </> mustParse parseRelFile "analyzer.js"
 
 streamingSpec :: Spec
 streamingSpec = describe "execFicusStreaming" $ do
@@ -183,15 +180,15 @@ workflowSpec :: Spec
 workflowSpec = describe "analyzeWithWorkflow" $ do
   itWithTempDir' "fails when ficus exits non-zero" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 1
-    expectFatal' $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+    expectFatal' $ runWorkflowWith cmd tmpDir Nothing
 
   itWithTempDir' "fails when ficus exits cleanly without a result" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 0
-    expectFatal' $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+    expectFatal' $ runWorkflowWith cmd tmpDir Nothing
 
   itWithTempDir' "returns the result and records it in the debug bundle on success" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [workflowStartedPayload, stepCompletedPayload, workflowResultPayload] 0
-    (scope, result) <- runDebug $ runWorkflowWith cmd tmpDir (analyzerBundle tmpDir) Nothing
+    (scope, result) <- runDebug $ runWorkflowWith cmd tmpDir Nothing
     result `shouldBe'` expectedResult
     Map.lookup workflowResultJson (scopeMetadata scope) `shouldBe'` Just expectedResult
 #endif

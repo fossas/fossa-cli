@@ -88,9 +88,29 @@ expectedGraphWithDeps =
     (Dependency PipType "somePkg" (Just $ CEq "1.21.0") [] (Set.singleton EnvProduction) Map.empty)
     (Dependency PipType "pkgOneChildOne" (Just $ CEq "1.22.0") [] (Set.singleton EnvProduction) Map.empty)
 
+pep621SourceOnlySpec :: Spec
+pep621SourceOnlySpec = do
+  currDir <- runIO getCurrentDir
+  describe "Poetry graph with source-only [tool.poetry.dependencies] entries" $ do
+    let absSpecDir = currDir </> $(mkRelDir "test/Python/Poetry/testdata/pep621-source-only")
+    let pyprojectFile = absSpecDir </> $(mkRelFile "pyproject.toml")
+    let lockfile = absSpecDir </> $(mkRelFile "poetry.lock")
+
+    let poetryProject = PoetryProject (ProjectDir absSpecDir) (PyProjectTomlFile pyprojectFile) (Just $ PoetryLockFile lockfile)
+    it' "create expected graph" $ do
+      let privateLocation d = d{dependencyLocations = ["https://pypi.example.com/simple"]}
+          privateLib = privateLocation $ mkPipProdDep "private-lib@2.0.10"
+          privateTool = privateLocation $ mkPipProdDep "private-tool@0.3.0"
+          requests = mkPipProdDep "requests@2.32.3"
+      graph <- dependencyGraph <$> analyze poetryProject
+      expectDeps' [privateLib, privateTool, requests] graph
+      expectDirect' [privateLib, privateTool, requests] graph
+      expectEdges' [] graph
+
 spec :: Spec
 spec = do
   poetryV1_5OrGtSpec
+  pep621SourceOnlySpec
 
   describe "graphFromPyProjectAndLockFile" $ do
     it "should produce expected graph" $ do

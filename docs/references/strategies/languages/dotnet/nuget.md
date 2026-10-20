@@ -12,7 +12,7 @@ NuGet analysis follows these strategies in sequence:
 1. `project.assets.json`
 2. `PackageReference`
 
-`project.assets.json` files and their dependencies are generated from  `.csproj` files. `PackageReference` dependencies can be found in `.csproj`, `.xproj`, `.vbproj`, `.dbproj`, or `.fsproj` files. To consolidate findings from these two strategies, `project.assets.json` analysis is attempted first and falls back to `PackageReference` analysis. 
+`project.assets.json` files are generated from `.csproj` files by `dotnet restore` and written to the project's `obj/` directory. `PackageReference` dependencies can be found in `.csproj`, `.xproj`, `.vbproj`, `.dbproj`, or `.fsproj` files. To consolidate findings from these two strategies, a project file is skipped when `obj/project.assets.json` exists beside it (or a `project.assets.json` sits in the same directory); `PackageReference` analysis is only used for projects that have not been restored. Because the assets file wins, run `dotnet restore` before `fossa analyze` so it reflects the current project file.
 
 The following strategies are executed independently::
 1. `project.json`

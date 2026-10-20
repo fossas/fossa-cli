@@ -121,7 +121,7 @@ common deps
     , githash                      ^>=0.1.4.0
     , hashable                     >=1.0.0.1
     , hedn                         ^>=0.3.0.1
-    , http-client                  ^>=0.7.1
+    , http-client                  ^>=0.7.16
     , http-client-tls              ^>=0.3.6
     , http-conduit                 ^>=2.3.0
     , http-types                   ^>=0.12.3
@@ -433,8 +433,8 @@ library
     Strategy.Cocoapods.Podfile
     Strategy.Cocoapods.PodfileLock
     Strategy.Composer
+    Strategy.Conan
     Strategy.Conan.ConanGraph
-    Strategy.Conan.Enrich
     Strategy.Conan.Version
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
@@ -453,6 +453,7 @@ library
     Strategy.Fpm
     Strategy.Glide
     Strategy.Go.GlideLock
+    Strategy.Go.GoBinary
     Strategy.Go.GoListPackages
     Strategy.Go.Gomod
     Strategy.Go.GopkgLock
@@ -595,6 +596,7 @@ test-suite unit-tests
     App.Fossa.Container.AnalyzeNativeSpec
     App.Fossa.Container.AnalyzeNativeUploadSpec
     App.Fossa.Container.GoBinarySpec
+    App.Fossa.Container.TestSpec
     App.Fossa.FirstPartyScanSpec
     App.Fossa.InitSpec
     App.Fossa.LernieSpec
@@ -615,6 +617,7 @@ test-suite unit-tests
     App.Fossa.RunThemisSpec
     App.Fossa.SBOMAnalyzeSpec
     App.Fossa.VendoredDependencySpec
+    App.Fossa.VSI.AnalyzeSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
@@ -640,7 +643,6 @@ test-suite unit-tests
     Composer.ComposerJsonSpec
     Composer.ComposerLockSpec
     Conan.ConanGraphSpec
-    Conan.EnrichSpec
     Conan.VersionSpec
     Conda.CondaEnvCreateSpec
     Conda.EnvironmentYmlSpec
@@ -655,6 +657,7 @@ test-suite unit-tests
     Container.TarballReadFSSpec
     Container.TarballSpec
     Control.Carrier.DiagnosticsSpec
+    Control.Carrier.FossaApiClient.Internal.FossaAPIV1Spec
     Control.Carrier.TelemetrySpec
     Control.TimeoutSpec
     Dart.PubDepsSpec
@@ -684,6 +687,7 @@ test-suite unit-tests
     Fossa.API.CoreTypesSpec
     Fossa.API.TypesSpec
     Go.GlideLockSpec
+    Go.GoBinarySpec
     Go.GoListPackagesSpec
     Go.GomodSpec
     Go.GopkgLockSpec
@@ -724,6 +728,7 @@ test-suite unit-tests
     Pdm.PdmSpec
     Perl.PerlSpec
     Pnpm.PnpmLockSpec
+    Pnpm.TypesSpec
     Python.PipenvSpec
     Python.PipSpec
     Python.Poetry.CommonSpec
@@ -799,6 +804,7 @@ test-suite integration-tests
     Analysis.NpmLockV3WorkspaceSpec
     Analysis.NugetSpec
     Analysis.PnpmSpec
+    Analysis.PnpmWorkspaceSpec
     Analysis.Python.PipenvSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec

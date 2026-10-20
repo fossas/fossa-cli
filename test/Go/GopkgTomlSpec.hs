@@ -100,7 +100,7 @@ spec :: Spec
 spec = do
   contents <- runIO (TIO.readFile "test/Go/testdata/Gopkg.toml")
 
-  describe "analyze" $
+  describe "analyze" $ do
     it "should produce expected output" $ do
       case Toml.decode contents of
         Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
@@ -108,6 +108,12 @@ spec = do
           let result = buildGraph pkg & graphingGolang & run
           result `shouldBe` expected
           warnings `shouldBe` []
+
+    it "should parse a Gopkg.toml without any constraints or overrides" $ do
+      noDeps <- TIO.readFile "test/Go/testdata/Gopkg.toml.nodeps"
+      case Toml.decode noDeps of
+        Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
+        Toml.Success _ pkg -> pkg `shouldBe` Gopkg{pkgConstraints = [], pkgOverrides = []}
 
   describe "buildGraph" $
     it "should produce expected output" $ do

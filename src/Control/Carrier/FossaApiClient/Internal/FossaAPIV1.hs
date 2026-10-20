@@ -46,6 +46,10 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   uploadAnalysisWorkflow,
   AnalysisService (..),
   APIClientEffs,
+  FossaError (..),
+  FossaPublicFacingError (..),
+  SignInPageResponse (..),
+  checkForSignInPage,
 
   -- * Reachability
   getReachabilityContentSignedUrl,
@@ -81,7 +85,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getOrgLabels,
 ) where
 
-import App.Docs (fossaSslCertDocsUrl)
+import App.Docs (apiKeyUrl, fossaSslCertDocsUrl)
 import App.Fossa.Config.Report
 import App.Fossa.Config.Test (DiffRevision (DiffRevision))
 import App.Fossa.Report.Attribution qualified as Attr
@@ -123,7 +127,7 @@ import Control.Effect.Debug (Debug, debugLog)
 import Control.Effect.Diagnostics (Diagnostics, ToDiagnostic (..), context, errCtx, fatal, fatalText, fromMaybeText, warnOnErr, (<||>))
 import Control.Effect.Empty (empty)
 import Control.Effect.Lift (Lift, sendIO)
-import Control.Exception (Exception (displayException), SomeException)
+import Control.Exception (Exception (displayException), SomeException, evaluate, fromException, toException)
 import Control.Monad (void)
 import Control.Monad.IO.Class (MonadIO (..))
 import Data.Aeson (
@@ -200,7 +204,7 @@ import Network.HTTP.Req (
   DELETE (DELETE),
   GET (GET),
   HttpBody (..),
-  HttpConfig (httpConfigAltManager),
+  HttpConfig (httpConfigAltManager, httpConfigCheckResponse),
   HttpException (..),
   LbsResponse,
   MonadHttp (..),
@@ -267,7 +271,43 @@ instance Has (Lift IO) sig m => MonadIO (FossaReq m) where
 setMgrFromReader :: Has (Reader HTTP.Manager) sig m => m HttpConfig
 setMgrFromReader = do
   mgr <- ask
-  pure httpConfigRetryTimeouts{httpConfigAltManager = Just mgr}
+  pure
+    httpConfigRetryTimeouts
+      { httpConfigAltManager = Just mgr
+      , httpConfigCheckResponse = checkResponseOrSignIn
+      }
+
+-- | An API request that was redirected to a sign-in page.
+data SignInPageResponse = SignInPageResponse
+  { signInRequested :: HTTP.Request
+  , signInLanded :: HTTP.Request
+  }
+  deriving (Show)
+
+instance Exception SignInPageResponse
+
+-- | The default response check, then sign-in page detection.
+checkResponseOrSignIn :: HTTP.Request -> HTTP.Response b -> BS.ByteString -> Maybe HTTP.HttpExceptionContent
+checkResponseOrSignIn sent res preview =
+  case httpConfigCheckResponse httpConfigRetryTimeouts sent res preview of
+    Just hec -> Just hec
+    Nothing -> checkForSignInPage sent res
+
+-- | A redirect to a login page means the API key never arrived, usually
+-- because a proxy stripped it. Matches the path, not @text\/html@, since
+-- attribution reports legitimately return HTML.
+checkForSignInPage :: HTTP.Request -> HTTP.Response b -> Maybe HTTP.HttpExceptionContent
+checkForSignInPage sent res
+  | redirected && "/login" `Text.isInfixOf` Text.toLower (decodeUtf8 $ HTTP.path landed) =
+      Just . HTTP.InternalException . toException $ SignInPageResponse sent landed
+  | otherwise = Nothing
+  where
+    -- Despite the name, this is the final request after redirects.
+    landed :: HTTP.Request
+    landed = HTTP.getOriginalRequest res
+
+    redirected :: Bool
+    redirected = HTTP.path landed /= HTTP.path sent || HTTP.host landed /= HTTP.host sent
 
 type APIClientEffs sig m = (Has (Lift IO) sig m, Has Debug sig m, Has Diagnostics sig m, Has (Reader HTTP.Manager) sig m)
 
@@ -359,7 +399,7 @@ responseTimeoutSeconds sec = responseTimeout $ sec * 1_000_000
 data FossaError
   = JsonDeserializeError String
   | InternalException SomeException
-  | BackendPublicFacingError FossaPublicFacingError
+  | BackendPublicFacingError HTTP.Status FossaPublicFacingError
   | InvalidUrlError String String
   | StatusCodeError HTTP.Request (HTTP.Response ())
   | TooManyRedirectsError [(HTTP.Request, HTTP.Response ByteString)]
@@ -382,6 +422,7 @@ data FossaError
   | InvalidProxyEnvironmentVariableError HTTP.Request Text Text
   | ConnectionClosedError HTTP.Request
   | InvalidProxySettingsError HTTP.Request Text
+  | SignInPageError SignInPageResponse
   deriving (Show)
 
 instance ToDiagnostic FossaError where
@@ -401,13 +442,26 @@ instance ToDiagnostic FossaError where
           body = createBody (Just content) (Just fossaSslCertDocsUrl) (Just support) (Just help) Nothing
       Errata (Just header) [] (Just body)
     JsonDeserializeError err -> do
-      let header = "An error occurred when deserializing a response from the FOSSA API:" <> toText err
+      let header = "An error occurred when deserializing a response from the FOSSA API: " <> toText err
       Errata (Just header) [] Nothing
-    BackendPublicFacingError pfe -> do
+    SignInPageError SignInPageResponse{..} -> do
+      let header = "The FOSSA endpoint returned a sign-in page instead of API data"
+          content = renderIt $ newlineTrailing "Response:" <+> renderRequest signInLanded
+          help = "Check whether a proxy between this machine and FOSSA strips the Authorization header."
+          ctx = "Provided request: " <> renderIt (renderRequest signInRequested)
+          body = createBody (Just content) Nothing (Just $ renderIt requestReportIfPersistsWithDebugBundle) (Just help) (Just ctx)
+      Errata (Just header) [] (Just body)
+    BackendPublicFacingError status pfe -> do
       let header = fpeMessage pfe
           content = "Error UUID from API: " <> fpeUuid pfe
           support = (renderIt reportDefectMsg) <> ". Please include the error UUID in your request."
-          body = createBody (Just content) Nothing (Just support) Nothing Nothing
+          isUnauthorized = statusCode status == 401
+          documentation = if isUnauthorized then Just apiKeyUrl else Nothing
+          help =
+            if isUnauthorized
+              then Just "Ensure that you are using a valid FOSSA_API_KEY. Refer to the provided documentation for guidance on how to generate and retrieve your API key."
+              else Nothing
+          body = createBody (Just content) documentation (Just support) help Nothing
       Errata (Just header) [] (Just body)
     InvalidUrlError url reason -> do
       let header = "The URL provided is invalid"
@@ -807,7 +861,7 @@ mangleError err = case errWithoutSensitiveInfo of
   VanillaHttpException he -> case he of
     HTTP.HttpExceptionRequest ereq hec -> case hec of
       HTTP.StatusCodeException res respBody -> case decodeStrict respBody of
-        Just pfe -> BackendPublicFacingError pfe
+        Just pfe -> BackendPublicFacingError (HTTP.responseStatus res) pfe
         Nothing -> StatusCodeError ereq res
       HTTP.TooManyRedirects res -> TooManyRedirectsError $ fmap (ereq,) res
       HTTP.OverlongHeaders -> OverlongHeadersError ereq
@@ -817,7 +871,9 @@ mangleError err = case errWithoutSensitiveInfo of
       HTTP.InvalidStatusLine bs -> InvalidStatusLineError ereq $ show bs
       HTTP.InvalidHeader bs -> InvalidResponseHeaderError ereq $ show bs
       HTTP.InvalidRequestHeader bs -> InvalidRequestHeaderError ereq $ show bs
-      HTTP.InternalException se -> InternalException se
+      HTTP.InternalException se
+        | Just signIn <- fromException se -> SignInPageError signIn
+        | otherwise -> InternalException se
       HTTP.ProxyConnectException host port status -> ProxyConnectError ereq (show host) port status
       HTTP.NoResponseDataReceived -> NoResponseDataError ereq
       HTTP.TlsNotSupported -> TlsNotSupportedError ereq
@@ -1147,15 +1203,17 @@ licenseScanResultUpload signedUploadURI licenseScanResult = fossaReq $ do
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
+  zipped <- sendIO $ evaluate zippedLicenseResult
+
   context ("Uploading license scan result to " <> signedURL signedUploadURI) $ case validatedURI of
-    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
-    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest zipped httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest zipped httpsUrl httpsOptions
   where
     zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode licenseScanResult
     -- We send gzipped json, so we can't use req's JSON utilities.
-    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
-    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
+    uploadArchiveRequest :: (MonadHttp m) => BS.ByteString -> Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest body url options = reqCb PUT url (ReqBodyBs body) lbsResponse options (pure . requestEncoder)
 
 ---------- The first-party scan result upload function uploads the JSON license result directly to the signed URL it is provided.
 
@@ -1170,15 +1228,17 @@ firstPartyScanResultUpload signedUploadURI firstPartyScanResult = fossaReq $ do
   uri <- fromMaybeText ("Invalid URL: " <> signedURL signedUploadURI) uploadURL
   validatedURI <- fromMaybeText ("Invalid URI: " <> toText (show uri)) (useURI uri)
 
+  zipped <- sendIO $ evaluate zippedLicenseResult
+
   context ("Uploading first-party scan result to " <> signedURL signedUploadURI) $ case validatedURI of
-    Left (httpUrl, httpOptions) -> uploadArchiveRequest httpUrl httpOptions
-    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest httpsUrl httpsOptions
+    Left (httpUrl, httpOptions) -> uploadArchiveRequest zipped httpUrl httpOptions
+    Right (httpsUrl, httpsOptions) -> uploadArchiveRequest zipped httpsUrl httpsOptions
   where
     zippedLicenseResult :: BS.ByteString
     zippedLicenseResult = toStrict $ GZIP.compress $ encode firstPartyScanResult
     -- We send gzipped json, so we can't use req's JSON utilities.
-    uploadArchiveRequest :: (MonadHttp m) => Url scheme -> Option scheme -> m LbsResponse
-    uploadArchiveRequest url options = reqCb PUT url (ReqBodyBs zippedLicenseResult) lbsResponse options (pure . requestEncoder)
+    uploadArchiveRequest :: (MonadHttp m) => BS.ByteString -> Url scheme -> Option scheme -> m LbsResponse
+    uploadArchiveRequest body url options = reqCb PUT url (ReqBodyBs body) lbsResponse options (pure . requestEncoder)
 
 -- requestEncoder properly encodes the Request path.
 -- The default encoding logic does not encode "+" ot "$" characters which makes AWS very angry.

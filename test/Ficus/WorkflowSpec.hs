@@ -6,18 +6,17 @@ import App.Fossa.Ficus.Types (
   FicusFinding (FicusFinding),
   FicusMessageData (FicusMessageData),
   WorkflowEvent (..),
-  WorkflowExecutable (WorkflowExecutable),
   WorkflowRunArtifact (WorkflowRunArtifact),
+  downloadedWorkflowExecutable,
   findingToWorkflowEvent,
-  toWorkflowExecutable,
  )
 import Control.Exception (throw)
 import Data.Aeson qualified as Aeson
 import Data.Either (isLeft)
-import Data.String.Conversion (decodeUtf8, toText)
+import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Path (Abs, Dir, File, Path, parseAbsDir, parseAbsFile, toFilePath)
+import Path (Abs, Dir, Path, parseAbsDir, toFilePath)
 import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 
 -- | The fixtures below are valid paths only on the platform they are written
@@ -28,27 +27,12 @@ mustParse f s = either (throw . userError . show) id (f s)
 
 targetDir :: Path Abs Dir
 workDir :: Path Abs Dir
-jsBundle :: Path Abs File
-mjsBundle :: Path Abs File
-cjsBundle :: Path Abs File
-upperJsBundle :: Path Abs File
-nativeAnalyzer :: Path Abs File
 #ifdef mingw32_HOST_OS
 targetDir = mustParse parseAbsDir "C:/repo"
 workDir = mustParse parseAbsDir "C:/scratch"
-jsBundle = mustParse parseAbsFile "C:/dist/analyzer.js"
-mjsBundle = mustParse parseAbsFile "C:/dist/analyzer.mjs"
-cjsBundle = mustParse parseAbsFile "C:/dist/analyzer.cjs"
-upperJsBundle = mustParse parseAbsFile "C:/dist/analyzer.JS"
-nativeAnalyzer = mustParse parseAbsFile "C:/bin/analyzer"
 #else
 targetDir = mustParse parseAbsDir "/abs/repo"
 workDir = mustParse parseAbsDir "/abs/scratch"
-jsBundle = mustParse parseAbsFile "/abs/dist/analyzer.js"
-mjsBundle = mustParse parseAbsFile "/abs/dist/analyzer.mjs"
-cjsBundle = mustParse parseAbsFile "/abs/dist/analyzer.cjs"
-upperJsBundle = mustParse parseAbsFile "/abs/dist/analyzer.JS"
-nativeAnalyzer = mustParse parseAbsFile "/usr/local/bin/analyzer"
 #endif
 
 -- | The wire contract with @ficus x-workflow@. Every key name, the schema
@@ -58,9 +42,7 @@ expectedArtifactJson :: Text
 expectedArtifactJson =
   Text.concat
     [ "{\"version\":1"
-    , ",\"executable\":{\"program\":\"node\",\"args\":["
-    , jsonString jsBundle
-    , "]}"
+    , ",\"executable\":{\"program\":\"fossa-dependency-usage-analyzer\",\"args\":[]}"
     , ",\"target\":"
     , jsonString targetDir
     , ",\"workingDirectory\":"
@@ -78,24 +60,8 @@ spec :: Spec
 spec = do
   describe "run artifact encoding" $ do
     it "matches the JSON ficus parses" $ do
-      let artifact = WorkflowRunArtifact (toWorkflowExecutable jsBundle) targetDir workDir
+      let artifact = WorkflowRunArtifact downloadedWorkflowExecutable targetDir workDir
       Just (Aeson.toJSON artifact) `shouldBe` Aeson.decodeStrictText expectedArtifactJson
-
-  describe "program inference" $ do
-    it "runs a .js bundle under node" $
-      toWorkflowExecutable jsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath jsBundle]
-
-    it "runs a .mjs bundle under node" $
-      toWorkflowExecutable mjsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath mjsBundle]
-
-    it "runs a .cjs bundle under node" $
-      toWorkflowExecutable cjsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath cjsBundle]
-
-    it "runs an uppercase .JS bundle under node" $
-      toWorkflowExecutable upperJsBundle `shouldBe` WorkflowExecutable "node" [toText $ toFilePath upperJsBundle]
-
-    it "passes any other path through as the program itself" $
-      toWorkflowExecutable nativeAnalyzer `shouldBe` WorkflowExecutable (toText $ toFilePath nativeAnalyzer) []
 
   describe "workflow event decoding" $ do
     it "decodes workflow-started" $

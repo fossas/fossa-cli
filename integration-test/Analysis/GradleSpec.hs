@@ -45,6 +45,23 @@ gradleSettingsOnly =
       [reldir|gradle/sample/|]
       [reldir|.|]
 
+-- | Gradle's "Building Java Applications" sample
+-- (https://docs.gradle.org/9.1.0/samples/sample_building_java_applications.html)
+-- ships with @org.gradle.configuration-cache=true@ in its @gradle.properties@,
+-- so analyzing it exercises the @jsonDeps@ init script under the
+-- configuration cache.
+gradleConfigurationCache :: AnalysisTestFixture (Gradle.GradleProject)
+gradleConfigurationCache =
+  AnalysisTestFixture
+    "gradle-java-configuration-cache"
+    Gradle.discover
+    gradleEnv
+    Nothing
+    $ FixtureArtifact
+      "https://docs.gradle.org/9.1.0/samples/zips/sample_building_java_applications-groovy-dsl.zip"
+      [reldir|gradle/sample-configuration-cache/|]
+      [reldir|.|]
+
 testSpringBoot :: Spec
 testSpringBoot =
   aroundAll (withAnalysisOf NonStrict springBoot) $ do
@@ -61,7 +78,16 @@ testGradleSettingsOnly =
         expectProject (GradleProjectType, extractedDir) result
         length result `shouldBe` 1
 
+testGradleConfigurationCache :: Spec
+testGradleConfigurationCache =
+  aroundAll (withAnalysisOf NonStrict gradleConfigurationCache) $ do
+    describe "gradle-java with the configuration cache enabled" $ do
+      it "should find targets" $ \(result, extractedDir) -> do
+        expectProject (GradleProjectType, extractedDir) result
+        length result `shouldBe` 1
+
 spec :: Spec
 spec = do
   testSpringBoot
   testGradleSettingsOnly
+  testGradleConfigurationCache

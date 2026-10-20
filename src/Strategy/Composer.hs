@@ -1,6 +1,7 @@
 module Strategy.Composer (
   discover,
   buildGraph,
+  isPlatformPackage,
   ComposerLock (..),
   CompDep (..),
   ComposerProject (..),
@@ -15,6 +16,7 @@ import Control.Effect.Diagnostics (
   run,
  )
 import Control.Effect.Reader (Reader)
+import Control.Monad (unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   ToJSON,
@@ -199,7 +201,7 @@ buildGraph lock = run . withLabeling toDependency $ do
       direct pkg
 
     addEdge :: Has CompGrapher sig m => CompPkg -> Text -> Text -> m ()
-    addEdge pkg name _ = edge pkg (CompPkg name)
+    addEdge pkg name _ = unless (isPlatformPackage name) $ edge pkg (CompPkg name)
 
     toDependency :: CompPkg -> Set CompLabel -> Dependency
     toDependency pkg =
@@ -216,3 +218,19 @@ buildGraph lock = run . withLabeling toDependency $ do
     addLabel :: CompLabel -> Dependency -> Dependency
     addLabel (DepVersion ver) dep = dep{dependencyVersion = Just (CEq ver)}
     addLabel (CompEnv env) dep = insertEnvironment env dep
+
+-- | Platform requirements (PHP itself, its extensions, system libraries and
+-- Composer) come from the environment Composer runs in, not from a package
+-- registry, so they are not dependencies. The names follow Composer's own
+-- definition, @PLATFORM_PACKAGE_REGEX@ in
+-- <https://github.com/composer/composer/blob/main/src/Composer/Repository/PlatformRepository.php>,
+-- and like it ignore case. Its exact @php-@, @ext-@ and @lib-@ forms are
+-- widened to prefixes, which is safe because registry package names always
+-- have a vendor prefix (@vendor/name@), so a name with a @/@ is never one.
+isPlatformPackage :: Text -> Bool
+isPlatformPackage name =
+  not ("/" `Text.isInfixOf` name) && (isPlatformName || hasPlatformPrefix)
+  where
+    lowerName = Text.toLower name
+    isPlatformName = lowerName `elem` ["php", "hhvm", "composer", "composer-plugin-api", "composer-runtime-api"]
+    hasPlatformPrefix = any (`Text.isPrefixOf` lowerName) ["php-", "ext-", "lib-"]
