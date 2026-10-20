@@ -151,6 +151,21 @@ expectedDeps =
     devEnvs :: DepEnvironment
     devEnvs = EnvDevelopment
 
+lockPkg :: Text -> Maybe Text -> Maybe PoetryLockPackageSource -> PoetryLockPackage
+lockPkg name category source =
+  PoetryLockPackage
+    { poetryLockPackageName = PackageName name
+    , poetryLockPackageVersion = "1.0.0"
+    , poetryLockPackageCategory = category
+    , poetryLockPackageOptional = False
+    , poetryLockPackageDependencies = Map.empty
+    , poetryLockPackagePythonVersions = "*"
+    , poetryLockPackageSource = source
+    }
+
+pipDep :: Text -> Set.Set DepEnvironment -> Dependency
+pipDep name envs = Dependency PipType name (Just $ CEq "1.0.0") [] envs Map.empty
+
 decodeEither :: (Toml.Schema.FromValue a) => Text -> Either [String] a
 decodeEither f = case Toml.decode f of
   Toml.Success _ r -> Right r
@@ -169,6 +184,8 @@ spec = do
       toCanonicalName "GreatScore" `shouldBe` "greatscore"
     it "should replace underscore (_) to hyphens (-)" $
       toCanonicalName "my_oh_so_great_pkg" `shouldBe` "my-oh-so-great-pkg"
+    it "should replace dots (.) with hyphens (-)" $
+      toCanonicalName "zope.interface" `shouldBe` "zope-interface"
 
   describe "getDependencies" $ do
     it "should get all dependencies" $
@@ -349,6 +366,28 @@ spec = do
               }
           ]
           `shouldBe` Map.empty
+
+    describe "when poetry lock dependency is from git source without a reference" $
+      it "should fall back to the package version" $
+        makePackageToLockDependencyMap mempty [lockPkg "gitpkg" (Just "main") (Just (PoetryLockPackageSource "git" "https://github.com/someUser/gitpkg.git" Nothing (Just "598ac")))]
+          `shouldBe` Map.fromList [(PackageName "gitpkg", Dependency GitType "https://github.com/someUser/gitpkg.git" (Just $ CEq "1.0.0") [] (Set.singleton EnvProduction) Map.empty)]
+
+    describe "when poetry lock packages carry a category" $
+      it "should map dev, test and other categories to their environments" $
+        makePackageToLockDependencyMap mempty [lockPkg "devpkg" (Just "dev") Nothing, lockPkg "testpkg" (Just "test") Nothing, lockPkg "docspkg" (Just "docs") Nothing]
+          `shouldBe` Map.fromList
+            [ (PackageName "devpkg", pipDep "devpkg" (Set.singleton EnvDevelopment))
+            , (PackageName "testpkg", pipDep "testpkg" (Set.singleton EnvTesting))
+            , (PackageName "docspkg", pipDep "docspkg" (Set.singleton $ EnvOther "docs"))
+            ]
+
+    describe "when poetry lock packages carry no category" $
+      it "should mark only the packages named in the production dependencies as production" $
+        makePackageToLockDependencyMap [PackageName "Prod_Pkg"] [lockPkg "prod-pkg" Nothing Nothing, lockPkg "otherpkg" Nothing Nothing]
+          `shouldBe` Map.fromList
+            [ (PackageName "prod-pkg", pipDep "prod-pkg" (Set.singleton EnvProduction))
+            , (PackageName "otherpkg", pipDep "otherpkg" mempty)
+            ]
 
     describe "when poetry lock dependency is from secondary sources" $
       it "should include url into dependency location" $

@@ -19,6 +19,7 @@ import Strategy.Python.Poetry (
   ProjectDir (ProjectDir),
   PyProjectTomlFile (PyProjectTomlFile),
   analyze,
+  findProjects,
   graphFromPyProjectAndLockFile,
  )
 import Strategy.Python.Poetry.PoetryLock (
@@ -31,9 +32,9 @@ import Strategy.Python.Poetry.PoetryLock (
  )
 import Strategy.Python.Poetry.PyProject (PoetryDependency (..), PyProject (..), PyProjectBuildSystem (..), PyProjectMetadata (..), PyProjectPoetry (..), PyProjectTool (..))
 import Strategy.Python.Util (Req (NameReq))
-import Test.Effect (it')
-import Test.Hspec (Spec, describe, it, runIO, shouldBe)
-import Types (DependencyResults (dependencyGraph))
+import Test.Effect (it', shouldBe')
+import Test.Hspec (Spec, describe, it, runIO, shouldBe, shouldMatchList)
+import Types (DependencyResults (..), GraphBreadth (..))
 
 newPoetryLock :: [PoetryLockPackage] -> PoetryLock
 newPoetryLock pkgs = PoetryLock pkgs $ PoetryMetadata "some-version" "some-hash" "some-poetry-version"
@@ -114,6 +115,8 @@ spec = do
   poetryV1_5OrGtSpec
   pep621SourceOnlySpec
   poetryLockMismatchSpec
+  lockCategorySpec
+  discoverySpec
 
   describe "graphFromPyProjectAndLockFile" $ do
     it "should produce expected graph" $ do
@@ -441,3 +444,63 @@ poetryLockMismatchSpec =
     it "does not report a lock package sourced from a local directory" $ do
       let lock = newPoetryLock [lockPackage "my-package" "0.1.0" Map.empty (Just $ PoetryLockPackageSource "directory" "../my-package" Nothing Nothing)]
       Graphing.vertexList (graphFromPyProjectAndLockFile candidatePyProject lock) `shouldBe` []
+
+lockCategorySpec :: Spec
+lockCategorySpec =
+  describe "graphFromPyProjectAndLockFile" $
+    it "uses the categories of a pre-1.5 lockfile as the environments" $ do
+      let lock =
+            PoetryLock
+              [ (lockPackage "prodpkg" "1.0.0" Map.empty Nothing){poetryLockPackageCategory = Just "main"}
+              , (lockPackage "devpkg" "2.0.0" Map.empty Nothing){poetryLockPackageCategory = Just "dev"}
+              , (lockPackage "testpkg" "3.0.0" Map.empty Nothing){poetryLockPackageCategory = Just "test"}
+              , (lockPackage "optionalpkg" "4.0.0" Map.empty Nothing){poetryLockPackageOptional = True}
+              ]
+              (PoetryMetadata "1.1" "some-hash" "*")
+          dep name version envs = Dependency PipType name (Just $ CEq version) [] envs Map.empty
+      -- A pre-1.5 lockfile says which environment a package belongs to, so nothing is relabelled as development
+      -- and an optional package without a category keeps an empty environment set.
+      Graphing.vertexList (graphFromPyProjectAndLockFile candidatePyProject lock)
+        `shouldMatchList` [ dep "prodpkg" "1.0.0" (Set.singleton EnvProduction)
+                          , dep "devpkg" "2.0.0" (Set.singleton EnvDevelopment)
+                          , dep "testpkg" "3.0.0" (Set.singleton EnvTesting)
+                          , dep "optionalpkg" "4.0.0" mempty
+                          ]
+
+discoverySpec :: Spec
+discoverySpec = do
+  currDir <- runIO getCurrentDir
+  let testdata = currDir </> $(mkRelDir "test/Python/Poetry/testdata")
+      project dir = PoetryProject (ProjectDir dir) (PyProjectTomlFile (dir </> $(mkRelFile "pyproject.toml")))
+
+  describe "findProjects" $ do
+    it' "finds a poetry project together with its lockfile" $ do
+      let dir = testdata </> $(mkRelDir "no-category")
+      projects <- findProjects dir
+      projects `shouldBe'` [project dir (Just (PoetryLockFile (dir </> $(mkRelFile "poetry.lock"))))]
+
+    it' "finds a poetry project without a lockfile" $ do
+      let dir = testdata </> $(mkRelDir "pep621")
+      projects <- findProjects dir
+      projects `shouldBe'` [project dir Nothing]
+
+    it' "skips a project that uv manages" $ do
+      projects <- findProjects (testdata </> $(mkRelDir "uv-managed"))
+      projects `shouldBe'` []
+
+    it' "skips a project whose build backend is not poetry" $ do
+      projects <- findProjects (testdata </> $(mkRelDir "setuptools-backend"))
+      projects `shouldBe'` []
+
+  describe "analyze" $
+    it' "reports the manifest's dependencies as a partial graph when there is no lockfile" $ do
+      let dir = testdata </> $(mkRelDir "pep621")
+          requests = Dependency PipType "requests" (Just $ CGreaterOrEq "2.28.0") [] (Set.singleton EnvProduction) Map.empty
+          flask = Dependency PipType "flask" (Just $ CGreaterOrEq "2.0") [] (Set.singleton EnvProduction) Map.empty
+          pytest = Dependency PipType "pytest" (Just $ CCompatible "6.0") [] (Set.singleton EnvDevelopment) Map.empty
+      results <- analyze (project dir Nothing)
+      dependencyGraphBreadth results `shouldBe'` Partial
+      dependencyManifestFiles results `shouldBe'` [dir </> $(mkRelFile "pyproject.toml")]
+      expectDeps' [requests, flask, pytest] (dependencyGraph results)
+      expectDirect' [requests, flask, pytest] (dependencyGraph results)
+      expectEdges' [] (dependencyGraph results)

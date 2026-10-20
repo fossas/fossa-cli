@@ -2,6 +2,7 @@ module Python.Poetry.PyProjectSpec (
   spec,
 ) where
 
+import Data.List (isPrefixOf)
 import Data.Map qualified as Map
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
@@ -33,6 +34,7 @@ import Strategy.Python.Poetry.PyProject (
   PyProjectTool (..),
   allPoetryProductionDeps,
   parseConstraintExpr,
+  toDependencyVersion,
  )
 import Test.Hspec (
   Expectation,
@@ -42,6 +44,7 @@ import Test.Hspec (
   it,
   runIO,
   shouldBe,
+  shouldSatisfy,
  )
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
@@ -174,6 +177,18 @@ spec = do
       case Toml.decode contents of
         Toml.Success _ pyproject -> Map.keys (allPoetryProductionDeps pyproject) `shouldBe` ["foo"]
         Toml.Failure errs -> expectationFailure (unlines errs)
+
+  describe "pyProjectCodec with a dependency that is neither a string nor a table" $
+    it "fails to decode and names the offending key" $
+      case Toml.decode "[tool.poetry.dependencies]\nfoo = 1\n" :: Toml.Result String PyProject of
+        Toml.Success _ _ -> expectationFailure "decoded a numeric dependency"
+        Toml.Failure errs -> errs `shouldSatisfy` any ("2:7: invalid poetry dependency" `isPrefixOf`)
+
+  describe "toDependencyVersion" $ do
+    it "drops the wildcard constraint" $
+      toDependencyVersion "*" `shouldBe` Nothing
+    it "keeps a constraint that parses" $
+      toDependencyVersion ">=1.2, <2.0" `shouldBe` Just (CAnd (CGreaterOrEq "1.2") (CLess "2.0"))
 
   describe "parseConstraintExpr" $ do
     it "should parse equality constraint" $ do
