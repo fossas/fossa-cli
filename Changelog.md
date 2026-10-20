@@ -3,6 +3,20 @@
 ## Unreleased
 
 - Go: `go.mod` files that require, replace or declare a module whose path contains a `~` (sourcehut paths such as `git.sr.ht/~sbinet/gg`) no longer fail analysis with `unexpected '~'`. ([#1810](https://github.com/fossas/fossa-cli/pull/1810))
+
+## 3.20.5
+
+- VSI: `paths.only` and path globs now apply to `--detect-vendored`. ([#1812](https://github.com/fossas/fossa-cli/pull/1812))
+- Go: `fossa analyze` can now report dependencies from the module list embedded in compiled Go binaries (Go >= 1.18), for Go code shipped with no `go.mod`. Opt in with `--enable-go-binary-analysis`; add `--unpack-archives` to reach binaries inside archives such as an AAR. ([#1757](https://github.com/fossas/fossa-cli/pull/1757))
+
+## 3.20.4
+
+- Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
+- FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
+
+
+## 3.20.3
+
 - Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
 - NuGet: a `.csproj` (or other project file) is no longer analyzed when `obj/project.assets.json` exists beside it to avoid analyzing projects twice
 - NuGet: `PackageVersion` entries in `Directory.Packages.props` whose `Version` references an MSBuild property are now expanded.
