@@ -207,7 +207,7 @@ runStaticAnalysis project =
     & runReader (mempty :: AllFilters)
     & runReader (NonStrict :: Mode)
     & runReader (MavenScopeIncludeFilters mempty)
-    & runReader (StrategyConfig Nothing False (UseGitBackedCargoLocators False))
+    & runReader (StrategyConfig Nothing False (UseGitBackedCargoLocators False) False)
     & runExecIO
     & runReadFSIO
     & ignoreDebug
