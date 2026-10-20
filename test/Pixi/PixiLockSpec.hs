@@ -144,18 +144,21 @@ spec = do
         , -- The same wheel under two platforms collapses to one dep.
           mkDep PipType "absl-py" (Just "2.1.0") [EnvProduction]
         , mkDep GitType "https://github.com/laurentS/slowapi.git" (Just "a72bcc66597f620f04bf5be3676e40ed308d3a6a") [EnvDevelopment]
-        , -- The workspace package itself, which pixi writes as a bare `./`.
-          -- Previously skipped, so this fixture under-reported by one.
-          mkDep UnresolvedPathType "./" (Just "0.1.0") [EnvDevelopment]
         ]
         graph
 
-      -- Trimmed from a real lockfile, and it carries one real edge: the
-      -- workspace package requires absl-py, which therefore is not direct.
-      expectEdge'
+      -- The workspace package itself, which pixi writes as a bare `./`, is
+      -- the project, so it isn't reported, and absl-py, which it requires, is
+      -- direct.
+      expectDirect'
+        [ condaDep "conda-forge" "linux-64" "_openmp_mutex" "4.5" [EnvProduction, EnvDevelopment]
+        , condaDep "conda-forge" "linux-64" "ld_impl_linux-64" "2.40" [EnvProduction, EnvOther "lint"]
+        , condaDep "conda-forge" "noarch" "tzdata" "2024a" [EnvProduction]
+        , condaDep "conda-forge" "osx-arm64" "libffi" "3.4.2" [EnvProduction]
+        , mkDep PipType "absl-py" (Just "2.1.0") [EnvProduction]
+        , mkDep GitType "https://github.com/laurentS/slowapi.git" (Just "a72bcc66597f620f04bf5be3676e40ed308d3a6a") [EnvDevelopment]
+        ]
         graph
-        (mkDep UnresolvedPathType "./" (Just "0.1.0") [EnvDevelopment])
-        (mkDep PipType "absl-py" (Just "2.1.0") [EnvProduction])
 
   describe "analyze a v5 lockfile" $
     it' "uses the explicit name and version fields v5 provides" $ do

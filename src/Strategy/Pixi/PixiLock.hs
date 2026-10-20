@@ -399,8 +399,14 @@ buildGraph PixiLockFile{..} = do
   let components = AMA.scc $ Graphing.toAdjacencyMap graph
       reached = Set.fromList . map snd $ AM.edgeList components
       roots = Set.unions [NAM.vertexSet c | c <- AM.vertexList components, Set.notMember c reached]
-  pure $ Graphing.promoteToDirect (`Set.member` roots) graph
+  -- The workspace's own package is the project, not a dependency of it.
+  -- Shrinking it after the roots are marked makes what it requires direct,
+  -- the way uv drops its workspace packages.
+  pure . Graphing.shrink (not . isWorkspacePackage) $ Graphing.promoteToDirect (`Set.member` roots) graph
   where
+    -- pixi writes the lockfile's own directory as `.` or `./`.
+    isWorkspacePackage dep = dependencyType dep == UnresolvedPathType && dependencyName dep `elem` [".", "./"]
+
     collect index (locator, env) (skips, acc, keys) =
       case toDependency (Map.lookup locator index) locator env of
         Left skip -> (skip : skips, acc, keys)
