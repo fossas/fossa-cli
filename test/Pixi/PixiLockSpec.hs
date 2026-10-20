@@ -240,6 +240,8 @@ spec = do
       expectEdge' graph (conda "app" "1.0") (conda "libfoo" "1.2")
       -- noarch is in scope from every subdir, so this one resolves too.
       expectEdge' graph (conda "app" "1.0") (condaDep "conda-forge" "noarch" "tzdata" "2024a" [EnvProduction])
+      -- ...and a noarch package, which every platform shares, resolves in every subdir.
+      expectEdge' graph (condaDep "conda-forge" "noarch" "tzdata" "2024a" [EnvProduction]) (conda "libfoo" "1.2")
 
     it' "a transitively-reached package is NOT direct" $ do
       -- The whole point: before edges existed every package was direct, so a
@@ -251,6 +253,10 @@ spec = do
           condaDep "conda-forge" "osx-arm64" "libonlyosx" "1.0" [EnvProduction]
         , -- A path dependency is a root like any other node.
           mkDep UnresolvedPathType "./libs/gadget" (Just "0.2.0") [EnvProduction]
+        , -- A cycle nothing else reaches: both members are direct, or the
+          -- unreachable pair would be pruned from the results.
+          conda "cyc-a" "1.0"
+        , conda "cyc-b" "1.0"
         ]
         graph
 
@@ -267,7 +273,7 @@ spec = do
       -- Marker-guarded, and kept: a spurious edge beats a dropped dependency.
       expectEdge' graph (pypi "widget" "1.0.0") (pypi "guarded" "0.1.0")
 
-    it' "a cycle neither hangs nor becomes direct" $ do
+    it' "a cycle doesn't hang the traversal" $ do
       graph <- edges'
       expectEdge' graph (conda "cyc-a" "1.0") (conda "cyc-b" "1.0")
       expectEdge' graph (conda "cyc-b" "1.0") (conda "cyc-a" "1.0")

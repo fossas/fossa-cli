@@ -4,10 +4,12 @@
 # one that is only built for another platform, and one absent from the locked
 # set. Only the first two are edges -- every platform is unioned into one
 # graph, so without the subdir rule a linux-64 package would reach the
-# osx-arm64 build of its dependency.
+# osx-arm64 build of its dependency. `tzdata` is noarch, which every platform
+# shares, so its `libfoo` resolves in linux-64.
 #
-# `cyc-a`/`cyc-b` depend on each other; neither may hang the traversal nor end
-# up direct. `gadget` is a path dependency with a dependency of its own.
+# `cyc-a`/`cyc-b` depend on each other, and nothing else depends on either;
+# neither may hang the traversal, and both are direct, or nothing would reach
+# them. `gadget` is a path dependency with a dependency of its own.
 version: 6
 environments:
   default:
@@ -40,6 +42,8 @@ packages:
     license: MIT
     size: 1
   - conda: https://conda.anaconda.org/conda-forge/noarch/tzdata-2024a-h0_0.conda
+    depends:
+      - libfoo
     license: LicenseRef-Public-Domain
     size: 1
   - conda: https://conda.anaconda.org/conda-forge/linux-64/cyc-a-1.0-h0_0.conda

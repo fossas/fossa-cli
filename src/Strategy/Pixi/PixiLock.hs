@@ -54,6 +54,9 @@ module Strategy.Pixi.PixiLock (
   environmentToDepEnvironment,
 ) where
 
+import Algebra.Graph.AdjacencyMap qualified as AM
+import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
+import Algebra.Graph.NonEmpty.AdjacencyMap qualified as NAM
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (..), fatal, warn)
 import Data.Aeson (
@@ -356,10 +359,11 @@ buildGraph PixiLockFile{..} = do
       condaByName = Map.fromListWith (<>) [(name, [(subdir, l)]) | (l, (name, subdir)) <- Map.toList condaKeys]
       pypiByName = Map.fromListWith (<>) [(name, [l]) | (l, name) <- Map.toList pypiKeys]
 
-      -- A conda package resolves within its own subdir plus `noarch`. Without
+      -- A conda package resolves within its own subdir plus `noarch`, and a
+      -- `noarch` package, which every platform shares, in every subdir. Without
       -- that, a linux-64 package would edge to the osx-arm64 build of the same
       -- dependency, because every platform is unioned into one graph.
-      subdirMatches (Just from) (Just to) = to == from || to == "noarch"
+      subdirMatches (Just from) (Just to) = from == "noarch" || to == from || to == "noarch"
       subdirMatches _ _ = True
 
       targetsOf locator pkg = case locator of
@@ -389,8 +393,13 @@ buildGraph PixiLockFile{..} = do
   -- The roots ARE the direct set. pixi's environments list is the full
   -- resolved closure, so nothing in the file says which packages were asked
   -- for -- but a package nothing else depends on is one that was. No second
-  -- file to read, and nothing to do when there is no pixi.toml.
-  pure $ Graphing.promoteToDirect (not . Graphing.hasPredecessors graph) graph
+  -- file to read, and nothing to do when there is no pixi.toml. A cycle that
+  -- nothing outside it depends on is a root too, so every member is direct;
+  -- otherwise nothing would reach it and it would be pruned from the results.
+  let components = AMA.scc $ Graphing.toAdjacencyMap graph
+      reached = Set.fromList . map snd $ AM.edgeList components
+      roots = Set.unions [NAM.vertexSet c | c <- AM.vertexList components, Set.notMember c reached]
+  pure $ Graphing.promoteToDirect (`Set.member` roots) graph
   where
     collect index (locator, env) (skips, acc, keys) =
       case toDependency (Map.lookup locator index) locator env of

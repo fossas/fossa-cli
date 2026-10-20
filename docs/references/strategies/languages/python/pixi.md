@@ -50,13 +50,13 @@ A `packages` entry this strategy cannot read — an unrecognised ecosystem key f
 
 - **Edges are resolved by name, not by locator.** `depends` (conda) and `requires_dist` (PyPI) name a package rather than pointing at a locked artifact, so each is matched against a name index over the locked set. A lockfile holds one resolved version per name per subdir, which makes the name close enough to a unique key; the version constraints in the spec are not re-checked, because the lockfile already decided them.
 
-  A conda dependency resolves within its own subdir plus `noarch`. Every platform is unioned into one graph, so without that restriction a `linux-64` package would link to the `osx-arm64` build of its own dependency.
+  A conda dependency resolves within its own subdir plus `noarch`. Every platform is unioned into one graph, so without that restriction a `linux-64` package would link to the `osx-arm64` build of its own dependency. A `noarch` package is shared by every platform, so its dependencies resolve in every subdir.
 
   PyPI names are matched after [PEP 503](https://peps.python.org/pep-0503/) normalization, so `zope.interface` in a `requires_dist` finds a package the lockfile spells `zope-interface`.
 
 - **PEP 508 environment markers are ignored.** A marker-guarded requirement still produces an edge. There is no interpreter to evaluate the marker against, and an edge reported on a platform that would not install it is a smaller error than dropping a real dependency.
 
-- **Direct dependencies are the graph roots.** `pixi.lock` records the full resolved closure and never says which packages were asked for, so a package that nothing else in the lockfile depends on is treated as direct. No `pixi.toml` is read.
+- **Direct dependencies are the graph roots.** `pixi.lock` records the full resolved closure and never says which packages were asked for, so a package that nothing else in the lockfile depends on is treated as direct. Packages in a dependency cycle that nothing outside the cycle depends on are all treated as direct. No `pixi.toml` is read.
 
 - **Environments are reported, not filtered.** The `default` environment maps to the production environment. `dev`/`development` and `test`/`testing` map to the development and testing environments; any other environment name is preserved verbatim so it can be filtered by name. A package present in several environments is reported once, carrying all of them.
 
