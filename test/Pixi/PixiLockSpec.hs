@@ -116,6 +116,8 @@ spec = do
       -- resolved against the project directory downstream, where a URL would
       -- not resolve at all.
       classifyPypiSource "file:///home/me/pkg" `shouldBe` PypiLocalPath "/home/me/pkg"
+      -- Any other URL scheme is remote, the way rattler reads it.
+      classifyPypiSource "s3://bucket/simple/widget-1.0.0-py3-none-any.whl" `shouldBe` PypiRegistry
 
   describe "environmentToDepEnvironment" $
     it "maps default to production and keeps arbitrary names filterable" $ do

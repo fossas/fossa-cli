@@ -305,11 +305,12 @@ classifyPypiSource locator
 -- @file:\/\/@ is stripped so both spellings of one package produce one
 -- dependency. That is not cosmetic: the name is resolved against the project
 -- directory downstream (@App.Fossa.PathDependency.absPathOf@), which fails
--- outright on a URL. pdm and cargo strip it for the same reason.
+-- outright on a URL. pdm and cargo strip it for the same reason. Any other
+-- URL scheme, such as an @s3:\/\/@ channel, is remote, as rattler reads it.
 localSourcePath :: Text -> Maybe Text
 localSourcePath locator
   | Just path <- Text.stripPrefix "file://" locator = Just path
-  | any (`Text.isPrefixOf` locator) ["http://", "https://"] = Nothing
+  | "://" `Text.isInfixOf` locator = Nothing
   | otherwise = Just locator
 
 -- | pixi environment names are arbitrary. @default@ is the one with fixed
