@@ -1,7 +1,5 @@
-# One good package alongside three entries the parser cannot make sense of:
-# an entry keyed on neither `conda:` nor `pypi:`, a conda artifact URL with no
-# parseable filename, and a pypi registry entry with no `name:`. None of them
-# may cost anything beyond themselves.
+# A readable package alongside an unknown ecosystem, an unparseable conda URL,
+# and a nameless PyPI package.
 version: 6
 environments:
   default:

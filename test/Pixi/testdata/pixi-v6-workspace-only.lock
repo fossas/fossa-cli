@@ -1,6 +1,4 @@
-# The only package is the workspace itself, installed as `conda: .`. It's the
-# project, not a dependency, so an empty graph is the correct answer and must
-# not trip the zero-dependency guard.
+# The workspace package at `conda: .` is omitted, leaving an empty graph.
 version: 6
 environments:
   default:

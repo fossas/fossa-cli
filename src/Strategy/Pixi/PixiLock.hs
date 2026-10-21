@@ -1,40 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Parser for @pixi.lock@ (<https://pixi.prefix.dev>).
+-- | Parser for @pixi.lock@.
 --
--- The lockfile is two joined halves. @environments@ maps an environment name
--- to a platform to a list of package /locators/; @packages@ carries the
--- metadata for each locator. The locator string is the join key, and the same
--- entry is referenced from every environment and platform that resolved it —
--- which is why a package has to be deduped across the join rather than emitted
--- per slot.
---
--- Three lock versions are in the wild and they differ mostly in the @packages@
--- half:
---
--- * v5 tags each entry @kind: conda@ \/ @kind: pypi@ and spells out @name@,
---   @version@, @build@ and @subdir@, with @url@ as the locator.
--- * v6 and v7 key the entry on @conda:@ \/ @pypi:@ whose value IS the locator,
---   and drop @name@ and @version@ for conda entries entirely. v7 adds a
---   top-level @platforms@ block that has no bearing on dependencies, and keys
---   pixi-build source packages on @conda_source:@ in both halves; those are
---   skipped.
---
--- That dropped name is the one real fragility here: for v6/v7 conda packages
--- the only place the name and version exist is the artifact filename, so we
--- parse @\<name\>-\<version\>-\<build\>.conda@ out of the URL. Conda's filename
--- convention makes this unambiguous — the last two hyphen-separated fields are
--- version and build, and a name may itself contain hyphens — but it is a
--- convention rather than a guarantee.
---
--- NO SINGLE ENTRY MAY FAIL THE FILE. Every @packages@ entry is read
--- independently and an unreadable one degrades to a warning, because the bug
--- this strategy exists to fix is a pixi project reporting zero dependencies.
--- An aeson field decoder that fails mid-list takes the whole document with it,
--- which turns one odd package into exactly that bug — a v5 lockfile with one
--- @path:@-sourced package used to fail with @key \"url\" not found@ and report
--- nothing at all.
+-- @environments@ lists package locators by environment and platform;
+-- @packages@ supplies their metadata. Locators join the two sections.
+-- v5 uses @kind@ with @url@ or @path@; v6/v7 use @conda@ or @pypi@.
+-- v6/v7 conda names and versions come from artifact filenames.
 module Strategy.Pixi.PixiLock (
   analyze,
   buildGraph,
@@ -46,7 +18,6 @@ module Strategy.Pixi.PixiLock (
   PixiPackage (..),
   PixiPackageEntry (..),
   PixiLockYieldedNoDeps (..),
-  -- exposed for testing
   parseCondaArtifactUrl,
   CondaArtifact (..),
   classifyPypiSource,
@@ -91,23 +62,10 @@ import Graphing qualified
 import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
 
--- | Oldest and newest lock versions this parser was written against.
---
--- Not a gate. The format has been additive -- v7 is v6's @packages@ shape plus
--- an inert top-level @platforms@ block -- so an unseen version is far likelier
--- to parse than not, and refusing one outright reports nothing for a project
--- that plainly has dependencies. Out-of-range versions are parsed anyway and
--- only warn, matching pnpm.
+-- | Known lock versions; other versions are parsed with a warning.
 knownLockVersions :: (Int, Int)
 knownLockVersions = (5, 7)
 
--- | The lockfile listed packages and not one of them produced a dependency.
---
--- Fatal, where a lockfile with no entries at all is not: an empty graph is
--- indistinguishable from a clean scan of a workspace that has no
--- dependencies, so whether there was anything to read is the only thing that
--- separates the two. Every entry failing at once is what a restructured
--- @packages@ shape looks like from here.
 data PixiLockYieldedNoDeps = PixiLockYieldedNoDeps
   { noDepsVersion :: Int
   , noDepsEntries :: Int
@@ -116,12 +74,10 @@ data PixiLockYieldedNoDeps = PixiLockYieldedNoDeps
 instance ToDiagnostic PixiLockYieldedNoDeps where
   renderDiagnostic (PixiLockYieldedNoDeps version entries) =
     Errata
-      (Just $ "pixi.lock lists " <> toText (show entries) <> " packages, but none of them could be read")
+      (Just $ "pixi.lock yielded no dependencies (package count: " <> toText (show entries) <> ")")
       []
-      (Just $ "The lockfile is version " <> toText (show version) <> ". Its `packages` entries are shaped in a way this fossa-cli does not recognise; the warnings above name each one. Upgrading fossa-cli may help.")
+      (Just $ "The lockfile is version " <> toText (show version) <> ". Check any warnings above for skipped packages. Upgrading fossa-cli may help.")
 
--- | The value of a @conda:@ or @pypi:@ key: a URL for a published artifact, or
--- a path\/VCS spec for a source dependency.
 data PixiLocator
   = CondaLocator Text
   | PypiLocator Text
@@ -130,20 +86,18 @@ data PixiLocator
 data PixiPackage = PixiPackage
   { pixiPkgLocator :: PixiLocator
   , pixiPkgName :: Maybe Text
-  -- ^ Explicit for every v5 entry and for v6\/v7 pypi entries; absent for
-  -- v6\/v7 conda entries, where it comes from the artifact filename.
+  -- ^ Absent for v6/v7 conda artifacts; read from the filename.
   , pixiPkgVersion :: Maybe Text
   , pixiPkgDepends :: [Text]
-  -- ^ Conda match-specs (@"python >=3.9,<3.10"@), naming a package rather
-  -- than resolving one. Empty for pypi entries.
+  -- ^ Conda match-specs, e.g. @"python >=3.9,<3.10"@.
   , pixiPkgRequiresDist :: [Text]
-  -- ^ PEP 508 requirements. Empty for conda entries.
+  -- ^ PEP 508 requirements for PyPI packages.
   }
   deriving (Eq, Ord, Show)
 
 newtype PixiEnvironment = PixiEnvironment
   { pixiEnvPackages :: Map Text [PixiLocator]
-  -- ^ Platform (@linux-64@, @osx-arm64@, …) to the locators resolved for it.
+  -- ^ Package locators by platform.
   }
   deriving (Eq, Ord, Show)
 
@@ -154,10 +108,7 @@ data PixiLockFile = PixiLockFile
   }
   deriving (Eq, Ord, Show)
 
--- | One @packages@ entry, or the reason it could not be read.
---
--- The whole point of the indirection: 'parseJSON' here always succeeds, so a
--- malformed or unrecognised entry can only ever cost that one package.
+-- | Preserve entry errors so other packages can still be analyzed.
 data PixiPackageEntry
   = PackageEntry PixiPackage
   | UnreadableEntry Text
@@ -174,14 +125,12 @@ instance FromJSON PixiLockFile where
       <*> obj .: "environments"
       <*> obj .: "packages"
 
--- | An entry of a kind this parser doesn't know, such as a v7 @conda_source:@,
--- is dropped rather than failing the file; its @packages@ entry warns.
+-- Unknown environment locators, including @conda_source@, are skipped.
+-- Their corresponding @packages@ entries produce warnings.
 instance FromJSON PixiEnvironment where
   parseJSON = withObject "PixiEnvironment" $ \obj ->
     PixiEnvironment . fmap (mapMaybe $ parseMaybe parseJSON) <$> obj .: "packages"
 
--- | Read the @conda:@ \/ @pypi:@ key that both the environments list and the
--- v6\/v7 package entries use to name an artifact.
 parseLocatorKeys :: Object -> Parser PixiLocator
 parseLocatorKeys obj =
   case (KeyMap.lookup "conda" obj, KeyMap.lookup "pypi" obj) of
@@ -198,10 +147,7 @@ instance FromJSON PixiPackage where
       Just _ -> parseV5 obj
       Nothing -> parseV6 obj
     where
-      -- v5: `kind` names the ecosystem, and the locator is `url` for a
-      -- published artifact or `path` for one resolved from disk. `path` is
-      -- what the environments list references for those, so it is the join
-      -- key as much as `url` is.
+      -- v5 local sources use `path` instead of `url` as the locator.
       parseV5 :: Object -> Parser PixiPackage
       parseV5 obj = do
         kind <- obj .: "kind"
@@ -214,7 +160,6 @@ instance FromJSON PixiPackage where
           other -> fail $ "unknown package kind: " <> toString other
         pkgFields obj locator
 
-      -- v6/v7: the ecosystem key holds the locator.
       parseV6 :: Object -> Parser PixiPackage
       parseV6 obj = do
         locator <- parseLocatorKeys obj
@@ -227,8 +172,6 @@ instance FromJSON PixiPackage where
           <*> obj .:? "depends" .!= []
           <*> obj .:? "requires_dist" .!= []
 
--- | Name, version and build recovered from a conda artifact URL, plus the
--- channel and subdir the URL path encodes.
 data CondaArtifact = CondaArtifact
   { condaArtifactChannel :: Text
   , condaArtifactPlatform :: Text
@@ -237,22 +180,10 @@ data CondaArtifact = CondaArtifact
   }
   deriving (Eq, Ord, Show)
 
--- | Split @https:\/\/conda.anaconda.org\/conda-forge\/linux-64\/zlib-1.3.1-hb9d3cd8_2.conda@.
---
--- The last two path segments are the subdir and the filename. Everything
--- between the host and the subdir is the channel, joined back with @\/@ —
--- not just the segment nearest the subdir. Labeled channels are ordinary
--- conda usage and put extra segments there:
--- @conda-forge\/label\/broken\/linux-64\/…@ is the @conda-forge\/label\/broken@
--- channel, not the @broken@ channel. This matches
--- 'Strategy.Conda.CondaEnvCreate.parseCondaEnvDep', which joins every channel
--- component the same way; the two strategies have to agree or one package
--- lands in FOSSA under two names.
---
--- Dropping the host also covers self-hosted mirrors such as
--- @https:\/\/prefix.dev\/conda-forge\/…@. Within the filename the final two
--- hyphen-separated fields are version and build, so a hyphenated package name
--- like @ld_impl_linux-64@ survives the split.
+-- | The channel is every path segment between the host and subdir,
+-- including labels such as @conda-forge/label/broken@.
+-- The filename's last two hyphenated fields are version and build;
+-- package names may contain hyphens.
 parseCondaArtifactUrl :: Text -> Maybe CondaArtifact
 parseCondaArtifactUrl url = do
   let afterScheme = case Text.breakOn "://" url of
@@ -285,15 +216,12 @@ parseCondaArtifactUrl url = do
       ("", _) -> Nothing
       (before, after) -> Just (Text.dropEnd 1 before, after)
 
--- | Where a pypi entry actually comes from. pixi resolves local directories and
--- git checkouts alongside published wheels, and the locator is the only thing
--- that distinguishes them.
 data PypiSource
-  = -- | A published wheel or sdist on an index.
+  = -- | A remote source without a @git+@ prefix.
     PypiRegistry
-  | -- | @git+https:\/\/…@, optionally with @?rev=@ and a @#@ commit.
+  | -- | A @git+@ URL with the prefix removed.
     PypiGit Text
-  | -- | Something on disk, carrying the path with any @file:\/\/@ removed.
+  | -- | A local path with any @file://@ prefix removed.
     PypiLocalPath Text
   deriving (Eq, Ord, Show)
 
@@ -302,24 +230,14 @@ classifyPypiSource locator
   | "git+" `Text.isPrefixOf` locator = PypiGit (Text.drop 4 locator)
   | otherwise = maybe PypiRegistry PypiLocalPath (localSourcePath locator)
 
--- | The path a locator names on disk, if it names one at all rather than an
--- artifact to fetch.
---
--- @file:\/\/@ is stripped so both spellings of one package produce one
--- dependency. That is not cosmetic: the name is resolved against the project
--- directory downstream (@App.Fossa.PathDependency.absPathOf@), which fails
--- outright on a URL. pdm and cargo strip it for the same reason. Any other
--- URL scheme, such as an @s3:\/\/@ channel, is remote, as rattler reads it.
+-- | Strip @file://@ so downstream path resolution can use the locator.
+-- Other locators containing @://@ are remote, regardless of scheme.
 localSourcePath :: Text -> Maybe Text
 localSourcePath locator
   | Just path <- Text.stripPrefix "file://" locator = Just path
   | "://" `Text.isInfixOf` locator = Nothing
   | otherwise = Just locator
 
--- | pixi environment names are arbitrary. @default@ is the one with fixed
--- meaning; the two conventional names map to the constructors a user would
--- expect to filter on, and anything else is preserved verbatim so it can still
--- be filtered by name.
 environmentToDepEnvironment :: Text -> DepEnvironment
 environmentToDepEnvironment = \case
   "default" -> EnvProduction
@@ -329,9 +247,6 @@ environmentToDepEnvironment = \case
   "testing" -> EnvTesting
   other -> EnvOther other
 
--- | Key a dependency is deduped on. Environments are unioned across every
--- (environment, platform) slot a package appears in, so a package resolved for
--- five platforms is one dependency rather than five.
 type DepKey = (DepType, Text, Maybe VerConstraint)
 
 depKey :: Dependency -> DepKey
@@ -350,19 +265,13 @@ buildGraph PixiLockFile{..} = do
       (skipped, deps, keyOf) = foldr (collect packageIndex) ([], Map.empty, Map.empty) slots
       depOf locator = (`Map.lookup` deps) =<< Map.lookup locator keyOf
 
-      -- How each locator is addressed from someone else's dependency list.
-      -- Only locators that became dependencies are addressable, which is why
-      -- a skipped entry can never be an edge target.
       condaKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [condaMatchKey (Map.lookup l packageIndex) l]]
       pypiKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [pypiMatchKey (Map.lookup l packageIndex) l]]
 
       condaByName = Map.fromListWith (<>) [(name, [(subdir, l)]) | (l, (name, subdir)) <- Map.toList condaKeys]
       pypiByName = Map.fromListWith (<>) [(name, [l]) | (l, name) <- Map.toList pypiKeys]
 
-      -- A conda package resolves within its own subdir plus `noarch`, and a
-      -- `noarch` package, which every platform shares, in every subdir. Without
-      -- that, a linux-64 package would edge to the osx-arm64 build of the same
-      -- dependency, because every platform is unioned into one graph.
+      -- `noarch` packages can depend on, and be used by, any subdir.
       subdirMatches (Just from) (Just to) = from == "noarch" || to == from || to == "noarch"
       subdirMatches _ _ = True
 
@@ -390,18 +299,12 @@ buildGraph PixiLockFile{..} = do
 
       graph = Graphing.deeps (Map.elems deps) <> Graphing.edges graphEdges
   for_ (Set.toList . Set.fromList $ unreadable <> skipped) warn
-  -- The roots ARE the direct set. pixi's environments list is the full
-  -- resolved closure, so nothing in the file says which packages were asked
-  -- for -- but a package nothing else depends on is one that was. No second
-  -- file to read, and nothing to do when there is no pixi.toml. A cycle that
-  -- nothing outside it depends on is a root too, so every member is direct;
-  -- otherwise nothing would reach it and it would be pruned from the results.
+  -- The lockfile does not identify direct dependencies. Treat root
+  -- components as direct, including every member of an unreached cycle.
   let components = AMA.scc $ Graphing.toAdjacencyMap graph
       reached = Set.fromList . map snd $ AM.edgeList components
       roots = Set.unions [NAM.vertexSet c | c <- AM.vertexList components, Set.notMember c reached]
-  -- The workspace's own package is the project, not a dependency of it.
-  -- Shrinking it after the roots are marked makes what it requires direct,
-  -- the way uv drops its workspace packages.
+  -- Shrinking a direct workspace package promotes its dependencies.
   pure . Graphing.shrink (not . isWorkspacePackage) $ Graphing.promoteToDirect (`Set.member` roots) graph
   where
     collect index (locator, env) (skips, acc, keys) =
@@ -420,15 +323,11 @@ buildGraph PixiLockFile{..} = do
 isWorkspacePackage :: Dependency -> Bool
 isWorkspacePackage dep = dependencyType dep == UnresolvedPathType && dependencyName dep `elem` [".", "./"]
 
--- | The bare name and subdir a conda locator is addressed by. @depends@
--- entries are never subdir-qualified, so the subdir is matched separately
--- rather than folded into the name the way the dependency name is.
 condaMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe (Text, Maybe Text)
 condaMatchKey meta = \case
   PypiLocator{} -> Nothing
   CondaLocator url -> case localSourcePath url of
-    -- A local package has no artifact filename to read a subdir out of, so it
-    -- answers to any subdir that names it.
+    -- Local packages have no artifact subdir and can match any platform.
     Just _ -> (,Nothing) <$> (pixiPkgName =<< meta)
     Nothing -> do
       CondaArtifact{..} <- parseCondaArtifactUrl url
@@ -439,10 +338,6 @@ pypiMatchKey meta = \case
   CondaLocator{} -> Nothing
   PypiLocator{} -> normalizePypiName <$> (pixiPkgName =<< meta)
 
--- | The package named at the head of a conda match-spec:
--- @"conda-forge::python >=3.9,<3.10"@ is @python@. Channel prefix, version
--- and build glob are all separated from the name by a character that cannot
--- appear in one.
 condaSpecName :: Text -> Text
 condaSpecName spec = Text.takeWhile (\c -> not (isSpace c) && c `notElem` ['=', '>', '<', '!', '~']) afterChannel
   where
@@ -450,18 +345,11 @@ condaSpecName spec = Text.takeWhile (\c -> not (isSpace c) && c `notElem` ['=', 
       (before, rest) | Text.null rest -> before
       (_, rest) -> Text.drop 2 rest
 
--- | The distribution named at the head of a PEP 508 requirement:
--- @"requests[socks]>=2 ; python_version<'3.9'"@ is @requests@.
---
--- Markers are deliberately ignored rather than evaluated. We have no
--- interpreter to evaluate them against, and an edge reported on a platform
--- that would not install it is a far smaller error than dropping a real one.
+-- | Read the PEP 508 package name, ignoring extras, constraints, and markers.
 pypiSpecName :: Text -> Text
 pypiSpecName = Text.takeWhile (\c -> isAlphaNum c || c `elem` ['-', '_', '.']) . Text.stripStart
 
--- | PEP 503 normalization, so @zope.interface@ in a @requires_dist@ finds the
--- package the lockfile spells @zope-interface@. Used only for matching; the
--- reported dependency name is whatever the lockfile said.
+-- | PEP 503 normalization for matching; reported names stay unchanged.
 normalizePypiName :: Text -> Text
 normalizePypiName = Text.toLower . Text.intercalate "-" . filter (not . Text.null) . Text.split (`elem` ['-', '_', '.'])
 
@@ -480,22 +368,12 @@ toDependency metadata locator env = case locator of
         , dependencyTags = Map.empty
         }
 
-    -- Names the package when the lockfile gave us one, because "skipping
-    -- ./links/requests-2.31.0-py3-none-any.whl" is a worse thing to read in
-    -- a scan log than "skipping requests".
     described fallback = maybe fallback (\n -> n <> " (" <> fallback <> ")") (pixiPkgName =<< metadata)
 
-    -- Resolved later by the path-dependency scanner, which license-scans the
-    -- directory the name points at. See 'App.Fossa.PathDependency'.
+    -- Resolved by 'App.Fossa.PathDependency'.
     pathDep path = mkDep UnresolvedPathType path (pixiPkgVersion =<< metadata)
 
-    -- Classify before parsing. parseCondaArtifactUrl reads channel, subdir and
-    -- filename out of URL segments, and a path has none of those: a shallow one
-    -- yielded Nothing and the package vanished, while a deeper one had enough
-    -- segments to produce a name built from directories ('shared':pkgs:zlib).
-    --
-    -- v5 spells name and version out; v6/v7 leave the filename as the only
-    -- source for them. Prefer the explicit fields when the lockfile has them.
+    -- Classify paths first: their segments can resemble artifact URLs.
     condaDep url = case localSourcePath url of
       Just path -> Right $ pathDep path
       Nothing -> case parseCondaArtifactUrl url of
@@ -512,8 +390,7 @@ toDependency metadata locator env = case locator of
       PypiGit url -> Right $ mkDep GitType (Text.takeWhile (/= '?') $ Text.takeWhile (/= '#') url) (gitRevision url)
       PypiLocalPath path -> Right $ pathDep path
 
-    -- The fragment is the resolved commit; pixi also writes a `?rev=` query
-    -- that names the same commit less precisely.
+    -- The fragment holds the resolved commit.
     gitRevision url = case Text.breakOnEnd "#" url of
       ("", _) -> Nothing
       (_, sha) | Text.null sha -> Nothing
@@ -524,11 +401,7 @@ analyze lockPath = do
   lockFile <- readContentsYaml @PixiLockFile lockPath
   for_ (outOfRangeVersionWarning $ pixiLockVersion lockFile) warn
   graph <- buildGraph lockFile
-  -- Checked for every version, not just unknown ones: entries go unreadable
-  -- because the `packages` shape moved, which a pixi release can do without
-  -- touching `version:`. Keying this off the version number would reinstate
-  -- the brittleness it replaces. The workspace's own package isn't counted,
-  -- since the graph drops it as the project rather than as unreadable.
+  -- A workspace-only lockfile legitimately produces an empty graph.
   let isWorkspaceEntry (PackageEntry p) = either (const False) isWorkspacePackage $ toDependency (Just p) (pixiPkgLocator p) EnvProduction
       isWorkspaceEntry (UnreadableEntry _) = False
       entries = length . filter (not . isWorkspaceEntry) $ pixiLockPackages lockFile
@@ -536,8 +409,6 @@ analyze lockPath = do
     then fatal $ PixiLockYieldedNoDeps (pixiLockVersion lockFile) entries
     else pure graph
 
--- | What to say about a version outside 'knownLockVersions', if anything.
--- Pure so the wording is testable without standing up the diagnostics stack.
 outOfRangeVersionWarning :: Int -> Maybe Text
 outOfRangeVersionWarning version
   | version > newest =

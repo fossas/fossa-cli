@@ -1,8 +1,4 @@
-# A version newer than any this parser was written against, shaped exactly
-# like v7 (v6's `packages` plus the inert `platforms` block). The format has
-# only ever been additive, so this must parse and warn rather than fail: the
-# point of the fixture is that an unseen version number costs a warning, not
-# the project's dependencies.
+# An unknown version using the v7 shape; analysis proceeds with a warning.
 version: 8
 platforms:
 - linux-64

@@ -64,9 +64,6 @@ mkProject project =
     , projectData = project
     }
 
--- | pixi.lock pins every package for every environment and platform, so the
--- graph is complete without running pixi — unlike the conda strategy, which
--- needs `conda env create` to resolve anything.
 getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => PixiProject -> m DependencyResults
 getDeps project = context "Pixi" $ do
   graph <- PixiLock.analyze (pixiLock project)

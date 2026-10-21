@@ -1,6 +1,4 @@
-# Every `packages` entry unreadable -- what a restructured `packages` shape
-# looks like from here. Entry-level parsing cannot fail, so without a guard
-# this reports zero dependencies and reads exactly like success.
+# No package entries can be read, so analysis fails.
 version: 6
 environments:
   default:

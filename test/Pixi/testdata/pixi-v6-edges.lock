@@ -1,15 +1,6 @@
-# Edge construction, and the cases that decide whether an edge is real.
-#
-# `app` names four things in `depends`: one in its own subdir, one in noarch,
-# one that is only built for another platform, and one absent from the locked
-# set. Only the first two are edges -- every platform is unioned into one
-# graph, so without the subdir rule a linux-64 package would reach the
-# osx-arm64 build of its dependency. `tzdata` is noarch, which every platform
-# shares, so its `libfoo` resolves in linux-64.
-#
-# `cyc-a`/`cyc-b` depend on each other, and nothing else depends on either;
-# neither may hang the traversal, and both are direct, or nothing would reach
-# them. `gadget` is a path dependency with a dependency of its own.
+# app links to libfoo and noarch tzdata; tzdata links back to linux-64 libfoo.
+# libonlyosx is on another platform; missing-pkg is absent.
+# cyc-a and cyc-b form a root cycle. The local gadget package requires widget.
 version: 6
 environments:
   default:

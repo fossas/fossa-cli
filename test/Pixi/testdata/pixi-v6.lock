@@ -1,5 +1,4 @@
-# Trimmed from a real pixi.lock (prefix-dev/pixi examples/pypi), with a `dev`
-# environment and a git/local pypi source added to exercise those paths.
+# Based on prefix-dev/pixi examples/pypi, with git and local PyPI sources.
 version: 6
 environments:
   default:

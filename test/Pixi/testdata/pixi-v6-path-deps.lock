@@ -1,11 +1,5 @@
-# Local packages, spelled every way pixi spells them.
-#
-# `widget` appears twice -- once as a file:// URL in default, once as the bare
-# path in dev -- because both must normalize to one dependency carrying both
-# environments. The two conda entries are the interesting ones: neither is a
-# URL, so parseCondaArtifactUrl had nothing to read. The shallow one yielded
-# Nothing and the package vanished; the deeper one had enough segments to
-# produce a name built out of directories ('shared':pkgs:openblas).
+# Relative conda paths and PyPI paths. widget uses file:// in default and
+# the equivalent bare path in dev; these produce one dependency.
 version: 6
 environments:
   default:

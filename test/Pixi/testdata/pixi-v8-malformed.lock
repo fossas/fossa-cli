@@ -1,7 +1,4 @@
-# Out of range AND structurally broken: `environments` is a list where the
-# parser needs a map. Parsing anything we have not seen does not mean
-# accepting anything — a document this far off still has to fail loudly,
-# which is aeson's job, not a version check's.
+# An unknown version with environments as a list instead of a map.
 version: 8
 environments:
 - default

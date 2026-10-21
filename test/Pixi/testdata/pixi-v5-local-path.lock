@@ -1,10 +1,5 @@
-# Trimmed from the Rattler v5 conda-lock fixture
-# (conda/rattler test-data/conda-lock/v5/flat-index-lock.yml).
-#
-# The `requests` entry is the point: it is sourced from a local wheel via
-# `path:` and carries no `url:`. Requiring `url:` made the whole file fail to
-# parse with `key "url" not found`, so a project with one path-sourced package
-# reported zero dependencies.
+# Trimmed from conda/rattler test-data/conda-lock/v5/flat-index-lock.yml.
+# The local requests wheel uses `path` without `url`.
 version: 5
 environments:
   default:

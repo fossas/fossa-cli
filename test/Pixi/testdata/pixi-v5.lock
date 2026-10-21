@@ -1,5 +1,4 @@
-# Trimmed from a real v5 pixi.lock (rordenlab/dcm2niix). v5 spells out name,
-# version, build and subdir and uses `url` as the locator.
+# Trimmed from rordenlab/dcm2niix: v5 has explicit name and version fields.
 version: 5
 environments:
   default:

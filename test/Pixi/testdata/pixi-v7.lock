@@ -1,8 +1,5 @@
-# Trimmed from pixi's own v7 lockfile (prefix-dev/pixi). v7 keeps v6's
-# `packages` shape and adds a top-level `platforms` block, which carries no
-# dependency information — the point of this fixture is that its presence
-# does not change the result. `pixi-docs` is a pixi-build source package, keyed
-# `conda_source:` in both halves; it is skipped, and must not fail the file.
+# Trimmed from prefix-dev/pixi: v7 platforms metadata is ignored, and the
+# conda_source package is skipped with a warning.
 version: 7
 platforms:
 - linux-64

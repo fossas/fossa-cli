@@ -1,6 +1,4 @@
-# A workspace with no dependencies. Valid, and an empty graph is the correct
-# answer -- the zero-dependency guard keys off whether there were entries to
-# read, so this must not trip it.
+# A workspace with no packages produces an empty graph.
 version: 6
 environments:
   default:
