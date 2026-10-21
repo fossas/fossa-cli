@@ -47,7 +47,6 @@ spec =
         reference <- collectWalk tmpDir
 
         normalizeSet emitted `shouldBe'` normalizeSet (map toListing reference)
-        -- Sanity: the expected directories really were produced on disk.
         sendIO $ traverse_ (const (pure ())) [a, ab, b, bc]
 
     it' "prunes directories excluded by path filters" $
@@ -73,7 +72,6 @@ spec =
         -- The allowed ancestor 'a' and sibling 'b' must still be visited.
         Set.member a visited `shouldBe'` True
         Set.member b visited `shouldBe'` True
-        -- Sanity: the excluded directory really was produced on disk.
         sendIO $ traverse_ (const (pure ())) [ab, abc]
 
     it' "terminates and matches the walk under symlink loops" $
