@@ -649,7 +649,7 @@ lockfileToDeps emitGitBackedLocators manifestDir lock =
 -- both @\[dependencies\]@ and @\[build-dependencies\]@ carries both a null and a
 -- @"build"@ kind). Edges whose parent is not a member default to a single
 -- null kind -- the documented, accepted gap (see the module header of
--- "Strategy.CargoLock").
+-- "Strategy.Cargo.Lock").
 lockfileToMetadata :: CargoLock -> [WorkspaceMember] -> ManifestAnalysis -> CargoMetadata
 lockfileToMetadata lock members analysis =
   CargoMetadata
@@ -772,7 +772,7 @@ instance ToDiagnostic FailedToParseCargoLockFile where
 
 -- | Render the human-readable text of an 'Errata' (its body, falling back to
 -- its header) so it can be embedded in a single-line diagnostic header. The
--- 'Strategy.CargoLock' and 'Effect.ReadFS' diagnostic instances only ever
+-- 'Strategy.Cargo.Lock' and 'Effect.ReadFS' diagnostic instances only ever
 -- populate the header and body, never source blocks.
 renderErrataReason :: Errata -> Text
 renderErrataReason (Errata{errataBody = Just body}) = body
