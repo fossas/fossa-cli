@@ -1,5 +1,9 @@
 -- | Fpm, the fortran package manager.
-module Strategy.Fpm (discover) where
+module Strategy.Fpm (
+  discover,
+  discoverVisitor,
+  mkProject,
+) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics)
@@ -24,7 +28,12 @@ discover ::
 discover = simpleDiscover findProjects mkProject FpmProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [FpmProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([FpmProject], WalkStep)
+discoverVisitor dir _ files = do
   let fmpSpecFile = findFileNamed "fpm.toml" files
   case (fmpSpecFile) of
     Just fpmToml -> pure ([FpmProject fpmToml dir], WalkSkipSome ["build"])

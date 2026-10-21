@@ -1,6 +1,7 @@
 module Strategy.Bundler (
   discover,
   findProjects,
+  discoverVisitor,
   findLicenses,
   mkProject,
   getDeps,
@@ -62,7 +63,13 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject BundlerProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [BundlerProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk.  Kept separate
+-- from 'findProjects' so the whole strategy can subscribe to a single walk
+-- instead of walking the tree on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([BundlerProject], WalkStep)
+discoverVisitor dir _ files = do
   let maybeGemfile = findFileNamed "Gemfile" files
       gemfileLock = findFileNamed "Gemfile.lock" files
       -- Bundler globs for *.gemspec files, so collect all of them for analysis.

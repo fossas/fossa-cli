@@ -22,7 +22,7 @@ module App.Fossa.Analyze (
 ) where
 
 import App.Docs (userGuideUrl)
-import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
+import App.Fossa.Analyze.Debug (DiagDebugC, collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
   discoverFuncs,
@@ -101,7 +101,7 @@ import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Carrier.Stack.StickyLog (stickyLogStack)
+import Control.Carrier.Stack.StickyLog (StickyLogStackC, stickyLogStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -110,7 +110,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (recover)
+import Control.Effect.Diagnostics (recover, warnThenRecover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
@@ -125,10 +125,12 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
+import Data.IORef (modifyIORef', newIORef, readIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -136,7 +138,8 @@ import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
-import Discovery.Walk (enumeratePrunedSubtrees)
+import Discovery.Walk (WalkStep (WalkContinue), enumeratePrunedSubtrees)
+import Discovery.WalkStream (DirListing (..), walkStreamWithCollectors)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -169,6 +172,7 @@ import Srclib.Types (
   sourceUnitToFullSourceUnit,
   translateSourceUnitLocators,
  )
+import Streaming.Prelude qualified as S
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
@@ -291,14 +295,68 @@ runAnalyzers ::
   Path Abs Dir ->
   Maybe FileAncestry ->
   m ()
+
+-- | A 'DiscoverFunc' prepared for the shared discovery walk: its per-directory
+-- visitors (empty for strategies that still discover themselves) and a
+-- discovery action that reads the strategy's collected projects.
+data PreparedEntry d where
+  PreparedEntry ::
+    ( AnalyzeProject p
+    , Aeson.ToJSON p
+    ) =>
+    [DirListing -> d WalkStep] ->
+    (Path Abs Dir -> d [DiscoveredProject p]) ->
+    PreparedEntry d
+
+-- | The monad strategy discovery runs in: the base effects wrapped in the
+-- same diagnostics carriers 'Discovery.Projects.withDiscoveredProjects' uses
+-- per strategy fork.
+type DiscoveryM m = StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m))
+
 runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
-    else traverse_ single discoverFuncs
+    else do
+      -- Prepare one visitor per strategy, then feed them all from ONE
+      -- filesystem walk.  The walk runs inside the same diagnostics wrapper
+      -- the per-strategy forks use, so visitor failures are logged and never
+      -- sink the walk or the other strategies.
+      entriesResult <-
+        Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ do
+          entries <- traverse prepare discoverFuncs
+          S.effects (walkStreamWithCollectors filters basedir (concatMap entryVisitors entries))
+          pure entries
+      -- Fan-out structure unchanged: fork per strategy, then fork per project.
+      Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
+    prepare ::
+      ( AnalyzeTaskEffs sig m
+      , Has (Output DiscoveredProjectScan) sig m
+      , Has TaskPool sig m
+      , Has AtomicCounter sig m
+      ) =>
+      DiscoverFunc (DiscoveryM m) ->
+      DiscoveryM m (PreparedEntry (DiscoveryM m))
+    prepare dscover = case dscover of
+      DiscoverFunc f -> pure (PreparedEntry [] f)
+      WalkedFunc visitor finalize -> do
+        sink <- sendIO (newIORef [])
+        let collect = sendIO (readIORef sink)
+            visit dl = do
+              -- A failing strategy visitor contributes nothing and keeps walking.
+              found <- warnThenRecover @Text "Error discovering projects for strategy" (visitor (dlDir dl) (dlSubdirs dl) (dlFiles dl))
+              case found of
+                Nothing -> pure WalkContinue
+                Just (projects, step) -> do
+                  sendIO (modifyIORef' sink (<> projects))
+                  pure step
+        pure (PreparedEntry [visit] (\_ -> finalize collect))
+
+    entryVisitors (PreparedEntry vs _) = vs
+
+    single (PreparedEntry _ discover) = withDiscoveredProjects discover basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
 -- | Walk the tree once at startup and surface every directory the path
 -- filters will prune. Each prune is logged once at info level here, instead
