@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Yarn: `yarn.lock` files with no package entries (what `yarn install` writes for a project without dependencies) no longer fail analysis with `unexpected end of input, expecting '#', newline, or package entry`.
 - Go: `go.mod` files that require, replace or declare a module whose path contains a `~` (sourcehut paths such as `git.sr.ht/~sbinet/gg`) no longer fail analysis with `unexpected '~'`. ([#1810](https://github.com/fossas/fossa-cli/pull/1810))
 
 ## 3.20.5
