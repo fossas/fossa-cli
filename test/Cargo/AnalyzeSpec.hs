@@ -8,7 +8,7 @@
 --     analysis);
 --   * 'Strategy.Cargo.analyze' building the graph directly from a
 --     present, parsable 'Cargo.lock' (no @cargo@ invocation);
---   * 'Strategy.Cargo.readLockfileSoft' surfacing an unreadable lockfile as a
+--   * 'Strategy.Cargo.readLockfile' surfacing an unreadable lockfile as a
 --     read error (the input to 'analyze's warn + fallback branch);
 --   * 'AnalyzeProject.analyzeProjectStaticOnly' producing real results
 --     from a lockfile, and the new fatals for a missing or unparseable
@@ -43,7 +43,7 @@ import Path (Abs, Dir, Path, mkRelFile, parseAbsDir, toFilePath, (</>))
 import Strategy.Cargo (
   CargoProject (..),
   analyze,
-  readLockfileSoft,
+  readLockfile,
  )
 import Strategy.CargoLock qualified as Lock
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
@@ -167,14 +167,14 @@ fullAnalysisSpecs =
 
 lockfileReadSpecs :: Spec
 lockfileReadSpecs =
-  describe "readLockfileSoft (dynamic analysis)" $ do
+  describe "readLockfile (dynamic analysis)" $ do
     itWithTempDir' "returns Right Nothing when no Cargo.lock is present" $ \dir -> do
-      res <- readLockfileSoft dir
+      res <- readLockfile dir
       res `shouldBe'` Right Nothing
     itWithTempDir' "returns the parsed lockfile when a parsable Cargo.lock is present" $ \dir -> do
       let lockFile = dir </> $(mkRelFile "Cargo.lock")
       sendIO $ writeFile (toFilePath lockFile) demoLock
-      res <- readLockfileSoft dir
+      res <- readLockfile dir
       case res of
         Right (Just (Right lock)) -> do
           Lock.lockVersion lock `shouldBe'` 3
@@ -187,7 +187,7 @@ lockfileReadSpecs =
       let lockFile = dir </> $(mkRelFile "Cargo.lock")
       sendIO $ writeFile (toFilePath lockFile) demoLock
       sendIO $ setFileMode (toFilePath lockFile) (0 :: FileMode)
-      res <- readLockfileSoft dir
+      res <- readLockfile dir
       case res of
         Left (FileReadError path reason) -> do
           path `shouldBe'` toFilePath lockFile

@@ -22,7 +22,7 @@ module Strategy.Cargo (
   lockfileToMetadata,
   parseGitRepoUrl,
   parsePkgId,
-  readLockfileSoft,
+  readLockfile,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (
@@ -87,7 +87,6 @@ import Effect.ReadFS (
   ReadFS,
   ReadFSErr (..),
   doesFileExist,
-  readContentsText,
   readContentsText',
   readContentsToml,
  )
@@ -258,8 +257,9 @@ instance ToJSON CargoProject
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ project = do
-    outcome <- Lock.staticLockfileOutcome <$> readLockfile (cargoDir project)
-    case outcome of
+    readRes <- readLockfile (cargoDir project)
+    outcome <- either fatal pure readRes
+    case Lock.staticLockfileOutcome outcome of
       Lock.StaticUseLockfile lock -> do
         (graph, graphBreadth) <- lockfileToDeps False (cargoDir project) lock
         pure $
@@ -392,7 +392,7 @@ analyze ::
   CargoProject ->
   m (Graphing Dependency, GraphBreadth)
 analyze emitGitBackedLocators project = do
-  lockParsed <- readLockfileSoft (cargoDir project)
+  lockParsed <- readLockfile (cargoDir project)
   case lockParsed of
     Left readErr ->
       warn (FailedToReadCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderDiagnostic readErr))
@@ -406,26 +406,12 @@ analyze emitGitBackedLocators project = do
 -- | Read and parse the @Cargo.lock@ in @manifestDir@, if one exists.
 -- 'Nothing' means no lockfile is present; @Just (Left err)@ means a lockfile
 -- is present but did not parse; @Just (Right lock)@ is the parsed lockfile.
--- A lockfile that cannot be read (an IO error) aborts the analysis via the
--- 'ReadFS' fatal. Used by the static path, which has no fallback to
--- @cargo metadata@.
-readLockfile :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> m (Maybe (Either Lock.CargoLockError Lock.CargoLock))
+-- A lockfile that cannot be read (an IO error) surfaces as @Left err@ instead
+-- of aborting, so callers that cannot recover (the static path) can turn it
+-- into a fatal while callers with a fallback (the 'analyze' path) can warn
+-- and use @cargo metadata@ instead.
+readLockfile :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr (Maybe (Either Lock.CargoLockError Lock.CargoLock)))
 readLockfile manifestDir = do
-  let lockPath = manifestDir </> $(mkRelFile "Cargo.lock")
-  exists <- doesFileExist lockPath
-  if exists
-    then fmap (Just . Lock.parseCargoLock) (readContentsText lockPath)
-    else pure Nothing
-
--- | Read and parse the @Cargo.lock@ in @manifestDir@, if one exists.
--- 'Right Nothing' means no lockfile is present; @Right (Just (Left err))@
--- means a lockfile is present but did not parse; @Right (Just (Right lock))@
--- is the parsed lockfile. Unlike 'readLockfile', a lockfile that cannot be
--- read (an IO error) surfaces as @Left err@ instead of aborting, so the
--- caller can warn and fall back to @cargo metadata@. Used by the dynamic
--- ('analyze') path.
-readLockfileSoft :: Has ReadFS sig m => Path Abs Dir -> m (Either ReadFSErr (Maybe (Either Lock.CargoLockError Lock.CargoLock)))
-readLockfileSoft manifestDir = do
   let lockPath = manifestDir </> $(mkRelFile "Cargo.lock")
   exists <- doesFileExist lockPath
   if exists
