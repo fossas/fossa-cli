@@ -27,7 +27,6 @@ import Graphing qualified
 import Path (mkRelDir, toFilePath, (</>))
 import Path.IO (makeAbsolute)
 import Strategy.Cargo
-import Strategy.CargoLock
 import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldNotContain')
 import Test.Hspec (Spec, describe, it)
 import Test.Hspec qualified as Test
@@ -311,7 +310,7 @@ goldenConversionSpecs =
       -- "ext_build" cannot be classified, because dependency kinds are only
       -- known for member manifests. "ext_build" is therefore treated as
       -- Production even though, semantically, it is a build-dep of "ext". This
-      -- pins the documented, accepted gap (see the Strategy.CargoLock header).
+      -- pins the documented, accepted gap (see the Strategy.Cargo.Lock header).
       root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/nonmember_ws")
       members <- enumerateWorkspaceMembers root
       analysis <- analyzeManifests root members

@@ -5,7 +5,7 @@ module Cargo.CargoLockSpec (
 import Data.List (find)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
-import Strategy.CargoLock
+import Strategy.Cargo.Lock
 import Test.Hspec
 import Test.Hspec qualified as H
 

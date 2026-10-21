@@ -426,7 +426,9 @@ library
     Strategy.BerkeleyDB.Internal
     Strategy.Bundler
     Strategy.Cargo
-    Strategy.CargoLock
+    Strategy.Cargo.Lock
+    Strategy.Cargo.MetadataCmd
+    Strategy.Cargo.Types
     Strategy.Carthage
     Strategy.Cocoapods
     Strategy.Cocoapods.Errors

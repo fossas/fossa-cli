@@ -45,7 +45,7 @@ import Strategy.Cargo (
   analyze,
   readLockfile,
  )
-import Strategy.CargoLock qualified as Lock
+import Strategy.Cargo.Lock qualified as Lock
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
 import System.Posix.Files (setFileMode)
 import System.Posix.Types (FileMode)
