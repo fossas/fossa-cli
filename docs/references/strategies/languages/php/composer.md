@@ -14,6 +14,8 @@ Find a file named `composer.lock`.
 
 1. Parse `composer.lock` to identify direct and transitive dependencies.
 
+Composer's [platform packages](https://getcomposer.org/doc/01-basic-usage.md#platform-packages) (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are provided by the environment Composer runs in, so they are not reported as dependencies.
+
 ## Example 
 
 1. Execute `composer init` to create a new project or create `composer.json` manually:

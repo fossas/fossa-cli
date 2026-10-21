@@ -5,6 +5,7 @@ module Pnpm.PnpmLockSpec (
 ) where
 
 import Data.ByteString qualified as BS
+import Data.ByteString.Char8 qualified as BS8
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
@@ -17,14 +18,16 @@ import DepTypes (
  )
 import GraphUtil (
   expectDep,
+  expectDeps,
   expectDirect,
   expectEdge,
  )
 import Graphing (Graphing)
+import Graphing qualified
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile)
-import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO)
+import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile, resolveImporterKey)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain, shouldNotContain)
 
 mkProdDep :: Text -> Dependency
 mkProdDep nameAtVersion = mkDep nameAtVersion (Just EnvProduction)
@@ -89,10 +92,16 @@ lodash =
     mempty
 
 checkGraph :: Path Abs File -> (Graphing Dependency -> Spec) -> Spec
-checkGraph pathToFixture buildGraphSpec = do
+checkGraph = checkScopedGraph Nothing
+
+-- | Like 'checkGraph', but scoping the graph to a set of workspace importer
+-- keys, as 'Strategy.Node.resolvePnpmImporterKeys' would from selected build
+-- targets.
+checkScopedGraph :: Maybe (Set.Set Text) -> Path Abs File -> (Graphing Dependency -> Spec) -> Spec
+checkScopedGraph selection pathToFixture buildGraphSpec = do
   lockFileContents <- runIO $ BS.readFile (toString pathToFixture)
   case parsePnpmLockfile lockFileContents of
-    Right pnpmLock -> buildGraphSpec (buildGraph pnpmLock)
+    Right pnpmLock -> buildGraphSpec (buildGraph selection pnpmLock)
     Left err ->
       describe "pnpm-lock" $
         it "should parse lockfile" (expectationFailure $ toString err)
@@ -137,11 +146,11 @@ spec = do
     describe "multi-version env labeling" $ checkGraph pnpmLockV9MultiVersion pnpmLockV9MultiVersionSpec
     describe "catalogs" $ checkGraph pnpmLockV9Catalogs pnpmLockV9CatalogsSpec
 
-  -- pnpm v11 can emit a multi-document lockfile: a metadata document
-  -- (pnpmfile checksum, config dependencies) precedes the lockfile document.
   let pnpmLockV11MultiDoc = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-multi-doc/pnpm-lock.yaml")
   describe "works with pnpm v11 multi-document lockfile" $
-    checkGraph pnpmLockV11MultiDoc pnpmLockV9LocalDepSpec
+    checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
+
+  parsePnpmLockfileSpec
 
   -- Both fixtures declare sharp as an optional dependency of the project and
   -- fsevents as an optional dependency of chokidar.
@@ -167,6 +176,293 @@ spec = do
         expectEdge graph (mkBothEnvDep "parent@1.0.0") (mkBothEnvDep "widget@1.0.0")
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
         expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
+
+  let pnpmOptionalWorkspace = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-optional-workspace-links/pnpm-lock.yaml")
+  describe "scoped optional workspace links" $
+    checkScopedGraph (Just $ Set.singleton "app") pnpmOptionalWorkspace $ \graph -> do
+      optionalDepsSpec graph
+      it "should follow optional links transitively and retain optional packages when pruning" $
+        expectDeps
+          [ mkProdDep "chokidar@3.6.0"
+          , mkProdDep "sharp@0.33.0"
+          , mkProdDep "readdirp@3.6.0"
+          , mkProdDep "fsevents@2.3.3"
+          ]
+          graph
+
+  let pnpmScopedPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
+  describe "peer resolution contexts" $ do
+    checkScopedGraph (Just $ Set.singleton "a") pnpmScopedPeerContexts $ \graph ->
+      it "keeps only the production member's transitive peer resolution" $
+        expectDeps [mkProdDep "parent@1.0.0", mkProdDep "widget@1.0.0", mkProdDep "peer@1.0.0"] graph
+    checkScopedGraph (Just $ Set.singleton "b") pnpmScopedPeerContexts $ \graph ->
+      it "keeps only the development member's transitive peer resolution" $
+        expectDeps [mkDevDep "parent@1.0.0", mkDevDep "widget@1.0.0", mkDevDep "peer@2.0.0"] graph
+    checkScopedGraph (Just $ Set.fromList ["a", "b"]) pnpmScopedPeerContexts $ \graph -> do
+      it "merges package environments without leaking them across peer contexts" $
+        expectDeps [mkBothEnvDep "parent@1.0.0", mkBothEnvDep "widget@1.0.0", mkProdDep "peer@1.0.0", mkDevDep "peer@2.0.0"] graph
+      it "retains both contexts' edges after collapsing their reportable identities" $ do
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkProdDep "peer@1.0.0")
+        expectEdge graph (mkBothEnvDep "widget@1.0.0") (mkDevDep "peer@2.0.0")
+
+  let environmentFixtures =
+        [ currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-6-workspace-environments/pnpm-lock.yaml")
+        , currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-environments/pnpm-lock.yaml")
+        ]
+  mapM_
+    ( \fixture -> describe ("workspace environments: " <> toString fixture) $ do
+        checkScopedGraph (Just $ Set.singleton "dev") fixture $ \graph ->
+          it "propagates development through linked workspaces, cycles, and external transitives" $
+            expectDeps [mkDevDep "leaf@1.0.0", mkDevDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+        checkScopedGraph (Just $ Set.singleton "prod") fixture $ \graph ->
+          it "keeps optional links production and a linked package's own dev dependencies development" $
+            expectDeps [mkProdDep "leaf@1.0.0", mkProdDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+        checkScopedGraph (Just $ Set.fromList ["dev", "prod"]) fixture $ \graph ->
+          it "propagates both environments when a workspace is reached through both paths" $
+            expectDeps [mkBothEnvDep "leaf@1.0.0", mkBothEnvDep "tail@1.0.0", mkDevDep "tool@1.0.0"] graph
+    )
+    environmentFixtures
+
+  let allViaDev = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-dev-link-all-importers/pnpm-lock.yaml")
+  checkScopedGraph (Just $ Set.singleton ".") allViaDev $ \graph ->
+    it "retains development provenance even when links reach every importer" $
+      expectDeps [mkDevDep "leaf@1.0.0"] graph
+
+  -- Workspace scoping. The fixture has four importers: the root (colorjs),
+  -- browser (left-pad, plus a link: to shared), server (is-odd -> is-number)
+  -- and shared (uri-js -> punycode).
+  let pnpmWorkspace = currentDir </> $(mkRelFile "test/Node/testdata/pnpm-workspaces/pnpm-lock.yaml")
+
+  describe "workspace scoping" $ do
+    describe "unscoped" $
+      checkScopedGraph Nothing pnpmWorkspace $ \graph ->
+        it "should merge every importer's direct dependencies" $
+          expectDirect
+            [ mkDevDep "colorjs@0.1.9"
+            , mkProdDep "left-pad@1.3.0"
+            , mkProdDep "is-odd@3.0.1"
+            , mkProdDep "uri-js@4.4.1"
+            ]
+            graph
+
+    describe "scoped to one member" $
+      checkScopedGraph (Just $ Set.fromList ["server"]) pnpmWorkspace $ \graph -> do
+        it "should keep the selected member's dependencies and their transitives" $ do
+          expectDirect [mkProdDep "is-odd@3.0.1"] graph
+          expectDep (mkProdDep "is-number@6.0.0") graph
+
+        it "should drop every other importer's dependencies" $
+          expectDeps [mkProdDep "is-odd@3.0.1", mkProdDep "is-number@6.0.0"] graph
+
+    describe "scoped to a member that links to a sibling" $
+      checkScopedGraph (Just $ Set.fromList ["browser"]) pnpmWorkspace $ \graph -> do
+        it "should include the linked sibling's dependencies" $
+          -- browser declares `@fossa-test/shared: link:../shared`, so shared's
+          -- own dependencies are part of browser's result. They are reported as
+          -- direct because the lockfile records no per-importer provenance.
+          expectDirect [mkProdDep "left-pad@1.3.0", mkProdDep "uri-js@4.4.1"] graph
+
+        it "should not emit the workspace link itself as a dependency" $
+          expectDeps
+            [ mkProdDep "left-pad@1.3.0"
+            , mkProdDep "uri-js@4.4.1"
+            , mkProdDep "punycode@2.3.1"
+            ]
+            graph
+
+    describe "scoped to every importer" $
+      checkScopedGraph (Just $ Set.fromList [".", "browser", "server", "shared"]) pnpmWorkspace $ \graph ->
+        it "should match the unscoped graph" $
+          expectDirect
+            [ mkDevDep "colorjs@0.1.9"
+            , mkProdDep "left-pad@1.3.0"
+            , mkProdDep "is-odd@3.0.1"
+            , mkProdDep "uri-js@4.4.1"
+            ]
+            graph
+
+    describe "scoped to an importer the lockfile does not have" $
+      checkScopedGraph (Just $ Set.fromList ["nonexistent"]) pnpmWorkspace $ \graph ->
+        it "should report an empty graph rather than the whole workspace" $
+          expectDeps [] graph
+
+  -- Link following over a deeper workspace, see the comment in the fixture:
+  -- apps/web links to libs/ui, which links to libs/core, which links back to
+  -- libs/ui; apps/web also links to libs/testkit from devDependencies, and
+  -- testkit carries a link: to a path with no importer. libs/orphan and the
+  -- root are linked by nobody.
+  let pnpmWorkspaceLinks = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-workspace-links/pnpm-lock.yaml")
+
+  describe "workspace link following" $
+    checkScopedGraph (Just $ Set.fromList ["apps/web"]) pnpmWorkspaceLinks $ \graph -> do
+      it "should follow a chain of links transitively" $ do
+        -- is-odd is declared only by libs/core, two links away from apps/web.
+        expectDep (mkProdDep "is-odd@3.0.1") graph
+        expectDep (mkProdDep "is-number@6.0.0") graph
+
+      it "should terminate on a link cycle and keep both sides" $ do
+        -- libs/ui and libs/core link to each other.
+        expectDep (mkProdDep "uri-js@4.4.1") graph
+        expectDep (mkProdDep "is-odd@3.0.1") graph
+
+      it "should follow a link declared under devDependencies" $
+        expectDep (mkDevDep "colorjs@0.1.9") graph
+
+      it "should exclude external links even when their suffix names an internal member" $
+        -- The dangling and escaping links in libs/testkit resolve to no importer; neither
+        -- libs/orphan's lodash nor the root's typescript is reachable.
+        expectDeps
+          [ mkProdDep "left-pad@1.3.0"
+          , mkProdDep "uri-js@4.4.1"
+          , mkProdDep "punycode@2.3.1"
+          , mkProdDep "is-odd@3.0.1"
+          , mkProdDep "is-number@6.0.0"
+          , mkDevDep "colorjs@0.1.9"
+          ]
+          graph
+
+  describe "resolveImporterKey" $ do
+    it "should resolve a sibling link to the sibling's importer key" $
+      resolveImporterKey "browser" "../shared" `shouldBe` "shared"
+
+    it "should collapse repeated parent segments" $
+      resolveImporterKey "apps/web" "../../libs/ui" `shouldBe` "libs/ui"
+
+    it "should resolve a link back to the workspace root" $
+      resolveImporterKey "browser" ".." `shouldBe` "."
+
+    it "should preserve a parent segment outside the workspace" $
+      resolveImporterKey "browser" "../../shared" `shouldBe` "../shared"
+
+    it "should preserve repeated parent segments outside the workspace" $
+      resolveImporterKey "." "../../shared" `shouldBe` "../../shared"
+
+    it "should collapse ordinary segments after leaving the workspace" $
+      resolveImporterKey "browser" "../../outside/../shared" `shouldBe` "../shared"
+
+    it "should resolve a link relative to the root importer" $
+      resolveImporterKey "." "packages/a" `shouldBe` "packages/a"
+
+-- Pins the non-happy paths of parsePnpmLockfile.
+parsePnpmLockfileSpec :: Spec
+parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
+  it "rejects the stream when a document fails to parse" $
+    case parsePnpmLockfile (BS8.pack invalidFirstDoc) of
+      Left err -> toString err `shouldContain` "malformed lockfile document"
+      Right _ -> expectationFailure "expected a malformed-document error"
+
+  it "unions the graphs of documents that define the same package" $
+    case parsePnpmLockfile (BS8.pack collidingDocs) of
+      Left err -> expectationFailure (toString err)
+      Right lockfiles -> do
+        let graph = buildGraph Nothing lockfiles
+        -- Each document is processed as its own inventory, so the later
+        -- document's edges survive the union.
+        expectEdge graph (mkDep "a@1.0.0" Nothing) (mkDep "b@2.0.0" Nothing)
+
+  it "rejects a stream whose documents disagree on lockfileVersion" $
+    case parsePnpmLockfile (BS8.pack mixedVersionDocs) of
+      Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
+      Right _ -> expectationFailure "expected an inconsistent-version error"
+
+  it "rejects versions that share a constructor but differ in raw version" $
+    case parsePnpmLockfile (BS8.pack sameConstructorVersionMismatchDocs) of
+      Left err -> toString err `shouldContain` "inconsistent lockfileVersions"
+      Right _ -> expectationFailure "expected an inconsistent-version error"
+
+  it "rejects a stream with more than two documents" $
+    case parsePnpmLockfile (BS8.pack threeDocumentDocs) of
+      Left err -> toString err `shouldContain` "more than two YAML documents"
+      Right _ -> expectationFailure "expected a too-many-documents error"
+
+-- A document that is valid YAML but not a valid lockfile fails the whole parse.
+invalidFirstDoc :: String
+invalidFirstDoc =
+  unlines
+    [ "notALockfile: {}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "importers:"
+    , "  .:"
+    , "    dependencies:"
+    , "      express:"
+    , "        specifier: 4.18.2"
+    , "        version: 4.18.2"
+    , "packages:"
+    , "  express@4.18.2:"
+    , "    resolution: {integrity: sha512-xxxxxxxxxx==}"
+    ]
+
+collidingDocs :: String
+collidingDocs =
+  unlines
+    [ "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-new==}"
+    , "    dependencies:"
+    , "      b: 2.0.0"
+    , "  b@2.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Three valid v9 documents. pnpm writes one or two documents — an env
+-- lockfile and a project lockfile (https://pnpm.io/lockfile) — so this stream
+-- is not pnpm output and must be rejected.
+threeDocumentDocs :: String
+threeDocumentDocs =
+  unlines
+    [ "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-a==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  b@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  c@1.0.0:"
+    , "    resolution: {integrity: sha512-c==}"
+    ]
+
+-- A v6 document followed by a v9 document.
+mixedVersionDocs :: String
+mixedVersionDocs =
+  unlines
+    [ "lockfileVersion: '6.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '9.0'"
+    , "packages:"
+    , "  a@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
+
+-- Both documents classify as the same variant (LockfileV678), but the raw
+-- lockfileVersions differ, so the stream must still be rejected.
+sameConstructorVersionMismatchDocs :: String
+sameConstructorVersionMismatchDocs =
+  unlines
+    [ "lockfileVersion: '6.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-old==}"
+    , "---"
+    , "lockfileVersion: '8.0'"
+    , "packages:"
+    , "  /a@1.0.0:"
+    , "    resolution: {integrity: sha512-b==}"
+    ]
 
 optionalDepsSpec :: Graphing Dependency -> Spec
 optionalDepsSpec graph = do
@@ -516,6 +812,32 @@ pnpmLockV9LocalDepSpec graph = do
       -- express is a transitive dep of local-pkg (prod) — must be prod
       expectDep (mkProdDep "express@4.18.2") graph
       -- body-parser is a transitive dep of express — must also be prod
+      expectDep (mkProdDep "body-parser@1.20.1") graph
+      hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
+
+-- Regression for multi-document pnpm-lock.yaml (pnpm v11+): the env lockfile
+-- (first document) declares a lockfileVersion just like the project document,
+-- so it parses as a valid lockfile. Unioning every document must (a) keep the
+-- project graph — the env document's @.@ importer must not shadow the
+-- project's — and (b) report the env document's config dependencies, which
+-- exist only there.
+pnpmLockV11MultiDocSpec :: Graphing Dependency -> Spec
+pnpmLockV11MultiDocSpec graph = do
+  let hasEdge :: Dependency -> Dependency -> Expectation
+      hasEdge = expectEdge graph
+
+  describe "buildGraph with multi-document lockfile" $ do
+    it "should report the project graph and the env document's config dependencies as direct" $
+      expectDirect
+        [ mkProdDep "express@4.18.2" -- project document, promoted from local-pkg
+        , mkProdDep "pnpm-config-plugin@1.0.0" -- env document, config dependency
+        ]
+        graph
+
+    it "should not report the package manager itself as a dependency" $
+      Graphing.vertexList graph `shouldNotContain` [mkProdDep "pnpm@12.3.4"]
+
+    it "should keep the project graph's transitive deps and edges" $ do
       expectDep (mkProdDep "body-parser@1.20.1") graph
       hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
 

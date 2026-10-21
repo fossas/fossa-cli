@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Strategy.NuGet (
   discover,
   findProjects,
@@ -25,9 +27,9 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.ReadFS (ReadFS)
+import Effect.ReadFS (ReadFS, doesFileExist)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, File, Path, parent)
+import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
 import Strategy.NuGet.DirectoryPackagesProps qualified as DirectoryPackagesProps
 import Strategy.NuGet.PackageReference qualified as PackageReference
 import Strategy.NuGet.ProjectAssetsJson qualified as ProjectAssetsJson
@@ -47,10 +49,17 @@ discover ::
 discover = simpleDiscover findProjects mkProject NuGetProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' $ \dir _ files -> do
   case findProjectAssetsJsonFile files of
     Just file -> pure ([NuGetProject file], WalkContinue)
-    Nothing -> pure (map NuGetProject (filter isPackageRefFile files), WalkContinue)
+    Nothing -> do
+      -- project.assets.json (created by `dotnet restore`) is essentially a lockfile.
+      -- If this is present in an `obj/` subdirectory beside the project file, then
+      -- don't return the project file as well, as this will double-report the project,
+      -- and the project.assets.json is more detailed and accurate.
+      restored <- doesFileExist (dir </> $(mkRelFile "obj/project.assets.json"))
+      let projectFiles = if restored then [] else filter isPackageRefFile files
+      pure (map NuGetProject projectFiles, WalkContinue)
   where
     findProjectAssetsJsonFile :: [Path Abs File] -> Maybe (Path Abs File)
     findProjectAssetsJsonFile = findFileNamed "project.assets.json"
