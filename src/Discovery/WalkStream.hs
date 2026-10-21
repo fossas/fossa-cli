@@ -1,7 +1,7 @@
--- | A streaming re-implementation of the directory walk in
--- "Discovery.Walk".  Instead of returning a strict list of every directory
--- visited, 'walkStream' is a 'Streaming.Prelude' producer that emits one
--- 'DirListing' per directory as the traversal reaches it.
+-- | Streaming re-implementation of the directory walk in "Discovery.Walk":
+-- instead of returning a strict list of every directory visited, 'walkStream'
+-- is a 'Streaming.Prelude' producer that emits one 'DirListing' per directory
+-- as the traversal reaches it.
 --
 -- The traversal order and pruning semantics are identical to 'walk' (with a
 -- consumer that always 'Discovery.Walk.WalkContinue's) combined with the
@@ -13,8 +13,10 @@
 --   * directories that fail 'Discovery.Filters.pathAllowed' (relative to the
 --     root) are never descended into, and the root itself is always visited.
 --
--- There is no per-consumer control: 'Discovery.Walk.WalkStop' never occurs, and
--- pruning is purely filter-based, applied once at the root.
+-- 'walkStream' and 'walkStreamUnfiltered' have no per-consumer control:
+-- 'Discovery.Walk.WalkStop' never occurs and pruning is purely filter-based,
+-- applied once at the root.  'walkStreamWithCollectors' additionally merges
+-- the collectors' 'WalkStep' decisions ('mergeWalkSteps').
 module Discovery.WalkStream (
   -- * Directory listings
   DirListing (..),
@@ -130,13 +132,11 @@ applyWalkStep (WalkSkipSome names) ds =
 
 -- | Like 'walkStream', but at every visited directory it feeds the listing to
 -- each of the supplied per-directory collectors (in order), merges their
--- 'WalkStep' decisions, and descends only into the sub-directories the merged
--- decision keeps.  The collectors carry the side effects (accumulating matches,
--- shelling out, etc.); this producer only drives the shared traversal and
--- prunes it with the same global path filters as 'walkStream'.
---
--- This is what lets discovery run a single filesystem walk that serves every
--- strategy at once instead of one walk per strategy.
+-- 'WalkStep' decisions with 'mergeWalkSteps', and descends only into the
+-- sub-directories the merged decision keeps.  The collectors carry the side
+-- effects (accumulating matches, shelling out, etc.); this producer only
+-- drives the shared traversal, pruned by the same global path filters as
+-- 'walkStream', so one filesystem walk serves every strategy.
 walkStreamWithCollectors ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
   AllFilters ->

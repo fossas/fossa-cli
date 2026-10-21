@@ -161,8 +161,7 @@ findProjects ::
   m [SbtTargets]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector used by the shared discovery walk so the whole
--- strategy subscribes to one walk instead of walking on its own.
+-- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor ::
   ( Has Exec sig m
   , Has ReadFS sig m

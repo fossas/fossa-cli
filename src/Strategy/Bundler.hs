@@ -65,9 +65,7 @@ discover = simpleDiscover findProjects mkProject BundlerProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [BundlerProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector used by the shared discovery walk.  Kept separate
--- from 'findProjects' so the whole strategy can subscribe to a single walk
--- instead of walking the tree on its own.
+-- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([BundlerProject], WalkStep)
 discoverVisitor dir _ files = do
   let maybeGemfile = findFileNamed "Gemfile" files

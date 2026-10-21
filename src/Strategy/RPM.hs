@@ -75,8 +75,7 @@ discover = simpleDiscover findProjects mkProject RpmProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RpmProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector used by the shared discovery walk so the
--- | whole strategy subscribes to one walk instead of walking on its own.
+-- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RpmProject], WalkStep)
 discoverVisitor dir _ files = do
   let specs = filter (\f -> ".spec" `isSuffixOf` fileName f) files
