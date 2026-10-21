@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`. ([#1805](https://github.com/fossas/fossa-cli/pull/1805))
+
 ## 3.20.6
 
 - Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does. ([#1795](https://github.com/fossas/fossa-cli/pull/1795))

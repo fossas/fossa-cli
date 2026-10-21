@@ -257,8 +257,8 @@ spec = do
             , poetryLockPackageDependencies =
                 Map.fromList
                   [ ("pkgOneChildofOne", TextVersion "*")
-                  , ("pkgTwoChildofOne", ObjectVersionSpec $ ObjectVersion "5.4")
-                  , ("pkgThreeChildofOne", MultipleObjectVersionSpec [ObjectVersion ">=1.0,<2.0", ObjectVersion ">=1.6,<2.0"])
+                  , ("pkgTwoChildofOne", ObjectVersionSpec $ ObjectVersion (Just "5.4"))
+                  , ("pkgThreeChildofOne", MultipleObjectVersionSpec [ObjectVersion (Just ">=1.0,<2.0"), ObjectVersion (Just ">=1.6,<2.0")])
                   ]
             , poetryLockPackagePythonVersions = ">=3.7"
             , poetryLockPackageSource = Nothing
