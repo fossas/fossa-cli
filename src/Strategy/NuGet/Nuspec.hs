@@ -10,6 +10,7 @@ module Strategy.NuGet.Nuspec (
   Group (..),
   NuGetDependency (..),
   NuspecLicense (..),
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
@@ -62,7 +63,12 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject NuspecProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuspecProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NuspecProject], WalkStep)
+discoverVisitor _ _ files = do
   case find (L.isSuffixOf ".nuspec" . fileName) files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([NuspecProject file], WalkContinue)

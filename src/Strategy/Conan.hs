@@ -2,6 +2,8 @@
 
 module Strategy.Conan (
   discover,
+  discoverVisitor,
+  mkProject,
 )
 where
 
@@ -46,7 +48,12 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject ConanProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ConanProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ConanProject], WalkStep)
+discoverVisitor dir _ files = do
   let conanfilePy = findFileNamed "conanfile.py" files
   let conanfileTxt = findFileNamed "conanfile.txt" files
   let conanLock = findFileNamed "conan.lock" files

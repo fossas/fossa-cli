@@ -4,6 +4,7 @@ module Strategy.Mix (
   findProjects,
   mkProject,
   MixProject (..),
+  discoverVisitor,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics)
@@ -16,7 +17,7 @@ import Discovery.Walk (
   walkWithFilters',
  )
 import Effect.ReadFS (Has, ReadFS)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Strategy.Elixir.MixTree (MixProject (..))
 import Types (DiscoveredProject (..), DiscoveredProjectType (MixProjectType))
 
@@ -24,7 +25,12 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject MixProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [MixProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([MixProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "mix.exs" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([MixProject dir file], WalkSkipSome ["deps", "_build"])

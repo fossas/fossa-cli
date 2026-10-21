@@ -28,7 +28,8 @@ spec =
     it' "emits a listing for every directory the plain walk visits" $
       withTempDir "test-Discovery-WalkStream-basic" $ \tmpDir -> do
         let dirs@[a, ab, b, bc] =
-              map (tmpDir </>)
+              map
+                (tmpDir </>)
                 [ $(mkRelDir "a")
                 , $(mkRelDir "a/b")
                 , $(mkRelDir "b")
@@ -52,7 +53,8 @@ spec =
     it' "prunes directories excluded by path filters" $
       withTempDir "test-Discovery-WalkStream-filter" $ \tmpDir -> do
         let dirs@[a, ab, abc, b] =
-              map (tmpDir </>)
+              map
+                (tmpDir </>)
                 [ $(mkRelDir "a")
                 , $(mkRelDir "a/b")
                 , $(mkRelDir "a/b/c")
@@ -77,7 +79,8 @@ spec =
     it' "terminates and matches the walk under symlink loops" $
       withTempDir "test-Discovery-WalkStream-loops" $ \tmpDir -> do
         let dirs@[lib, _, _] =
-              map (tmpDir </>)
+              map
+                (tmpDir </>)
                 [ $(mkRelDir "lib")
                 , $(mkRelDir "lib/pg")
                 , $(mkRelDir "lib/sqlite")
@@ -110,13 +113,13 @@ collect str = do
 -- existing 'walk' with a consumer that always 'WalkContinue's.
 collectWalk :: Path Abs Dir -> EffectStack [(Path Abs Dir, [Path Abs Dir], [Path Abs File])]
 collectWalk =
-  walk' ( \dir subdirs files -> pure ([(dir, subdirs, files)], WalkContinue) )
+  walk' (\dir subdirs files -> pure ([(dir, subdirs, files)], WalkContinue))
 
 -- | Reference for the filtered case, running 'walkWithFilters'' under the
 -- given filters.
 collectWalkFiltered :: AllFilters -> Path Abs Dir -> EffectStack [(Path Abs Dir, [Path Abs Dir], [Path Abs File])]
 collectWalkFiltered filters root =
-  runReader filters (walkWithFilters' ( \dir subdirs files -> pure ([(dir, subdirs, files)], WalkContinue)) root)
+  runReader filters (walkWithFilters' (\dir subdirs files -> pure ([(dir, subdirs, files)], WalkContinue)) root)
 
 toListing :: (Path Abs Dir, [Path Abs Dir], [Path Abs File]) -> DirListing
 toListing (d, s, f) = DirListing d s f
@@ -124,7 +127,7 @@ toListing (d, s, f) = DirListing d s f
 -- | Sort the (non-deterministically ordered) subdirs/files of every listing so
 -- the comparison is order-independent, exactly like 'Discovery.WalkSpec'.
 normalizeListing :: DirListing -> DirListing
-normalizeListing dl = dl { dlSubdirs = sort (dlSubdirs dl), dlFiles = sort (dlFiles dl) }
+normalizeListing dl = dl{dlSubdirs = sort (dlSubdirs dl), dlFiles = sort (dlFiles dl)}
 
 normalizeSet :: [DirListing] -> Set DirListing
 normalizeSet = Set.fromList . map normalizeListing

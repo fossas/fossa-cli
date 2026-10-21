@@ -13,6 +13,8 @@ module Strategy.Googlesource.RepoManifest (
   ManifestDefault (..),
   ManifestProject (..),
   ValidatedProject (..),
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -85,7 +87,12 @@ discover = simpleDiscover findProjects mkProject RepoManifestProjectType
 
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RepoManifestProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RepoManifestProject], WalkStep)
+discoverVisitor _ _ files = do
   case find (\f -> "manifest.xml" == fileName f) files of
     Nothing -> pure ([], WalkContinue)
     Just file ->

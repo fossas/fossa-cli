@@ -8,6 +8,7 @@ module Strategy.NuGet.PackagesConfig (
   buildGraph,
   PackagesConfig (..),
   NuGetDependency (..),
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -46,7 +47,12 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject PackagesConfigProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackagesConfigProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PackagesConfigProject], WalkStep)
+discoverVisitor _ _ files = do
   case find (\f -> fileName f == "packages.config") files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([PackagesConfigProject file], WalkContinue)

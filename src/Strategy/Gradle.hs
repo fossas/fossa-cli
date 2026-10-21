@@ -17,6 +17,8 @@ module Strategy.Gradle (
   discover,
   GradleProject,
   runGradle,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -127,7 +129,12 @@ runGradle dir cmd = gradleWrapper <||> gradleBinary
 -- slow (because of Gradle's startup time) and possibly wrong (because
 -- subprojects need to resolve dependency constraints together).
 findProjects :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GradleProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector used by the shared discovery walk so the
+-- | whole strategy subscribes to one walk instead of walking on its own.
+discoverVisitor :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GradleProject], WalkStep)
+discoverVisitor dir _ files = do
   let isProjectFile f =
         any
           (`isPrefixOf` fileName f)
