@@ -38,7 +38,8 @@ import Diag.Diagnostic (
   ToDiagnostic (..),
   renderDiagnostic,
  )
-import Effect.ReadFS (ReadFS, listDir, readContentsToml)
+import Discovery.Walk (WalkStep (WalkSkipSome), walk')
+import Effect.ReadFS (ReadFS, readContentsToml)
 import Errata (Errata (..))
 import Path (
   Abs,
@@ -460,24 +461,32 @@ splitSlash xs
 
 -- | Recursively collect every directory under @root@ that contains a
 -- @Cargo.toml@, skipping @target/@, hidden directories, and @node_modules/@.
+--
+-- Implemented with 'Discovery.Walk.walk'': the handler collects a directory
+-- when it holds a @Cargo.toml@ and prunes @target@/@node_modules@/hidden
+-- subdirectories via 'WalkStep.WalkSkipSome'. As @walk'@ visits the root before
+-- descending and prunes only subdirectories, this matches a plain recursive
+-- descent that always enters the root. The pre-order traversal of @walk'@
+-- (parent before children) reproduces the previous list ordering.
 findManifestDirs ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
   Path Abs Dir ->
   m [Path Abs Dir]
-findManifestDirs = go
+findManifestDirs = walk' visit
   where
-    go d = do
-      (subdirs, files) <- listDir d
+    visit dir subdirs files =
       let hasToml = any ((== "Cargo.toml") . toString . filename) files
-          descend = filter (shouldDescend . toString . dirname) subdirs
-      ms <- traverse go descend
-      pure $ if hasToml then d : concat ms else concat ms
+          -- 'WalkSkipSome' with an empty list is equivalent to 'WalkContinue',
+          -- so this always prunes the unwanted subdirs when there are any.
+          prune = map (toText . toFilePath . dirname) $ filter (not . shouldDescendDir) subdirs
+       in pure (if hasToml then [dir] else [], WalkSkipSome prune)
 
-    shouldDescend :: String -> Bool
-    shouldDescend name =
-      not ("." `isPrefixOf` name)
-        && name /= "target"
-        && name /= "node_modules"
+    shouldDescendDir :: Path Abs Dir -> Bool
+    shouldDescendDir d =
+      let name = toString (dirname d)
+       in not ("." `isPrefixOf` name)
+            && name /= "target"
+            && name /= "node_modules"
 
 -- ===========================================================================
 -- Source-selection decision (pure, for the analyze-time fallback)
