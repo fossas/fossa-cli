@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Container scanning: blob digests in an image manifest fetched from a registry are validated against the OCI digest format before they name files in the export directory.
+
 ## 3.20.6
 
 - Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does. ([#1795](https://github.com/fossas/fossa-cli/pull/1795))
