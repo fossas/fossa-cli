@@ -618,6 +618,7 @@ test-suite unit-tests
     App.Fossa.RunThemisSpec
     App.Fossa.SBOMAnalyzeSpec
     App.Fossa.VendoredDependencySpec
+    App.Fossa.VSI.AnalyzeSpec
     App.Fossa.VSI.DynLinked.Internal.BinarySpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.DEBSpec
     App.Fossa.VSI.DynLinked.Internal.Lookup.RPMSpec
