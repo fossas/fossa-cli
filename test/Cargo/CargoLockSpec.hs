@@ -2,7 +2,7 @@ module Cargo.CargoLockSpec (
   spec,
 ) where
 
-import Data.Maybe (isJust)
+import Data.List (find)
 import Data.Text (Text)
 import Data.Text.IO qualified as TIO
 import Strategy.CargoLock
@@ -230,15 +230,8 @@ newerVersionSpec = do
         Left err -> expectationFailure $ "unexpected error: " <> show err
 
 lookupPkg :: Either CargoLockError CargoLock -> Text -> Maybe CargoPackage
-lookupPkg (Right lock) name = findPkg (lockPackages lock) name
+lookupPkg (Right lock) name = find (\p -> packageName p == name) (lockPackages lock)
 lookupPkg (Left _) _ = Nothing
-
-findPkg :: [CargoPackage] -> Text -> Maybe CargoPackage
-findPkg packages name =
-  foldr
-    (\pkg acc -> if isJust acc then acc else if packageName pkg == name then Just pkg else Nothing)
-    Nothing
-    packages
 
 isTomlParseError :: Either CargoLockError CargoLock -> Bool
 isTomlParseError (Left (TomlParseError _)) = True

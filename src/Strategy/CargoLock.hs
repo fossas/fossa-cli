@@ -34,7 +34,12 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Diag.Diagnostic (
+  ToDiagnostic (..),
+  renderDiagnostic,
+ )
 import Effect.ReadFS (ReadFS, listDir, readContentsToml)
+import Errata (Errata (..))
 import Path (
   Abs,
   Dir,
@@ -98,6 +103,11 @@ data CargoLockError
     UnsupportedVersion Int
   deriving (Eq, Show)
 
+instance ToDiagnostic CargoLockError where
+  renderDiagnostic (TomlParseError reason) = renderDiagnostic reason
+  renderDiagnostic (UnsupportedVersion version) =
+    Errata (Just ("unsupported Cargo.lock version " <> toText version)) [] Nothing
+
 -- | Parse the contents of a Cargo.lock file.
 --
 -- Versions 3 and 4 are parsed normally. A missing version or a version
@@ -113,24 +123,21 @@ parseCargoLock contents =
       checkVersion mVersion (map toPackage rawPackages)
 
 checkVersion :: Maybe Int -> [CargoPackage] -> Either CargoLockError CargoLock
-checkVersion mVersion packages =
-  case mVersion of
-    Nothing ->
+checkVersion mVersion packages
+  | Nothing <- mVersion =
       -- No version field at all: pre-v1 layout, reject as unsupported.
       Left (UnsupportedVersion 0)
-    Just version ->
-      if version < 3
-        then Left (UnsupportedVersion version)
-        else
-          let warnings =
-                if version > 4
-                  then
-                    [ "Cargo.lock version "
-                        <> toText version
-                        <> " is newer than the supported range (3-4); parsed on a best-effort basis."
-                    ]
-                  else []
-           in Right (CargoLock version warnings packages)
+  | Just version <- mVersion, version < 3 = Left (UnsupportedVersion version)
+  | Just version <- mVersion =
+      let warnings =
+            if version > 4
+              then
+                [ "Cargo.lock version "
+                    <> toText version
+                    <> " is newer than the supported range (3-4); parsed on a best-effort basis."
+                ]
+              else []
+       in Right (CargoLock version warnings packages)
 
 -- | Split a "dependencies" array entry into name and optional version,
 -- splitting on the last space (crate names contain no spaces).
@@ -478,6 +485,9 @@ findManifestDirs = go
 -- | Which data source 'Strategy.Cargo' should build its graph from: the local
 -- @Cargo.lock@ (already parsed) or the output of @cargo metadata@. Exposed as a
 -- pure function so the analyze-time fallback logic is testable without 'Exec'.
+--
+-- The local @Cargo.lock@ is preferred; @cargo metadata@ is used only when the
+-- lockfile is absent or fails to parse, so a committed lockfile always wins.
 data LockfileSource
   = UseLockfile
   | UseMetadata

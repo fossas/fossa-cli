@@ -269,7 +269,7 @@ instance AnalyzeProject CargoProject where
             , dependencyManifestFiles = [cargoToml project]
             }
       Lock.StaticMissingLockfile -> fatal (MissingCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock")))
-      Lock.StaticUnparseableLockfile err -> fatal (UnparseableCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderCargoLockError err))
+      Lock.StaticUnparseableLockfile err -> fatal (UnparseableCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderDiagnostic err))
 
 data CargoPackage = CargoPackage
   { license :: Maybe Text.Text
@@ -395,12 +395,12 @@ analyze emitGitBackedLocators project = do
   lockParsed <- readLockfileSoft (cargoDir project)
   case lockParsed of
     Left readErr ->
-      warn (FailedToReadCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderReadFSErr readErr))
+      warn (FailedToReadCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderDiagnostic readErr))
         >> analyzeViaMetadata emitGitBackedLocators project
     Right Nothing -> analyzeViaMetadata emitGitBackedLocators project
     Right (Just (Right lock)) -> lockfileToDeps emitGitBackedLocators (cargoDir project) lock
     Right (Just (Left err)) ->
-      warn (FailedToParseCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderCargoLockError err))
+      warn (FailedToParseCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderDiagnostic err))
         >> analyzeViaMetadata emitGitBackedLocators project
 
 -- | Read and parse the @Cargo.lock@ in @manifestDir@, if one exists.
@@ -433,22 +433,6 @@ readLockfileSoft manifestDir = do
       contents <- readContentsText' lockPath
       pure (contents >>= \text -> Right (Just (Lock.parseCargoLock text)))
     else pure (Right Nothing)
-
--- | Render a 'ReadFSErr' as a short human-readable reason string.
-renderReadFSErr :: ReadFSErr -> Text
-renderReadFSErr (FileReadError _ reason) = reason
-renderReadFSErr (FileParseError _ reason) = reason
-renderReadFSErr (ResolveError _ _ reason) = reason
-renderReadFSErr (ListDirError _ reason) = reason
-renderReadFSErr (NotDirOrFile path) = "path is neither a file nor a directory: " <> toText path
-renderReadFSErr (UndeterminableFileType path) = "path is both a file and a directory: " <> toText path
-renderReadFSErr (CurrentDirError reason) = reason
-
--- | Render a 'Lock.CargoLockError' as a human-readable diagnostic message.
-renderCargoLockError :: Lock.CargoLockError -> Text
-renderCargoLockError (Lock.TomlParseError reason) = reason
-renderCargoLockError (Lock.UnsupportedVersion version) =
-  "unsupported Cargo.lock version " <> toText version
 
 -- | Build the dependency graph from a parsed lockfile and workspace manifest
 -- analysis, without running @cargo@. Shared by the lockfile paths of
@@ -491,16 +475,26 @@ analyzeViaMetadata emitGitBackedLocators (CargoProject manifestDir manifestFile)
   graph <- context "Building dependency graph" $ pure (buildGraph emitGitBackedLocators meta)
   pure (graph, Complete)
 
-newtype FailedToReadCargoLockFile = FailedToReadCargoLockFile (Path Abs File, Text)
+newtype FailedToReadCargoLockFile = FailedToReadCargoLockFile (Path Abs File, Errata)
 instance ToDiagnostic FailedToReadCargoLockFile where
   renderDiagnostic (FailedToReadCargoLockFile (path, reason)) = do
-    let header = "Could not read Cargo.lock for cargo manifest: " <> toText path <> ": " <> reason <> ". Falling back to `cargo metadata`."
+    let header =
+          "Could not read Cargo.lock for cargo manifest: "
+            <> toText path
+            <> ": "
+            <> renderErrataReason reason
+            <> ". Falling back to `cargo metadata`."
     Errata (Just header) [] Nothing
 
-newtype FailedToParseCargoLockFile = FailedToParseCargoLockFile (Path Abs File, Text)
+newtype FailedToParseCargoLockFile = FailedToParseCargoLockFile (Path Abs File, Errata)
 instance ToDiagnostic FailedToParseCargoLockFile where
   renderDiagnostic (FailedToParseCargoLockFile (path, reason)) = do
-    let header = "Could not parse Cargo.lock for cargo manifest: " <> toText path <> ": " <> reason <> ". Falling back to `cargo metadata`."
+    let header =
+          "Could not parse Cargo.lock for cargo manifest: "
+            <> toText path
+            <> ": "
+            <> renderErrataReason reason
+            <> ". Falling back to `cargo metadata`."
     Errata (Just header) [] Nothing
 
 newtype MissingCargoLockFile = MissingCargoLockFile (Path Abs File)
@@ -512,14 +506,14 @@ instance ToDiagnostic MissingCargoLockFile where
             <> ". Static analysis reads Cargo.lock directly and cannot run `cargo metadata` to generate one."
     Errata (Just header) [] Nothing
 
-newtype UnparseableCargoLockFile = UnparseableCargoLockFile (Path Abs File, Text)
+newtype UnparseableCargoLockFile = UnparseableCargoLockFile (Path Abs File, Errata)
 instance ToDiagnostic UnparseableCargoLockFile where
   renderDiagnostic (UnparseableCargoLockFile (path, reason)) = do
     let header =
           "Cannot analyze Cargo project statically: could not parse Cargo.lock for cargo manifest: "
             <> toText path
             <> ": "
-            <> reason
+            <> renderErrataReason reason
             <> "."
     Errata (Just header) [] Nothing
 
@@ -537,6 +531,15 @@ instance ToDiagnostic FailedToRetrieveCargoMetadata where
 
 type PackageIdSourceKind = Text.Text
 type PackageIdSourceProtocol = Text.Text
+
+-- | Render the human-readable text of an 'Errata' (its body, falling back to
+-- its header) so it can be embedded in a single-line diagnostic header. The
+-- 'Strategy.CargoLock' and 'Effect.ReadFS' diagnostic instances only ever
+-- populate the header and body, never source blocks.
+renderErrataReason :: Errata -> Text
+renderErrataReason (Errata{errataBody = Just body}) = body
+renderErrataReason (Errata{errataHeader = Just header}) = header
+renderErrataReason _ = ""
 
 -- | Extract the git repository host+path from a cargo source URL.
 -- Input:  "git+https://github.com/fossas/locator-rs?tag=v3.0.3#54c..."

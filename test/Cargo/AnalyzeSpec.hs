@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Stage 3 tests for wiring the lockfile-first behavior into
+-- | Tests for wiring the lockfile-first behavior into
 -- "Strategy.Cargo":
 --
 --   * the pure source-selection decisions (full analysis and static

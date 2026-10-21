@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
--- | Stage 2 tests for the Cargo.lock -> CargoMetadata conversion pipeline.
+-- | Tests for the Cargo.lock -> CargoMetadata conversion pipeline.
 --
 -- Covers:
 --   * workspace member enumeration (single crate, virtual workspace,
