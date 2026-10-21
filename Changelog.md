@@ -3,6 +3,7 @@
 ## Unreleased
 
 - pixi: Added static analysis support for `pixi.lock`, covering conda and PyPI packages. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+- Go: `go.mod` files that require, replace or declare a module whose path contains a `~` (sourcehut paths such as `git.sr.ht/~sbinet/gg`) no longer fail analysis with `unexpected '~'`. ([#1810](https://github.com/fossas/fossa-cli/pull/1810))
 
 ## 3.20.5
 
