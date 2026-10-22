@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Yarn: `yarn.lock` files with no package entries (what `yarn install` writes for a project without dependencies) no longer fail analysis with `unexpected end of input, expecting '#', newline, or package entry`. ([#1817](https://github.com/fossas/fossa-cli/pull/1817))
+- Yarn: `yarn.lock` files with no package entries no longer fail analysis. ([#1817](https://github.com/fossas/fossa-cli/pull/1817))
 - Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`. ([#1805](https://github.com/fossas/fossa-cli/pull/1805))
 
 ## 3.20.6
