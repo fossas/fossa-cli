@@ -13,10 +13,9 @@
 --   * directories that fail 'Discovery.Filters.pathAllowed' (relative to the
 --     root) are never descended into, and the root itself is always visited.
 --
--- 'walkStream' and 'walkStreamUnfiltered' have no per-consumer control:
--- 'Discovery.Walk.WalkStop' never occurs and pruning is purely filter-based,
--- applied once at the root.  'walkStreamWithCollectors' additionally merges
--- the collectors' 'WalkStep' decisions ('mergeWalkSteps').
+-- The producer has no per-consumer control: 'Discovery.Walk.WalkStop' never
+-- occurs and pruning is purely filter-based, applied once at the root.  A
+-- per-visitor policy over this stream lives in "Discovery.WalkVisitor".
 module Discovery.WalkStream (
   -- * Directory listings
   DirListing (..),
@@ -24,21 +23,13 @@ module Discovery.WalkStream (
   -- * Walking the filetree as a producer
   walkStream,
   walkStreamUnfiltered,
-  walkStreamWithCollectors,
-
-  -- * Merging per-strategy 'WalkStep' decisions
-  mergeWalkSteps,
-  applyWalkStep,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, recover, warn)
-import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (toString, toText)
-import Data.Traversable qualified as Trav
+import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters, pathAllowed)
-import Discovery.Walk (WalkStep (..))
 import Effect.ReadFS
 import Path
 import Streaming (Of (..), Stream, lift, (<>))
@@ -105,74 +96,3 @@ walkStream filters root = go Set.empty root
 -- 'walkStream' with 'mempty' filters, which allows every directory.
 walkStreamUnfiltered :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Stream (Of DirListing) m ()
 walkStreamUnfiltered = walkStream mempty
-
--- | Fold the 'WalkStep' decisions of every strategy collector that visited a
--- single directory into one.  A directory is descended into only when no
--- collector wants to skip one of its sub-directories, which reproduces the
--- union of the per-strategy 'Discovery.Walk.walkWithFilters'' skip decisions
--- the old one-walk-per-strategy discovery made.
-mergeWalkSteps :: [WalkStep] -> WalkStep
-mergeWalkSteps steps
-  | WalkStop `elem` steps = WalkStop
-  | WalkSkipAll `elem` steps = WalkSkipAll
-  | otherwise = case [xs | WalkSkipSome xs <- steps] of
-      [] -> WalkContinue
-      xss -> WalkSkipSome (concat xss)
-
--- | Apply a merged 'WalkStep' to the sub-directories that have already passed
--- the global path-filter prune, returning the ones the walk should descend
--- into.  Mirrors the 'WalkSkipSome' handling in 'Discovery.Walk.walk'.
-applyWalkStep :: WalkStep -> [Path Abs Dir] -> [Path Abs Dir]
-applyWalkStep WalkContinue ds = ds
-applyWalkStep WalkStop _ = []
-applyWalkStep WalkSkipAll _ = []
-applyWalkStep (WalkSkipSome names) ds =
-  let parsed = mapMaybe (parseRelDir . toString) names
-   in filter (\d -> dirname d `notElem` parsed) ds
-
--- | Like 'walkStream', but at every visited directory it feeds the listing to
--- each of the supplied per-directory collectors (in order), merges their
--- 'WalkStep' decisions with 'mergeWalkSteps', and descends only into the
--- sub-directories the merged decision keeps.  The collectors carry the side
--- effects (accumulating matches, shelling out, etc.); this producer only
--- drives the shared traversal, pruned by the same global path filters as
--- 'walkStream', so one filesystem walk serves every strategy.
-walkStreamWithCollectors ::
-  (Has ReadFS sig m, Has Diagnostics sig m) =>
-  AllFilters ->
-  Path Abs Dir ->
-  [DirListing -> m WalkStep] ->
-  Stream (Of DirListing) m ()
-walkStreamWithCollectors filters root collectors = go Set.empty root
-  where
-    go traversed curdir = do
-      mId <- lift (recover (getIdentifier curdir))
-      case mId of
-        Nothing -> do
-          lift (warn $ "unable to get identifier for: " <> toText (toFilePath curdir))
-          S.each []
-        Just dirId ->
-          if Set.member dirId traversed
-            then S.each []
-            else walktree (Set.insert dirId traversed) curdir
-
-    walktree traversed' curdir = do
-      listing <- lift (recover (listDir curdir))
-      case listing of
-        Nothing -> do
-          lift (warn $ "skipping remaining files in: " <> toText (toFilePath curdir))
-          S.each []
-        Just (subdirs, files) -> do
-          let dl = DirListing curdir subdirs files
-          steps <- lift (Trav.traverse (\c -> c dl) collectors)
-          let mergedStep = mergeWalkSteps steps
-              allowedSubdirs =
-                filter
-                  ( \sub -> case stripProperPrefix root sub of
-                      Just rel -> pathAllowed filters rel
-                      Nothing -> True
-                  )
-                  subdirs
-          let toVisit = applyWalkStep mergedStep allowedSubdirs
-          S.yield dl
-            <> foldr (\sub acc -> (go traversed' sub) <> acc) (S.each []) toVisit

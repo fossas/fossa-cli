@@ -188,9 +188,10 @@ data DiscoverFunc m where
     ) =>
     (Path Abs Dir -> m [DiscoveredProject a]) ->
     DiscoverFunc m
-  -- | Strategy whose per-directory visitor is driven by the shared discovery
-  -- walk ("Discovery.WalkStream.walkStreamWithCollectors"), so the tree is
-  -- traversed once for all strategies instead of once per strategy.  The
+  -- | Strategy whose per-directory visitor is driven over the shared discovery
+  -- walk ("Discovery.WalkStream.walkStream" with "Discovery.WalkVisitor.runVisitors"),
+  -- so the tree is traversed once for all strategies instead of once per
+  -- strategy.  The
   -- finalizer receives an action reading the raw projects the visitor
   -- collected during that walk, and turns them into 'DiscoveredProject's.
   WalkedFunc ::

@@ -139,7 +139,8 @@ import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Discovery.Walk (WalkStep (WalkContinue), enumeratePrunedSubtrees)
-import Discovery.WalkStream (DirListing (..), walkStreamWithCollectors)
+import Discovery.WalkStream (walkStream)
+import Discovery.WalkVisitor (Visitor, runVisitors)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -297,14 +298,14 @@ runAnalyzers ::
   m ()
 
 -- | A 'DiscoverFunc' prepared for the shared discovery walk: its per-directory
--- visitors (empty for strategies that still discover themselves) and a
+-- visitor(s) (empty for strategies that still discover themselves) and a
 -- discovery action that reads the strategy's collected projects.
 data PreparedEntry d where
   PreparedEntry ::
     ( AnalyzeProject p
     , Aeson.ToJSON p
     ) =>
-    [DirListing -> d WalkStep] ->
+    [Visitor () d] ->
     (Path Abs Dir -> d [DiscoveredProject p]) ->
     PreparedEntry d
 
@@ -320,13 +321,15 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       pure ()
     else do
       -- Prepare one visitor per strategy, then feed them all from ONE
-      -- filesystem walk.  The walk runs inside the same diagnostics wrapper
-      -- the per-strategy forks use, so visitor failures are logged and never
-      -- sink the walk or the other strategies.
+      -- filesystem walk.  Each visitor keeps its own skip/stop state via
+      -- 'runVisitors' (one strategy's 'WalkStep' never starves another), and
+      -- the walk runs inside the same diagnostics wrapper the per-strategy
+      -- forks use, so visitor failures are logged and never sink the walk or
+      -- the other strategies.
       entriesResult <-
         Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ do
           entries <- traverse prepare discoverFuncs
-          S.effects (walkStreamWithCollectors filters basedir (concatMap entryVisitors entries))
+          void . S.effects $ runVisitors (concatMap entryVisitors entries) (walkStream filters basedir)
           pure entries
       -- Fan-out structure unchanged: fork per strategy, then fork per project.
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
@@ -344,14 +347,12 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       WalkedFunc visitor finalize -> do
         sink <- sendIO (newIORef [])
         let collect = sendIO (readIORef sink)
-            visit dl = do
+            visit dir subdirs files = do
               -- A failing strategy visitor contributes nothing and keeps walking.
-              found <- warnThenRecover @Text "Error discovering projects for strategy" (visitor (dlDir dl) (dlSubdirs dl) (dlFiles dl))
+              found <- warnThenRecover @Text "Error discovering projects for strategy" (visitor dir subdirs files)
               case found of
-                Nothing -> pure WalkContinue
-                Just (projects, step) -> do
-                  sendIO (modifyIORef' sink (<> projects))
-                  pure step
+                Nothing -> pure ((), WalkContinue)
+                Just (projects, step) -> sendIO (modifyIORef' sink (<> projects)) $> ((), step)
         pure (PreparedEntry [visit] (\_ -> finalize collect))
 
     entryVisitors (PreparedEntry vs _) = vs
