@@ -53,111 +53,146 @@ import Types (DiscoveredProject, DiscoveredProjectType (..))
 discoverFuncs :: DiscoverTaskEffs sig m => [DiscoverFunc m]
 discoverFuncs =
   [ WalkedFunc
+      BundlerProjectType
       Bundler.discoverVisitor
       (cachedDiscover BundlerProjectType Bundler.mkProject)
   , WalkedFunc
+      CabalProjectType
       Cabal.discoverVisitor
       (cachedDiscover CabalProjectType Cabal.mkProject)
   , WalkedFunc
+      CargoProjectType
       Cargo.discoverVisitor
       (cachedDiscover CargoProjectType Cargo.mkProject)
   , WalkedFunc
+      CarthageProjectType
       Carthage.discoverVisitor
       (cachedDiscover CarthageProjectType Carthage.mkProject)
   , WalkedFunc
+      CocoapodsProjectType
       Cocoapods.discoverVisitor
       (cachedDiscover CocoapodsProjectType Cocoapods.mkProject)
   , WalkedFunc
+      ComposerProjectType
       Composer.discoverVisitor
       (cachedDiscover ComposerProjectType Composer.mkProject)
   , WalkedFunc
+      ConanProjectType
       Conan.discoverVisitor
       (cachedDiscover ConanProjectType Conan.mkProject)
   , WalkedFunc
+      CondaProjectType
       Conda.discoverVisitor
       (cachedDiscover CondaProjectType Conda.mkProject)
   , WalkedFunc
+      FpmProjectType
       Fpm.discoverVisitor
       (cachedDiscover FpmProjectType Fpm.mkProject)
   , WalkedFunc
+      GlideProjectType
       Glide.discoverVisitor
       (cachedDiscover GlideProjectType Glide.mkProject)
   , WalkedFunc
+      GodepProjectType
       Godep.discoverVisitor
       (cachedDiscover GodepProjectType Godep.mkProject)
   , DiscoverFunc GoBinary.discover
   , WalkedFunc
+      GomodProjectType
       Gomodules.discoverVisitor
       (cachedDiscover GomodProjectType Gomodules.mkProject)
   , WalkedFunc
+      GradleProjectType
       Gradle.discoverVisitor
       (cachedDiscover GradleProjectType Gradle.mkProject)
   , WalkedFunc
+      LeiningenProjectType
       Leiningen.discoverVisitor
       (cachedDiscover LeiningenProjectType Leiningen.mkProject)
   , DiscoverFunc Maven.discover
   , WalkedFunc
+      MixProjectType
       Mix.discoverVisitor
       (cachedDiscover MixProjectType Mix.mkProject)
   , WalkedFunc
+      NimbleProjectType
       Nim.discoverVisitor
       (cachedDiscover NimbleProjectType Nim.mkProject)
   , DiscoverFunc Node.discover
   , WalkedFunc
+      NuGetProjectType
       NuGet.discoverVisitor
       (cachedDiscover NuGetProjectType NuGet.mkProject)
   , WalkedFunc
+      NuspecProjectType
       Nuspec.discoverVisitor
       (cachedDiscover NuspecProjectType Nuspec.mkProject)
   , WalkedFunc
+      PackagesConfigProjectType
       PackagesConfig.discoverVisitor
       (cachedDiscover PackagesConfigProjectType PackagesConfig.mkProject)
   , WalkedFunc
+      PaketProjectType
       Paket.discoverVisitor
       (cachedDiscover PaketProjectType Paket.mkProject)
   , WalkedFunc
+      PdmProjectType
       Pdm.discoverVisitor
       (cachedDiscover PdmProjectType Pdm.mkProject)
   , WalkedFunc
+      PerlProjectType
       Perl.discoverVisitor
       (cachedDiscover PerlProjectType Perl.mkProject)
   , WalkedFunc
+      PipenvProjectType
       Pipenv.discoverVisitor
       (cachedDiscover PipenvProjectType Pipenv.mkProject)
   , WalkedFunc
+      PoetryProjectType
       Poetry.discoverVisitor
       (cachedDiscover PoetryProjectType Poetry.mkProject)
   , WalkedFunc
+      ProjectJsonProjectType
       ProjectJson.discoverVisitor
       (cachedDiscover ProjectJsonProjectType ProjectJson.mkProject)
   , WalkedFunc
+      PubProjectType
       Pub.discoverVisitor
       (cachedDiscover PubProjectType Pub.mkProject)
   , WalkedFunc
+      RProjectType
       R.discoverVisitor
       (cachedDiscover RProjectType R.mkProject)
   , WalkedFunc
+      RpmProjectType
       RPM.discoverVisitor
       (cachedDiscover RpmProjectType RPM.mkProject)
   , WalkedFunc
+      Rebar3ProjectType
       Rebar3.discoverVisitor
       (cachedDiscover Rebar3ProjectType Rebar3.mkProject)
   , WalkedFunc
+      RepoManifestProjectType
       RepoManifest.discoverVisitor
       (cachedDiscover RepoManifestProjectType RepoManifest.mkProject)
   , WalkedFunc
+      ScalaProjectType
       Scala.discoverVisitor
       (cachedDiscoverWith ScalaProjectType Scala.postDiscover)
   , WalkedFunc
+      SetuptoolsProjectType
       Setuptools.discoverVisitor
       (cachedDiscover SetuptoolsProjectType Setuptools.mkProject)
   , WalkedFunc
+      StackProjectType
       Stack.discoverVisitor
       (cachedDiscover StackProjectType Stack.mkProject)
   , WalkedFunc
+      SwiftProjectType
       SwiftPM.discoverVisitor
       (cachedDiscover SwiftProjectType SwiftPM.mkProject)
   , WalkedFunc
+      PipenvProjectType
       Uv.discoverVisitor
       (cachedDiscover PipenvProjectType Uv.mkProject)
   ]
@@ -189,15 +224,17 @@ data DiscoverFunc m where
     (Path Abs Dir -> m [DiscoveredProject a]) ->
     DiscoverFunc m
   -- | Strategy whose per-directory visitor is driven over the shared discovery
-  -- walk ("Discovery.WalkStream.walkStream" with "Discovery.WalkVisitor.runVisitors"),
-  -- so the tree is traversed once for all strategies instead of once per
-  -- strategy.  The
-  -- finalizer receives an action reading the raw projects the visitor
-  -- collected during that walk, and turns them into 'DiscoveredProject's.
+  -- walk ("Discovery.WalkStream.walkStream", fanned out to one consumer per
+  -- strategy by "Discovery.WalkBroadcast.withWalkBroadcast"), so the tree is
+  -- traversed once for all strategies instead of once per strategy.  The given
+  -- project type gates the consumer against the tool filters; the finalizer
+  -- receives an action reading the raw projects the visitor collected during
+  -- that walk, and turns them into 'DiscoveredProject's.
   WalkedFunc ::
     ( AnalyzeProject p
     , Aeson.ToJSON p
     ) =>
+    DiscoveredProjectType ->
     -- | visitor, called once per directory by the shared walk
     (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([raw], WalkStep)) ->
     -- | finalize the raw projects collected by the visitor

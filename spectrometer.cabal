@@ -404,6 +404,7 @@ library
     Discovery.Projects
     Discovery.Simple
     Discovery.Walk
+    Discovery.WalkBroadcast
     Discovery.WalkStream
     Discovery.WalkVisitor
     Effect.Exec

@@ -20,6 +20,7 @@ module Discovery.WalkVisitor (
   Visitor,
   runVisitor,
   runVisitors,
+  driveVisitor,
 ) where
 
 import Data.Maybe (mapMaybe)
@@ -105,6 +106,28 @@ runVisitor visit = loop initialVisitorState
               (o, step) <- lift $ visit (dlDir dl) (dlSubdirs dl) (dlFiles dl)
               let state' = applyVisitorStep step (dlDir dl) state
               S.yield (dlDir dl, o) <> loop state' rest
+
+-- | Drive a single visitor from an effectful next-listing source instead of
+-- a prebuilt walk stream, as in 'runVisitor', but returning the driven
+-- action itself rather than a yield stream.
+--
+-- This exists for consumers that pull listings one at a time from an
+-- IO-backed queue ("Discovery.WalkBroadcast") and cannot splice effectful
+-- reads into a stream spine.  Visitor outputs are discarded: such visitors
+-- collect their results through their own effects; only the 'WalkStep' state
+-- threading is mirrored here, exactly as in 'runVisitor'.
+driveVisitor :: Monad m => Visitor o m -> (m (Maybe DirListing)) -> m ()
+driveVisitor visit next = loop initialVisitorState
+  where
+    loop state = do
+      mnext <- next
+      case mnext of
+        Nothing -> pure ()
+        Just dl
+          | vsDone state || isSwallowed state (dlDir dl) -> loop state
+          | otherwise -> do
+              (_, step) <- visit (dlDir dl) (dlSubdirs dl) (dlFiles dl)
+              loop (applyVisitorStep step (dlDir dl) state)
 
 -- | Run several visitors over one shared walk stream.  Each visitor keeps its
 -- own 'VisitorState', so one visitor's 'WalkStep' decisions can only swallow
