@@ -17,6 +17,15 @@
 -- waited for before returning.  Consumers that recover their own failures
 -- internally (the analyzers do this with warnThenRecover) never reach this
 -- boundary.
+--
+-- Capability note: unlike VSI's fork+STM pipeline (see the getNumCapabilities
+-- clamp in "App.Fossa.VSI.Analyze"), this broadcast needs no 2-capability
+-- floor and is safe at -threaded's default of 1.  Every thread here either
+-- blocks in STM 'retry' on its channel read (a retrying 'atomically' yields
+-- the capability rather than spinning) or does ReadFS IO between quick,
+-- non-retrying STM writes; there is no busy-polling loop that could starve
+-- the walker on a single capability, and a probe with @-RTS -N1@ completed
+-- without deadlock.
 module Discovery.WalkBroadcast (
   -- * One broadcast consumer
   WalkConsumer (..),
@@ -29,9 +38,9 @@ module Discovery.WalkBroadcast (
 import Control.Carrier.Threaded (Handle, fork, handleWait, kill)
 import Control.Concurrent.STM
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Exception (SomeException, throwIO)
+import Control.Effect.Exception (SomeException, mask, onException, throwIO)
 import Control.Effect.Lift (Has, Lift, sendIO)
-import Control.Exception.Extra (safeCatch, safeTry)
+import Control.Exception.Extra (safeTry)
 import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Functor (void, ($>))
@@ -72,20 +81,30 @@ broadcastStream filters listings consumers =
       master <- sendIO newTChanIO
       errVar <- sendIO newEmptyTMVarIO
       hsVar <- sendIO $ newTVarIO ([] :: [Handle])
-      -- Any failure during the forks or the wait: kill everything we started,
-      -- then re-throw (safeCatch skips async exceptions, so being killed
-      -- ourselves does not trigger this).
-      safeCatch (runForkWait master errVar hsVar) (killAllAndRethrow hsVar)
+      runForkWait master errVar hsVar
+    -- Any failure during the forks or the wait must kill every handle
+    -- registered so far before propagating.  A 'safeCatch' handler is not
+    -- enough: it skips async exceptions, so a 'throwTo' landing between the
+    -- walker fork and the consumer forks would orphan the threads started
+    -- already.  Instead — mirroring "Control.Carrier.TaskPool.withTaskPool"
+    -- — the fork sequence and the wait run masked, with an 'onException'
+    -- kill of the registered set on both stages, so ANY exception (sync or
+    -- async) is preceded by the kill.
+    runForkWait :: TChan (Maybe DirListing) -> TMVar SomeException -> TVar [Handle] -> m ()
+    runForkWait master errVar hsVar =
+      mask $ \restore -> do
+        forkAll master errVar hsVar `onException` killAll hsVar
+        restore (waitAll errVar hsVar) `onException` killAll hsVar
 
     -- Register every consumer on its own channel duplicate BEFORE forking the
     -- walker, so no listing can be written before all readers exist (a
     -- channel written to with no duplicate present loses those messages).
-    runForkWait :: TChan (Maybe DirListing) -> TMVar SomeException -> TVar [Handle] -> m ()
-    runForkWait master errVar hsVar = do
+    forkAll :: TChan (Maybe DirListing) -> TMVar SomeException -> TVar [Handle] -> m ()
+    forkAll master errVar hsVar = do
       chs <- traverse (const $ sendIO (atomically (dupTChan master))) enabled
       _walkerH <- register hsVar =<< fork (walkInto master errVar listings)
       _consumerHS <- traverse (uncurry registerConsumer) (zip enabled chs)
-      waitAll errVar hsVar
+      pure ()
       where
         registerConsumer c ch = register hsVar <$> fork (consume c errVar ch)
 
@@ -120,10 +139,23 @@ broadcastStream filters listings consumers =
 
     walkInto :: TChan (Maybe DirListing) -> TMVar SomeException -> Stream (Of DirListing) m () -> m ()
     walkInto chan errs ls = do
-      res <- safeTry @SomeException (S.mapM_ (sendIO . atomically . writeTChan chan . Just) ls)
+      res <- safeTry @SomeException (S.mapM_ (writeAndDrain chan . Just) ls)
       case res of
-        Right () -> sendIO $ atomically $ writeTChan chan Nothing
+        Right () -> writeAndDrain chan Nothing
         Left e -> void (recordError errs e)
+
+    -- Write one message to the master channel and immediately read it back,
+    -- discarding it, in the same transaction.  Consumers read dups created
+    -- before the walker started, so nobody else ever reads the master — and
+    -- stm's TChan retains its node chain from each reader's read pointer: an
+    -- undrained master would pin every listing ever broadcast for the whole
+    -- run (O(all listings) retention).  Reading one value back per write
+    -- advances the master's read pointer atomically with the write, releasing
+    -- each node without changing what any dup sees.
+    writeAndDrain :: TChan (Maybe DirListing) -> Maybe DirListing -> m ()
+    writeAndDrain chan msg = sendIO $ atomically $ do
+      writeTChan chan msg
+      void (readTChan chan)
 
     consume :: WalkConsumer o m -> TMVar SomeException -> TChan (Maybe DirListing) -> m ()
     consume c errs chan = do
@@ -142,11 +174,10 @@ broadcastStream filters listings consumers =
     register :: TVar [Handle] -> Handle -> m Handle
     register hsVar h = sendIO $ atomically (modifyTVar' hsVar (h :)) $> h
 
-    killAllAndRethrow :: TVar [Handle] -> SomeException -> m ()
-    killAllAndRethrow hsVar e = do
+    killAll :: TVar [Handle] -> m ()
+    killAll hsVar = do
       hs <- sendIO $ readTVarIO hsVar
       traverse_ kill hs
-      throwIO e
 
     recordError :: TMVar SomeException -> SomeException -> m ()
     recordError errs = void . sendIO . atomically . tryPutTMVar errs
