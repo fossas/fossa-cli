@@ -311,4 +311,3 @@ failingVisitor ref dir _subdirs _files = do
   sendIO (IOR.modifyIORef' ref (Set.insert dir))
   sendIO (throwIO (userError "consumer failing"))
   pure ((), WalkContinue)
-
