@@ -40,27 +40,23 @@ import Streaming.Prelude qualified as S
 -- lies below a pruned root.
 data VisitorState = VisitorState
   { vsDone :: Bool
-  -- ^ Set by the visitor's own 'Discovery.Walk.WalkStop'.
   , vsPruned :: Set (Path Abs Dir)
-  -- ^ Subtree roots swallowed by the visitor's own
-  --   'Discovery.Walk.WalkSkipAll' / 'Discovery.Walk.WalkSkipSome' steps.
   }
   deriving (Eq, Show)
 
--- | State of a fresh visitor: not stopped and nothing pruned.
+-- | State of a fresh visitor.
 initialVisitorState :: VisitorState
 initialVisitorState = VisitorState{vsDone = False, vsPruned = Set.empty}
 
--- | Whether @dir@ is at or below one of the subtree roots in 'vsPruned'.
+-- | Whether @dir@ is at or below a subtree root in 'vsPruned'.
 isSwallowed :: VisitorState -> Path Abs Dir -> Bool
 isSwallowed state dir = any (isBelowRoot dir) (Set.toList (vsPruned state))
   where
     isBelowRoot candidate root = root == candidate || isProperPrefixOf root candidate
 
--- | Fold a visitor's 'WalkStep', returned for the listing at @dir@, into its
--- own state.  Mirrors the per-strategy walk in "Discovery.Walk": the step was
--- produced at @dir@ (so the visit still counts), and only that visitor is
--- affected.
+-- | Fold a visitor's 'WalkStep' into its own state, mirroring the
+-- per-strategy walk in "Discovery.Walk": the step was produced at @dir@ (so
+-- the visit still counts), and only that visitor is affected.
 applyVisitorStep :: WalkStep -> Path Abs Dir -> VisitorState -> VisitorState
 applyVisitorStep step dir state = case step of
   WalkContinue -> state
@@ -75,13 +71,12 @@ applyVisitorStep step dir state = case step of
       Nothing -> acc
       Just rel -> Set.insert (dir </> rel) acc
 
--- | A per-strategy callback mirroring the old per-strategy walk callback: for
--- one listing it returns the visitor's output @o@ for that directory plus its
--- next 'WalkStep'.
+-- | A strategy's per-directory collector, mirroring the old per-strategy walk
+-- callback: it returns its output for the listing plus its next 'WalkStep'.
 type Visitor o m = Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m (o, WalkStep)
 
--- | Run a single visitor over a shared walk stream (as produced by
--- "Discovery.WalkStream"), maintaining one 'VisitorState' for the visitor.
+-- | Run a single visitor over a shared walk stream, maintaining one
+-- 'VisitorState' for it.
 --
 -- The underlying stream is drained fully: swallowing never stops the walk
 -- itself, only this visitor's participation in later listings.  Yield policy:
@@ -107,15 +102,11 @@ runVisitor visit = loop initialVisitorState
               let state' = applyVisitorStep step (dlDir dl) state
               S.yield (dlDir dl, o) <> loop state' rest
 
--- | Drive a single visitor from an effectful next-listing source instead of
--- a prebuilt walk stream, as in 'runVisitor', but returning the driven
--- action itself rather than a yield stream.
---
--- This exists for consumers that pull listings one at a time from an
--- IO-backed queue ("Discovery.WalkBroadcast") and cannot splice effectful
--- reads into a stream spine.  Visitor outputs are discarded: such visitors
--- collect their results through their own effects; only the 'WalkStep' state
--- threading is mirrored here, exactly as in 'runVisitor'.
+-- | Drive a visitor from an effectful next-listing source (e.g. a channel
+-- read) rather than a walk stream; visitor outputs are discarded — callers
+-- collect results through their own effects.  See the GHC-39999 note in
+-- "Discovery.WalkBroadcast" for why this takes an action instead of a
+-- stream; the 'WalkStep' state threading mirrors 'runVisitor'.
 driveVisitor :: Monad m => Visitor o m -> (m (Maybe DirListing)) -> m ()
 driveVisitor visit next = loop initialVisitorState
   where
@@ -129,13 +120,13 @@ driveVisitor visit next = loop initialVisitorState
               (_, step) <- visit (dlDir dl) (dlSubdirs dl) (dlFiles dl)
               loop (applyVisitorStep step (dlDir dl) state)
 
--- | Run several visitors over one shared walk stream.  Each visitor keeps its
--- own 'VisitorState', so one visitor's 'WalkStep' decisions can only swallow
--- its own participation; the stream itself is drained fully either way.
--- Yield policy: for every listing at which at least one visitor runs, yield
--- @(dir, oss)@ where @oss@ holds the outputs of the visitors that ran at
--- that listing, in list order; listings at which no visitor runs yield
--- nothing.  With a single visitor this coincides with 'runVisitor'.
+-- | Run several visitors over one shared walk stream.  Each visitor keeps
+-- its own 'VisitorState', so one visitor's 'WalkStep' decisions can only
+-- swallow its own participation; the stream itself is drained fully either
+-- way.  Yield policy: for every listing at which at least one visitor runs,
+-- yield @(dir, oss)@ where @oss@ holds the outputs of the visitors that ran
+-- at that listing, in list order; listings at which no visitor runs yield
+-- nothing.
 runVisitors ::
   Monad m =>
   [Visitor o m] ->

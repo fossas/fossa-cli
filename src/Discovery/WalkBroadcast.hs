@@ -16,7 +16,7 @@
 -- every still-running thread is killed; when no error occurs all threads are
 -- waited for before returning.  Consumers that recover their own failures
 -- internally (the analyzers do this with warnThenRecover) never reach this
--- boundary, so a single failing strategy keeps walking like it does today.
+-- boundary.
 --
 module Discovery.WalkBroadcast (
   -- * One broadcast consumer
@@ -44,20 +44,14 @@ import Streaming (Of (..), Stream)
 import Streaming.Prelude qualified as S
 import Types (DiscoveredProjectType)
 
--- | One broadcast consumer: the strategy tool it serves ('wcProjectType', used
--- to gate against the filters) and its per-directory 'Visitor', whose output
--- @o@ is fed straight into whatever sink the visitor itself writes to.
+-- | One broadcast consumer: the strategy tool it serves ('wcProjectType',
+-- gated against the filters) and its per-directory 'Visitor'.
 data WalkConsumer o m = WalkConsumer
   { wcProjectType :: DiscoveredProjectType
   , wcVisitor :: Visitor o m
   }
 
 -- | Fan out one listing stream to a set of concurrent consumers.
---
--- The walk runs in its own thread; each enabled consumer gets its own
--- duplicate of the master channel, so it drains at its own pace.  A consumer
--- whose tool is not allowed by @filters@ is skipped entirely.  With no
--- enabled consumers this does nothing at all (no threads, no walk drain).
 broadcastStream :: forall sig (m :: * -> *) o. Has (Lift IO) sig m
                 => AllFilters -> Stream (Of DirListing) m () -> [WalkConsumer o m] -> m ()
 broadcastStream filters listings consumers =
@@ -122,8 +116,6 @@ broadcastStream filters listings consumers =
         go (Left e) _ = Left e
         go _ acc = acc
 
-    -- 'S.mapM_' runs the stream in this monad and returns its result, so no
-    -- 'S.effects' here (unlike 'runVisitor', which yields a stream).
     walkInto :: TChan (Maybe DirListing) -> TMVar SomeException -> Stream (Of DirListing) m () -> m ()
     walkInto chan errs ls = do
       res <- safeTry @SomeException (S.mapM_ (\dl -> sendIO $ atomically $ writeTChan chan (Just dl)) ls)
@@ -138,9 +130,8 @@ broadcastStream filters listings consumers =
         Left e -> void (recordError errs e)
         Right () -> pure ()
       where
-        -- One channel read per step; the terminal 'Nothing' marker ends the
-        -- drain.  Kept as a signatured plain-monad local: splicing 'sendIO'
-        -- into a Stream-returning recursive local instead fails GHC's
+        -- Kept as a signatured plain-monad local: splicing 'sendIO' into a
+        -- Stream-returning recursive local instead fails GHC's
         -- implicit-parameter resolution (GHC-39999), so 'driveVisitor' does
         -- the per-listing state threading without any stream spine.
         next_ :: m (Maybe DirListing)
