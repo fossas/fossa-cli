@@ -101,8 +101,13 @@ instance Toml.Schema.FromValue PoetryLockDependencySpec where
   fromValue v@Toml.Schema.List'{} = MultipleObjectVersionSpec <$> Toml.Schema.fromValue v
   fromValue v = Toml.Schema.failAt (Toml.valueAnn v) $ "invalid poetry dependency spec " <> Toml.valueType v
 
+-- | A table-form dependency spec, e.g. @{version = "^1.0", optional = true}@.
+--
+-- @version@ is absent for dependencies that poetry resolves from somewhere
+-- other than a package index: path dependencies (@{path = "../lib", develop = true}@),
+-- VCS dependencies (@{git = "...", rev = "..."}@) and URL dependencies (@{url = "..."}@).
 newtype ObjectVersion = ObjectVersion
-  { unObjectVersion :: Text
+  { unObjectVersion :: Maybe Text
   }
   deriving (Eq, Ord, Show)
 
@@ -110,4 +115,4 @@ instance Toml.Schema.FromValue ObjectVersion where
   fromValue =
     Toml.Schema.parseTableFromValue $
       ObjectVersion
-        <$> Toml.Schema.reqKey "version"
+        <$> Toml.Schema.optKey "version"
