@@ -9,12 +9,12 @@ import Control.Carrier.Reader (runReader)
 import Control.Effect.Diagnostics (Diagnostics, warnThenRecover)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Data.Foldable (for_, traverse_)
-import Data.Functor (($>), void)
+import Data.Functor (void, ($>))
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.List (sort)
-import Data.Text (Text)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (cachedDiscover)
 import Discovery.Walk
@@ -22,10 +22,10 @@ import Discovery.WalkStream
 import Discovery.WalkVisitor (runVisitors)
 import Path
 import Path.IO (createDir, createDirLink)
-import Streaming (Of, Stream)
-import Streaming.Prelude qualified as S
 import Strategy.Cargo qualified as Cargo
 import Strategy.Composer qualified as Composer
+import Streaming (Of, Stream)
+import Streaming.Prelude qualified as S
 import Test.Effect
 import Test.Fixtures (excludePath)
 import Test.Hspec
@@ -122,13 +122,14 @@ spec =
             webSub = web </> $(mkRelDir "sub")
             vendor = tmpDir </> $(mkRelDir "vendor")
         sendIO $
-          do traverse_ createDir [web, webSub, vendor]
-             writeFile (toFilePath (tmpDir </> $(mkRelFile "Cargo.toml"))) "[package]"
-             writeFile (toFilePath (webSub </> $(mkRelFile "Cargo.toml"))) "[package]"
-             writeFile (toFilePath (web </> $(mkRelFile "composer.json"))) "{}"
-             writeFile (toFilePath (web </> $(mkRelFile "composer.lock"))) "{}"
-             writeFile (toFilePath (vendor </> $(mkRelFile "composer.json"))) "{}"
-             writeFile (toFilePath (vendor </> $(mkRelFile "composer.lock"))) "{}"
+          do
+            traverse_ createDir [web, webSub, vendor]
+            writeFile (toFilePath (tmpDir </> $(mkRelFile "Cargo.toml"))) "[package]"
+            writeFile (toFilePath (webSub </> $(mkRelFile "Cargo.toml"))) "[package]"
+            writeFile (toFilePath (web </> $(mkRelFile "composer.json"))) "{}"
+            writeFile (toFilePath (web </> $(mkRelFile "composer.lock"))) "{}"
+            writeFile (toFilePath (vendor </> $(mkRelFile "composer.json"))) "{}"
+            writeFile (toFilePath (vendor </> $(mkRelFile "composer.lock"))) "{}"
 
         let noFilters = (mempty :: AllFilters)
             webExcluded = excludePath $(mkRelDir "web")
@@ -143,17 +144,19 @@ spec =
               visitK dir subdirs files = accumulate composerSink (Composer.discoverVisitor dir subdirs files)
           void . S.effects $ runVisitors [visitC, visitK] (walkStream filters tmpDir)
           newResult <-
-            runReader filters
-              $ do cargoNew <- cachedDiscover CargoProjectType Cargo.mkProject (sendIO $ readIORef cargoSink)
-                   composerNew <- cachedDiscover ComposerProjectType Composer.mkProject (sendIO $ readIORef composerSink)
-                   pure (cargoNew, composerNew)
+            runReader filters $
+              do
+                cargoNew <- cachedDiscover CargoProjectType Cargo.mkProject (sendIO $ readIORef cargoSink)
+                composerNew <- cachedDiscover ComposerProjectType Composer.mkProject (sendIO $ readIORef composerSink)
+                pure (cargoNew, composerNew)
           -- Old path: each strategy walks the tree itself (walkWithFilters')
           -- under the same filters.
           oldResult <-
-            runReader filters
-              $ do cargoOld <- Cargo.discover tmpDir
-                   composerOld <- Composer.discover tmpDir
-                   pure (cargoOld, composerOld)
+            runReader filters $
+              do
+                cargoOld <- Cargo.discover tmpDir
+                composerOld <- Composer.discover tmpDir
+                pure (cargoOld, composerOld)
 
           sort (map projectTag $ fst newResult) `shouldBe'` sort (map projectTag $ fst oldResult)
           sort (map projectTag $ snd newResult) `shouldBe'` sort (map projectTag $ snd oldResult)
