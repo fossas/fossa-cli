@@ -173,7 +173,7 @@ import Srclib.Types (
   translateSourceUnitLocators,
  )
 import System.FilePath ((</>))
-import Types (DiscoveredProject (..), FoundTargets)
+import Types (DiscoveredProject (..), FoundTargets, projectTypeToText)
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
@@ -344,7 +344,13 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
         let collect = sendIO (readIORef sink)
             visit dir subdirs files = do
               -- A failing strategy visitor contributes nothing and keeps walking.
-              found <- warnThenRecover @Text "Error discovering projects for strategy" (visitor dir subdirs files)
+              -- The tool name is included so failures are attributable even
+              -- though this is shared with every strategy's walk.
+              found <-
+                warnThenRecover
+                  @Text
+                  ("Error discovering projects for " <> projectTypeToText projectType)
+                  (visitor dir subdirs files)
               case found of
                 Nothing -> pure ((), WalkContinue)
                 Just (projects, step) -> sendIO (modifyIORef' sink (<> projects)) $> ((), step)
