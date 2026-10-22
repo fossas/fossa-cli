@@ -319,19 +319,14 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       pure ()
     else do
       -- Prepare one visitor per strategy, then feed them all from ONE
-      -- filesystem walk broadcast to concurrent consumers: each visitor keeps
-      -- its own skip/stop state inside its consumer thread (one strategy's
-      -- 'WalkStep' never starves another, and a slow exec-heavy consumer only
-      -- stalls its own channel drain), disabled tools are gated per-consumer,
-      -- and the walk runs inside the same diagnostics wrapper the per-strategy
-      -- forks use, so visitor failures are logged and never sink the walk or
-      -- the other strategies.
+      -- shared filesystem walk: one strategy's 'WalkStep' never starves
+      -- another (per-visitor state), and slow exec-heavy consumers stall
+      -- only their own channel drain.
       entriesResult <-
         Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ do
           entries <- traverse prepare discoverFuncs
           withWalkBroadcast filters basedir (concatMap entryConsumers entries)
           pure entries
-      -- Fan-out structure unchanged: fork per strategy, then fork per project.
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
     prepare ::
