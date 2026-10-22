@@ -5,7 +5,7 @@ module App.Fossa.ListTargets (
   listSubCommand,
 ) where
 
-import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc), discoverFuncs)
+import App.Fossa.Analyze.Discover (DiscoverFunc (..), discoverFuncs)
 import App.Fossa.Config.Analyze (StrategyConfig)
 import App.Fossa.Config.ListTargets (
   ListTargetOutputFormat (..),
@@ -31,16 +31,23 @@ import Control.Carrier.TaskPool (
  )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
+import Control.Effect.Diagnostics (warnThenRecover)
 import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Reader (ask)
 import Control.Effect.Stack (Stack)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (ToJSON, encode, object, (.=))
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
+import Data.Functor (($>), void)
+import Data.IORef (modifyIORef', newIORef, readIORef)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..))
 import Discovery.Projects (withDiscoveredProjects)
+import Discovery.Walk (WalkStep (WalkContinue))
+import Discovery.WalkStream (walkStream)
+import Discovery.WalkVisitor (runVisitor)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Color (Cyan, Green, Yellow),
@@ -57,6 +64,8 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
+import Streaming.Prelude qualified as S
+import Data.Text (Text)
 import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
 listSubCommand :: SubCommand ListTargetsCliOpts ListTargetsConfig
@@ -110,6 +119,24 @@ runAll ::
 runAll outputFmt basedir = traverse_ single discoverFuncs
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir formatter
+    -- Walked strategies are discovered by driving their visitor over a walk
+    -- of their own: unlike runAnalyzers, list-targets runs one discovery per
+    -- strategy with no shared broadcast (and the filters reader is always
+    -- mempty here — see 'listTargetsMain').
+    single (WalkedFunc _ visitor finalize) = do
+      filters <- ask @AllFilters
+      sink <- sendIO (newIORef [])
+      let collect = sendIO (readIORef sink)
+          visit dir subdirs files = do
+            -- A failing strategy visitor contributes nothing and keeps walking.
+            found <- warnThenRecover @Text "Error discovering projects for strategy" (visitor dir subdirs files)
+            case found of
+              Nothing -> pure ((), WalkContinue)
+              Just (projects, step) -> sendIO (modifyIORef' sink (<> projects)) $> ((), step)
+          discover _ = do
+            void . S.effects $ runVisitor visit (walkStream filters basedir)
+            finalize collect
+      withDiscoveredProjects discover basedir formatter
     formatter proj = case outputFmt of
       Legacy -> renderLegacyFmt basedir proj
       Text -> renderTextFmt basedir proj

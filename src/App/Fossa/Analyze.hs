@@ -139,8 +139,7 @@ import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Discovery.Walk (WalkStep (WalkContinue), enumeratePrunedSubtrees)
-import Discovery.WalkStream (walkStream)
-import Discovery.WalkVisitor (Visitor, runVisitors)
+import Discovery.WalkBroadcast (WalkConsumer (..), withWalkBroadcast)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -173,7 +172,6 @@ import Srclib.Types (
   sourceUnitToFullSourceUnit,
   translateSourceUnitLocators,
  )
-import Streaming.Prelude qualified as S
 import System.FilePath ((</>))
 import Types (DiscoveredProject (..), FoundTargets)
 
@@ -297,15 +295,15 @@ runAnalyzers ::
   Maybe FileAncestry ->
   m ()
 
--- | A 'DiscoverFunc' prepared for the shared discovery walk: its per-directory
--- visitor(s) (empty for strategies that still discover themselves) and a
+-- | A 'DiscoverFunc' prepared for the shared discovery walk: its broadcast
+-- consumer(s) (empty for strategies that still discover themselves) and a
 -- discovery action that reads the strategy's collected projects.
 data PreparedEntry d where
   PreparedEntry ::
     ( AnalyzeProject p
     , Aeson.ToJSON p
     ) =>
-    [Visitor () d] ->
+    [WalkConsumer () d] ->
     (Path Abs Dir -> d [DiscoveredProject p]) ->
     PreparedEntry d
 
@@ -321,15 +319,17 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       pure ()
     else do
       -- Prepare one visitor per strategy, then feed them all from ONE
-      -- filesystem walk.  Each visitor keeps its own skip/stop state via
-      -- 'runVisitors' (one strategy's 'WalkStep' never starves another), and
-      -- the walk runs inside the same diagnostics wrapper the per-strategy
+      -- filesystem walk broadcast to concurrent consumers: each visitor keeps
+      -- its own skip/stop state inside its consumer thread (one strategy's
+      -- 'WalkStep' never starves another, and a slow exec-heavy consumer only
+      -- stalls its own channel drain), disabled tools are gated per-consumer,
+      -- and the walk runs inside the same diagnostics wrapper the per-strategy
       -- forks use, so visitor failures are logged and never sink the walk or
       -- the other strategies.
       entriesResult <-
         Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ do
           entries <- traverse prepare discoverFuncs
-          void . S.effects $ runVisitors (concatMap entryVisitors entries) (walkStream filters basedir)
+          withWalkBroadcast filters basedir (concatMap entryConsumers entries)
           pure entries
       -- Fan-out structure unchanged: fork per strategy, then fork per project.
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
@@ -344,7 +344,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       DiscoveryM m (PreparedEntry (DiscoveryM m))
     prepare dscover = case dscover of
       DiscoverFunc f -> pure (PreparedEntry [] f)
-      WalkedFunc visitor finalize -> do
+      WalkedFunc projectType visitor finalize -> do
         sink <- sendIO (newIORef [])
         let collect = sendIO (readIORef sink)
             visit dir subdirs files = do
@@ -353,9 +353,9 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
               case found of
                 Nothing -> pure ((), WalkContinue)
                 Just (projects, step) -> sendIO (modifyIORef' sink (<> projects)) $> ((), step)
-        pure (PreparedEntry [visit] (\_ -> finalize collect))
+        pure (PreparedEntry [WalkConsumer projectType visit] (\_ -> finalize collect))
 
-    entryVisitors (PreparedEntry vs _) = vs
+    entryConsumers (PreparedEntry cs _) = cs
 
     single (PreparedEntry _ discover) = withDiscoveredProjects discover basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
