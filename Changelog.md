@@ -3,6 +3,11 @@
 ## Unreleased
 
 - Yarn: `yarn.lock` files with no package entries (what `yarn install` writes for a project without dependencies) no longer fail analysis with `unexpected end of input, expecting '#', newline, or package entry`. ([#1817](https://github.com/fossas/fossa-cli/pull/1817))
+- Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`. ([#1805](https://github.com/fossas/fossa-cli/pull/1805))
+
+## 3.20.6
+
+- Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does. ([#1795](https://github.com/fossas/fossa-cli/pull/1795))
 - Go: `go.mod` files that require, replace or declare a module whose path contains a `~` (sourcehut paths such as `git.sr.ht/~sbinet/gg`) no longer fail analysis with `unexpected '~'`. ([#1810](https://github.com/fossas/fossa-cli/pull/1810))
 
 ## 3.20.5
@@ -15,7 +20,6 @@
 - Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
 - FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
 
-
 ## 3.20.3
 
 - Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
@@ -24,6 +28,7 @@
 
 ## 3.20.2
 
+- Container scanning: `fossa container analyze` and `fossa container list-targets` no longer fail with `An exception occurred:thread blocked indefinitely in an STM transaction` when the registry rejects a token request while image layers are being downloaded in parallel; the error from the registry is reported instead. ([#1804](https://github.com/fossas/fossa-cli/pull/1804))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 - Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
 - Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))
