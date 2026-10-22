@@ -62,7 +62,7 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' discoverVisitor
 
 -- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
-discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ProjectJsonProject], WalkStep)
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ProjectJsonProject], WalkStep)
 discoverVisitor _ _ files = do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)
