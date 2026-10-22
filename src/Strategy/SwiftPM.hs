@@ -27,10 +27,9 @@ import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
+  mergeWalkSteps,
   walkWithFilters',
  )
-import Discovery.WalkStream (mergeWalkSteps)
-import Effect.Exec (GetDepsEffs)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
