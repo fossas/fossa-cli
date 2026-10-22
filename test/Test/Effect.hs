@@ -12,6 +12,7 @@ module Test.Effect (
   shouldNotContain',
   shouldMatchList',
   runTestEffects',
+  runTestEffects,
   it',
   itWithTempDir',
   fit',
