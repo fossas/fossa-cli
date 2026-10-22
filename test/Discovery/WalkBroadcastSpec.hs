@@ -20,11 +20,14 @@ import Data.IORef qualified as IOR
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
-import Discovery.Filters (AllFilters (..), comboExclude, toolAllowed)
+import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, toolAllowed)
 import Discovery.Walk (WalkStep (..), findFileNamed)
-import Discovery.WalkBroadcast (WalkConsumer (..), withWalkBroadcast)
+import Discovery.WalkBroadcast (WalkConsumer (..), broadcastStream, withWalkBroadcast)
+import Discovery.WalkStream (DirListing (..))
 import Path
 import Path.IO (createDir)
+import Streaming (Of (..), Stream, lift)
+import Streaming.Prelude qualified as S
 import System.IO.Error (IOError, isUserError, userError)
 import Test.Effect
 import Test.Hspec
@@ -67,6 +70,38 @@ gatingSpec =
         withWalkBroadcast excludedFilters tmpDir [consumer]
 
         -- No invocation, no collected output: the disabled tool did no work.
+        count <- sendIO $ IOR.readIORef counterRef
+        count `shouldBe'` 0
+        out <- sendIO $ IOR.readIORef outRef
+        out `shouldSatisfy'` null
+
+    it' "never invokes a consumer whose tool is not on the include list" $
+      withTempDir "test-Discovery-WalkBroadcast-include-gate" $ \tmpDir -> do
+        let web = tmpDir </> $(mkRelDir "web")
+        sendIO $ do
+          traverse_ createDir [web]
+          writeFile (toFilePath (tmpDir </> $(mkRelFile "Cargo.toml"))) "[package]"
+          writeFile (toFilePath (web </> $(mkRelFile "package.json"))) "{}"
+
+        -- Allow-listing composer only leaves cargo outside the allowed set,
+        -- so the cargo consumer must not be started at all (include-list
+        -- gating, the dual of the exclude-list case above).
+        let includeFilters = (mempty :: AllFilters){includeFilters = comboInclude [TypeTarget "composer"] []}
+        toolAllowed includeFilters CargoProjectType `shouldBe'` False
+
+        counterRef <- sendIO $ IOR.newIORef 0
+        outRef <- sendIO $ IOR.newIORef ([] :: [Path Abs Dir])
+        let consumer =
+              WalkConsumer
+                { wcProjectType = CargoProjectType
+                , wcVisitor = countingConsumer counterRef outRef
+                }
+        withWalkBroadcast includeFilters tmpDir [consumer]
+
+        -- No invocation, no collected output: the unlisted tool did no work.
+        -- (The internal pins — no channel dup'd, no thread forked — are not
+        -- observable from outside the module; the zero counts below are the
+        -- externally visible consequence of exactly that.)
         count <- sendIO $ IOR.readIORef counterRef
         count `shouldBe'` 0
         out <- sendIO $ IOR.readIORef outRef
@@ -212,6 +247,27 @@ abortSpec =
         -- returns, so every thread terminated).
         res `shouldSatisfy'` (\case Left e -> maybe False isUserError (fromException e); Right () -> False)
 
+    it' "a walker exception surfaces and consumers are killed (the run returns)" $
+      withTempDir "test-Discovery-WalkBroadcast-walkfail" $ \tmpDir -> do
+        collected <- sendIO $ IOR.newIORef (Set.empty :: Set (Path Abs Dir))
+        let consumer =
+              WalkConsumer
+                { wcProjectType = NpmProjectType
+                , wcVisitor = recordingVisitor collected
+                }
+        -- Drive the walker's failure path through the exported
+        -- 'broadcastStream' seam: a stream that yields one listing, then
+        -- throws.  (Cleanest available seam — the stream parameter is part
+        -- of the public API, so no test hook was needed.)
+        res <-
+          sendIO $
+            try @SomeException
+              (runTestEffects (broadcastStream (mempty :: AllFilters) (failingWalkerStream tmpDir) [consumer]))
+        -- The walker's user error propagates out of the run, and the run
+        -- returns rather than hanging — the consumer parked on its channel
+        -- was killed by the abort path.
+        res `shouldSatisfy'` (\case Left e -> maybe False isUserError (fromException e); Right () -> False)
+
 -- ---------------------------------------------------------------------------
 -- Visitors
 -- ---------------------------------------------------------------------------
@@ -299,6 +355,13 @@ stampedVisitor stampRef ref dir _subdirs _files = do
   sendIO $ IOR.writeIORef stampRef (Just now)
   sendIO (IOR.modifyIORef' ref (Set.insert dir))
   pure ((), WalkContinue)
+
+-- | A stream that yields one listing and then throws, to model a failing
+-- walker.
+failingWalkerStream :: Path Abs Dir -> Stream (Of DirListing) EffectStack ()
+failingWalkerStream dir = do
+  S.yield (DirListing dir [] [])
+  lift (sendIO (throwIO (userError "walker failing")))
 
 -- | A visitor that throws on its first listing, to model a failing consumer.
 failingVisitor ::

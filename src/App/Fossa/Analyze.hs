@@ -125,7 +125,7 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
-import Data.IORef (modifyIORef', newIORef, readIORef)
+import Data.IORef (atomicModifyIORef', newIORef, readIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
@@ -349,7 +349,11 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
                   (visitor dir subdirs files)
               case found of
                 Nothing -> pure ((), WalkContinue)
-                Just (projects, step) -> sendIO (modifyIORef' sink (<> projects)) $> ((), step)
+                -- atomicModifyIORef', not modifyIORef': this ref is read by
+                -- 'finalize' in another thread after the broadcast wait, so
+                -- the sink write must be atomic to be visible.
+                Just (projects, step) ->
+                  sendIO (atomicModifyIORef' sink (\ps -> (ps <> projects, ()))) $> ((), step)
         pure (PreparedEntry [WalkConsumer projectType visit] (\_ -> finalize collect))
 
     entryConsumers (PreparedEntry cs _) = cs

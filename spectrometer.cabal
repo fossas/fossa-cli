@@ -670,8 +670,8 @@ test-suite unit-tests
     Diag.ResultSpec
     Discovery.ArchiveSpec
     Discovery.FiltersSpec
-    Discovery.WalkSpec
     Discovery.WalkBroadcastSpec
+    Discovery.WalkSpec
     Discovery.WalkStreamSpec
     Discovery.WalkVisitorSpec
     Dpkg.DpkgSpec
