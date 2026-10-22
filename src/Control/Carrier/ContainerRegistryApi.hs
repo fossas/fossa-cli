@@ -104,8 +104,7 @@ import Network.HTTP.Client (
 import Network.HTTP.Conduit (tlsManagerSettings)
 import Network.HTTP.Conduit qualified as HTTPConduit
 import Network.HTTP.Types.Header (ResponseHeaders)
-import Path (Abs, Dir, File, Path, filename, mkRelFile, toFilePath, (</>))
-import Path.Internal (Path (..))
+import Path (Abs, Dir, File, Path, filename, mkRelFile, parseRelFile, toFilePath, (</>))
 
 -- | A carrier to run Registry API functions in the IO monad
 type ContainerRegistryApiC m = SimpleC ContainerRegistryApiF (ReaderC RegistryCtx m)
@@ -261,8 +260,10 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
   threadId <- sendIO myThreadId
   let exportDesc = "Export job ID: " <> UUID.toText exportJobId <> ", Export thread ID: " <> showText threadId
   context exportDesc $ do
-    let sinkTarget :: Path Abs File
-        sinkTarget = dir </> Path (toString targetFilename)
+    -- The file name is derived from a digest the registry sent; never let it reach outside @dir@.
+    sinkTarget <-
+      fromMaybeText ("Refusing to write blob to a file name that is not a plain relative path: " <> targetFilename) $
+        (dir </>) <$> parseRelFile (toString targetFilename)
 
     let imgSrc' = imgSrc{registryContainerRepositoryReference = RepoReferenceDigest digest}
 
