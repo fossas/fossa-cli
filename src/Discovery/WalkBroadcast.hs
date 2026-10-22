@@ -17,7 +17,6 @@
 -- waited for before returning.  Consumers that recover their own failures
 -- internally (the analyzers do this with warnThenRecover) never reach this
 -- boundary.
---
 module Discovery.WalkBroadcast (
   -- * One broadcast consumer
   WalkConsumer (..),
@@ -33,8 +32,9 @@ import Control.Effect.Diagnostics (Diagnostics)
 import Control.Effect.Exception (SomeException, throwIO)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Exception.Extra (safeCatch, safeTry)
+import Control.Monad (unless)
 import Data.Foldable (traverse_)
-import Data.Functor (($>), void)
+import Data.Functor (void, ($>))
 import Discovery.Filters (AllFilters, toolAllowed)
 import Discovery.WalkStream (DirListing, walkStream)
 import Discovery.WalkVisitor (Visitor, driveVisitor)
@@ -52,15 +52,15 @@ data WalkConsumer o m = WalkConsumer
   }
 
 -- | Fan out one listing stream to a set of concurrent consumers.
-broadcastStream :: forall sig (m :: * -> *) o. Has (Lift IO) sig m
-                => AllFilters -> Stream (Of DirListing) m () -> [WalkConsumer o m] -> m ()
+broadcastStream ::
+  forall sig (m :: * -> *) o.
+  Has (Lift IO) sig m =>
+  AllFilters -> Stream (Of DirListing) m () -> [WalkConsumer o m] -> m ()
 broadcastStream filters listings consumers =
-  if null enabled
-    then pure ()
-    else startAll
+  unless (null enabled) startAll
   where
     enabled :: [WalkConsumer o m]
-    enabled = filter (\c -> toolAllowed filters (wcProjectType c)) consumers
+    enabled = filter (toolAllowed filters . wcProjectType) consumers
 
     -- The master channel carries @Just listing@ per visit and a terminal
     -- @Nothing@ marker once the walk finishes; this is how consumer channels
@@ -75,17 +75,19 @@ broadcastStream filters listings consumers =
       -- Any failure during the forks or the wait: kill everything we started,
       -- then re-throw (safeCatch skips async exceptions, so being killed
       -- ourselves does not trigger this).
-      safeCatch (runForkWait master errVar hsVar) (\e -> killAllAndRethrow hsVar e)
+      safeCatch (runForkWait master errVar hsVar) (killAllAndRethrow hsVar)
 
     -- Register every consumer on its own channel duplicate BEFORE forking the
     -- walker, so no listing can be written before all readers exist (a
     -- channel written to with no duplicate present loses those messages).
     runForkWait :: TChan (Maybe DirListing) -> TMVar SomeException -> TVar [Handle] -> m ()
     runForkWait master errVar hsVar = do
-      chs <- mapM (const $ sendIO (atomically (dupTChan master))) enabled
+      chs <- traverse (const $ sendIO (atomically (dupTChan master))) enabled
       _walkerH <- register hsVar =<< fork (walkInto master errVar listings)
-      _consumerHS <- traverse (\(c, ch) -> register hsVar <$> fork (consume c errVar ch)) (zip enabled chs)
+      _consumerHS <- traverse (uncurry registerConsumer) (zip enabled chs)
       waitAll errVar hsVar
+      where
+        registerConsumer c ch = register hsVar <$> fork (consume c errVar ch)
 
     -- Wait for the first consumer/walker error or every thread's completion;
     -- the error wins whenever it is present (an errored thread always records
@@ -102,23 +104,23 @@ broadcastStream filters listings consumers =
     errOrDone :: TMVar SomeException -> [Handle] -> STM (Either SomeException ())
     errOrDone errs hs = errEvent `orElse` doneEvent
       where
-        errEvent = tryReadTMVar errs >>= \case
-          Nothing -> retry
-          Just e -> pure (Left e)
+        errEvent =
+          tryReadTMVar errs >>= \case
+            Nothing -> retry
+            Just e -> pure (Left e)
         doneEvent = do
-          rs <- mapM handleWait hs
+          rs <- traverse handleWait hs
           pure $ firstErr rs
 
-    -- The first error among completed handles, if any.
     firstErr :: [Either SomeException ()] -> Either SomeException ()
-    firstErr rs = foldr go (Right ()) rs
+    firstErr = foldr go (Right ())
       where
         go (Left e) _ = Left e
         go _ acc = acc
 
     walkInto :: TChan (Maybe DirListing) -> TMVar SomeException -> Stream (Of DirListing) m () -> m ()
     walkInto chan errs ls = do
-      res <- safeTry @SomeException (S.mapM_ (\dl -> sendIO $ atomically $ writeTChan chan (Just dl)) ls)
+      res <- safeTry @SomeException (S.mapM_ (sendIO . atomically . writeTChan chan . Just) ls)
       case res of
         Right () -> sendIO $ atomically $ writeTChan chan Nothing
         Left e -> void (recordError errs e)
@@ -137,7 +139,6 @@ broadcastStream filters listings consumers =
         next_ :: m (Maybe DirListing)
         next_ = sendIO $ atomically $ readTChan chan
 
-
     register :: TVar [Handle] -> Handle -> m Handle
     register hsVar h = sendIO $ atomically (modifyTVar' hsVar (h :)) $> h
 
@@ -148,7 +149,7 @@ broadcastStream filters listings consumers =
       throwIO e
 
     recordError :: TMVar SomeException -> SomeException -> m ()
-    recordError errs e = void (sendIO $ atomically $ tryPutTMVar errs e)
+    recordError errs = void . sendIO . atomically . tryPutTMVar errs
 
 -- | Walk @basedir@ once and fan the listings out to a set of concurrent
 -- consumers, as in "broadcastStream".
