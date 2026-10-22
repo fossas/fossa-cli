@@ -405,6 +405,7 @@ library
     Discovery.Simple
     Discovery.Walk
     Discovery.WalkStream
+    Discovery.WalkVisitor
     Effect.Exec
     Effect.Grapher
     Effect.Logger
@@ -670,6 +671,7 @@ test-suite unit-tests
     Discovery.FiltersSpec
     Discovery.WalkSpec
     Discovery.WalkStreamSpec
+    Discovery.WalkVisitorSpec
     Dpkg.DpkgSpec
     Effect.ExecSpec
     Effect.LoggerSpec
