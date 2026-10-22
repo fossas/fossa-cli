@@ -27,6 +27,7 @@ module Strategy.Cargo.Lock (
   readLockfile,
   lockfileToDeps,
   lockfileToMetadata,
+  unresolvableDeps,
   MissingCargoLockFile (..),
   UnparseableCargoLockFile (..),
   FailedToReadCargoLockFile (..),
@@ -35,6 +36,7 @@ module Strategy.Cargo.Lock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
+import Control.Monad (unless)
 import Data.Bifunctor (second)
 import Data.Char qualified as Char
 import Data.Foldable (for_)
@@ -773,8 +775,34 @@ lockfileToDeps emitGitBackedLocators manifestDir lock =
     analysis <- analyzeManifests manifestDir members
     for_ (lockWarnings lock) warn
     for_ (manifestWarnings analysis) warn
+    -- Unresolvable references are omitted from the graph by
+    -- 'lockfileToMetadata'; surface them so a drifted/corrupt lockfile is
+    -- visible rather than silently producing fewer edges.
+    unless (null unresolvable) $ warn warning
     let graph = buildGraph emitGitBackedLocators (lockfileToMetadata lock members analysis)
     pure (graph, Complete)
+  where
+    unresolvable = unresolvableDeps lock
+    warning :: Text
+    warning =
+      "Cargo.lock for project at "
+        <> toText (toFilePath manifestDir)
+        <> " references package(s) that match no [[package]] entry; omitted from the dependency graph: "
+        <> Text.intercalate ", " unresolvable
+
+-- | Names of @Cargo.lock@ "dependencies" entries that match no [[package]]
+-- entry (neither by name and version nor by name alone). Unresolvable
+-- references are omitted from the graph built by 'lockfileToMetadata' rather
+-- than rendered as a phantom vertex with an empty source; this exposes their
+-- names so the monadic callers can warn. Deduplicated, in first-occurrence
+-- order.
+unresolvableDeps :: CargoLock -> [Text]
+unresolvableDeps lock =
+  let packages = lockPackages lock
+      nameVers = Set.fromList [(packageName p, fromMaybe "*" (packageVersion p)) | p <- packages]
+      names = Set.fromList [packageName p | p <- packages]
+      resolves dep = Set.member (depName dep, fromMaybe "*" (depVersion dep)) nameVers || Set.member (depName dep) names
+   in nub (map depName (concatMap (filter (not . resolves) . packageDependencies) packages))
 
 -- | Rebuild a 'CargoMetadata' from a parsed 'CargoLock' plus workspace manifest
 -- analysis, so 'buildGraph' can be driven without running @cargo metadata@.
@@ -802,7 +830,9 @@ lockfileToDeps emitGitBackedLocators manifestDir lock =
 -- declaration, or a lockfile that drifted ahead of the manifest -- the union
 -- of all declared kinds is used instead. Edges whose parent is not a member
 -- default to a single null kind -- the documented, accepted gap (see the
--- module header of "Strategy.Cargo.Lock").
+-- module header of "Strategy.Cargo.Lock"). Edges whose dependency reference
+-- matches no [[package]] entry in the lockfile are omitted entirely rather
+-- than pointing at a phantom vertex; their names surface via 'unresolvableDeps'.
 lockfileToMetadata :: CargoLock -> [WorkspaceMember] -> ManifestAnalysis -> CargoMetadata
 lockfileToMetadata lock members analysis =
   CargoMetadata
@@ -855,17 +885,23 @@ lockfileToMetadata lock members analysis =
     memberIds = [pid | (p, (pid, _)) <- labeled, isMemberPath p]
 
     resolveNodes =
-      [ ResolveNode pid [NodeDependency (resolveTarget dep) (nodeDepKinds p dep) | dep <- packageDependencies p]
+      [ ResolveNode pid (mapMaybe (nodeDepFor p) (packageDependencies p))
       | (p, (pid, _)) <- labeled
       ]
 
+    -- 'Nothing' for a reference matching no [[package]] entry: it is omitted
+    -- from the graph rather than rendered as a phantom vertex with an empty
+    -- source; its name surfaces via 'unresolvableDeps'.
+    nodeDepFor p dep = fmap (\target -> NodeDependency target (nodeDepKinds p dep)) (resolveTarget dep)
+
+    resolveTarget :: CargoDependency -> Maybe PackageId
     resolveTarget dep =
       case Map.lookup (depName dep, fromMaybe "*" (depVersion dep)) pidByNameVer of
-        Just pid -> pid
+        Just pid -> Just pid
         Nothing ->
           case Map.lookup (depName dep) pidByName of
-            Just (pid : _) -> pid
-            _ -> PackageId (depName dep) (fromMaybe "*" (depVersion dep)) ""
+            Just (pid : _) -> Just pid
+            _ -> Nothing
 
     nodeDepKinds p dep =
       let parentName = packageName p

@@ -22,6 +22,7 @@ import Control.Algebra (Has)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Maybe (isJust)
 import Data.String.Conversion (toString)
+import Data.Text.IO qualified as TIO
 import Path (Abs, Dir, File, Path, mkRelFile, reldir, toFilePath, (</>))
 import Path.IO qualified as PIO
 import Strategy.Cargo qualified as Cargo
@@ -69,6 +70,17 @@ batMetadataFallback =
     , environment = rustEnv
     }
 
+-- | The bat fixture with the rust toolchain environment, used to exercise
+-- the @cargo metadata@ fallback triggered by an unparseable lockfile (its
+-- @Cargo.lock@ is overwritten with invalid TOML before analysis in
+-- 'withAnalysisOfAfterLockfileCorruption').
+batUnparseableLock :: AnalysisTestFixture (Cargo.CargoProject)
+batUnparseableLock =
+  bat
+    { testName = "bat (unparseable lock fallback)"
+    , environment = rustEnv
+    }
+
 lockfilePath :: Path Abs Dir -> Path Abs File
 lockfilePath projectDir = projectDir </> $(mkRelFile "Cargo.lock")
 
@@ -109,8 +121,37 @@ withAnalysisOfAfterLockfileRemoval testFixture runTest = do
   _ <- runTest (res, projectDir)
   sendIO $ PIO.removeDirRecur extractedDir
 
+-- | Extract the fixture, verify @Cargo.lock@ exists, overwrite it with
+-- invalid TOML, then run discovery and analysis. With a present but
+-- unparseable lockfile, the analysis must warn and fall back to the
+-- pre-existing @cargo metadata@ path (regenerating a lockfile), which
+-- requires the rust toolchain environment.
+withAnalysisOfAfterLockfileCorruption ::
+  (Has (Lift IO) sig m, AnalyzeProject a, MonadFail m) =>
+  AnalysisTestFixture a ->
+  (([(DiscoveredProject a, DependencyResults)], Path Abs Dir) -> m b) ->
+  m ()
+withAnalysisOfAfterLockfileCorruption testFixture runTest = do
+  extractedDir <- getArtifact (artifact testFixture)
+  let projectDir = extractedDir </> scopedDir (artifact testFixture)
+  lockExists <- sendIO $ PIO.doesFileExist (lockfilePath projectDir)
+  if lockExists
+    then sendIO $ TIO.writeFile (toFilePath (lockfilePath projectDir)) "not toml at all"
+    else fail $ "expected Cargo.lock in " <> toFilePath projectDir <> ", but it was not found"
+  res <- performDiscoveryAndAnalyses extractedDir testFixture NonStrict
+  _ <- runTest (res, projectDir)
+  sendIO $ PIO.removeDirRecur extractedDir
+
 metadataFallbackSuite :: AnalysisTestFixture (Cargo.CargoProject) -> Spec
 metadataFallbackSuite fixture = aroundAll (withAnalysisOfAfterLockfileRemoval fixture) $
+  describe (toString $ testName fixture) $ do
+    it "should find targets" $ \(result, projectDir) ->
+      expectProject (CargoProjectType, projectDir) result
+    it "should have some dependency results" $ \(result, projectDir) ->
+      isJust (getDepResultsOf result (CargoProjectType, projectDir)) `shouldBe` True
+
+unparseableLockFallbackSuite :: AnalysisTestFixture (Cargo.CargoProject) -> Spec
+unparseableLockFallbackSuite fixture = aroundAll (withAnalysisOfAfterLockfileCorruption fixture) $
   describe (toString $ testName fixture) $ do
     it "should find targets" $ \(result, projectDir) ->
       expectProject (CargoProjectType, projectDir) result
@@ -122,6 +163,7 @@ spec = do
   lockfileFixtureSuite bat
   lockfileFixtureSuite fd
   metadataFallbackSuite batMetadataFallback
+  unparseableLockFallbackSuite batUnparseableLock
 
 -- The dependency number can change as the dependency tree for following changes,
 -- This is ramification of how `rust` builds are analyzed.

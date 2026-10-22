@@ -53,6 +53,7 @@ spec = do
   memberEnumerationSpecs
   kindAnalysisSpecs
   sourceDecisionSpecs
+  unresolvableDepsSpecs
   goldenConversionSpecs
 
 -- ===========================================================================
@@ -87,6 +88,13 @@ memberEnumerationSpecs =
                     , WorkspaceMember "beta" betaDir
                     , WorkspaceMember "gamma" gammaDir
                     ]
+
+    -- The root package is always a member of a non-virtual workspace; a
+    -- members glob that also matches the root (".") must not add it twice.
+    it' "a workspace whose members glob matches the root does not duplicate the root member" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/rootmember_ws")
+      ms <- enumerateWorkspaceMembers root
+      ms `shouldBe'` [WorkspaceMember "rootee" root]
 
 -- ===========================================================================
 -- Per-member dependency-kind derivation
@@ -129,6 +137,48 @@ sourceDecisionSpecs =
       decideLockfileSource (Left (TomlParseError "boom")) `Test.shouldBe` UseMetadata
     it "falls back to metadata on an unsupported version" $
       decideLockfileSource (Left (UnsupportedVersion 1)) `Test.shouldBe` UseMetadata
+
+-- | A lockfile whose member references "ghost", a crate with no [[package]]
+-- entry in the lockfile.
+phantomDepLock :: Text
+phantomDepLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"solo\"\nversion = \"0.1.0\"\ndependencies = [\"serde 1.0.100\", \"ghost 9.9.9\"]\n"
+    <> "\n[[package]]\nname = \"serde\"\nversion = \"1.0.100\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"abcd\"\n"
+
+-- ===========================================================================
+-- Unresolvable dependency references (phantom vertices)
+
+unresolvableDepsSpecs :: Spec
+unresolvableDepsSpecs =
+  describe "unresolvable lockfile references" $ do
+    it' "a dep matching no [[package]] entry is omitted, not turned into a phantom vertex" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/single_crate")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock phantomDepLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          unresolvableDeps lock `shouldBe'` ["ghost"]
+          let soloPid = PackageId "solo" "0.1.0" ("path+file://" <> toText (toFilePath root))
+              serdePid = mkPkgId "serde" "1.0.100"
+              meta = lockfileToMetadata lock members analysis
+          -- The rest of the metadata is well-formed: the resolvable edge and
+          -- every locked package are present unchanged.
+          meta
+            `shouldBe'` CargoMetadata
+              [ Package "solo" "0.1.0" soloPid Nothing Nothing [] Nothing
+              , Package "serde" "1.0.100" serdePid Nothing Nothing [] (Just registrySource)
+              ]
+              [soloPid]
+              ( Resolve
+                  [ ResolveNode soloPid [NodeDependency serdePid [nullKind]]
+                  , ResolveNode serdePid []
+                  ]
+              )
+          -- ...and no node references a PackageId with an empty source.
+          let allDeps = concatMap resolveNodeDeps (resolvedNodes $ metadataResolve meta)
+          [nodePkg dep | dep <- allDeps, pkgIdSource (nodePkg dep) == ""] `shouldBe'` []
 
 -- ===========================================================================
 -- Golden lockfile -> CargoMetadata conversions

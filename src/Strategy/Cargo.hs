@@ -41,6 +41,7 @@ module Strategy.Cargo (
   readLockfile,
   lockfileToDeps,
   lockfileToMetadata,
+  unresolvableDeps,
   MissingCargoLockFile (..),
   UnparseableCargoLockFile (..),
   FailedToReadCargoLockFile (..),
@@ -95,6 +96,7 @@ import Strategy.Cargo.Lock (
   parseDependencyString,
   readLockfile,
   staticLockfileOutcome,
+  unresolvableDeps,
  )
 import Strategy.Cargo.MetadataCmd (
   FailedToGenLockFile (..),
@@ -136,11 +138,12 @@ instance ToJSON CargoProject
 instance AnalyzeProject CargoProject where
   analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ project = do
+    strategyCfg <- ask @StrategyConfig
     readRes <- readLockfile (cargoDir project)
     outcome <- either fatal pure readRes
     case staticLockfileOutcome outcome of
       StaticUseLockfile lock -> do
-        (graph, graphBreadth) <- lockfileToDeps False (cargoDir project) lock
+        (graph, graphBreadth) <- lockfileToDeps (unUseGitBackedCargoLocators $ useGitBackedCargoLocators strategyCfg) (cargoDir project) lock
         pure $
           DependencyResults
             { dependencyGraph = graph
