@@ -227,7 +227,7 @@ discover = simpleDiscover findProjects mkProject CargoProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
 findProjects = walkWithFilters' discoverVisitor
 
-discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CargoProject], WalkStep)
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CargoProject], WalkStep)
 discoverVisitor dir _ files = do
   case findFileNamed "Cargo.toml" files of
     Nothing -> pure ([], WalkContinue)

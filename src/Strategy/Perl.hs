@@ -57,7 +57,7 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' discoverVisitor
 
 -- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
-discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PerlProject], WalkStep)
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PerlProject], WalkStep)
 discoverVisitor dir _ files = do
   -- We prefer MYMETA over META.
   -- Reference: https://metacpan.org/dist/App-mymeta_requires/view/bin/mymeta-requires

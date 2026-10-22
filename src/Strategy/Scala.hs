@@ -166,7 +166,6 @@ discoverVisitor ::
   ( Has Exec sig m
   , Has ReadFS sig m
   , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SbtTargets], WalkStep)
 discoverVisitor dir _ files = do

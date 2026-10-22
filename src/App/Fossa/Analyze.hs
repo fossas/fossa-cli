@@ -330,11 +330,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
     prepare ::
-      ( AnalyzeTaskEffs sig m
-      , Has (Output DiscoveredProjectScan) sig m
-      , Has TaskPool sig m
-      , Has AtomicCounter sig m
-      ) =>
+      (AnalyzeTaskEffs sig m) =>
       DiscoverFunc (DiscoveryM m) ->
       DiscoveryM m (PreparedEntry (DiscoveryM m))
     prepare dscover = case dscover of
