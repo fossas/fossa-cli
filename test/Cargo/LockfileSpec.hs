@@ -11,7 +11,8 @@
 --   * the pure lockfile-vs-metadata source decision;
 --   * golden lockfile -> CargoMetadata conversions (2-member workspace with a
 --     prod+build member path dep, a non-member build-dep subtree, git deps
---     tagged/untagged, and name-version disambiguation).
+--     tagged/untagged, name-version disambiguation with per-version dep-kind
+--     labeling, union fallback for drifted or versionless declarations).
 module Cargo.LockfileSpec (
   spec,
 ) where
@@ -169,6 +170,25 @@ disambigLock =
     <> "\n[[package]]\nname = \"disambig\"\nversion = \"0.1.0\"\ndependencies = [\"ansi_term 0.12.1\", \"ansi_term 0.11.0\"]\n"
     <> "\n[[package]]\nname = \"ansi_term\"\nversion = \"0.11.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aa\"\n"
     <> "\n[[package]]\nname = \"ansi_term\"\nversion = \"0.12.1\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bb\"\n"
+
+compatUnifyLock :: Text
+compatUnifyLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"compat_unify\"\nversion = \"0.1.0\"\ndependencies = [\"ansi_term 0.12.1\"]\n"
+    <> "\n[[package]]\nname = \"ansi_term\"\nversion = \"0.12.1\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"cc\"\n"
+
+driftedLock :: Text
+driftedLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"drifted\"\nversion = \"0.1.0\"\ndependencies = [\"ansi_term 0.13.0\"]\n"
+    <> "\n[[package]]\nname = \"ansi_term\"\nversion = \"0.13.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"dd\"\n"
+
+versionlessLock :: Text
+versionlessLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"versionless\"\nversion = \"0.1.0\"\ndependencies = [\"shared 0.1.0\", \"shared 1.2.0\"]\n"
+    <> "\n[[package]]\nname = \"shared\"\nversion = \"0.1.0\"\n"
+    <> "\n[[package]]\nname = \"shared\"\nversion = \"1.2.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"ee\"\n"
 
 goldenConversionSpecs :: Spec
 goldenConversionSpecs =
@@ -367,7 +387,7 @@ goldenConversionSpecs =
                   ]
                   [dPid]
                   ( Resolve
-                      [ ResolveNode dPid [NodeDependency at12 [nullKind, devKind "build"], NodeDependency at11 [nullKind, devKind "build"]]
+                      [ ResolveNode dPid [NodeDependency at12 [nullKind], NodeDependency at11 [devKind "build"]]
                       , ResolveNode at11 []
                       , ResolveNode at12 []
                       ]
@@ -375,7 +395,104 @@ goldenConversionSpecs =
           meta `shouldBe'` expected
 
           let graph = buildGraph False meta
-              at11Dep = mkDep "ansi_term" "0.11.0" CargoType [EnvProduction, EnvDevelopment]
-              at12Dep = mkDep "ansi_term" "0.12.1" CargoType [EnvProduction, EnvDevelopment]
+              at11Dep = mkDep "ansi_term" "0.11.0" CargoType [EnvDevelopment]
+              at12Dep = mkDep "ansi_term" "0.12.1" CargoType [EnvProduction]
           expectDeps' [at11Dep, at12Dep] graph
           expectDirect' [at11Dep, at12Dep] graph
+
+    it' "a dep declared with a compatible version req in two sections keeps both kinds" $ do
+      -- The member declares ansi_term "0.12" under both [dependencies] and
+      -- [build-dependencies]; the lockfile resolves a single 0.12.1, which
+      -- satisfies ^0.12, so that one version carries both kinds.
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/compat_unify")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock compatUnifyLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          members `shouldBe'` [WorkspaceMember "compat_unify" root]
+          let cuPid = PackageId "compat_unify" "0.1.0" ("path+file://" <> toText (toFilePath root))
+              at12 = mkPkgId "ansi_term" "0.12.1"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "compat_unify" "0.1.0" cuPid Nothing Nothing [] Nothing
+                  , Package "ansi_term" "0.12.1" at12 Nothing Nothing [] (Just registrySource)
+                  ]
+                  [cuPid]
+                  ( Resolve
+                      [ ResolveNode cuPid [NodeDependency at12 [nullKind, devKind "build"]]
+                      , ResolveNode at12 []
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+          let graph = buildGraph False meta
+              at12Dep = mkDep "ansi_term" "0.12.1" CargoType [EnvProduction, EnvDevelopment]
+          expectDeps' [at12Dep] graph
+          expectDirect' [at12Dep] graph
+
+    it' "a lockfile that drifted past every declared req falls back to the union of kinds" $ do
+      -- The member declares ansi_term "0.11" (prod) and "0.12" (build);
+      -- the lockfile contains only 0.13.0, which satisfies neither req under
+      -- caret semantics. No requirement matches, so the declared-kind union is used.
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/drifted")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock driftedLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          members `shouldBe'` [WorkspaceMember "drifted" root]
+          let dPid = PackageId "drifted" "0.1.0" ("path+file://" <> toText (toFilePath root))
+              at13 = mkPkgId "ansi_term" "0.13.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "drifted" "0.1.0" dPid Nothing Nothing [] Nothing
+                  , Package "ansi_term" "0.13.0" at13 Nothing Nothing [] (Just registrySource)
+                  ]
+                  [dPid]
+                  ( Resolve
+                      [ ResolveNode dPid [NodeDependency at13 [nullKind, devKind "build"]]
+                      , ResolveNode at13 []
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+          let graph = buildGraph False meta
+              at13Dep = mkDep "ansi_term" "0.13.0" CargoType [EnvProduction, EnvDevelopment]
+          expectDeps' [at13Dep] graph
+          expectDirect' [at13Dep] graph
+
+    it' "a versionless (path) declaration alongside a versioned req gets the union fallback" $ do
+      -- The member declares shared as a path dependency under [dependencies]
+      -- (no version requirement) and shared "1.0" under [build-dependencies].
+      -- The registry copy (1.2.0) matches ^1.0, so it carries only the build
+      -- kind; the path copy (0.1.0) satisfies no requirement, so it falls
+      -- back to the union of all declared kinds.
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/versionless")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock versionlessLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          members `shouldBe'` [WorkspaceMember "versionless" root]
+          let vPid = PackageId "versionless" "0.1.0" ("path+file://" <> toText (toFilePath root))
+              sharedDir = root </> $(mkRelDir "libs/shared")
+              sharedPathPid = PackageId "shared" "0.1.0" ("file://" <> toText (toFilePath sharedDir))
+              sharedRegPid = mkPkgId "shared" "1.2.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "versionless" "0.1.0" vPid Nothing Nothing [] Nothing
+                  , Package "shared" "0.1.0" sharedPathPid Nothing Nothing [] Nothing
+                  , Package "shared" "1.2.0" sharedRegPid Nothing Nothing [] (Just registrySource)
+                  ]
+                  [vPid]
+                  ( Resolve
+                      [ ResolveNode vPid [NodeDependency sharedPathPid [nullKind, devKind "build"], NodeDependency sharedRegPid [devKind "build"]]
+                      , ResolveNode sharedPathPid []
+                      , ResolveNode sharedRegPid []
+                      ]
+                  )
+          meta `shouldBe'` expected

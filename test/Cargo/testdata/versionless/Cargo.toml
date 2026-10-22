@@ -1,0 +1,10 @@
+[package]
+name = "versionless"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared = { path = "libs/shared" }
+
+[build-dependencies]
+shared = "1.0"

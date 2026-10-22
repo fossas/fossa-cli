@@ -14,6 +14,7 @@ module Strategy.Cargo.Lock (
   ManifestAnalysis (..),
   enumerateWorkspaceMembers,
   analyzeManifests,
+  reqSatisfies,
 
   -- * Source-selection decision (pure, for the analyze-time fallback)
   LockfileSource (..),
@@ -32,17 +33,21 @@ module Strategy.Cargo.Lock (
   FailedToParseCargoLockFile (..),
 ) where
 
+import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
 import Data.Bifunctor (second)
+import Data.Char qualified as Char
 import Data.Foldable (for_)
 import Data.Function (on)
 import Data.Glob qualified
 import Data.List (foldl', intercalate, isPrefixOf, nub, nubBy, sortBy, unsnoc)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe)
+import Data.SemVer (fromText)
+import Data.SemVer.Internal (Version (..))
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
-import Data.Text (Text, breakOn)
+import Data.Text (Text, breakOn, splitOn)
 import Data.Text qualified as Text
 import Diag.Diagnostic (ToDiagnostic (..), renderDiagnostic)
 import Discovery.Walk (WalkStep (WalkSkipSome), walk')
@@ -204,6 +209,15 @@ data ManifestAnalysis = ManifestAnalysis
   -- kinds under which that member declares the dependency. A dependency can
   -- appear in several sections (e.g. both @\[dependencies\]@ and
   -- @\[build-dependencies\]@), so the set can hold several entries.
+  , depKindReqs :: Map.Map (Text, Text) [(Text, DepKind)]
+  -- ^ The same pairs, but keyed per declared version requirement:
+  -- @(parent crate name, dependency crate name)@ to the list of
+  -- @(requirement text, kind)@ pairs as declared in the member's manifest.
+  -- A member may declare the same crate under several semver-incompatible
+  -- requirements with different kinds (legal for 0.x crates), so each lockfile
+  -- version must be labeled from the requirement that matches it. Declarations
+  -- without a version requirement (path / git-only deps) are absent here and
+  -- covered by 'depKindMap' instead.
   , manifestPathDeps :: Map.Map Text (Path Abs Dir)
   -- ^ Best-effort absolute directories of non-member path dependencies, keyed
   -- by crate name, resolved from each member's @path = "..."@ declaration.
@@ -300,12 +314,21 @@ combineMembers wsDeps perMember =
       kindMap =
         Map.unionsWith
           Set.union
-          [ Map.fromListWith Set.union (map (second Set.singleton) klist)
+          [ Map.fromListWith Set.union [(k, Set.singleton knd) | (k, _, knd) <- klist]
           | klist <- ks
           ]
+      reqKinds =
+        let byReq :: Map.Map (Text, Text) (Map.Map Text (Set.Set DepKind))
+            byReq =
+              Map.unionsWith
+                (Map.unionWith Set.union)
+                [ Map.fromListWith (Map.unionWith Set.union) [(k, Map.singleton r (Set.singleton knd)) | (k, Just r, knd) <- klist]
+                | klist <- ks
+                ]
+         in Map.map (\(m :: Map.Map Text (Set.Set DepKind)) -> [(r, kd) | (r, set) <- Map.toList m, kd <- Set.toList set]) byReq
       pathDeps = Map.unions [Map.fromList plist | plist <- paths]
       warnings = nub (concat warns)
-   in ManifestAnalysis kindMap pathDeps warnings
+   in ManifestAnalysis kindMap reqKinds pathDeps warnings
 
 -- | Pure core of member-dep collection for a single member manifest.
 collectMemberDeps ::
@@ -313,7 +336,7 @@ collectMemberDeps ::
   Path Abs Dir ->
   Map.Map Text Value ->
   Maybe (Map.Map Text Value) ->
-  ([((Text, Text), DepKind)], [(Text, Path Abs Dir)], [Text])
+  ([((Text, Text), Maybe Text, DepKind)], [(Text, Path Abs Dir)], [Text])
 collectMemberDeps memberName memberDir m wsDeps =
   let perTable (knd, mTbl) =
         case mTbl of
@@ -345,19 +368,21 @@ allDepTables m =
 
 -- | Walk a single dependency entry, resolving renames and workspace
 -- inheritance, and report the crate name it refers to (together with the
--- declaring kind), any @path@ it carries, and any warning.
+-- declaring kind and declared version requirement, if any), any @path@ it
+-- carries, and any warning.
 depEntry ::
   Text ->
   Path Abs Dir ->
   DepKind ->
   Maybe (Map.Map Text Value) ->
   (Text, Value) ->
-  ([((Text, Text), DepKind)], [(Text, Path Abs Dir)], [Text])
+  ([((Text, Text), Maybe Text, DepKind)], [(Text, Path Abs Dir)], [Text])
 depEntry memberName memberDir knd wsDeps (key, v) =
   let (crateName, warns) = resolveCrateName wsDeps key v
+      req = depVersionReq wsDeps key v
       pathStr = vMap v >>= (\t -> t .!? "path" >>= vText)
       pathAbs = pathStr >>= resolvePathDep memberDir
-   in ( [((memberName, crateName), knd)]
+   in ( [((memberName, crateName), req, knd)]
       , case pathAbs of
           Just d -> [(crateName, d)]
           Nothing -> []
@@ -386,6 +411,130 @@ resolveCrateName wsDeps key v =
       "Cargo manifest dependency '"
         <> key
         <> "' uses workspace inheritance but no matching [workspace.dependencies] entry was found; classified as Production."
+
+-- | The version requirement a dependency entry declares, if any. A plain
+-- string value (@foo = "1.2"@) is the requirement itself; an inline table
+-- carries it under its @version@ key; a @workspace = true@ entry inherits it
+-- from the corresponding @[workspace.dependencies]@ entry (which may be a
+-- plain string or a table with its own @version@). Path-only and git-only
+-- dependencies declare no requirement.
+depVersionReq :: Maybe (Map.Map Text Value) -> Text -> Value -> Maybe Text
+depVersionReq wsDeps key v =
+  case vMap v >>= (.!? "workspace") >>= vBool of
+    Just True -> wsDeps >>= (.!? key) >>= versionReqOf
+    _ -> versionReqOf v
+  where
+    versionReqOf :: Value -> Maybe Text
+    versionReqOf x = vText x <|> (vMap x >>= (.!? "version") >>= vText)
+
+-- ===========================================================================
+-- Cargo version-requirement matching (pure)
+
+-- | The comparator a manifest version requirement was declared with. A bare
+-- requirement carries no prefix and uses Cargo caret semantics ('CaretReq').
+data CargoReqOp
+  = CaretReq
+  | TildeReq
+  | ReqEq
+  | ReqGte
+  | ReqLte
+  | ReqGt
+  | ReqLt
+  deriving (Eq, Show)
+
+-- | Check whether a resolved crate version satisfies the version requirement
+-- a member's manifest declared for a dependency. Semantics implemented (per
+-- Cargo's documented caret rules, mirroring the @semver@ crate):
+--
+--   * bare / "^": >=M.m.p with the upper bound at the next nonzero-component
+--     increment -- ^1.2.3 := >=1.2.3 <2.0.0, ^0.2 := >=0.2.0 <0.3.0,
+--     ^0.0.5 := =0.0.5; an all-zero version (^0, ^0.0) has no upper bound;
+--   * "~" (tilde): bumps the minor when one is given (~1.2 := >=1.2.0 <1.3.0),
+--     otherwise the major (~1 := >=1.0.0 <2.0.0);
+--   * "=", ">=", "<=", ">", "<": applied to the requirement with its missing
+--     components padded with zero (=1.2 means =1.2.0, not a 1.2.x range).
+--
+-- An unparseable requirement or resolved version returns @False@, so callers
+-- conservatively fall back to the union of all declared kinds.
+reqSatisfies :: Text -> Text -> Bool
+reqSatisfies reqText resolvedText =
+  case parseCargoReq (Text.strip reqText) of
+    Nothing -> False
+    Just (op, parts) ->
+      case fromText resolvedText of
+        Left _ -> False
+        Right v -> satisfiesCargoOp op parts (_versionMajor v, _versionMinor v, _versionPatch v)
+
+parseCargoReq :: Text -> Maybe (CargoReqOp, [Int])
+parseCargoReq t =
+  case parseVersionParts rest of
+    Nothing -> Nothing
+    Just parts -> Just (op, parts)
+  where
+    (op, rest) = pickReqOp t
+
+pickReqOp :: Text -> (CargoReqOp, Text)
+pickReqOp t
+  | Just r <- Text.stripPrefix ">=" t = (ReqGte, r)
+  | Just r <- Text.stripPrefix "<=" t = (ReqLte, r)
+  | Just r <- Text.stripPrefix "^" t = (CaretReq, r)
+  | Just r <- Text.stripPrefix "~" t = (TildeReq, r)
+  | Just r <- Text.stripPrefix "=" t = (ReqEq, r)
+  | Just r <- Text.stripPrefix ">" t = (ReqGt, r)
+  | Just r <- Text.stripPrefix "<" t = (ReqLt, r)
+  | otherwise = (CaretReq, t)
+
+-- | Split into 1 to 3 all-digit components; anything else (empty input,
+-- pre-release/build suffixes, more than three parts) is rejected.
+parseVersionParts :: Text -> Maybe [Int]
+parseVersionParts t
+  | Text.null t = Nothing
+  | otherwise =
+      let parts = splitOn "." t
+          parsed = traverse parseIntPart parts
+       in if length parts > 3 then Nothing else parsed
+  where
+    parseIntPart :: Text -> Maybe Int
+    parseIntPart p
+      | Text.null p || not (Text.all Char.isDigit p) = Nothing
+      | otherwise = Just (read (toString p))
+
+-- | Apply one parsed requirement to a resolved version. Missing components
+-- are padded with zero (>=1.2 means >=1.2.0; =1.2 means exactly 1.2.0).
+satisfiesCargoOp :: CargoReqOp -> [Int] -> (Int, Int, Int) -> Bool
+satisfiesCargoOp op parts v =
+  case op of
+    CaretReq -> v >= lower && maybe True (v <) caretUpper
+    TildeReq -> v >= lower && v < upper
+    ReqEq -> v == lower
+    ReqGte -> v >= lower
+    ReqLte -> v <= lower
+    ReqGt -> v > lower
+    ReqLt -> v < lower
+  where
+    (maj, min, pat) = padParts parts
+    lower = (maj, min, pat)
+
+    -- Bump the minor when declared, otherwise the major.
+    upper =
+      case parts of
+        (_ : _ : _) -> (maj, min + 1, 0)
+        _ -> (maj + 1, 0, 0)
+
+    -- Cargo caret: bump the leftmost nonzero component; all-zero has no upper bound.
+    caretUpper
+      | maj > 0 = Just (maj + 1, 0, 0)
+      | min > 0 = Just (0, min + 1, 0)
+      | pat > 0 = Just (0, 0, pat + 1)
+      | otherwise = Nothing
+
+padParts :: [Int] -> (Int, Int, Int)
+padParts =
+  \case
+    [a] -> (a, 0, 0)
+    [a, b] -> (a, b, 0)
+    [a, b, c] -> (a, b, c)
+    _ -> (0, 0, 0)
 
 -- ===========================================================================
 -- Pure TOML value navigation helpers (private)
@@ -645,11 +794,15 @@ lockfileToDeps emitGitBackedLocators manifestDir lock =
 --     with the absolute path as the dependency name.
 --
 -- Dependency edge kinds come from the manifest analysis: a dependency declared
--- by a workspace member carries one 'NodeDepKind' per declared kind (a dep in
--- both @\[dependencies\]@ and @\[build-dependencies\]@ carries both a null and a
--- @"build"@ kind). Edges whose parent is not a member default to a single
--- null kind -- the documented, accepted gap (see the module header of
--- "Strategy.Cargo.Lock").
+-- by a workspace member carries one 'NodeDepKind' per kind whose declared
+-- version requirement matches the lockfile entry's resolved version (so a
+-- crate declared as both a @\[dependencies\]@ and a @\[build-dependencies\]@
+-- dep at incompatible versions is labeled per version, not unioned across
+-- them). When no requirement matches -- an undeclared or versionless
+-- declaration, or a lockfile that drifted ahead of the manifest -- the union
+-- of all declared kinds is used instead. Edges whose parent is not a member
+-- default to a single null kind -- the documented, accepted gap (see the
+-- module header of "Strategy.Cargo.Lock").
 lockfileToMetadata :: CargoLock -> [WorkspaceMember] -> ManifestAnalysis -> CargoMetadata
 lockfileToMetadata lock members analysis =
   CargoMetadata
@@ -716,11 +869,25 @@ lockfileToMetadata lock members analysis =
 
     nodeDepKinds p dep =
       let parentName = packageName p
-       in if isMemberPath p
-            then case Map.lookup (parentName, depName dep) (depKindMap analysis) of
+          -- The version the lockfile entry was resolved to; "*" for entries
+          -- without a version (path / git deps), which matches no requirement.
+          resolvedVer = fromMaybe "*" (depVersion dep)
+          -- Fallback: the union of every kind this member declares for the
+          -- crate, regardless of version. Used when the declaration has no
+          -- version at all or none of the declared requirements match the
+          -- resolved version (e.g. the lockfile drifted ahead of the manifest).
+          unionKinds =
+            case Map.lookup (parentName, depName dep) (depKindMap analysis) of
               Just kinds -> map depKindToNdk (Set.toList kinds)
               Nothing -> [prodNdk]
-            else [prodNdk]
+       in if not (isMemberPath p)
+            then [prodNdk]
+            else
+              let perVersionKinds =
+                    Set.fromList [knd | (req, knd) <- fromMaybe [] (Map.lookup (parentName, depName dep) (depKindReqs analysis)), reqSatisfies req resolvedVer]
+               in if Set.null perVersionKinds
+                    then unionKinds
+                    else map depKindToNdk (Set.toList perVersionKinds)
 
     depKindToNdk DepProd = prodNdk
     depKindToNdk DepDev = NodeDepKind (Just "dev") Nothing
