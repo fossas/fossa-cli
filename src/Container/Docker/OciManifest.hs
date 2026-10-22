@@ -64,7 +64,7 @@ instance FromJSON OciManifestV2 where
 
 newtype OciManifestConfig = OciManifestConfig {configDigest :: RepoDigest} deriving (Show, Eq, Ord)
 instance FromJSON OciManifestConfig where
-  parseJSON = withObject "ConfigEntry" $ \o -> OciManifestConfig <$> (parseRepoDigest =<< o .: "digest")
+  parseJSON = withObject "ConfigEntry" $ \o -> OciManifestConfig <$> (parseContentDigest =<< o .: "digest")
 
 data OciManifestLayer = OciManifestLayer
   { layerDigest :: RepoDigest
@@ -75,7 +75,7 @@ data OciManifestLayer = OciManifestLayer
 instance FromJSON OciManifestLayer where
   parseJSON = withObject "LayerEntry" $ \o ->
     OciManifestLayer
-      <$> (parseRepoDigest =<< o .: "digest")
+      <$> (parseContentDigest =<< o .: "digest")
       <*> o .: "mediaType"
 
 -- | Parses a content digest, accepting only @algorithm:encoded@ as the OCI image spec defines it:
@@ -88,8 +88,8 @@ instance FromJSON OciManifestLayer where
 --
 -- Refer to:
 --  https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
-parseRepoDigest :: Text -> Parser RepoDigest
-parseRepoDigest raw =
+parseContentDigest :: Text -> Parser RepoDigest
+parseContentDigest raw =
   case Text.breakOn ":" raw of
     (algorithm, encodedWithSep)
       | Just encoded <- Text.stripPrefix ":" encodedWithSep
@@ -195,12 +195,14 @@ mkConfigFileName (OciManifestConfig (RepoDigest digest)) = removeDigestAlgorithm
 mkLayerTarFileName :: OciManifestLayer -> Text
 mkLayerTarFileName (OciManifestLayer (RepoDigest digest) _) = removeDigestAlgorithm digest <> ".tar"
 
--- | Removes digest algorithm (if any)
+-- | Removes the digest algorithm, keeping only the encoded portion.
+--
+-- Every digest reaching this function was accepted by 'parseContentDigest', so it
+-- always carries an @algorithm:@ prefix.
 --
 -- >> removeDigestAlgorithm "sha256:digest" == "digest"
 -- >> removeDigestAlgorithm "sha512:digest" == "digest"
 -- >> removeDigestAlgorithm "sha256+b64u:digest" = "digest"
--- >> removeDigestAlgorithm "digest" = "digest"
 --
 -- Refer to:
 --  https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
