@@ -16,7 +16,8 @@
 -- every still-running thread is killed; when no error occurs all threads are
 -- waited for before returning.  Consumers that recover their own failures
 -- internally (the analyzers do this with warnThenRecover) never reach this
--- boundary.
+-- boundary.  Pinned by the abort-contract and walker-failure cases in
+-- "Discovery.WalkBroadcastSpec".
 --
 -- Capability note: unlike VSI's fork+STM pipeline (see the getNumCapabilities
 -- clamp in "App.Fossa.VSI.Analyze"), this broadcast needs no 2-capability
