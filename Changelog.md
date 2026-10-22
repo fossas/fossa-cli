@@ -1,8 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.20.7
 
 - Yarn: `yarn.lock` files with no package entries no longer fail analysis. ([#1817](https://github.com/fossas/fossa-cli/pull/1817))
+- Container scanning: blob digests in an image manifest fetched from a registry are validated against the OCI digest format before they name files in the export directory.
 - Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`. ([#1805](https://github.com/fossas/fossa-cli/pull/1805))
 
 ## 3.20.6

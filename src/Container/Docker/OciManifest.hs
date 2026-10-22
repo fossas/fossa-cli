@@ -25,6 +25,8 @@ import Container.Docker.SourceParser (
  )
 import Control.Effect.Diagnostics (ToDiagnostic, renderDiagnostic)
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
+import Data.Aeson.Types (Parser)
+import Data.Char (isAsciiLower, isAsciiUpper, isDigit)
 import Data.Error (SourceLocation, createEmptyBlock)
 import Data.List.NonEmpty ((<|))
 import Data.List.NonEmpty qualified as NonEmpty
@@ -62,7 +64,7 @@ instance FromJSON OciManifestV2 where
 
 newtype OciManifestConfig = OciManifestConfig {configDigest :: RepoDigest} deriving (Show, Eq, Ord)
 instance FromJSON OciManifestConfig where
-  parseJSON = withObject "ConfigEntry" $ \o -> OciManifestConfig . RepoDigest <$> o .: "digest"
+  parseJSON = withObject "ConfigEntry" $ \o -> OciManifestConfig <$> (parseContentDigest =<< o .: "digest")
 
 data OciManifestLayer = OciManifestLayer
   { layerDigest :: RepoDigest
@@ -72,9 +74,38 @@ data OciManifestLayer = OciManifestLayer
 
 instance FromJSON OciManifestLayer where
   parseJSON = withObject "LayerEntry" $ \o ->
-    OciManifestLayer . RepoDigest
-      <$> (o .: "digest")
+    OciManifestLayer
+      <$> (parseContentDigest =<< o .: "digest")
       <*> o .: "mediaType"
+
+-- | Parses a content digest, accepting only @algorithm:encoded@ as the OCI image spec defines it:
+-- the algorithm is lowercase alphanumeric components joined by @+@, @.@, @_@ or @-@, and the
+-- encoded portion is @[a-zA-Z0-9=_-]+@.
+--
+-- The manifest comes from the registry, and the encoded portion of each digest names the file
+-- the blob is written to (see 'blobEntries'), so a digest must not be able to carry a path
+-- separator or a @..@ component.
+--
+-- Refer to:
+--  https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
+parseContentDigest :: Text -> Parser RepoDigest
+parseContentDigest raw =
+  case Text.breakOn ":" raw of
+    (algorithm, encodedWithSep)
+      | Just encoded <- Text.stripPrefix ":" encodedWithSep
+      , isAlgorithm algorithm
+      , not (Text.null encoded) && Text.all isEncodedChar encoded ->
+          pure $ RepoDigest raw
+    _ -> fail $ "Invalid content digest: " <> toString raw
+  where
+    isAlgorithm :: Text -> Bool
+    isAlgorithm algorithm = all isAlgorithmComponent $ Text.split (`elem` ("+._-" :: String)) algorithm
+
+    isAlgorithmComponent :: Text -> Bool
+    isAlgorithmComponent component = not (Text.null component) && Text.all (\c -> isAsciiLower c || isDigit c) component
+
+    isEncodedChar :: Char -> Bool
+    isEncodedChar c = isAsciiLower c || isAsciiUpper c || isDigit c || c `elem` ("=_-" :: String)
 
 data LayerKind
   = LayerDockerRootFsDiffTarGz
@@ -164,12 +195,14 @@ mkConfigFileName (OciManifestConfig (RepoDigest digest)) = removeDigestAlgorithm
 mkLayerTarFileName :: OciManifestLayer -> Text
 mkLayerTarFileName (OciManifestLayer (RepoDigest digest) _) = removeDigestAlgorithm digest <> ".tar"
 
--- | Removes digest algorithm (if any)
+-- | Removes the digest algorithm, keeping only the encoded portion.
+--
+-- Every digest reaching this function was accepted by 'parseContentDigest', so it
+-- always carries an @algorithm:@ prefix.
 --
 -- >> removeDigestAlgorithm "sha256:digest" == "digest"
 -- >> removeDigestAlgorithm "sha512:digest" == "digest"
 -- >> removeDigestAlgorithm "sha256+b64u:digest" = "digest"
--- >> removeDigestAlgorithm "digest" = "digest"
 --
 -- Refer to:
 --  https://github.com/opencontainers/image-spec/blob/main/descriptor.md#digests
