@@ -31,6 +31,7 @@ import Algebra.Graph.AdjacencyMap.Algorithm qualified as AMA
 import Algebra.Graph.NonEmpty.AdjacencyMap qualified as NAM
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic (..), fatal, warn)
+import Control.Monad (mfilter)
 import Data.Aeson (
   FromJSON (parseJSON),
   Object,
@@ -43,7 +44,7 @@ import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (Parser, parseEither, parseMaybe)
 import Data.Bifunctor (first)
 import Data.Char (isSpace)
-import Data.Either (rights)
+import Data.Either (fromRight, rights)
 import Data.Foldable (fold, for_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -53,6 +54,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Void (Void)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (CondaType, GitType, PipType, UnresolvedPathType),
@@ -67,7 +69,8 @@ import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
 import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps), reqParts)
 import Strategy.Python.Util (Marker (..), MarkerOp (MarkerOperator), Operator (OpEq, OpNot), Req, requirementParser)
-import Text.Megaparsec (parse)
+import Text.Megaparsec (Parsec, anySingle, chunk, eof, lookAhead, many, manyTill, optional, parse, some, takeRest, takeWhile1P, takeWhileP, try)
+import Text.Megaparsec.Char (char, space)
 
 -- | Known lock versions; other versions are parsed with a warning.
 knownLockVersions :: (Int, Int)
@@ -195,41 +198,34 @@ data CondaArtifact = CondaArtifact
   }
   deriving (Eq, Ord, Show)
 
--- | The channel is every path segment between the host and subdir,
--- including labels such as @conda-forge/label/broken@.
--- The filename's last two hyphenated fields are version and build;
--- package names may contain hyphens.
+-- | Reads @<channel>/<subdir>/<name>-<version>-<build>@ after the host. The
+-- channel is every path segment between the host and subdir, including labels
+-- such as @conda-forge/label/broken@, and package names can contain hyphens:
+--
+-- > https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
+-- > https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-2_gnu.tar.bz2
+-- > https://conda.anaconda.org/conda-forge/noarch/tzdata-2025b-h78e105d_0.conda
+-- > s3://my-s3-bucket/my-channel/linux-64/ld_impl_linux-64-2.40-hf3520f5_7.conda
 parseCondaArtifactUrl :: Text -> Maybe CondaArtifact
-parseCondaArtifactUrl url = do
-  let afterScheme = case Text.breakOn "://" url of
-        (before, rest) | Text.null rest -> before
-        (_, rest) -> Text.drop 3 rest
-      segments = filter (not . Text.null) . Text.splitOn "/" . Text.takeWhile (/= '?') $ afterScheme
-  (initSegments, fileName) <- unsnoc segments
-  (hostAndChannel, platform) <- unsnoc initSegments
-  channel <- case hostAndChannel of
-    [] -> Nothing
-    (_host : channelSegments) | not (null channelSegments) -> Just (Text.intercalate "/" channelSegments)
-    _ -> Nothing
-  let stem = stripArchiveExtension fileName
-  (nameAndVersion, _build) <- unsnocOn '-' stem
-  (name, version) <- unsnocOn '-' nameAndVersion
-  if Text.null name || Text.null version
-    then Nothing
-    else Just $ CondaArtifact channel platform name version
+parseCondaArtifactUrl = either (const Nothing) Just . parse artifactUrl ""
   where
-    stripArchiveExtension t =
-      case mapMaybe (`Text.stripSuffix` t) [".tar.bz2", ".conda"] of
-        (stripped : _) -> stripped
-        [] -> t
+    artifactUrl :: Parsec Void Text CondaArtifact
+    artifactUrl = do
+      _scheme <- optional . try $ manyTill anySingle (chunk "://")
+      _host <- many (char '/') *> segment <* slashes
+      -- A channel segment is followed by at least the subdir and filename.
+      channel <- Text.intercalate "/" <$> some (try $ segment <* slashes <* lookAhead (segment *> slashes *> segment))
+      platform <- segment <* slashes
+      -- The last two hyphenated fields are the version and build.
+      name <- Text.intercalate "-" <$> some (try $ field <* char '-' <* lookAhead (field *> char '-'))
+      version <- field <* char '-'
+      _build <- takeWhileP (Just "build") (`notElem` ['/', '?'])
+      _ <- many (char '/') *> optional (char '?' *> takeRest) *> eof
+      pure $ CondaArtifact channel platform name version
 
-    unsnoc xs = case reverse xs of
-      [] -> Nothing
-      (x : rest) -> Just (reverse rest, x)
-
-    unsnocOn c t = case Text.breakOnEnd (Text.singleton c) t of
-      ("", _) -> Nothing
-      (before, after) -> Just (Text.dropEnd 1 before, after)
+    segment = takeWhile1P (Just "path segment") (`notElem` ['/', '?'])
+    slashes = some (char '/')
+    field = takeWhile1P (Just "field") (`notElem` ['-', '/', '?'])
 
 data PypiSource
   = -- | A remote source without a @git+@ prefix.
@@ -370,12 +366,17 @@ pypiMatchKey meta = \case
   CondaLocator{} -> Nothing
   PypiLocator{} -> normalizePypiName <$> (pixiPkgName =<< meta)
 
+-- | Reads a match spec's package name, after any @channel::@ prefix:
+--
+-- > python >=3.11,<3.12.0a0
+-- > conda-forge::pytorch 2.8.0 cpu_mkl*102
 condaSpecName :: Text -> Text
-condaSpecName spec = Text.takeWhile (\c -> not (isSpace c) && c `notElem` ['=', '>', '<', '!', '~']) afterChannel
+condaSpecName = fromRight "" . parse matchSpecName ""
   where
-    afterChannel = case Text.breakOn "::" (Text.strip spec) of
-      (before, rest) | Text.null rest -> before
-      (_, rest) -> Text.drop 2 rest
+    matchSpecName :: Parsec Void Text Text
+    matchSpecName = do
+      _channel <- space *> optional (try $ manyTill anySingle (chunk "::"))
+      takeWhileP (Just "package name") (\c -> not (isSpace c) && c `notElem` ['=', '>', '<', '!', '~'])
 
 -- | Only @extra@ comparisons are evaluated; other markers are assumed to hold.
 markerAllows :: Set Text -> Marker -> Bool
@@ -441,14 +442,18 @@ toDependency metadata locator env = case locator of
       PypiRegistry -> case pixiPkgName =<< metadata of
         Nothing -> Left $ "pixi: pypi entry has no name, skipping: " <> source
         Just name -> Right $ mkDep PipType name (pixiPkgVersion =<< metadata)
-      PypiGit url -> Right $ mkDep GitType (Text.takeWhile (/= '?') $ Text.takeWhile (/= '#') url) (gitRevision url)
+      PypiGit url -> Right . uncurry (mkDep GitType) . fromRight (url, Nothing) $ parse gitSource "" url
       PypiLocalPath path -> Right $ pathDep path
 
-    -- The fragment holds the resolved commit.
-    gitRevision url = case Text.breakOnEnd "#" url of
-      ("", _) -> Nothing
-      (_, sha) | Text.null sha -> Nothing
-      (_, sha) -> Just sha
+    -- The fragment holds the resolved commit:
+    --
+    -- > https://github.com/laurentS/slowapi.git?rev=a72bcc66597f620f04bf5be3676e40ed308d3a6a#a72bcc66597f620f04bf5be3676e40ed308d3a6a
+    gitSource :: Parsec Void Text (Text, Maybe Text)
+    gitSource = do
+      repository <- takeWhileP (Just "repository") (`notElem` ['?', '#'])
+      _query <- optional $ char '?' *> takeWhileP (Just "query") (/= '#')
+      commit <- optional $ char '#' *> takeRest
+      pure (repository, mfilter (not . Text.null) commit)
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => PixiManifestDeps -> Path Abs File -> m (Graphing Dependency)
 analyze declared lockPath = do

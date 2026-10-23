@@ -78,6 +78,14 @@ spec = do
       parseCondaArtifactUrl "https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-2_gnu.tar.bz2"
         `shouldBe` Just (CondaArtifact "conda-forge" "linux-64" "_openmp_mutex" "4.5")
 
+    it "reads noarch packages" $
+      parseCondaArtifactUrl "https://conda.anaconda.org/conda-forge/noarch/tzdata-2025b-h78e105d_0.conda"
+        `shouldBe` Just (CondaArtifact "conda-forge" "noarch" "tzdata" "2025b")
+
+    it "reads a channel in an S3 bucket" $
+      parseCondaArtifactUrl "s3://my-s3-bucket/my-channel/linux-64/ld_impl_linux-64-2.40-hf3520f5_7.conda"
+        `shouldBe` Just (CondaArtifact "my-channel" "linux-64" "ld_impl_linux-64" "2.40")
+
     it "reads the channel from a self-hosted mirror" $
       parseCondaArtifactUrl "https://prefix.dev/conda-forge/osx-arm64/libffi-3.4.2-h3422bc3_5.conda"
         `shouldBe` Just (CondaArtifact "conda-forge" "osx-arm64" "libffi" "3.4.2")
