@@ -49,6 +49,19 @@ expectedContentFromV1_4 =
     , configureRequires = Just $ fromList [(PackageName "ExtUtils::MakeMaker", Just $ TextLike "0")]
     }
 
+-- META spec v1.0 predates the `meta-spec` field, so a v1.0 file has no spec version
+-- of its own: we treat it as 1.0, the same way CPAN::Meta does.
+expectedContentFromV1_0 :: PerlMeta
+expectedContentFromV1_0 =
+  PerlMeta
+    { version = 1.0
+    , runtimeRequires = Just $ fromList [(PackageName "Archive::Zip", Just $ TextLike "0"), perl]
+    , buildRequires = Just $ fromList [(PackageName "Compress::Zlib", Just $ TextLike "0")]
+    , testRequires = Nothing
+    , developRequires = Nothing
+    , configureRequires = Nothing
+    }
+
 mkDependency :: Text -> Text -> DepEnvironment -> Dependency
 mkDependency name version env = Dependency CpanType name (Just $ CEq version) [] (singleton env) empty
 
@@ -74,6 +87,12 @@ spec = do
       case resolvedFile of
         Left err -> expectationFailure ("failed to parse yaml file" <> show (prettyPrintParseException err))
         Right val -> val `shouldBe` Just expectedContentFromV1_4
+
+    it "should parse yaml file (v1.0, without meta-spec) correctly" $ do
+      resolvedFile <- decodeFileEither "test/Perl/testdata/MetaV1_0.yml"
+      case resolvedFile of
+        Left err -> expectationFailure ("failed to parse yaml file" <> show (prettyPrintParseException err))
+        Right val -> val `shouldBe` Just expectedContentFromV1_0
 
   describe "buildGraph" $
     it "should build graph" $ do
