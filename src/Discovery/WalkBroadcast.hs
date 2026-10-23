@@ -12,28 +12,12 @@
 -- discovery did no work whatsoever.
 --
 -- Failure contract, following "Control.Carrier.TaskPool.withTaskPool": the
--- first consumer (or walker) exception aborts the run — it is re-thrown and
--- every still-running thread is killed; when no error occurs all threads are
--- waited for before returning.  Consumers that recover their own failures
--- internally (the analyzers do this with warnThenRecover, as in
--- 'accumulateConsumer') never reach this boundary: a per-directory failure is
--- recorded in that strategy's sink and surfaced later by its finalizer at ERROR
--- severity, restoring the old per-strategy all-or-nothing discovery contract.
--- This is the accepted delta versus the pre-broadcast per-strategy walks, where
--- each tree was walked independently and one strategy's failure could not reach
--- another: here a failure of the shared WALKER itself still aborts every
--- strategy, because the tree is walked only once.  Pinned by the abort-contract,
--- walker-failure, and all-or-nothing/isolation cases in
--- "Discovery.WalkBroadcastSpec".
+-- first consumer (or walker) exception aborts the run and every still-running
+-- thread is killed; recovered per-directory failures are surfaced per-strategy
+-- instead — see 'accumulateConsumer'.
 --
--- Capability note: unlike VSI's fork+STM pipeline (see the getNumCapabilities
--- clamp in "App.Fossa.VSI.Analyze"), this broadcast needs no 2-capability
--- floor and is safe at -threaded's default of 1.  Every thread here either
--- blocks in STM 'retry' on its channel read (a retrying 'atomically' yields
--- the capability rather than spinning) or does ReadFS IO between quick,
--- non-retrying STM writes; there is no busy-polling loop that could starve
--- the walker on a single capability, and a probe with @-RTS -N1@ completed
--- without deadlock.
+-- Safe at '-threaded''s default of one capability: every thread blocks in STM
+-- 'retry' (which yields) or between quick, non-retrying STM writes.
 module Discovery.WalkBroadcast (
   -- * One broadcast consumer
   WalkConsumer (..),

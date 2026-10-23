@@ -133,7 +133,7 @@ import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (resultToMaybe)
+import Diag.Result (Result, resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
@@ -294,6 +294,26 @@ runAnalyzers ::
   Maybe FileAncestry ->
   m ()
 
+-- | The monad strategy discovery runs in: the base effects wrapped in the
+-- same carrier stack 'Discovery.Projects.withDiscoveredProjects' uses per
+-- strategy fork.
+type DiscoveryM m = StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m))
+
+-- | Run a 'DiscoveryM' computation to a 'Result' — one Diagnostics scope
+-- around a whole discovery phase.  Carrier choice happens here and in the
+-- top-level effect stack: this installs the interpreters
+-- 'Discovery.Projects.withDiscoveredProjects' applies per strategy fork, so
+-- discovery failures get the same context-stacked rendering everywhere.
+runDiscovery ::
+  ( Has (Lift IO) sig m
+  , Has AtomicCounter sig m
+  , Has Debug sig m
+  , Has Logger sig m
+  , Has Stack sig m
+  ) =>
+  DiscoveryM m a -> m (Result a)
+runDiscovery = Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack
+
 -- | A 'DiscoverFunc' prepared for the shared discovery walk: its broadcast
 -- consumer(s) (empty for strategies that still discover themselves) and a
 -- discovery action that reads the strategy's collected projects.
@@ -306,20 +326,14 @@ data PreparedEntry d where
     (Path Abs Dir -> d [DiscoveredProject p]) ->
     PreparedEntry d
 
--- | The monad strategy discovery runs in: the base effects wrapped in the
--- same diagnostics carriers 'Discovery.Projects.withDiscoveredProjects' uses
--- per strategy fork.
-type DiscoveryM m = StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m))
-
 runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else do
-      -- One shared walk feeds all strategies; see "Discovery.WalkBroadcast".
       entriesResult <-
-        Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ do
+        runDiscovery $ do
           entries <- traverse prepare discoverFuncs
           withWalkBroadcast filters basedir (concatMap entryConsumers entries)
           pure entries
