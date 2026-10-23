@@ -15,8 +15,15 @@
 -- first consumer (or walker) exception aborts the run — it is re-thrown and
 -- every still-running thread is killed; when no error occurs all threads are
 -- waited for before returning.  Consumers that recover their own failures
--- internally (the analyzers do this with warnThenRecover) never reach this
--- boundary.  Pinned by the abort-contract and walker-failure cases in
+-- internally (the analyzers do this with warnThenRecover, as in
+-- 'accumulateConsumer') never reach this boundary: a per-directory failure is
+-- recorded in that strategy's sink and surfaced later by its finalizer at ERROR
+-- severity, restoring the old per-strategy all-or-nothing discovery contract.
+-- This is the accepted delta versus the pre-broadcast per-strategy walks, where
+-- each tree was walked independently and one strategy's failure could not reach
+-- another: here a failure of the shared WALKER itself still aborts every
+-- strategy, because the tree is walked only once.  Pinned by the abort-contract,
+-- walker-failure, and all-or-nothing/isolation cases in
 -- "Discovery.WalkBroadcastSpec".
 --
 -- Capability note: unlike VSI's fork+STM pipeline (see the getNumCapabilities
@@ -30,6 +37,7 @@
 module Discovery.WalkBroadcast (
   -- * One broadcast consumer
   WalkConsumer (..),
+  accumulateConsumer,
 
   -- * Running the broadcast
   broadcastStream,
@@ -38,14 +46,17 @@ module Discovery.WalkBroadcast (
 
 import Control.Carrier.Threaded (Handle, fork, handleWait, kill)
 import Control.Concurrent.STM
-import Control.Effect.Diagnostics (Diagnostics)
+import Control.Effect.Diagnostics (Diagnostics, warnThenRecover)
 import Control.Effect.Exception (SomeException, mask, onException, throwIO)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Exception.Extra (safeTry)
 import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Functor (void, ($>))
+import Data.IORef (IORef, atomicModifyIORef')
+import Data.Text (Text)
 import Discovery.Filters (AllFilters, toolAllowed)
+import Discovery.Walk (WalkStep (WalkContinue))
 import Discovery.WalkStream (DirListing, walkStream)
 import Discovery.WalkVisitor (Visitor, driveVisitor)
 import Effect.ReadFS (ReadFS)
@@ -60,6 +71,50 @@ data WalkConsumer o m = WalkConsumer
   { wcProjectType :: DiscoveredProjectType
   , wcVisitor :: Visitor o m
   }
+
+-- | Build a broadcast consumer that accumulates the raw projects its visitor
+-- collects into @sink@, applying the T4 all-or-nothing failure contract:
+--
+--   * A failure in any directory records the tool-attributed @msg@ in the sink
+--     and keeps the walk going, so the shared walk is not aborted and sibling
+--     strategies (each with its own consumer + sink) are unaffected.
+--   * Once the sink holds an error, later successful directories are dropped,
+--     so a strategy's whole collection is discarded on any failure.
+--
+-- The sink is read by the strategy's finalizer (in a separate task): a 'Left'
+-- there makes the finalizer throw a Diagnostics error, which
+-- "App.Fossa.Analyze" and "Discovery.Projects" render at ERROR severity and
+-- discard — restoring the pre-broadcast per-strategy discovery contract.  The
+-- single-writer-per-sink invariant (one consumer thread per strategy) means the
+-- read-modify-write need not be cross-thread atomic; it is, so the finalizer —
+-- reading from another task after the broadcast wait — observes the failure.
+accumulateConsumer ::
+  (Monoid o, Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  DiscoveredProjectType ->
+  -- | tool-attributed failure message
+  Text ->
+  -- | Accumulates the raw projects via '<>' while healthy; 'Left' once any
+  -- directory fails.  Read by the strategy finalizer.
+  IORef (Either Text o) ->
+  Visitor o m ->
+  WalkConsumer () m
+accumulateConsumer projectType msg sink rawVisitor =
+  WalkConsumer projectType go
+  where
+    go dir subdirs files = do
+      found <- warnThenRecover @Text msg (rawVisitor dir subdirs files)
+      case found of
+        -- A failing directory fails the whole strategy: record the error (so the
+        -- finalizer discards the collection) and keep walking, leaving the shared
+        -- walk and sibling strategies running.
+        Nothing ->
+          sendIO (atomicModifyIORef' sink (const (Left msg, ()))) $> ((), WalkContinue)
+        Just (project, step) ->
+          -- Append unless this strategy already failed (all-or-nothing), preserving
+          -- the recorded failure message so it is surfaced verbatim by the finalizer.
+          sendIO
+            (atomicModifyIORef' sink (\s -> ((case s of Left e -> Left e; Right acc -> Right (acc <> project)), ())) :: IO ())
+            $> ((), step)
 
 -- | Fan out one listing stream to a set of concurrent consumers.
 broadcastStream ::

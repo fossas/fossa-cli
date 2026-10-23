@@ -3,26 +3,31 @@
 
 -- | Behavioural tests for "Discovery.WalkBroadcast": the broadcast fan-out
 -- that drains one shared walk into a master channel and runs one consumer
--- thread per enabled strategy, each reading its own duplicate.  The four
--- cases below cover tool gating, slow-consumer isolation, broadcast
--- correctness (no starvation), and the abort/cleanup contract.
+-- thread per enabled strategy, each reading its own duplicate.  The cases
+-- below cover tool gating, slow-consumer isolation, broadcast correctness
+-- (no starvation), the abort/cleanup contract, and the T4 failure contract
+-- (all-or-nothing per strategy, isolation between them) via 'accumulateConsumer'.
 module Discovery.WalkBroadcastSpec (
   spec,
 ) where
 
 import Control.Concurrent (threadDelay)
+import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.Lift (sendIO)
 import Control.Exception (SomeException, fromException, throwIO, try)
 import Control.Monad (unless)
+import Data.Either (isLeft)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
 import Data.IORef qualified as IOR
+import Data.Maybe (isJust)
 import Data.Set (Set)
 import Data.Set qualified as Set
+import Data.Text (Text)
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
 import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, toolAllowed)
 import Discovery.Walk (WalkStep (..), findFileNamed)
-import Discovery.WalkBroadcast (WalkConsumer (..), broadcastStream, withWalkBroadcast)
+import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, withWalkBroadcast)
 import Discovery.WalkStream (DirListing (..))
 import Path
 import Path.IO (createDir)
@@ -40,6 +45,12 @@ spec =
     isolationSpec
     broadcastSpec
     abortSpec
+    failureContractSpec
+
+-- The tool-attributed failure message; its content is a Diagnostics-layer
+-- concern pinned by construction (see the report), so here it is a stand-in.
+msg :: Text
+msg = "Error discovering projects for test"
 
 -- ---------------------------------------------------------------------------
 -- Gating
@@ -269,6 +280,55 @@ abortSpec =
         res `shouldSatisfy'` (\case Left e -> maybe False isUserError (fromException e); Right () -> False)
 
 -- ---------------------------------------------------------------------------
+-- T4 failure contract: all-or-nothing per strategy, isolation between them
+-- ---------------------------------------------------------------------------
+
+failureContractSpec :: Spec
+failureContractSpec =
+  describe "T4 failure contract (accumulateConsumer)" $ do
+    it' "a failing directory discards that strategy's earlier successful collections (all-or-nothing)" $
+      withTempDir "test-Discovery-WalkBroadcast-failure-allornothing" $ \tmpDir -> do
+        let sub = tmpDir </> $(mkRelDir "sub")
+        sendIO $ do
+          traverse_ createDir [sub]
+          writeFile (toFilePath (tmpDir </> $(mkRelFile "top.txt"))) "top"
+          writeFile (toFilePath (sub </> $(mkRelFile "fail-marker.txt"))) "boom"
+
+        -- The root is collected successfully; the subdir's visitor throws.
+        sink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        let consumer = accumulateConsumer NpmProjectType msg sink collectingFailingVisitor
+        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumer]
+
+        -- The root was collected before the failure, but a failing directory
+        -- fails the whole strategy: the sink holds the error, not the earlier
+        -- collection (all-or-nothing).
+        state <- sendIO (IOR.readIORef sink)
+        state `shouldSatisfy'` isLeft
+
+    it' "one strategy's failure leaves another strategy's collection unaffected (isolation)" $
+      withTempDir "test-Discovery-WalkBroadcast-failure-isolation" $ \tmpDir -> do
+        let sub = tmpDir </> $(mkRelDir "sub")
+        sendIO $ do
+          traverse_ createDir [sub]
+          writeFile (toFilePath (tmpDir </> $(mkRelFile "top.txt"))) "top"
+          writeFile (toFilePath (sub </> $(mkRelFile "fail-marker.txt"))) "boom"
+
+        aSink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        bSink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        let consumerA = accumulateConsumer CargoProjectType msg aSink collectingFailingVisitor
+            consumerB = accumulateConsumer ComposerProjectType msg bSink collectingSucceedingVisitor
+        -- A fails at the subdir; B never fails.  The broadcast keeps going so B
+        -- collects the whole tree while A's sink records the failure.
+        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumerA, consumerB]
+
+        aState <- sendIO (IOR.readIORef aSink)
+        bState <- sendIO (IOR.readIORef bSink)
+        aState `shouldSatisfy'` isLeft
+        bState `shouldSatisfy'` \case
+          Right projects -> Set.fromList projects == Set.fromList [tmpDir, sub]
+          Left _ -> False
+
+-- ---------------------------------------------------------------------------
 -- Visitors
 -- ---------------------------------------------------------------------------
 
@@ -374,3 +434,27 @@ failingVisitor ref dir _subdirs _files = do
   sendIO (IOR.modifyIORef' ref (Set.insert dir))
   sendIO (throwIO (userError "consumer failing"))
   pure ((), WalkContinue)
+
+-- | Raw visitor that collects the directory, but throws (a per-directory
+-- failure) at any directory holding @fail-marker.txt@.  Drives the all-or-
+-- nothing case: the sink records the error and discards earlier collections.
+collectingFailingVisitor ::
+  Path Abs Dir ->
+  [Path Abs Dir] ->
+  [Path Abs File] ->
+  EffectStack ([Path Abs Dir], WalkStep)
+collectingFailingVisitor dir _subdirs files =
+  if isJust (findFileNamed "fail-marker.txt" files)
+    -- Throw a Diagnostics-level failure (the kind 'warnThenRecover' recovers);
+    -- a raw 'throwIO' would abort the shared walk, which is the accepted delta.
+    then fatalText "visitor failing"
+    else pure ([dir], WalkContinue)
+
+-- | Raw visitor that always collects the directory (never fails).  Drives the
+-- isolation case: it keeps its whole collection while a sibling fails.
+collectingSucceedingVisitor ::
+  Path Abs Dir ->
+  [Path Abs Dir] ->
+  [Path Abs File] ->
+  EffectStack ([Path Abs Dir], WalkStep)
+collectingSucceedingVisitor dir _subdirs _files = pure ([dir], WalkContinue)
