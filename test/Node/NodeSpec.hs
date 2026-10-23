@@ -6,6 +6,7 @@ module Node.NodeSpec (spec) where
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Data.Foldable (for_)
 import Data.Glob (unsafeGlobRel)
+import Discovery.Walk (walkWithFilters')
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
@@ -14,7 +15,7 @@ import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), Dependency (dep
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
+import Strategy.Node (NodeProject (NPMLock), discover, discoverVisitor, extractDepListsForTargets, finalizeProjects, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -64,6 +65,19 @@ spec = do
   catalogFallbackSpec currDir
   resolvePnpmImporterKeysSpec currDir
   unnamedWorkspaceRootSpec currDir
+  sharedWalkSpec currDir
+
+-- | Pin the shared broadcast walk wiring ('discoverVisitor' collecting over
+-- "Discovery.Walk.walkWithFilters'", 'finalizeProjects' batching) against the
+-- pre-broadcast 'discover' path: both must find the same projects.
+sharedWalkSpec :: Path Abs Dir -> Spec
+sharedWalkSpec currDir = describe "shared broadcast walk (discoverVisitor + finalizeProjects)" $
+  it' "discovers the same projects as discover" $
+    do
+      let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+      oldProjects <- discover workspaceDir
+      newProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
+      newProjects `shouldBe'` oldProjects
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =

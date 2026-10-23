@@ -1,5 +1,7 @@
 module Strategy.Maven (
   discover,
+  discoverVisitor,
+  postDiscover,
   mkProject,
   MavenProject (..),
   getDeps,
@@ -18,22 +20,25 @@ import Data.Aeson (ToJSON)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty, toSet)
-import Data.Text hiding (group, map)
+import Data.List (isSuffixOf)
+import Data.Text hiding (filter, group, isSuffixOf, map)
 import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Simple (simpleDiscover)
+import Discovery.Walk (WalkStep (WalkSkipSome), fileName)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Graphing (Graphing, gmap, shrinkRoots)
-import Path (Abs, Dir, Path, parent)
+import Path (Abs, Dir, File, Path, parent)
 import Strategy.Maven.Common (MavenDependency (..), filterMavenDependencyByScope, filterMavenSubmodules, mavenDependencyToDependency, promoteFirstPartyToDirect)
 import Strategy.Maven.DepTree qualified as DepTreeCmd
 import Strategy.Maven.PluginStrategy qualified as Plugin
 import Strategy.Maven.Pom qualified as Pom
 import Strategy.Maven.Pom.Closure (MavenProjectClosure (..))
 import Strategy.Maven.Pom.Closure qualified as PomClosure
+import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
 
 discover ::
@@ -48,6 +53,23 @@ discover = do
   simpleDiscover findProjects mkProject MavenProjectType
   where
     findProjects dir = map MavenProject <$> PomClosure.findProjects dir
+
+-- | Per-directory collector for the shared discovery walk: gather @pom.xml@
+-- and @.pom@ paths, skipping @target/@ subtrees — the same candidate set the
+-- private walk in "Strategy.Maven.Pom.Closure.findProjects" collects.
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([Path Abs File], WalkStep)
+discoverVisitor _ _ files = pure (filter isPom files, WalkSkipSome ["target"])
+  where
+    isPom file = "pom.xml" `isSuffixOf` fileName file || ".pom" `isSuffixOf` fileName file
+
+-- | Batch phase for the shared discovery walk: build the global pom closure
+-- and per-project closures over the whole collected pom set (the same
+-- algorithm "Strategy.Maven.Pom.Closure.findProjects" runs).
+postDiscover :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> [Path Abs File] -> m [DiscoveredProject MavenProject]
+postDiscover dir pomFiles = do
+  globalClosure <- context "Building global closure" $ buildGlobalClosure pomFiles
+  closures <- context "Building project closures" $ PomClosure.buildProjectClosures dir globalClosure
+  pure $ map (mkProject . MavenProject) closures
 
 mkProject :: MavenProject -> DiscoveredProject MavenProject
 mkProject (MavenProject closure) =

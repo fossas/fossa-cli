@@ -1,10 +1,13 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Go.GoBinarySpec (spec) where
 
+import Control.Effect.Lift (sendIO)
 import Data.Aeson (eitherDecode)
 import Data.ByteString.Lazy (ByteString)
+import Data.ByteString.Char8 qualified as BS
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (
@@ -12,15 +15,18 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile)
+import Discovery.Walk (WalkStep (..))
+import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile, relfile, toFilePath, (</>))
 import Strategy.Go.GoBinary (
   DiscoveredGoBinary (..),
   GoBinaryProject (..),
   GoModule (..),
+  discoverVisitor,
   goBinaryDependencies,
   goModuleToDependency,
   toProjects,
  )
+import Test.Effect (itWithTempDir', shouldBe')
 import Test.Hspec (Spec, describe, it, shouldBe)
 
 -- Output from @millhone analyze-go-binaries@ for a single Go binary.
@@ -152,3 +158,15 @@ spec = do
           unknown = expectedBinary{goBinaryPath = "/somewhere/else"}
       toProjects [toolA] [devel] `shouldBe` []
       toProjects [toolA] [unknown] `shouldBe` []
+
+  -- The shared broadcast walk's collector: the visitor must keep the same
+  -- candidate set the private walk collected (contentIsBinary pre-filter).
+  describe "discoverVisitor" $
+    itWithTempDir' "collects binary files and skips text files" $ \dir -> do
+      let binFile = dir </> [relfile|libgo.so|]
+          textFile = dir </> [relfile|README.txt|]
+      sendIO $ BS.writeFile (toFilePath binFile) "\NULgo buildinfo..."
+      sendIO $ BS.writeFile (toFilePath textFile) "plain text"
+      (collected, step) <- discoverVisitor dir [] [binFile, textFile]
+      collected `shouldBe'` [binFile]
+      step `shouldBe'` WalkContinue
