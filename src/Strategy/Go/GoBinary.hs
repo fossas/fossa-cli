@@ -128,10 +128,24 @@ instance AnalyzeProject GoBinaryProject where
 -- | Per-directory collector for the shared discovery walk: candidate binaries
 -- are pre-filtered by 'contentIsBinary' (a cheap prefix read); millhone applies
 -- the precise magic/size checks and the buildinfo parse.
-discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([Path Abs File], WalkStep)
+--
+-- The flag check lives HERE, not just in 'finalizeProjects': the walk itself is
+-- shared and touches every directory regardless, but the per-file prefix reads
+-- are the cost we can skip — the old private walk short-circuited before
+-- walking, so a disabled strategy must read nothing.
+discoverVisitor ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader StrategyConfig) sig m
+  ) =>
+  Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([Path Abs File], WalkStep)
 discoverVisitor _ _ files = do
-  binaries <- filterM contentIsBinary files
-  pure (binaries, WalkContinue)
+  enabled <- enableGoBinaryAnalysis <$> ask
+  if not enabled
+    then pure ([], WalkContinue)
+    else do
+      binaries <- filterM contentIsBinary files
+      pure (binaries, WalkContinue)
 
 -- | Batch phase for the shared discovery walk: hand the whole collected
 -- candidate batch to millhone in a single invocation and match its results
