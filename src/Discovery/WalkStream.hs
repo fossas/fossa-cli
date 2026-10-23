@@ -1,0 +1,92 @@
+-- | Streaming re-implementation of the directory walk in "Discovery.Walk":
+-- instead of returning a strict list of every directory visited, 'walkStream'
+-- is a 'Streaming.Prelude' producer that emits one 'DirListing' per directory
+-- as the traversal reaches it.
+--
+-- The traversal order and pruning semantics are identical to 'walk' (with a
+-- consumer that always 'Discovery.Walk.WalkContinue's) combined with the
+-- global filter prune of 'walkWithFilters'':
+--
+--   * loop avoidance via directory identifiers ('Effect.ReadFS.getIdentifier'),
+--   * a directory whose identifier cannot be obtained is skipped with a warning,
+--   * a directory that cannot be listed is skipped with a warning,
+--   * directories that fail 'Discovery.Filters.pathAllowed' (relative to the
+--     root) are never descended into, and the root itself is always visited.
+--
+-- The producer has no per-consumer control: 'Discovery.Walk.WalkStop' never
+-- occurs and pruning is purely filter-based, applied once at the root.  A
+-- per-visitor policy over this stream lives in "Discovery.WalkVisitor".
+module Discovery.WalkStream (
+  -- * Directory listings
+  DirListing (..),
+
+  -- * Walking the filetree as a producer
+  walkStream,
+  walkStreamUnfiltered,
+) where
+
+import Control.Effect.Diagnostics (Diagnostics, recover, warn)
+import Data.Set qualified as Set
+import Data.String.Conversion (toText)
+import Discovery.Filters (AllFilters, pathAllowed)
+import Effect.ReadFS
+import Path
+import Streaming (Of (..), Stream, lift)
+import Streaming.Prelude qualified as S
+
+-- | A single directory visit: the directory itself together with the raw
+-- sub-directories and files reported by the filesystem for that directory.
+data DirListing = DirListing
+  { dlDir :: Path Abs Dir
+  , dlSubdirs :: [Path Abs Dir]
+  , dlFiles :: [Path Abs File]
+  }
+  deriving (Eq, Ord, Show)
+
+-- | Walk the filetree rooted at @root@, emitting a 'DirListing' for every
+-- directory the traversal visits, subject to the global 'AllFilters' prune.
+walkStream ::
+  (Has ReadFS sig m, Has Diagnostics sig m) =>
+  AllFilters ->
+  Path Abs Dir ->
+  Stream (Of DirListing) m ()
+walkStream filters root = go Set.empty root
+  where
+    go traversed curdir = do
+      mId <- lift (recover (getIdentifier curdir))
+      case mId of
+        Nothing -> do
+          lift (warn $ "unable to get identifier for: " <> toText (toFilePath curdir))
+          S.each []
+        Just dirId ->
+          if Set.member dirId traversed
+            then S.each []
+            else walktree (Set.insert dirId traversed) curdir
+
+    -- Mirrors the WalkContinue case of 'walkWithFilters': disallowed
+    -- sub-directories are pruned.
+    walktree traversed' curdir = do
+      listing <- lift (recover (listDir curdir))
+      case listing of
+        Nothing -> do
+          lift (warn $ "skipping remaining files in: " <> toText (toFilePath curdir))
+          S.each []
+        Just (subdirs, files) -> do
+          let dl = DirListing curdir subdirs files
+              allowedSubdirs =
+                filter
+                  ( \sub -> case stripProperPrefix root sub of
+                      Just rel -> pathAllowed filters rel
+                      Nothing -> True
+                  )
+                  subdirs
+          -- Yield this directory, then recurse into the allowed sub-directories
+          -- in order, lazily glued together with '<>'.  A foldr (rather than
+          -- 'concat') keeps the element type and the result type ('()') distinct.
+          S.yield dl
+            <> foldr (\sub acc -> (go traversed' sub) <> acc) (S.each []) allowedSubdirs
+
+-- | Like 'walkStream', but without applying any path filters.  Equivalent to
+-- 'walkStream' with 'mempty' filters, which allows every directory.
+walkStreamUnfiltered :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Stream (Of DirListing) m ()
+walkStreamUnfiltered = walkStream mempty

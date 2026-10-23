@@ -4,6 +4,7 @@ module Strategy.Cocoapods (
   getDeps,
   mkProject,
   CocoapodsProject (..),
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzeProject)
@@ -52,7 +53,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject CocoapodsProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CocoapodsProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CocoapodsProject], WalkStep)
+discoverVisitor dir _ files = do
   let podfile = findFileNamed "Podfile" files
       podfileLock = findFileNamed "Podfile.lock" files
       podSpecs = findFilesMatchingGlob (Glob.toGlob dir Glob.</> "*.podspec") files

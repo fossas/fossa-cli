@@ -4,6 +4,7 @@ module Strategy.Gomodules (
   getDeps,
   mkProject,
   GomodulesProject (..),
+  discoverVisitor,
 )
 where
 
@@ -39,7 +40,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject GomodProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GomodulesProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GomodulesProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "go.mod" files of
     Nothing -> pure ([], WalkSkipSome ["vendor"])
     Just gomod -> pure ([GomodulesProject gomod dir], WalkSkipSome ["vendor"])

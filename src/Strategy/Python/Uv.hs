@@ -9,6 +9,8 @@ module Strategy.Python.Uv (
   UvLockPackage (..),
   UvLockPackageDependency (..),
   UvLockPackageSource (..),
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -77,7 +79,10 @@ findProjects ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
   Path Abs Dir ->
   m [UvProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([UvProject], WalkStep)
+discoverVisitor _ _ files = do
   case findFileNamed "uv.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([UvProject file], WalkSkipSome [".venv"])

@@ -4,6 +4,7 @@ module Discovery.Walk (
   walk',
   walkWithFilters',
   WalkStep (..),
+  mergeWalkSteps,
   findFileInAncestor,
   enumeratePrunedSubtrees,
 
@@ -31,6 +32,17 @@ import Data.Text (Text)
 import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS
 import Path
+
+-- | Combine several 'WalkStep' decisions produced for the same directory
+-- (e.g. by the sub-checks of one strategy) into a single step: a stop wins,
+-- then a skip-all, and skip-some name lists are concatenated.
+mergeWalkSteps :: [WalkStep] -> WalkStep
+mergeWalkSteps steps
+  | WalkStop `elem` steps = WalkStop
+  | WalkSkipAll `elem` steps = WalkSkipAll
+  | otherwise = case [xs | WalkSkipSome xs <- steps] of
+      [] -> WalkContinue
+      xss -> WalkSkipSome (concat xss)
 
 data WalkStep
   = -- | Continue walking subdirectories
