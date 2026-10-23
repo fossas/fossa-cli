@@ -26,13 +26,12 @@ module Discovery.WalkStream (
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, recover, warn)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Discovery.Filters (AllFilters, pathAllowed)
 import Effect.ReadFS
 import Path
-import Streaming (Of (..), Stream, lift, (<>))
+import Streaming (Of (..), Stream, lift)
 import Streaming.Prelude qualified as S
 
 -- | A single directory visit: the directory itself together with the raw

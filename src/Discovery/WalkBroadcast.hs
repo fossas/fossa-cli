@@ -54,6 +54,7 @@ import Control.Monad (unless)
 import Data.Foldable (traverse_)
 import Data.Functor (void, ($>))
 import Data.IORef (IORef, atomicModifyIORef')
+import Data.Kind (Type)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters, toolAllowed)
 import Discovery.Walk (WalkStep (WalkContinue))
@@ -118,7 +119,7 @@ accumulateConsumer projectType msg sink rawVisitor =
 
 -- | Fan out one listing stream to a set of concurrent consumers.
 broadcastStream ::
-  forall sig (m :: * -> *) o.
+  forall sig (m :: Type -> Type) o.
   Has (Lift IO) sig m =>
   AllFilters -> Stream (Of DirListing) m () -> [WalkConsumer o m] -> m ()
 broadcastStream filters listings consumers =
