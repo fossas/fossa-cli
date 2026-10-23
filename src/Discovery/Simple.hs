@@ -56,10 +56,12 @@ cachedDiscover ::
   DiscoveredProjectType ->
   -- | @mkProject@
   (a -> DiscoveredProject a) ->
+  -- | directory discovery started from (unused by this finalizer shape)
+  Path Abs Dir ->
   -- | raw projects collected by the shared walk
   m [a] ->
   m [DiscoveredProject a]
-cachedDiscover tool mkProject collect = withToolFilter tool $
+cachedDiscover tool mkProject _dir collect = withToolFilter tool $
   context (toText tool) $ do
     projects <- context "Finding Projects" collect
     pure $ map mkProject projects
@@ -75,11 +77,13 @@ cachedDiscoverWith ::
   -- | Passed to 'withToolFilter'
   DiscoveredProjectType ->
   -- | turn the collected raw projects into discovered projects
-  ([raw] -> m [DiscoveredProject p]) ->
+  (Path Abs Dir -> [raw] -> m [DiscoveredProject p]) ->
+  -- | directory discovery started from
+  Path Abs Dir ->
   -- | raw projects collected by the shared walk
   m [raw] ->
   m [DiscoveredProject p]
-cachedDiscoverWith tool post collect =
+cachedDiscoverWith tool post dir collect =
   withToolFilter tool $
     context (toText tool) $
-      context "Finding Projects" (post =<< collect)
+      context "Finding Projects" (post dir =<< collect)
