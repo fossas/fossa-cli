@@ -9,7 +9,6 @@ import Data.Foldable (traverse_)
 import Data.IORef qualified as IOR (modifyIORef, newIORef, readIORef)
 import Data.List (sort)
 import Data.Maybe (catMaybes, isJust)
-import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Discovery.Walk (WalkStep (..), findFileNamed, walk')
@@ -137,7 +136,7 @@ spec =
           writeFile (toFilePath (b </> $(mkRelFile "stop.txt"))) ""
           writeFile (toFilePath (c </> $(mkRelFile "stop.txt"))) ""
 
-        counterRef <- sendIO $ IOR.newIORef 0
+        counterRef <- sendIO $ IOR.newIORef (0 :: Int)
         let visit dir _subdirs files = do
               sendIO $ IOR.modifyIORef counterRef (+ 1)
               if isJust (findFileNamed "stop.txt" files)
@@ -164,7 +163,7 @@ spec =
           writeFile (toFilePath (a </> $(mkRelFile "marker.txt"))) ""
           writeFile (toFilePath (aSub </> $(mkRelFile "deep.txt"))) ""
 
-        counterRef <- sendIO $ IOR.newIORef 0
+        counterRef <- sendIO $ IOR.newIORef (0 :: Int)
         let visit dir _subdirs files = do
               sendIO $ IOR.modifyIORef counterRef (+ 1)
               if isJust (findFileNamed "marker.txt" files)

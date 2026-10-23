@@ -33,7 +33,7 @@ import Path
 import Path.IO (createDir)
 import Streaming (Of (..), Stream, lift)
 import Streaming.Prelude qualified as S
-import System.IO.Error (IOError, isUserError, userError)
+import System.IO.Error (isUserError)
 import Test.Effect
 import Test.Hspec
 import Types (DiscoveredProjectType (..), TargetFilter (TypeTarget))
@@ -393,7 +393,7 @@ slowVisitor ::
   [Path Abs Dir] ->
   [Path Abs File] ->
   EffectStack ((), WalkStep)
-slowVisitor startRef parkedRef dir _subdirs _files = do
+slowVisitor startRef parkedRef _dir _subdirs _files = do
   parked <- sendIO (IOR.readIORef parkedRef)
   unless parked $ do
     now <- sendIO getCurrentTime
@@ -432,7 +432,7 @@ failingVisitor ::
   EffectStack ((), WalkStep)
 failingVisitor ref dir _subdirs _files = do
   sendIO (IOR.modifyIORef' ref (Set.insert dir))
-  sendIO (throwIO (userError "consumer failing"))
+  _ <- sendIO (throwIO (userError "consumer failing"))
   pure ((), WalkContinue)
 
 -- | Raw visitor that collects the directory, but throws (a per-directory
