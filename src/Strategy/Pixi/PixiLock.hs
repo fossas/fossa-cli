@@ -5,7 +5,8 @@
 --
 -- @environments@ lists package locators by environment and platform;
 -- @packages@ supplies their metadata. Locators join the two sections.
--- v5 uses @kind@ with @url@ or @path@; v6/v7 use @conda@ or @pypi@.
+-- v5 uses @kind@ with @url@ or @path@; v6/v7 use @conda@ or @pypi@, and v7
+-- uses @conda_source@ for packages pixi builds from source.
 -- v6/v7 conda names and versions come from artifact filenames.
 module Strategy.Pixi.PixiLock (
   analyze,
@@ -57,7 +58,7 @@ import Data.Text qualified as Text
 import Data.Void (Void)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
-  DepType (CondaType, GitType, PipType, UnresolvedPathType),
+  DepType (CondaType, GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -69,6 +70,7 @@ import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
 import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps), reqParts)
 import Strategy.Python.Util (Marker (..), MarkerOp (MarkerOperator), Operator (OpEq, OpNot), Req, requirementParser)
+import System.FilePath (isAbsolute, (</>))
 import Text.Megaparsec (Parsec, anySingle, chunk, eof, lookAhead, many, manyTill, optional, parse, some, takeRest, takeWhile1P, takeWhileP, try)
 import Text.Megaparsec.Char (char, space)
 
@@ -91,6 +93,8 @@ instance ToDiagnostic PixiLockYieldedNoDeps where
 data PixiLocator
   = CondaLocator Text
   | PypiLocator Text
+  | -- | @name[hash] \@ location@, where the location holds the package's manifest.
+    CondaSourceLocator Text
   deriving (Eq, Ord, Show)
 
 data PixiPackage = PixiPackage
@@ -102,8 +106,27 @@ data PixiPackage = PixiPackage
   -- ^ Conda match-specs, e.g. @"python >=3.9,<3.10"@.
   , pixiPkgRequiresDist :: [Text]
   -- ^ PEP 508 requirements for PyPI packages.
+  , pixiPkgBuildSource :: Maybe PixiBuildSource
   }
   deriving (Eq, Ord, Show)
+
+-- | Where pixi builds a source package from, when it isn't the directory of
+-- the package's manifest.
+data PixiBuildSource
+  = -- | The repository and resolved commit.
+    BuildFromGit Text Text
+  | BuildFromUrl Text
+  | -- | Relative to the package's manifest, unless absolute.
+    BuildFromPath Text
+  deriving (Eq, Ord, Show)
+
+instance FromJSON PixiBuildSource where
+  parseJSON = withObject "PixiBuildSource" $ \obj ->
+    case (KeyMap.lookup "git" obj, KeyMap.lookup "url" obj, KeyMap.lookup "path" obj) of
+      (Just _, _, _) -> BuildFromGit <$> obj .: "git" <*> obj .: "rev"
+      (_, Just _, _) -> BuildFromUrl <$> obj .: "url"
+      (_, _, Just _) -> BuildFromPath <$> obj .: "path"
+      _ -> fail $ "expected a 'git', 'url', or 'path' source, got: " <> show (KeyMap.keys obj)
 
 newtype PixiEnvironment = PixiEnvironment
   { pixiEnvPackages :: Map Text [PixiEnvPackage]
@@ -142,18 +165,19 @@ instance FromJSON PixiLockFile where
       <*> obj .: "environments"
       <*> obj .: "packages"
 
--- Unknown environment locators, including @conda_source@, are skipped.
--- Their corresponding @packages@ entries produce warnings.
+-- Unknown environment locators are skipped. Their corresponding @packages@
+-- entries produce warnings.
 instance FromJSON PixiEnvironment where
   parseJSON = withObject "PixiEnvironment" $ \obj ->
     PixiEnvironment . fmap (mapMaybe $ parseMaybe parseJSON) <$> obj .: "packages"
 
 parseLocatorKeys :: Object -> Parser PixiLocator
 parseLocatorKeys obj =
-  case (KeyMap.lookup "conda" obj, KeyMap.lookup "pypi" obj) of
-    (Just _, _) -> CondaLocator <$> obj .: "conda"
-    (_, Just _) -> PypiLocator <$> obj .: "pypi"
-    _ -> fail $ "expected a 'conda' or 'pypi' key, got: " <> show (KeyMap.keys obj)
+  case (KeyMap.lookup "conda" obj, KeyMap.lookup "pypi" obj, KeyMap.lookup "conda_source" obj) of
+    (Just _, _, _) -> CondaLocator <$> obj .: "conda"
+    (_, Just _, _) -> PypiLocator <$> obj .: "pypi"
+    (_, _, Just _) -> CondaSourceLocator <$> obj .: "conda_source"
+    _ -> fail $ "expected a 'conda', 'pypi', or 'conda_source' key, got: " <> show (KeyMap.keys obj)
 
 instance FromJSON PixiEnvPackage where
   parseJSON = withObject "PixiEnvPackage" $ \obj ->
@@ -189,6 +213,7 @@ instance FromJSON PixiPackage where
           <*> obj .:? "version"
           <*> obj .:? "depends" .!= []
           <*> obj .:? "requires_dist" .!= []
+          <*> obj .:? "source"
 
 data CondaArtifact = CondaArtifact
   { condaArtifactChannel :: Text
@@ -298,7 +323,6 @@ buildGraph declared PixiLockFile{..} = do
                 ]
             extrasOf = installedExtras requested [(name, requirementsOf l) | (name, l) <- Map.toList pypiByName]
             targets locator = case locator of
-              CondaLocator{} -> mapMaybe ((`Map.lookup` condaByName) . condaSpecName) . foldMap pixiPkgDepends $ Map.lookup locator packageIndex
               PypiLocator{} ->
                 [ target
                 | Just name <- [Map.lookup locator pypiKeys]
@@ -306,6 +330,7 @@ buildGraph declared PixiLockFile{..} = do
                 , all (markerAllows $ Map.findWithDefault mempty name extrasOf) marker
                 , Just target <- [Map.lookup (normalizePypiName dependency) pypiByName]
                 ]
+              _ -> mapMaybe ((`Map.lookup` condaByName) . condaSpecName) . foldMap pixiPkgDepends $ Map.lookup locator packageIndex
          in [(l, target) | l <- installed, target <- targets l]
 
       graphEdges =
@@ -357,14 +382,15 @@ isWorkspacePackage dep = dependencyType dep == UnresolvedPathType && dependencyN
 condaMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe Text
 condaMatchKey meta = \case
   PypiLocator{} -> Nothing
+  CondaSourceLocator identifier -> fst <$> either (const Nothing) Just (parse sourceIdentifier "" identifier)
   CondaLocator url -> case localSourcePath url of
     Just _ -> pixiPkgName =<< meta
     Nothing -> (pixiPkgName =<< meta) <|> (condaArtifactName <$> parseCondaArtifactUrl url)
 
 pypiMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe Text
 pypiMatchKey meta = \case
-  CondaLocator{} -> Nothing
   PypiLocator{} -> normalizePypiName <$> (pixiPkgName =<< meta)
+  _ -> Nothing
 
 -- | Reads a match spec's package name, after any @channel::@ prefix:
 --
@@ -412,6 +438,7 @@ toDependency :: Maybe PixiPackage -> PixiLocator -> DepEnvironment -> Either Tex
 toDependency metadata locator env = case locator of
   CondaLocator url -> condaDep url
   PypiLocator source -> pypiDep source
+  CondaSourceLocator identifier -> sourceDep identifier
   where
     mkDep depType name version =
       Dependency
@@ -442,8 +469,22 @@ toDependency metadata locator env = case locator of
       PypiRegistry -> case pixiPkgName =<< metadata of
         Nothing -> Left $ "pixi: pypi entry has no name, skipping: " <> source
         Just name -> Right $ mkDep PipType name (pixiPkgVersion =<< metadata)
-      PypiGit url -> Right . uncurry (mkDep GitType) . fromRight (url, Nothing) $ parse gitSource "" url
+      PypiGit url -> Right $ gitDep url
       PypiLocalPath path -> Right $ pathDep path
+
+    gitDep url = uncurry (mkDep GitType) . fromRight (url, Nothing) $ parse gitSource "" url
+
+    -- Without a build source, a package is built from its manifest's location.
+    sourceDep identifier = case parse sourceIdentifier "" identifier of
+      Left _ -> Left $ "pixi: could not read a source package, skipping: " <> identifier
+      Right (_, location) -> Right $ case pixiPkgBuildSource =<< metadata of
+        Just (BuildFromGit url commit) -> mkDep GitType url (Just commit)
+        Just (BuildFromUrl url) -> mkDep URLType url (pixiPkgVersion =<< metadata)
+        Just (BuildFromPath path) -> pathDep $ relativeToManifest location path
+        Nothing -> case classifyPypiSource location of
+          PypiGit url -> gitDep url
+          PypiRegistry -> mkDep URLType location (pixiPkgVersion =<< metadata)
+          PypiLocalPath path -> pathDep path
 
     -- The fragment holds the resolved commit:
     --
@@ -454,6 +495,21 @@ toDependency metadata locator env = case locator of
       _query <- optional $ char '?' *> takeWhileP (Just "query") (/= '#')
       commit <- optional $ char '#' *> takeRest
       pure (repository, mfilter (not . Text.null) commit)
+
+-- | Reads a source package's name and the location of its manifest:
+--
+-- > sdl_example[10db969c] @ .
+sourceIdentifier :: Parsec Void Text (Text, Text)
+sourceIdentifier = do
+  name <- takeWhile1P (Just "package name") (/= '[')
+  _hash <- char '[' *> takeWhile1P (Just "hash") (/= ']') <* char ']'
+  location <- space *> char '@' *> space *> takeRest
+  pure (name, location)
+
+relativeToManifest :: Text -> Text -> Text
+relativeToManifest location path
+  | location `elem` [".", "./"] || isAbsolute (toString path) = path
+  | otherwise = toText $ toString location </> toString path
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => PixiManifestDeps -> Path Abs File -> m (Graphing Dependency)
 analyze declared lockPath = do

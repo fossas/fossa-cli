@@ -7,6 +7,7 @@ module Pixi.PixiLockSpec (
 
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -33,6 +34,7 @@ import Strategy.Pixi.PixiLock (
   outOfRangeVersionWarning,
   parseCondaArtifactUrl,
  )
+import System.FilePath ((</>))
 import Test.Effect (EffectStack, expectFatal', expectationFailure', it', shouldBe')
 import Test.Hspec
 import Text.Megaparsec (parse)
@@ -175,16 +177,18 @@ spec = do
         graph
 
   describe "analyze a v7 lockfile" $
-    it' "ignores platforms metadata and skips conda_source packages" $ do
+    it' "ignores platforms metadata and skips the workspace's own source package" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7.lock|]
       graph <- analyze mempty path
+      let deps =
+            [ condaDep "conda-forge" "linux-64" "_openmp_mutex" "4.5" [EnvProduction]
+            , -- The workspace's package depends on it.
+              condaDep "conda-forge" "linux-64" "actionlint" "1.7.12" [EnvProduction]
+            , mkDep GitType "https://github.com/squidfunk/mike" (Just "2d4ad799442f4592db8ad53b179bfb33db8c69ac") [EnvProduction]
+            ]
 
-      expectDeps'
-        [ condaDep "conda-forge" "linux-64" "_openmp_mutex" "4.5" [EnvProduction]
-        , condaDep "conda-forge" "linux-64" "actionlint" "1.7.12" [EnvProduction]
-        , mkDep GitType "https://github.com/squidfunk/mike" (Just "2d4ad799442f4592db8ad53b179bfb33db8c69ac") [EnvProduction]
-        ]
-        graph
+      expectDeps' deps graph
+      expectDirect' deps graph
 
   describe "analyze a v5 lockfile with a local path package" $
     it' "reports the local wheel as a path dependency" $ do
@@ -448,3 +452,22 @@ spec = do
 
       declared <- analyze (PixiManifestDeps mempty (Map.singleton "requests" (Set.singleton "use_chardet_on_py3"))) path
       expectEdge' declared requests chardet
+
+  describe "packages built from source" $ do
+    let sdl2 platform = condaDep "conda-forge" platform "sdl2" "2.32.56" [EnvProduction]
+        -- Its manifest is in the workspace, but its build source is a git repository.
+        sdlExample = mkDep GitType "https://github.com/prefix-dev/pixi-build-testsuite" (Just "34d90eaf81fa042ace51ec27af28b1e487c79f32") [EnvProduction]
+        myPackage = mkDep UnresolvedPathType "my-package-linux" (Just "1.0.0") [EnvProduction]
+        -- A build source path is relative to the package's manifest.
+        viewer = mkDep UnresolvedPathType (toText $ "packages/viewer" </> "../src") (Just "0.2.0") [EnvProduction]
+        graph' = makeAbsolute [relfile|test/Pixi/testdata/pixi-v7-source-packages.lock|] >>= analyze mempty
+
+    it' "are reported by where they're built from, once for all platforms" $ do
+      graph <- graph'
+      expectDeps' [sdl2 "linux-64", sdl2 "osx-arm64", sdlExample, myPackage, viewer] graph
+
+    it' "link to their dependencies on each platform" $ do
+      graph <- graph'
+      expectEdge' graph sdlExample (sdl2 "linux-64")
+      expectEdge' graph sdlExample (sdl2 "osx-arm64")
+      expectEdge' graph myPackage sdlExample

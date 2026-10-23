@@ -1,5 +1,5 @@
 # Trimmed from prefix-dev/pixi: v7 platforms metadata is ignored, and the
-# conda_source package is skipped with a warning.
+# conda_source package is the workspace's own.
 version: 7
 platforms:
 - linux-64
