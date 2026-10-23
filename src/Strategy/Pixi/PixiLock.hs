@@ -1,11 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
 
--- | Parser for @pixi.lock@.
+-- | Parser for @pixi.lock@, written against the lock versions 4 through 7
+-- that rattler_lock 0.34.8 reads:
+-- <https://github.com/conda/rattler/tree/rattler_lock-v0.34.8/crates/rattler_lock>
 --
 -- @environments@ lists package locators by environment and platform;
 -- @packages@ supplies their metadata. Locators join the two sections.
--- v5 uses @kind@ with @url@ or @path@; v6/v7 use @conda@ or @pypi@, and v7
+-- v4/v5 use @kind@ with @url@ or @path@; v6/v7 use @conda@ or @pypi@, and v7
 -- uses @conda_source@ for packages pixi builds from source.
 -- v6/v7 conda names and versions come from artifact filenames.
 module Strategy.Pixi.PixiLock (
@@ -76,7 +78,7 @@ import Text.Megaparsec.Char (char, space)
 
 -- | Known lock versions; other versions are parsed with a warning.
 knownLockVersions :: (Int, Int)
-knownLockVersions = (5, 7)
+knownLockVersions = (4, 7)
 
 data PixiLockYieldedNoDeps = PixiLockYieldedNoDeps
   { noDepsVersion :: Int

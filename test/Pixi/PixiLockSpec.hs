@@ -165,6 +165,23 @@ spec = do
         ]
         graph
 
+  describe "analyze a v4 lockfile" $
+    it' "reads it like v5, which only adds PyPI indexes" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v4.lock|]
+      graph <- analyze mempty path
+      let pypi name version = mkDep PipType name (Just version) [EnvProduction]
+
+      expectDeps'
+        [ condaDep "conda-forge" "linux-64" "libffi" "3.4.2" [EnvProduction]
+        , condaDep "conda-forge" "linux-64" "python" "3.9.10" [EnvProduction]
+        , pypi "matplotlib" "3.5.1"
+        , pypi "cycler" "0.11.0"
+        , pypi "kiwisolver" "1.3.2"
+        , pypi "numpy" "1.22.2"
+        ]
+        graph
+      expectEdge' graph (pypi "matplotlib" "3.5.1") (pypi "numpy" "1.22.2")
+
   describe "analyze a v5 lockfile" $
     it' "uses the explicit name and version fields v5 provides" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v5.lock|]
@@ -303,7 +320,8 @@ spec = do
   describe "outOfRangeVersionWarning" $
     it "warns above and below the known range, and stays quiet inside it" $ do
       outOfRangeVersionWarning 8 `shouldSatisfy` warns "is newer than any version this fossa-cli knows about"
-      outOfRangeVersionWarning 4 `shouldSatisfy` warns "is not officially supported!"
+      outOfRangeVersionWarning 3 `shouldSatisfy` warns "is not officially supported!"
+      outOfRangeVersionWarning 4 `shouldBe` Nothing
       outOfRangeVersionWarning 5 `shouldBe` Nothing
       outOfRangeVersionWarning 6 `shouldBe` Nothing
       outOfRangeVersionWarning 7 `shouldBe` Nothing

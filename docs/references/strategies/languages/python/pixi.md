@@ -18,7 +18,7 @@ Direct dependencies come from `pixi.toml` or `pyproject.toml` when present, and 
 
 The `default` environment is reported as production, because that's the conservative choice.
 
-Lockfile versions 5 through 7 are supported. Other versions are parsed with a warning.
+Lockfile versions 4 through 7 are supported; 7 is the latest as of October 2026. Versions 1 through 3 use an older layout that pixi stopped writing in early 2024 and aren't supported.
 Packages pixi builds from source are reported as git, URL, or path dependencies, depending on where they're built from.
 Analysis fails if the lockfile structure cannot be parsed, or if it lists packages other than the workspace itself but produces no dependencies. Empty and workspace-only lockfiles produce an empty graph.
 
