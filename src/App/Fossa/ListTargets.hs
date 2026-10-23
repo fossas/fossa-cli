@@ -135,9 +135,9 @@ runAll outputFmt basedir = traverse_ single discoverFuncs
             case state of
               Left e -> fatalText e
               Right projects -> pure projects
-          discover _ = do
+          discover d = do
             void . S.effects $ runVisitor visit (walkStream filters basedir)
-            finalize collect
+            finalize d collect
       withDiscoveredProjects discover basedir formatter
     formatter proj = case outputFmt of
       Legacy -> renderLegacyFmt basedir proj
