@@ -2,7 +2,7 @@
 
 ## 3.21.0
 
-- pixi: Added `pixi.lock` analysis for conda and PyPI dependencies. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+- pixi: Added support for pixi projects via `pixi.lock`. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
 
 ## 3.20.7
 
