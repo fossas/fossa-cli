@@ -81,7 +81,6 @@ findProjects ::
   m [UvProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([UvProject], WalkStep)
 discoverVisitor _ _ files = do
   case findFileNamed "uv.lock" files of

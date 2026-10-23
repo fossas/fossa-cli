@@ -77,7 +77,6 @@ findProjects ::
   m [RProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RProject], WalkStep)
 discoverVisitor dir _ files = do
   let lockFile = findFileNamed "renv.lock" files

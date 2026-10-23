@@ -31,7 +31,6 @@ discover = simpleDiscover findProjects mkProject GlideProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GlideProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GlideProject], WalkStep)
 discoverVisitor dir _ files = do
   case findFileNamed "glide.lock" files of

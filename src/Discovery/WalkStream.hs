@@ -52,10 +52,6 @@ walkStream ::
   Stream (Of DirListing) m ()
 walkStream filters root = go Set.empty root
   where
-    -- \| Visit @curdir@ (if it has not been seen and its identifier resolves),
-    -- emit its listing, then recurse into the sub-directories permitted by the
-    -- filters.  Threads the set of already-visited identifiers for loop
-    -- avoidance, mirroring 'Discovery.Walk.walkAvoidLoop'.
     go traversed curdir = do
       mId <- lift (recover (getIdentifier curdir))
       case mId of
@@ -67,9 +63,8 @@ walkStream filters root = go Set.empty root
             then S.each []
             else walktree (Set.insert dirId traversed) curdir
 
-    -- \| Emit the listing for @curdir@ and recurse into the sub-directories that
-    -- are permitted by the filters (mirroring the 'Discovery.Walk.WalkContinue'
-    -- case of 'walkWithFilters'': disallowed sub-directories are pruned).
+    -- Mirrors the WalkContinue case of 'walkWithFilters': disallowed
+    -- sub-directories are pruned.
     walktree traversed' curdir = do
       listing <- lift (recover (listDir curdir))
       case listing of

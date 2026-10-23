@@ -65,7 +65,6 @@ discover = simpleDiscover findProjects mkProject NuspecProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuspecProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NuspecProject], WalkStep)
 discoverVisitor _ _ files = do
   case find (L.isSuffixOf ".nuspec" . fileName) files of

@@ -3,10 +3,7 @@
 
 -- | Behavioural tests for "Discovery.WalkBroadcast": the broadcast fan-out
 -- that drains one shared walk into a master channel and runs one consumer
--- thread per enabled strategy, each reading its own duplicate.  The cases
--- below cover tool gating, slow-consumer isolation, broadcast correctness
--- (no starvation), the abort/cleanup contract, and the T4 failure contract
--- (all-or-nothing per strategy, isolation between them) via 'accumulateConsumer'.
+-- thread per enabled strategy, each reading its own duplicate.
 module Discovery.WalkBroadcastSpec (
   spec,
 ) where
@@ -47,8 +44,7 @@ spec =
     abortSpec
     failureContractSpec
 
--- The tool-attributed failure message; its content is a Diagnostics-layer
--- concern pinned by construction (see the report), so here it is a stand-in.
+-- The tool-attributed failure message; here a stand-in.
 msg :: Text
 msg = "Error discovering projects for test"
 
