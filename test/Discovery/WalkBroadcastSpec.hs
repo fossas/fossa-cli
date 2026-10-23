@@ -276,12 +276,12 @@ abortSpec =
         res `shouldSatisfy'` (\case Left e -> maybe False isUserError (fromException e); Right () -> False)
 
 -- ---------------------------------------------------------------------------
--- T4 failure contract: all-or-nothing per strategy, isolation between them
+-- All-or-nothing failure contract: all-or-nothing per strategy, isolation between them
 -- ---------------------------------------------------------------------------
 
 failureContractSpec :: Spec
 failureContractSpec =
-  describe "T4 failure contract (accumulateConsumer)" $ do
+  describe "all-or-nothing failure contract (accumulateConsumer)" $ do
     it' "a failing directory discards that strategy's earlier successful collections (all-or-nothing)" $
       withTempDir "test-Discovery-WalkBroadcast-failure-allornothing" $ \tmpDir -> do
         let sub = tmpDir </> $(mkRelDir "sub")

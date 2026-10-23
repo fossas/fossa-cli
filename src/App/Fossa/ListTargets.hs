@@ -125,7 +125,7 @@ runAll outputFmt basedir = traverse_ single discoverFuncs
     single (WalkedFunc projectType visitor finalize) = do
       filters <- ask @AllFilters
       sink <- sendIO (newIORef (Right mempty))
-      -- Reuse the broadcast all-or-nothing consumer (T4 contract: a failing
+      -- Reuse the broadcast all-or-nothing consumer (a failing directory
       -- directory discards the strategy's collection and surfaces later at
       -- ERROR severity with tool attribution) so list-targets matches
       -- 'App.Fossa.Analyze' exactly.
