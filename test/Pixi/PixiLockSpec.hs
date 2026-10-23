@@ -17,6 +17,7 @@ import DepTypes (
  )
 import Effect.ReadFS (readContentsToml)
 import GraphUtil (expectDeps', expectDirect', expectEdge')
+import Graphing qualified
 import Path (Dir, Path, Rel, parent, reldir, relfile)
 import Path.IO (makeAbsolute)
 import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), parseCondaEnvDep)
@@ -322,7 +323,7 @@ spec = do
   describe "declared dependencies" $
     it' "are direct, matching PyPI names in normalized form" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-edges.lock|]
-      graph <- analyze (PixiManifestDeps (Set.singleton "LibFoo") (Set.singleton "Zope.Interface")) path
+      graph <- analyze (PixiManifestDeps (Set.singleton "LibFoo") (Map.singleton "Zope.Interface" mempty)) path
 
       expectDirect'
         [ condaDep "conda-forge" "linux-64" "app" "1.0" [EnvProduction]
@@ -343,6 +344,8 @@ spec = do
         devCpu = [EnvOther "dev-cpu"]
         inferred =
           [ conda "pytorch-cpu" "2.8.0" devCpu
+          , -- Nothing in the default environment depends on its numpy.
+            conda "numpy" "1.26.4" [EnvProduction]
           , pypi "pydantic-settings" "2.12.0" both
           , pypi "pytest-cov" "7.0.0" devCpu
           , pypi "pybigwig" "0.3.24" devCpu
@@ -356,7 +359,6 @@ spec = do
         expectDirect'
           ( inferred
               <> [ conda "python" "3.11.0" both
-                 , conda "numpy" "1.26.4" [EnvProduction]
                  , conda "numpy" "2.3.4" devCpu
                  , pypi "pydantic" "2.12.4" both
                  , -- Only the test feature declares pytest, and pytest-cov depends on it.
@@ -387,7 +389,7 @@ spec = do
         `shouldBe'` Just
           ( PixiManifestDeps
               (Set.singleton "python")
-              (Set.fromList ["snakemake-interface-common", "throttler", "pyyaml", "ruff", "snakemake-executor-plugin-slurm", "pytest"])
+              (Map.fromList [(name, mempty) | name <- ["snakemake-interface-common", "throttler", "pyyaml", "ruff", "snakemake-executor-plugin-slurm", "pytest"]])
           )
 
     it' "marks the packages it declares as direct" $
@@ -407,3 +409,34 @@ spec = do
           , pypi "pytest" "9.1.1" [EnvTesting]
           ]
           graph
+
+  describe "edges within each environment and platform" $ do
+    let conda = condaDep "conda-forge" "linux-64"
+        pypi name version = mkDep PipType name (Just version)
+        devCpu = [EnvOther "dev-cpu"]
+        graph' = makeAbsolute [relfile|test/Pixi/testdata/pixi-toml-manifest/pixi.lock|] >>= analyze mempty
+
+    it' "link a dependency to the build installed alongside it" $ do
+      graph <- graph'
+      expectEdge' graph (conda "pytorch" "2.8.0" devCpu) (conda "numpy" "2.3.4" devCpu)
+      Graphing.hasEdge (conda "pytorch" "2.8.0" devCpu) (conda "numpy" "1.26.4" [EnvProduction]) graph `shouldBe'` False
+
+    it' "follow a requirement gated on an extra only when that extra is installed" $ do
+      graph <- graph'
+      -- pytest-cov requires coverage[toml].
+      expectEdge' graph (pypi "coverage" "7.11.3" devCpu) (pypi "tomli" "2.3.0" devCpu)
+      -- Nothing installs pluggy's testing extra or pydantic-settings' toml extra.
+      Graphing.hasEdge (pypi "pluggy" "1.6.0" devCpu) (pypi "pytest" "9.0.1" devCpu) graph `shouldBe'` False
+      Graphing.hasEdge (pypi "pydantic-settings" "2.12.0" [EnvProduction, EnvOther "dev-cpu"]) (pypi "tomli" "2.3.0" devCpu) graph `shouldBe'` False
+
+    it' "follow the extras a lockfile or manifest installs a package with" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-extras.lock|]
+      let requests = mkDep PipType "requests" (Just "2.32.3") [EnvProduction]
+          pysocks = mkDep PipType "pysocks" (Just "1.7.1") [EnvProduction]
+          chardet = mkDep PipType "chardet" (Just "5.2.0") [EnvProduction]
+      locked <- analyze mempty path
+      expectEdge' locked requests pysocks
+      Graphing.hasEdge requests chardet locked `shouldBe'` False
+
+      declared <- analyze (PixiManifestDeps mempty (Map.singleton "requests" (Set.singleton "use_chardet_on_py3"))) path
+      expectEdge' declared requests chardet

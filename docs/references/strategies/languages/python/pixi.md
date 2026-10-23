@@ -25,7 +25,7 @@ Analysis fails if the lockfile structure cannot be parsed, or if it lists packag
 
 ## Limitations
 
-- Dependency edges match package names. Version constraints and PyPI environment markers are ignored.
+- A PyPI requirement that only applies to some Python versions or platforms is treated as always applying.
 - Conda edges stay within a subdir unless either package is `noarch` or local.
 - Conda builds for different platforms remain separate dependencies. Shared `noarch` packages are deduplicated.
 - Conda names and versions are read from artifact filenames when explicit fields are absent, as in lockfile versions 6 and 7.

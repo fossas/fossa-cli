@@ -14,6 +14,7 @@ module Strategy.Pixi.PixiLock (
   outOfRangeVersionWarning,
   PixiLockFile (..),
   PixiEnvironment (..),
+  PixiEnvPackage (..),
   PixiLocator (..),
   PixiPackage (..),
   PixiPackageEntry (..),
@@ -40,11 +41,14 @@ import Data.Aeson (
  )
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (Parser, parseEither, parseMaybe)
-import Data.Char (isAlphaNum, isSpace)
-import Data.Foldable (for_)
+import Data.Bifunctor (first)
+import Data.Char (isSpace)
+import Data.Either (rights)
+import Data.Foldable (fold, for_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
@@ -61,7 +65,9 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
-import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps))
+import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps), reqParts)
+import Strategy.Python.Util (Marker (..), MarkerOp (MarkerOperator), Operator (OpEq, OpNot), Req, requirementParser)
+import Text.Megaparsec (parse)
 
 -- | Known lock versions; other versions are parsed with a warning.
 knownLockVersions :: (Int, Int)
@@ -97,8 +103,15 @@ data PixiPackage = PixiPackage
   deriving (Eq, Ord, Show)
 
 newtype PixiEnvironment = PixiEnvironment
-  { pixiEnvPackages :: Map Text [PixiLocator]
-  -- ^ Package locators by platform.
+  { pixiEnvPackages :: Map Text [PixiEnvPackage]
+  -- ^ Packages by platform.
+  }
+  deriving (Eq, Ord, Show)
+
+-- | Lock versions before 7 record the extras a PyPI package is installed with.
+data PixiEnvPackage = PixiEnvPackage
+  { envPackageLocator :: PixiLocator
+  , envPackageExtras :: [Text]
   }
   deriving (Eq, Ord, Show)
 
@@ -139,8 +152,9 @@ parseLocatorKeys obj =
     (_, Just _) -> PypiLocator <$> obj .: "pypi"
     _ -> fail $ "expected a 'conda' or 'pypi' key, got: " <> show (KeyMap.keys obj)
 
-instance FromJSON PixiLocator where
-  parseJSON = withObject "PixiLocator" parseLocatorKeys
+instance FromJSON PixiEnvPackage where
+  parseJSON = withObject "PixiEnvPackage" $ \obj ->
+    PixiEnvPackage <$> parseLocatorKeys obj <*> obj .:? "extras" .!= []
 
 instance FromJSON PixiPackage where
   parseJSON = withObject "PixiPackage" $ \obj ->
@@ -258,10 +272,10 @@ buildGraph declared PixiLockFile{..} = do
   let packageIndex = Map.fromList [(pixiPkgLocator p, p) | PackageEntry p <- pixiLockPackages]
       unreadable = ["pixi: skipping an unreadable package entry: " <> why | UnreadableEntry why <- pixiLockPackages]
       slots =
-        [ (locator, environmentToDepEnvironment envName)
+        [ (envPackageLocator entry, environmentToDepEnvironment envName)
         | (envName, PixiEnvironment platforms) <- Map.toList pixiLockEnvironments
-        , locators <- Map.elems platforms
-        , locator <- locators
+        , entries <- Map.elems platforms
+        , entry <- entries
         ]
       (skipped, deps, keyOf) = foldr (collect packageIndex) ([], Map.empty, Map.empty) slots
       depOf locator = (`Map.lookup` deps) =<< Map.lookup locator keyOf
@@ -269,31 +283,41 @@ buildGraph declared PixiLockFile{..} = do
       condaKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [condaMatchKey (Map.lookup l packageIndex) l]]
       pypiKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [pypiMatchKey (Map.lookup l packageIndex) l]]
 
-      condaByName = Map.fromListWith (<>) [(name, [(subdir, l)]) | (l, (name, subdir)) <- Map.toList condaKeys]
-      pypiByName = Map.fromListWith (<>) [(name, [l]) | (l, name) <- Map.toList pypiKeys]
+      parsedRequirements = Map.map (map (\spec -> first (const spec) $ parse requirementParser "" spec) . pixiPkgRequiresDist) packageIndex
+      unparsed = ["pixi: skipping a requirement that could not be read: " <> spec | Left spec <- fold parsedRequirements]
+      requirementsOf locator = rights $ Map.findWithDefault [] locator parsedRequirements
 
-      -- `noarch` packages can depend on, and be used by, any subdir.
-      subdirMatches (Just from) (Just to) = from == "noarch" || to == from || to == "noarch"
-      subdirMatches _ _ = True
-
-      targetsOf locator pkg = case locator of
-        CondaLocator{} ->
-          [ target
-          | spec <- pixiPkgDepends pkg
-          , (subdir, target) <- Map.findWithDefault [] (condaSpecName spec) condaByName
-          , subdirMatches (snd =<< Map.lookup locator condaKeys) subdir
-          ]
-        PypiLocator{} ->
-          [ target
-          | spec <- pixiPkgRequiresDist pkg
-          , target <- Map.findWithDefault [] (normalizePypiName $ pypiSpecName spec) pypiByName
-          ]
+      -- An environment installs one package per name on each platform, so
+      -- names resolve within that set.
+      edgesWithin entries =
+        let installed = map envPackageLocator entries
+            condaByName = Map.fromList [(name, l) | l <- installed, Just name <- [Map.lookup l condaKeys]]
+            pypiByName = Map.fromList [(name, l) | l <- installed, Just name <- [Map.lookup l pypiKeys]]
+            requested =
+              Map.fromListWith
+                (<>)
+                [ (name, Set.fromList (map normalizePypiName extras) <> Map.findWithDefault mempty name declaredExtras)
+                | PixiEnvPackage l extras <- entries
+                , Just name <- [Map.lookup l pypiKeys]
+                ]
+            extrasOf = installedExtras requested [(name, requirementsOf l) | (name, l) <- Map.toList pypiByName]
+            targets locator = case locator of
+              CondaLocator{} -> mapMaybe ((`Map.lookup` condaByName) . condaSpecName) . foldMap pixiPkgDepends $ Map.lookup locator packageIndex
+              PypiLocator{} ->
+                [ target
+                | Just name <- [Map.lookup locator pypiKeys]
+                , (dependency, _, marker) <- map reqParts $ requirementsOf locator
+                , all (markerAllows $ Map.findWithDefault mempty name extrasOf) marker
+                , Just target <- [Map.lookup (normalizePypiName dependency) pypiByName]
+                ]
+         in [(l, target) | l <- installed, target <- targets l]
 
       graphEdges =
         [ (parent, child)
-        | (locator, pkg) <- Map.toList packageIndex
+        | PixiEnvironment platforms <- Map.elems pixiLockEnvironments
+        , entries <- Map.elems platforms
+        , (locator, target) <- edgesWithin entries
         , Just parent <- [depOf locator]
-        , target <- targetsOf locator pkg
         , Just child <- [depOf target]
         , parent /= child
         ]
@@ -302,12 +326,12 @@ buildGraph declared PixiLockFile{..} = do
 
       -- pixi compares conda names case-insensitively.
       declaredConda = Set.map Text.toLower $ manifestCondaDeps declared
-      declaredPypi = Set.map normalizePypiName $ manifestPypiDeps declared
+      declaredExtras = Map.fromListWith (<>) [(normalizePypiName name, Set.map normalizePypiName extras) | (name, extras) <- Map.toList $ manifestPypiDeps declared]
       declaredKeys =
         Set.fromList . mapMaybe (`Map.lookup` keyOf) $
-          [l | (l, (name, _)) <- Map.toList condaKeys, Text.toLower name `Set.member` declaredConda]
-            <> [l | (l, name) <- Map.toList pypiKeys, name `Set.member` declaredPypi]
-  for_ (Set.toList . Set.fromList $ unreadable <> skipped) warn
+          [l | (l, name) <- Map.toList condaKeys, Text.toLower name `Set.member` declaredConda]
+            <> [l | (l, name) <- Map.toList pypiKeys, name `Map.member` declaredExtras]
+  for_ (Set.toList . Set.fromList $ unreadable <> skipped <> unparsed) warn
   -- Packages the manifest declares are direct. Root components are direct
   -- too, including every member of an unreached cycle: analysis drops
   -- packages that no direct dependency reaches.
@@ -334,15 +358,12 @@ buildGraph declared PixiLockFile{..} = do
 isWorkspacePackage :: Dependency -> Bool
 isWorkspacePackage dep = dependencyType dep == UnresolvedPathType && dependencyName dep `elem` [".", "./"]
 
-condaMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe (Text, Maybe Text)
+condaMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe Text
 condaMatchKey meta = \case
   PypiLocator{} -> Nothing
   CondaLocator url -> case localSourcePath url of
-    -- Local packages have no artifact subdir and can match any platform.
-    Just _ -> (,Nothing) <$> (pixiPkgName =<< meta)
-    Nothing -> do
-      CondaArtifact{..} <- parseCondaArtifactUrl url
-      pure (fromMaybe condaArtifactName (pixiPkgName =<< meta), Just condaArtifactPlatform)
+    Just _ -> pixiPkgName =<< meta
+    Nothing -> (pixiPkgName =<< meta) <|> (condaArtifactName <$> parseCondaArtifactUrl url)
 
 pypiMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe Text
 pypiMatchKey meta = \case
@@ -356,9 +377,31 @@ condaSpecName spec = Text.takeWhile (\c -> not (isSpace c) && c `notElem` ['=', 
       (before, rest) | Text.null rest -> before
       (_, rest) -> Text.drop 2 rest
 
--- | Read the PEP 508 package name, ignoring extras, constraints, and markers.
-pypiSpecName :: Text -> Text
-pypiSpecName = Text.takeWhile (\c -> isAlphaNum c || c `elem` ['-', '_', '.']) . Text.stripStart
+-- | Only @extra@ comparisons are evaluated; other markers are assumed to hold.
+markerAllows :: Set Text -> Marker -> Bool
+markerAllows extras = \case
+  MarkerAnd a b -> markerAllows extras a && markerAllows extras b
+  MarkerOr a b -> markerAllows extras a || markerAllows extras b
+  MarkerExpr "extra" (MarkerOperator OpEq) extra -> Set.member (normalizePypiName extra) extras
+  MarkerExpr "extra" (MarkerOperator OpNot) extra -> Set.notMember (normalizePypiName extra) extras
+  MarkerExpr{} -> True
+
+-- | The extras each PyPI package is installed with: those requested for it,
+-- and those its active requirements request in turn, to a fixed point.
+installedExtras :: Map Text (Set Text) -> [(Text, [Req])] -> Map Text (Set Text)
+installedExtras requested packages
+  | next == requested = requested
+  | otherwise = installedExtras next packages
+  where
+    next =
+      Map.unionWith (<>) requested $
+        Map.fromListWith
+          (<>)
+          [ (normalizePypiName dependency, Set.fromList $ map normalizePypiName extras)
+          | (name, reqs) <- packages
+          , (dependency, extras, marker) <- map reqParts reqs
+          , all (markerAllows $ Map.findWithDefault mempty name requested) marker
+          ]
 
 -- | PEP 503 normalization for matching; reported names stay unchanged.
 normalizePypiName :: Text -> Text
