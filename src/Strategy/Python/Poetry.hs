@@ -115,7 +115,6 @@ findProjects ::
   m [PoetryProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PoetryProject], WalkStep)
 discoverVisitor dir _ files = do
   let poetryLockFile = findFileNamed "poetry.lock" files

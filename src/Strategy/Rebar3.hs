@@ -36,7 +36,6 @@ discover = simpleDiscover findProjects mkProject Rebar3ProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RebarProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RebarProject], WalkStep)
 discoverVisitor dir _ files = do
   case findFileNamed "rebar.config" files of

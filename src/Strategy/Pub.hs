@@ -36,7 +36,6 @@ discover = simpleDiscover findProjects mkProject PubProjectType
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PubProject]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PubProject], WalkStep)
 discoverVisitor dir _ files = do
   -- Note: pub does not support pubspec.yml naming - it must be pubspec.yaml.

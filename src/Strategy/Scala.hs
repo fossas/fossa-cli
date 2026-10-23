@@ -126,8 +126,6 @@ pathToText = toText . toFilePath
 data SbtTargets = SbtTargets (Maybe ByteString) [Path Abs File] [MavenProjectClosure]
 
 -- | Turn the accumulated per-directory 'SbtTargets' into discovered projects.
--- The intermediate 'SbtTargets' shape is produced by 'discoverVisitor' and
--- flattened into 'ScalaProject's (and then 'DiscoveredProject's) here.
 postDiscover :: Applicative m => [SbtTargets] -> m [DiscoveredProject ScalaProject]
 postDiscover targets = pure (concatMap (map mkProject . toScalaProjects) targets)
 
@@ -161,7 +159,6 @@ findProjects ::
   m [SbtTargets]
 findProjects = walkWithFilters' discoverVisitor
 
--- | Per-directory collector for the shared discovery walk, so the tree is traversed once for all strategies.
 discoverVisitor ::
   ( Has Exec sig m
   , Has ReadFS sig m

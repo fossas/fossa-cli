@@ -86,9 +86,9 @@ data WalkConsumer o m = WalkConsumer
 -- there makes the finalizer throw a Diagnostics error, which
 -- "App.Fossa.Analyze" and "Discovery.Projects" render at ERROR severity and
 -- discard — restoring the pre-broadcast per-strategy discovery contract.  The
--- single-writer-per-sink invariant (one consumer thread per strategy) means the
--- read-modify-write need not be cross-thread atomic; it is, so the finalizer —
--- reading from another task after the broadcast wait — observes the failure.
+-- finalizer reads from another task after the broadcast wait, so the recorded
+-- failure is visible to it; the atomicModifyIORef' keeps the read-modify-write
+-- itself from tearing, nothing more.
 accumulateConsumer ::
   (Monoid o, Has (Lift IO) sig m, Has Diagnostics sig m) =>
   DiscoveredProjectType ->

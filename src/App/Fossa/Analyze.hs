@@ -317,10 +317,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else do
-      -- Prepare one visitor per strategy, then feed them all from ONE
-      -- shared filesystem walk: one strategy's 'WalkStep' never starves
-      -- another (per-visitor state), and slow exec-heavy consumers stall
-      -- only their own channel drain.
+      -- One shared walk feeds all strategies; see "Discovery.WalkBroadcast".
       entriesResult <-
         Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ do
           entries <- traverse prepare discoverFuncs
@@ -335,9 +332,6 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
     prepare dscover = case dscover of
       DiscoverFunc f -> pure (PreparedEntry [] f)
       WalkedFunc projectType visitor finalize -> do
-        -- The sink is 'Right' the collected raw projects while healthy and 'Left'
-        -- the tool-attributed error once any directory fails.  'accumulateConsumer'
-        -- writes it (all-or-nothing); 'collect' reads it here.
         sink <- sendIO (newIORef (Right ([] :: [raw])))
         let msg = "Error discovering projects for " <> projectTypeToText projectType
             -- Read the sink in the strategy finalizer: a failure recorded during
