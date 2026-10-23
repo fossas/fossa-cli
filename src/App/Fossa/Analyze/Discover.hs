@@ -192,9 +192,9 @@ discoverFuncs =
       SwiftPM.discoverVisitor
       (cachedDiscover SwiftProjectType SwiftPM.mkProject)
   , WalkedFunc
-      PipenvProjectType
+      UvProjectType
       Uv.discoverVisitor
-      (cachedDiscover PipenvProjectType Uv.mkProject)
+      (cachedDiscover UvProjectType Uv.mkProject)
   ]
 
 -- DiscoverFunc is a workaround for the lack of impredicative types.

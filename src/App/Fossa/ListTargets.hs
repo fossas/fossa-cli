@@ -31,7 +31,7 @@ import Control.Carrier.TaskPool (
  )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (warnThenRecover)
+import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (ask)
 import Control.Effect.Stack (Stack)
@@ -39,14 +39,13 @@ import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (ToJSON, encode, object, (.=))
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
-import Data.Functor (void, ($>))
-import Data.IORef (modifyIORef', newIORef, readIORef)
+import Data.Functor (void)
+import Data.IORef (newIORef, readIORef)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..))
 import Discovery.Projects (withDiscoveredProjects)
-import Discovery.Walk (WalkStep (WalkContinue))
+import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer)
 import Discovery.WalkStream (walkStream)
 import Discovery.WalkVisitor (runVisitor)
 import Effect.Exec (Exec)
@@ -66,7 +65,7 @@ import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Streaming.Prelude qualified as S
-import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
+import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..), projectTypeToText)
 
 listSubCommand :: SubCommand ListTargetsCliOpts ListTargetsConfig
 listSubCommand = mkSubCommand listTargetsMain
@@ -123,16 +122,19 @@ runAll outputFmt basedir = traverse_ single discoverFuncs
     -- of their own: unlike runAnalyzers, list-targets runs one discovery per
     -- strategy with no shared broadcast (and the filters reader is always
     -- mempty here — see 'listTargetsMain').
-    single (WalkedFunc _ visitor finalize) = do
+    single (WalkedFunc projectType visitor finalize) = do
       filters <- ask @AllFilters
-      sink <- sendIO (newIORef [])
-      let collect = sendIO (readIORef sink)
-          visit dir subdirs files = do
-            -- A failing strategy visitor contributes nothing and keeps walking.
-            found <- warnThenRecover @Text "Error discovering projects for strategy" (visitor dir subdirs files)
-            case found of
-              Nothing -> pure ((), WalkContinue)
-              Just (projects, step) -> sendIO (modifyIORef' sink (<> projects)) $> ((), step)
+      sink <- sendIO (newIORef (Right mempty))
+      -- Reuse the broadcast all-or-nothing consumer (T4 contract: a failing
+      -- directory discards the strategy's collection and surfaces later at
+      -- ERROR severity with tool attribution) so list-targets matches
+      -- 'App.Fossa.Analyze' exactly.
+      let WalkConsumer _ visit = accumulateConsumer projectType ("Error discovering projects for " <> projectTypeToText projectType) sink visitor
+          collect = do
+            state <- sendIO (readIORef sink)
+            case state of
+              Left e -> fatalText e
+              Right projects -> pure projects
           discover _ = do
             void . S.effects $ runVisitor visit (walkStream filters basedir)
             finalize collect
