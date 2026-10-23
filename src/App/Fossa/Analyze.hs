@@ -358,7 +358,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
                 Left e -> fatalText e
                 Right projects -> pure projects
         pure
-          (PreparedEntry [accumulateConsumer projectType msg sink visitor] (\dir -> finalize dir collect))
+          (PreparedEntry [accumulateConsumer projectType msg sink visitor] $ \dir -> finalize dir collect)
 
     entryConsumers (PreparedEntry cs _) = cs
 
