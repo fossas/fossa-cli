@@ -29,6 +29,11 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
+import Srclib.Converter (toSourceUnit)
+import Srclib.Types (
+  SourceUnit (sourceUnitBuild),
+  SourceUnitBuild (buildDependencies),
+ )
 import Strategy.Node.Npm.PackageLockV3 (
   NpmLockV3Resolved (unNpmLockV3Resolved),
   PackageLockV3 (packages),
@@ -42,6 +47,7 @@ import Strategy.Node.Npm.PackageLockV3 (
  )
 import Test.Effect (it', shouldBe')
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe)
+import Types (DiscoveredProjectType (NpmProjectType), GraphBreadth (Complete))
 
 fixtureSimplePackageLockPath :: Path Rel File
 fixtureSimplePackageLockPath = $(mkRelFile "simple-package-lock.json")
@@ -567,6 +573,43 @@ namelessWorkspaceScopingSpec pkgLockV3 = do
 
       expectDirect [mkProdDep "root-dep@1.0.0"] graph
       expectDeps [mkProdDep "root-dep@1.0.0"] graph
+
+  describe "toSourceUnit filters transitive devDeps after shrink" $ do
+    let devDep = mkDevDep "dev@1.0.0"
+        prodDep = mkProdDep "prod@1.0.0"
+        trans1 = mkProdDep "trans1@1.0.0"
+        trans2 = mkProdDep "trans2@1.0.0"
+
+        graph :: Graphing Dependency
+        graph =
+          Graphing.directs [prodDep, devDep]
+            <> Graphing.edges [(devDep, trans1), (trans1, trans2)]
+
+    it "should remove transitive deps of devDeps that have no prod path" $ do
+      let su = toSourceUnit False "test" graph NpmProjectType Complete []
+
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 1
+        Nothing -> expectationFailure "expected a build with dependencies"
+
+    it "should keep transitive deps of devDeps when leaveUnfiltered is True" $ do
+      let su = toSourceUnit True "test" graph NpmProjectType Complete []
+
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 4
+        Nothing -> expectationFailure "expected a build with dependencies"
+
+  describe "toSourceUnit keeps no-direct graphs intact (prune gate)" $ do
+    -- No direct nodes: pruneUnreachable keeps only Root, so the no-direct gate is what preserves these.
+    it "keeps a graph built with only deep (no direct) nodes intact" $ do
+      let graph :: Graphing Dependency
+          graph = Graphing.deeps [mkProdDep "a@1.0.0", mkProdDep "b@1.0.0", mkProdDep "c@1.0.0"]
+
+          su = toSourceUnit False "test" graph NpmProjectType Complete []
+
+      case sourceUnitBuild su of
+        Just bu -> length (buildDependencies bu) `shouldBe` 3
+        Nothing -> expectationFailure "expected a build with dependencies"
 
 -- | Scope 'buildGraph' to the given root-relative workspace paths, as
 -- 'Strategy.Node.resolveNpmV3WorkspacePaths' resolves them from build
