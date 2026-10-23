@@ -61,6 +61,7 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
+import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps))
 
 -- | Known lock versions; other versions are parsed with a warning.
 knownLockVersions :: (Int, Int)
@@ -252,8 +253,8 @@ type DepKey = (DepType, Text, Maybe VerConstraint)
 depKey :: Dependency -> DepKey
 depKey Dependency{..} = (dependencyType, dependencyName, dependencyVersion)
 
-buildGraph :: (Has Diagnostics sig m) => PixiLockFile -> m (Graphing Dependency)
-buildGraph PixiLockFile{..} = do
+buildGraph :: (Has Diagnostics sig m) => PixiManifestDeps -> PixiLockFile -> m (Graphing Dependency)
+buildGraph declared PixiLockFile{..} = do
   let packageIndex = Map.fromList [(pixiPkgLocator p, p) | PackageEntry p <- pixiLockPackages]
       unreadable = ["pixi: skipping an unreadable package entry: " <> why | UnreadableEntry why <- pixiLockPackages]
       slots =
@@ -298,14 +299,24 @@ buildGraph PixiLockFile{..} = do
         ]
 
       graph = Graphing.deeps (Map.elems deps) <> Graphing.edges graphEdges
+
+      -- pixi compares conda names case-insensitively.
+      declaredConda = Set.map Text.toLower $ manifestCondaDeps declared
+      declaredPypi = Set.map normalizePypiName $ manifestPypiDeps declared
+      declaredKeys =
+        Set.fromList . mapMaybe (`Map.lookup` keyOf) $
+          [l | (l, (name, _)) <- Map.toList condaKeys, Text.toLower name `Set.member` declaredConda]
+            <> [l | (l, name) <- Map.toList pypiKeys, name `Set.member` declaredPypi]
   for_ (Set.toList . Set.fromList $ unreadable <> skipped) warn
-  -- The lockfile does not identify direct dependencies. Treat root
-  -- components as direct, including every member of an unreached cycle.
+  -- Packages the manifest declares are direct. Root components are direct
+  -- too, including every member of an unreached cycle: analysis drops
+  -- packages that no direct dependency reaches.
   let components = AMA.scc $ Graphing.toAdjacencyMap graph
       reached = Set.fromList . map snd $ AM.edgeList components
       roots = Set.unions [NAM.vertexSet c | c <- AM.vertexList components, Set.notMember c reached]
+      isDirect dep = Set.member dep roots || Set.member (depKey dep) declaredKeys
   -- Shrinking a direct workspace package promotes its dependencies.
-  pure . Graphing.shrink (not . isWorkspacePackage) $ Graphing.promoteToDirect (`Set.member` roots) graph
+  pure . Graphing.shrink (not . isWorkspacePackage) $ Graphing.promoteToDirect isDirect graph
   where
     collect index (locator, env) (skips, acc, keys) =
       case toDependency (Map.lookup locator index) locator env of
@@ -396,11 +407,11 @@ toDependency metadata locator env = case locator of
       (_, sha) | Text.null sha -> Nothing
       (_, sha) -> Just sha
 
-analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
-analyze lockPath = do
+analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => PixiManifestDeps -> Path Abs File -> m (Graphing Dependency)
+analyze declared lockPath = do
   lockFile <- readContentsYaml @PixiLockFile lockPath
   for_ (outOfRangeVersionWarning $ pixiLockVersion lockFile) warn
-  graph <- buildGraph lockFile
+  graph <- buildGraph declared lockFile
   -- A workspace-only lockfile legitimately produces an empty graph.
   let isWorkspaceEntry (PackageEntry p) = either (const False) isWorkspacePackage $ toDependency (Just p) (pixiPkgLocator p) EnvProduction
       isWorkspaceEntry (UnreadableEntry _) = False

@@ -1,0 +1,26 @@
+# Trimmed from pfizer-opensource/bigwig-loader v0.3.2, with its environment
+# written as a list of features.
+[workspace]
+channels = ["conda-forge"]
+name = "bigwig-loader"
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[feature.cpu.target.linux-64.dependencies]
+pytorch-cpu = "*"
+
+[dependencies]
+python = "==3.11"
+numpy = "*"
+
+[pypi-dependencies]
+pydantic = "*"
+pydantic-settings = "*"
+
+[feature.test.pypi-dependencies]
+pytest = "*"
+pytest-cov = "*"
+pyBigWig = "*"
+
+[environments]
+dev-cpu = ["cpu", "test"]

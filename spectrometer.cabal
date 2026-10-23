@@ -511,6 +511,7 @@ library
     Strategy.NuGet.ProjectJson
     Strategy.Perl
     Strategy.Pixi
+    Strategy.Pixi.Manifest
     Strategy.Pixi.PixiLock
     Strategy.Pub
     Strategy.Python.Errors

@@ -15,11 +15,14 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Effect.ReadFS (readContentsToml)
 import GraphUtil (expectDeps', expectDirect', expectEdge')
-import Path (relfile)
+import Path (Dir, Path, Rel, parent, reldir, relfile)
 import Path.IO (makeAbsolute)
 import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), parseCondaEnvDep)
 import Strategy.Conda.Naming (condaDependencyName)
+import Strategy.Pixi (PixiManifest (PixiToml), PixiProject (..), findProjects, getDeps)
+import Strategy.Pixi.Manifest (PixiManifestDeps (PixiManifestDeps), PyprojectPixiDeps (PyprojectPixiDeps))
 import Strategy.Pixi.PixiLock (
   CondaArtifact (..),
   PypiSource (PypiGit, PypiLocalPath, PypiRegistry),
@@ -29,9 +32,10 @@ import Strategy.Pixi.PixiLock (
   outOfRangeVersionWarning,
   parseCondaArtifactUrl,
  )
-import Test.Effect (expectFatal', it')
+import Test.Effect (EffectStack, expectFatal', expectationFailure', it', shouldBe')
 import Test.Hspec
 import Text.Megaparsec (parse)
+import Types (DependencyResults (dependencyGraph))
 
 warns :: Text -> Maybe Text -> Bool
 warns needle = maybe False (Text.isInfixOf needle)
@@ -50,6 +54,13 @@ mkDep depType name version envs =
 condaDep :: Text -> Text -> Text -> Text -> [DepEnvironment] -> Dependency
 condaDep channel platform name version =
   mkDep CondaType ("'" <> channel <> "':" <> platform <> ":" <> name) (Just version)
+
+withFixture :: Path Rel Dir -> (PixiProject -> EffectStack ()) -> EffectStack ()
+withFixture dir act = do
+  projects <- findProjects =<< makeAbsolute dir
+  case projects of
+    [project] -> act project
+    _ -> expectationFailure' $ "expected one pixi project, got " <> show (length projects)
 
 spec :: Spec
 spec = do
@@ -116,7 +127,7 @@ spec = do
   describe "analyze a v6 lockfile" $
     it' "deduplicates packages across platforms and environments" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps'
         [ -- Shared by default and dev.
@@ -146,7 +157,7 @@ spec = do
   describe "analyze a v5 lockfile" $
     it' "uses the explicit name and version fields v5 provides" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v5.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps'
         [ condaDep "conda-forge" "linux-64" "_libgcc_mutex" "0.1" [EnvProduction]
@@ -157,7 +168,7 @@ spec = do
   describe "analyze a v7 lockfile" $
     it' "ignores platforms metadata and skips conda_source packages" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps'
         [ condaDep "conda-forge" "linux-64" "_openmp_mutex" "4.5" [EnvProduction]
@@ -169,7 +180,7 @@ spec = do
   describe "analyze a v5 lockfile with a local path package" $
     it' "reports the local wheel as a path dependency" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v5-local-path.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps'
         [ condaDep "conda-forge" "osx-arm64" "bzip2" "1.0.8" [EnvProduction]
@@ -183,14 +194,14 @@ spec = do
   describe "analyze a lockfile with unreadable entries" $
     it' "reports the readable package" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-odd-entries.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps' [condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]] graph
 
   describe "analyze local path packages" $ do
     it' "reports conda and PyPI paths with their environments" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-path-deps.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps'
         [ condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]
@@ -207,7 +218,7 @@ spec = do
   describe "edges from depends and requires_dist" $ do
     let conda name version = condaDep "conda-forge" "linux-64" name version [EnvProduction]
         pypi name version = mkDep PipType name (Just version) [EnvProduction]
-        edges' = makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-edges.lock|] >>= analyze
+        edges' = makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-edges.lock|] >>= analyze mempty
 
     it' "links conda packages within a subdir and through noarch" $ do
       graph <- edges'
@@ -268,7 +279,7 @@ spec = do
     it' "reports packages in a recognized format" $ do
       -- This fixture uses the v7 shape with version 8.
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v8-future.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps'
         [ condaDep "conda-forge" "linux-64" "zlib" "1.3.1" [EnvProduction]
@@ -287,23 +298,112 @@ spec = do
   describe "analyze a malformed lockfile with an unknown version" $
     it' "fails when environments is a list instead of a map" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v8-malformed.lock|]
-      expectFatal' $ analyze path
+      expectFatal' $ analyze mempty path
 
   describe "analyze a lockfile with only unreadable entries" $
     it' "fails rather than reporting an empty graph" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-unreadable-packages.lock|]
-      expectFatal' $ analyze path
+      expectFatal' $ analyze mempty path
 
   describe "analyze a lockfile with no packages" $
     it' "reports an empty graph instead of failing" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-no-packages.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps' [] graph
 
   describe "analyze a lockfile whose only package is the workspace itself" $
     it' "reports an empty graph instead of failing" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-workspace-only.lock|]
-      graph <- analyze path
+      graph <- analyze mempty path
 
       expectDeps' [] graph
+
+  describe "declared dependencies" $
+    it' "are direct, matching PyPI names in normalized form" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-edges.lock|]
+      graph <- analyze (PixiManifestDeps (Set.singleton "LibFoo") (Set.singleton "Zope.Interface")) path
+
+      expectDirect'
+        [ condaDep "conda-forge" "linux-64" "app" "1.0" [EnvProduction]
+        , condaDep "conda-forge" "osx-arm64" "libonlyosx" "1.0" [EnvProduction]
+        , mkDep UnresolvedPathType "./libs/gadget" (Just "0.2.0") [EnvProduction]
+        , condaDep "conda-forge" "linux-64" "cyc-a" "1.0" [EnvProduction]
+        , condaDep "conda-forge" "linux-64" "cyc-b" "1.0" [EnvProduction]
+        , -- app and tzdata depend on these, and widget on zope-interface.
+          condaDep "conda-forge" "linux-64" "libfoo" "1.2" [EnvProduction]
+        , mkDep PipType "zope-interface" (Just "6.0") [EnvProduction]
+        ]
+        graph
+
+  describe "direct dependencies from pixi.toml" $ do
+    let conda = condaDep "conda-forge" "linux-64"
+        pypi name version = mkDep PipType name (Just version)
+        both = [EnvProduction, EnvOther "dev-cpu"]
+        devCpu = [EnvOther "dev-cpu"]
+        inferred =
+          [ conda "pytorch-cpu" "2.8.0" devCpu
+          , pypi "pydantic-settings" "2.12.0" both
+          , pypi "pytest-cov" "7.0.0" devCpu
+          , pypi "pybigwig" "0.3.24" devCpu
+          ]
+        lockPath = makeAbsolute [relfile|test/Pixi/testdata/pixi-toml-manifest/pixi.lock|]
+
+    it' "marks the packages it declares as direct, including ones only a feature declares" $
+      withFixture [reldir|test/Pixi/testdata/pixi-toml-manifest|] $ \project -> do
+        graph <- dependencyGraph <$> getDeps project
+
+        expectDirect'
+          ( inferred
+              <> [ conda "python" "3.11.0" both
+                 , conda "numpy" "1.26.4" [EnvProduction]
+                 , conda "numpy" "2.3.4" devCpu
+                 , pypi "pydantic" "2.12.4" both
+                 , -- Only the test feature declares pytest, and pytest-cov depends on it.
+                   pypi "pytest" "9.0.1" devCpu
+                 ]
+          )
+          graph
+
+    it' "infers direct dependencies without a manifest" $ do
+      lock <- lockPath
+      graph <- dependencyGraph <$> getDeps PixiProject{pixiDir = parent lock, pixiLock = lock, pixiManifest = Nothing}
+
+      expectDirect' inferred graph
+
+    it' "infers direct dependencies when the manifest can't be read" $ do
+      lock <- lockPath
+      manifest <- makeAbsolute [relfile|test/Pixi/testdata/pixi-unreadable-manifest.toml|]
+      graph <- dependencyGraph <$> getDeps PixiProject{pixiDir = parent lock, pixiLock = lock, pixiManifest = Just (PixiToml manifest)}
+
+      expectDirect' inferred graph
+
+  describe "direct dependencies from pyproject.toml" $ do
+    it' "declares [project] dependencies, dependency groups, [tool.pixi] tables, and python" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pyproject-manifest/pyproject.toml|]
+      PyprojectPixiDeps declared <- readContentsToml path
+
+      declared
+        `shouldBe'` Just
+          ( PixiManifestDeps
+              (Set.singleton "python")
+              (Set.fromList ["snakemake-interface-common", "throttler", "pyyaml", "ruff", "snakemake-executor-plugin-slurm", "pytest"])
+          )
+
+    it' "marks the packages it declares as direct" $
+      withFixture [reldir|test/Pixi/testdata/pyproject-manifest|] $ \project -> do
+        graph <- dependencyGraph <$> getDeps project
+        let pypi name version = mkDep PipType name (Just version)
+            everywhere = [EnvProduction, EnvOther "quality", EnvTesting]
+
+        expectDirect'
+          [ -- pixi declares python for a pyproject.toml workspace.
+            condaDep "conda-forge" "linux-64" "python" "3.14.6" everywhere
+          , pypi "snakemake-interface-common" "1.23.0" everywhere
+          , pypi "throttler" "1.2.3" everywhere
+          , pypi "pyyaml" "6.0.3" everywhere
+          , -- From the style dependency group.
+            pypi "ruff" "0.10.0" [EnvOther "quality"]
+          , pypi "pytest" "9.1.1" [EnvTesting]
+          ]
+          graph

@@ -14,7 +14,7 @@ We parse the YAML file `pixi.lock` and report packages from all its environments
 Conda packages use the same names as the [conda](conda.md) strategy. PyPI packages are reported as pip dependencies, and `git+` sources as git dependencies.
 Local packages are reported as path dependencies. To include them in scans, enable [path dependency analysis](../../../experimental/path-dependency.md).
 
-The `depends` and `requires_dist` fields supply dependency edges. Packages that nothing else depends on are treated as direct dependencies. All members of a dependency cycle are direct if nothing outside the cycle depends on them.
+The `depends` and `requires_dist` fields supply dependency edges. Direct dependencies come from `pixi.toml` or `pyproject.toml` when present, and are otherwise inferred from the graph. Packages that nothing else depends on are treated as direct dependencies. All members of a dependency cycle are direct if nothing outside the cycle depends on them.
 The workspace's own package, at `.` or `./`, is omitted. When it is direct, its dependencies become direct.
 
 The `default` environment maps to production, `dev` and `development` to development, and `test` and `testing` to testing. Other environment names are preserved. Packages shared across environments carry all their environments.
@@ -25,7 +25,6 @@ Analysis fails if the lockfile structure cannot be parsed, or if it lists packag
 
 ## Limitations
 
-- Direct dependencies are inferred from the graph. We do not read the dependencies declared in `pixi.toml` or `pyproject.toml`.
 - Dependency edges match package names. Version constraints and PyPI environment markers are ignored.
 - Conda edges stay within a subdir unless either package is `noarch` or local.
 - Conda builds for different platforms remain separate dependencies. Shared `noarch` packages are deduplicated.
