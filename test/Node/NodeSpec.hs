@@ -6,12 +6,12 @@ module Node.NodeSpec (spec) where
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Data.Foldable (for_)
 import Data.Glob (unsafeGlobRel)
-import Discovery.Walk (walkWithFilters')
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.Tagged (applyTag)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), Dependency (dependencyEnvironments, dependencyName, dependencyVersion), VerConstraint (CCompatible))
+import Discovery.Walk (walkWithFilters')
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)

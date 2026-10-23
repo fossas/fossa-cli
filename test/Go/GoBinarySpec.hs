@@ -6,8 +6,8 @@ module Go.GoBinarySpec (spec) where
 
 import Control.Effect.Lift (sendIO)
 import Data.Aeson (eitherDecode)
-import Data.ByteString.Lazy (ByteString)
 import Data.ByteString.Char8 qualified as BS
+import Data.ByteString.Lazy (ByteString)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (
