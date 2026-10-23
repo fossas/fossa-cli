@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis.
+- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
 
 ## 3.20.7
 
