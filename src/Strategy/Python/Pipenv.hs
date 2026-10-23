@@ -100,7 +100,7 @@ discoverVisitor _ _ files = do
     (_, Nothing) -> pure ([], WalkContinue)
     (Just pipfile, Just lock) -> pure ([PipenvProject pipfile lock], WalkContinue)
   where
-    findPipenvFiles files = join bimap (`findFileNamed` files) ("Pipfile", "Pipfile.lock")
+    findPipenvFiles fs = join bimap (`findFileNamed` fs) ("Pipfile", "Pipfile.lock")
 
 getDeps ::
   ( Has ReadFS sig m
