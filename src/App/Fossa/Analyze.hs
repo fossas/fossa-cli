@@ -110,7 +110,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (recover, warnThenRecover)
+import Control.Effect.Diagnostics (fatalText, recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
@@ -125,12 +125,11 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
-import Data.IORef (atomicModifyIORef', newIORef, readIORef)
+import Data.IORef (newIORef, readIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
-import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -138,8 +137,8 @@ import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
-import Discovery.Walk (WalkStep (WalkContinue), enumeratePrunedSubtrees)
-import Discovery.WalkBroadcast (WalkConsumer (..), withWalkBroadcast)
+import Discovery.Walk (enumeratePrunedSubtrees)
+import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -336,25 +335,22 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
     prepare dscover = case dscover of
       DiscoverFunc f -> pure (PreparedEntry [] f)
       WalkedFunc projectType visitor finalize -> do
-        sink <- sendIO (newIORef [])
-        let collect = sendIO (readIORef sink)
-            visit dir subdirs files = do
-              -- A failing strategy visitor contributes nothing and keeps walking.
-              -- The tool name is included so failures are attributable even
-              -- though this is shared with every strategy's walk.
-              found <-
-                warnThenRecover
-                  @Text
-                  ("Error discovering projects for " <> projectTypeToText projectType)
-                  (visitor dir subdirs files)
-              case found of
-                Nothing -> pure ((), WalkContinue)
-                -- atomicModifyIORef', not modifyIORef': this ref is read by
-                -- 'finalize' in another thread after the broadcast wait, so
-                -- the sink write must be atomic to be visible.
-                Just (projects, step) ->
-                  sendIO (atomicModifyIORef' sink (\ps -> (ps <> projects, ()))) $> ((), step)
-        pure (PreparedEntry [WalkConsumer projectType visit] (\_ -> finalize collect))
+        -- The sink is 'Right' the collected raw projects while healthy and 'Left'
+        -- the tool-attributed error once any directory fails.  'accumulateConsumer'
+        -- writes it (all-or-nothing); 'collect' reads it here.
+        sink <- sendIO (newIORef (Right ([] :: [raw])))
+        let msg = "Error discovering projects for " <> projectTypeToText projectType
+            -- Read the sink in the strategy finalizer: a failure recorded during
+            -- the walk makes this throw (see 'accumulateConsumer'), so
+            -- 'withDiscoveredProjects' renders it at ERROR severity and discards
+            -- the whole strategy — the pre-broadcast all-or-nothing contract.
+            collect = do
+              state <- sendIO (readIORef sink)
+              case state of
+                Left e -> fatalText e
+                Right projects -> pure projects
+        pure
+          (PreparedEntry [accumulateConsumer projectType msg sink visitor] (\_ -> finalize collect))
 
     entryConsumers (PreparedEntry cs _) = cs
 
