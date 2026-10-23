@@ -21,6 +21,7 @@ module Discovery.Filters (
   Exclude,
   pathAllowed,
   toolAllowed,
+  consumerAllowed,
   withMultiToolFilter,
   withToolFilter,
   ignoredPaths,
@@ -39,7 +40,7 @@ import Control.Monad ((<=<))
 import Data.Aeson (FromJSON, ToJSON (toEncoding), defaultOptions, genericToEncoding, pairs, parseJSON, withText, (.=))
 import Data.Glob (Glob, unGlob)
 import Data.Glob qualified as Glob
-import Data.List (isInfixOf, isPrefixOf, stripPrefix, (\\))
+import Data.List (find, isInfixOf, isPrefixOf, stripPrefix, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -62,7 +63,7 @@ import Text.Megaparsec (
   (<|>),
  )
 import Text.Megaparsec.Char (alphaNumChar, char)
-import Types (BuildTarget (..), DiscoveredProjectType, FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
+import Types (BuildTarget (..), DiscoveredProjectType (..), FoundTargets (FoundTargets, ProjectWithoutTargets), TargetFilter (..))
 
 -- | filterIsVSIOnly is a very naive check for whether the user provided a filter for the VSI target *only*, at the root of the project with no path specified.
 -- This decision was made because predicating VSI only scans is a stopgap until we have more broad support for *preemptive* analysis filtering.
@@ -195,6 +196,26 @@ withToolFilter tool = withMultiToolFilter [tool]
 
 toolAllowed :: AllFilters -> DiscoveredProjectType -> Bool
 toolAllowed filters tool = tool `Set.member` allowedTools filters
+
+-- | Tool families that are gated together: a consumer for a member of a
+-- family is enabled when ANY member of the family is allowed — the same
+-- any-of semantics 'withMultiToolFilter' applies inside multi-tool
+-- strategies (e.g. the package.json strategy covers Yarn, npm, pnpm, and Bun
+-- workspaces).
+toolFamilies :: [[DiscoveredProjectType]]
+toolFamilies =
+  [ [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType]
+  ]
+
+-- | Whether a consumer of @tool@ may start under @filters@.  Single-tool
+-- strategies are allowed exactly when 'toolAllowed'; a member of a
+-- 'toolFamilies' entry is allowed when any family member is, mirroring the
+-- self-gating such strategies did via 'withMultiToolFilter' before the shared
+-- walk hoisted their consumers to phase scope.
+consumerAllowed :: AllFilters -> DiscoveredProjectType -> Bool
+consumerAllowed filters tool
+  | Just family_ <- find (elem tool) toolFamilies = any (toolAllowed filters) family_
+  | otherwise = toolAllowed filters tool
 
 allowedTools :: AllFilters -> Set DiscoveredProjectType
 allowedTools AllFilters{..} = (fullSet `Set.intersection` includeSet) `Set.difference` excludeSet
