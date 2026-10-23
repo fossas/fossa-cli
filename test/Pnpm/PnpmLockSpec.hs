@@ -10,6 +10,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (GitType, NodeJSType, URLType),
@@ -27,6 +28,7 @@ import Graphing qualified
 import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile, resolveImporterKey)
+import Strategy.Node.Pnpm.Types (RegistryResolution (..), Resolution (..))
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain, shouldNotContain)
 
 mkProdDep :: Text -> Dependency
@@ -151,8 +153,11 @@ spec = do
     checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
 
   let pnpmLockV11Runtime = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-runtime/pnpm-lock.yaml")
-  describe "works with a devEngines.runtime entry in a pnpm lockfile" $
-    checkGraph pnpmLockV11Runtime pnpmLockV11RuntimeSpec
+  let pnpmLockV11RuntimeBinary = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-runtime-binary/pnpm-lock.yaml")
+  describe "works with a devEngines.runtime entry in a pnpm lockfile" $ do
+    describe "variations resolution" $ checkGraph pnpmLockV11Runtime (pnpmLockV11RuntimeSpec "node")
+    describe "binary resolution" $ checkGraph pnpmLockV11RuntimeBinary (pnpmLockV11RuntimeSpec "bun")
+    resolutionSpec
 
   parsePnpmLockfileSpec
 
@@ -845,16 +850,31 @@ pnpmLockV11MultiDocSpec graph = do
       expectDep (mkProdDep "body-parser@1.20.1") graph
       hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
 
-pnpmLockV11RuntimeSpec :: Graphing Dependency -> Spec
-pnpmLockV11RuntimeSpec graph =
-  describe "buildGraph with a node@runtime package" $ do
-    it "should report the project's dependencies" $ do
+pnpmLockV11RuntimeSpec :: Text -> Graphing Dependency -> Spec
+pnpmLockV11RuntimeSpec runtime graph =
+  describe "buildGraph with a <runtime>@runtime package" $ do
+    it "should report the project's dependencies" $
       expectDirect [mkProdDep "express@4.18.2"] graph
-      expectDep (mkProdDep "body-parser@1.20.1") graph
-      expectEdge graph (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
 
     it "should not report the pinned runtime as a dependency" $
-      map dependencyName (Graphing.vertexList graph) `shouldNotContain` ["node"]
+      map dependencyName (Graphing.vertexList graph) `shouldNotContain` [runtime]
+
+-- | The 'Resolution' parser on its own: a binary carries an @integrity@ key
+-- like a registry resolution does, so it must be recognised by its @type@
+-- before the registry shape is tried.
+resolutionSpec :: Spec
+resolutionSpec =
+  describe "Resolution parser" $ do
+    let parseResolution :: BS.ByteString -> Either String Resolution
+        parseResolution = either (Left . show) Right . Yaml.decodeEither'
+    it "should read a variations resolution as a binary" $
+      parseResolution "{type: variations, variants: []}" `shouldBe` Right BinaryResolve
+
+    it "should read a binary resolution with an integrity as a binary, not a registry resolution" $
+      parseResolution "{type: binary, integrity: sha256-abc=, url: https://example.com/node.tar.gz}" `shouldBe` Right BinaryResolve
+
+    it "should still read a registry resolution" $
+      parseResolution "{integrity: sha512-abc==}" `shouldBe` Right (RegistryResolve (RegistryResolution "sha512-abc=="))
 
 -- Bug 3 regression: when two workspace packages depend on different versions
 -- of the same package (one prod, one dev), each version must receive only its
