@@ -93,6 +93,11 @@ toDependency toEnv _ _ (PackageData isDev (Just name) (DirectoryResolve _) _ _) 
   toDep toEnv UserType name Nothing isDev
 toDependency toEnv name _ (PackageData isDev Nothing (DirectoryResolve _) _ _) =
   toDep toEnv UserType name Nothing isDev
+-- Binary resolutions are dropped from the package set before graphing
+-- ('buildGraphCore'); reported as 'UserType' so the shrink step removes them
+-- should one ever reach here.
+toDependency toEnv name _ (PackageData isDev _ BinaryResolve _ _) =
+  toDep toEnv UserType name Nothing isDev
 
 -- | Construct a 'Dependency' from its components.
 toDep ::
@@ -187,7 +192,14 @@ buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgc
       catalogs = bgcCatalogs
       -- v9 metadata is shared across peer contexts, but each snapshot has its
       -- own edges. Add contextual keys backed by that shared package metadata.
-      pkgs = Map.union (Map.fromList $ mapMaybe snapshotPackage snapshotEdges) (lockfilePackages base)
+      -- A runtime pinned through @devEngines.runtime@ (@node\@runtime:24.19.0@)
+      -- is a platform binary, not a dependency of the project: drop it here so
+      -- that neither the importer that lists it nor the packages loop reports it.
+      pkgs =
+        Map.filter (not . isBinary . resolution) $
+          Map.union (Map.fromList $ mapMaybe snapshotPackage snapshotEdges) (lockfilePackages base)
+      isBinary BinaryResolve = True
+      isBinary _ = False
       snapshotPackage (key, _) = (key,) <$> Map.lookup (withoutPeerDepSuffix key) (lockfilePackages base)
       snapshotEdgesHM = HashMap.fromList snapshotEdges
       importers = maybe (lockfileImporters base) (Map.restrictKeys (lockfileImporters base) . Map.keysSet) selection
