@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis.
+
 ## 3.20.7
 
 - Yarn: `yarn.lock` files with no package entries no longer fail analysis. ([#1817](https://github.com/fossas/fossa-cli/pull/1817))

@@ -150,6 +150,10 @@ spec = do
   describe "works with pnpm v11 multi-document lockfile" $
     checkGraph pnpmLockV11MultiDoc pnpmLockV11MultiDocSpec
 
+  let pnpmLockV11Runtime = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-11-runtime/pnpm-lock.yaml")
+  describe "works with a devEngines.runtime entry in a pnpm lockfile" $
+    checkGraph pnpmLockV11Runtime pnpmLockV11RuntimeSpec
+
   parsePnpmLockfileSpec
 
   -- Both fixtures declare sharp as an optional dependency of the project and
@@ -840,6 +844,17 @@ pnpmLockV11MultiDocSpec graph = do
     it "should keep the project graph's transitive deps and edges" $ do
       expectDep (mkProdDep "body-parser@1.20.1") graph
       hasEdge (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
+
+pnpmLockV11RuntimeSpec :: Graphing Dependency -> Spec
+pnpmLockV11RuntimeSpec graph =
+  describe "buildGraph with a node@runtime package" $ do
+    it "should report the project's dependencies" $ do
+      expectDirect [mkProdDep "express@4.18.2"] graph
+      expectDep (mkProdDep "body-parser@1.20.1") graph
+      expectEdge graph (mkProdDep "express@4.18.2") (mkProdDep "body-parser@1.20.1")
+
+    it "should not report the pinned runtime as a dependency" $
+      map dependencyName (Graphing.vertexList graph) `shouldNotContain` ["node"]
 
 -- Bug 3 regression: when two workspace packages depend on different versions
 -- of the same package (one prod, one dev), each version must receive only its
