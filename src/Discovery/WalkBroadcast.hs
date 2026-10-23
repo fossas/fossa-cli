@@ -74,7 +74,7 @@ data WalkConsumer o m = WalkConsumer
   }
 
 -- | Build a broadcast consumer that accumulates the raw projects its visitor
--- collects into @sink@, applying the T4 all-or-nothing failure contract:
+-- collects into @sink@, applying the all-or-nothing failure contract:
 --
 --   * A failure in any directory records the tool-attributed @msg@ in the sink
 --     and keeps the walk going, so the shared walk is not aborted and sibling
