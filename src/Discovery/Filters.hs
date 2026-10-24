@@ -207,11 +207,9 @@ toolFamilies =
   [ [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType]
   ]
 
--- | Whether a consumer of @tool@ may start under @filters@.  Single-tool
--- strategies are allowed exactly when 'toolAllowed'; a member of a
--- 'toolFamilies' entry is allowed when any family member is, mirroring the
--- self-gating such strategies did via 'withMultiToolFilter' before the shared
--- walk hoisted their consumers to phase scope.
+-- | Whether a consumer of @tool@ may start under @filters@: 'toolAllowed',
+-- except that a member of a 'toolFamilies' entry is allowed when any family
+-- member is.
 consumerAllowed :: AllFilters -> DiscoveredProjectType -> Bool
 consumerAllowed filters tool
   | Just family_ <- find (elem tool) toolFamilies = any (toolAllowed filters) family_
