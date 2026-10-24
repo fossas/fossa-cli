@@ -1,0 +1,21 @@
+# Source packages whose manifests are at a git ref, with locations written the
+# way rattler's SourceIdentifier docs show them. The second repository is
+# reached over SSH, so its host has a user.
+version: 7
+platforms:
+- name: linux-64
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda_source: numba-cuda[9f3c2a7b] @ git+https://github.com/NVIDIA/numba-cuda@main
+      - conda_source: example-tools[4b1e2c3d] @ git+ssh://git@github.com/example/tools.git@v0.1.0
+packages:
+- conda_source: numba-cuda[9f3c2a7b] @ git+https://github.com/NVIDIA/numba-cuda@main
+  version: 0.20.0
+  subdir: linux-64
+- conda_source: example-tools[4b1e2c3d] @ git+ssh://git@github.com/example/tools.git@v0.1.0
+  version: 0.1.0
+  subdir: noarch

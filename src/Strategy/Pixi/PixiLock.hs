@@ -70,10 +70,10 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, File, Path)
 import Strategy.Conda.Naming (condaDependencyName)
-import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps), reqParts)
+import Strategy.Pixi.Manifest (PixiManifestDeps (manifestCondaDeps, manifestPypiDeps), environmentPypiDeps, reqParts)
 import Strategy.Python.Util (Marker (..), MarkerOp (MarkerOperator), Operator (OpEq, OpNot), Req, requirementParser)
 import System.FilePath (isAbsolute, (</>))
-import Text.Megaparsec (Parsec, anySingle, chunk, eof, lookAhead, many, manyTill, optional, parse, some, takeRest, takeWhile1P, takeWhileP, try)
+import Text.Megaparsec (Parsec, anySingle, chunk, eof, lookAhead, many, manyTill, option, optional, parse, some, takeRest, takeWhile1P, takeWhileP, try)
 import Text.Megaparsec.Char (char, space)
 
 -- | Known lock versions; other versions are parsed with a warning.
@@ -312,14 +312,14 @@ buildGraph declared PixiLockFile{..} = do
 
       -- An environment installs one package per name on each platform, so
       -- names resolve within that set.
-      edgesWithin entries =
+      edgesWithin env entries =
         let installed = map envPackageLocator entries
             condaByName = Map.fromList [(name, l) | l <- installed, Just name <- [Map.lookup l condaKeys]]
             pypiByName = Map.fromList [(name, l) | l <- installed, Just name <- [Map.lookup l pypiKeys]]
             requested =
               Map.fromListWith
                 (<>)
-                [ (name, Set.fromList (map normalizePypiName extras) <> Map.findWithDefault mempty name declaredExtras)
+                [ (name, Set.fromList (map normalizePypiName extras) <> Map.findWithDefault mempty name (declaredExtras env))
                 | PixiEnvPackage l extras <- entries
                 , Just name <- [Map.lookup l pypiKeys]
                 ]
@@ -337,9 +337,9 @@ buildGraph declared PixiLockFile{..} = do
 
       graphEdges =
         [ (parent, child)
-        | PixiEnvironment platforms <- Map.elems pixiLockEnvironments
+        | (env, PixiEnvironment platforms) <- Map.toList pixiLockEnvironments
         , entries <- Map.elems platforms
-        , (locator, target) <- edgesWithin entries
+        , (locator, target) <- edgesWithin env entries
         , Just parent <- [depOf locator]
         , Just child <- [depOf target]
         , parent /= child
@@ -349,11 +349,12 @@ buildGraph declared PixiLockFile{..} = do
 
       -- pixi compares conda names case-insensitively.
       declaredConda = Set.map Text.toLower $ manifestCondaDeps declared
-      declaredExtras = Map.fromListWith (<>) [(normalizePypiName name, Set.map normalizePypiName extras) | (name, extras) <- Map.toList $ manifestPypiDeps declared]
+      declaredPypi = Set.map normalizePypiName . foldMap Map.keysSet $ manifestPypiDeps declared
+      declaredExtras env = Map.fromListWith (<>) [(normalizePypiName name, Set.map normalizePypiName extras) | (name, extras) <- Map.toList $ environmentPypiDeps declared env]
       declaredKeys =
         Set.fromList . mapMaybe (`Map.lookup` keyOf) $
           [l | (l, name) <- Map.toList condaKeys, Text.toLower name `Set.member` declaredConda]
-            <> [l | (l, name) <- Map.toList pypiKeys, name `Map.member` declaredExtras]
+            <> [l | (l, name) <- Map.toList pypiKeys, name `Set.member` declaredPypi]
   for_ (Set.toList . Set.fromList $ unreadable <> skipped <> unparsed) warn
   -- Packages the manifest declares are direct. Root components are direct
   -- too, including every member of an unreached cycle: analysis drops
@@ -457,10 +458,12 @@ toDependency metadata locator env = case locator of
     -- Resolved by 'App.Fossa.PathDependency'.
     pathDep path = mkDep UnresolvedPathType path (pixiPkgVersion =<< metadata)
 
-    -- Classify paths first: their segments can resemble artifact URLs.
-    condaDep url = case localSourcePath url of
-      Just path -> Right $ pathDep path
-      Nothing -> case parseCondaArtifactUrl url of
+    -- Classify paths and git sources first: their segments can resemble artifact URLs.
+    condaDep url = case classifyPypiSource url of
+      PypiLocalPath path -> Right $ pathDep path
+      -- A v6 lock lists a package built from git by its locked URL.
+      PypiGit repository -> Right $ gitDep repository
+      PypiRegistry -> case parseCondaArtifactUrl url of
         Nothing -> Left $ "pixi: could not read a package name from conda artifact URL, skipping: " <> described url
         Just CondaArtifact{..} ->
           let name = fromMaybe condaArtifactName (pixiPkgName =<< metadata)
@@ -482,21 +485,32 @@ toDependency metadata locator env = case locator of
       Right (_, location) -> Right $ case pixiPkgBuildSource =<< metadata of
         Just (BuildFromGit url commit) -> mkDep GitType url (Just commit)
         Just (BuildFromUrl url) -> mkDep URLType url (pixiPkgVersion =<< metadata)
-        Just (BuildFromPath path) -> pathDep $ relativeToManifest location path
-        Nothing -> case classifyPypiSource location of
-          PypiGit url -> gitDep url
-          PypiRegistry -> mkDep URLType location (pixiPkgVersion =<< metadata)
-          PypiLocalPath path -> pathDep path
+        Just (BuildFromPath path) -> case classifyPypiSource location of
+          PypiLocalPath manifestDir -> pathDep $ relativeToManifest manifestDir path
+          -- A relative path names a directory within the remote source.
+          _ -> if isAbsolute (toString path) then pathDep path else locationDep location
+        Nothing -> locationDep location
 
-    -- The fragment holds the resolved commit:
+    locationDep location = case classifyPypiSource location of
+      PypiGit url -> gitDep url
+      PypiRegistry -> mkDep URLType location (pixiPkgVersion =<< metadata)
+      PypiLocalPath path -> pathDep path
+
+    -- The fragment holds the resolved commit. Without one, a ref after the
+    -- path is the version; an @ before the path belongs to the user:
     --
     -- > https://github.com/laurentS/slowapi.git?rev=a72bcc66597f620f04bf5be3676e40ed308d3a6a#a72bcc66597f620f04bf5be3676e40ed308d3a6a
+    -- > https://github.com/NVIDIA/numba-cuda@main
+    -- > ssh://git@github.com/example/tools.git@v0.1.0
     gitSource :: Parsec Void Text (Text, Maybe Text)
     gitSource = do
-      repository <- takeWhileP (Just "repository") (`notElem` ['?', '#'])
+      scheme <- option "" . try $ (<>) <$> takeWhile1P (Just "scheme") (`notElem` [':', '/', '@', '?', '#']) <*> chunk "://"
+      authority <- takeWhileP (Just "authority") (`notElem` ['/', '?', '#'])
+      path <- takeWhileP (Just "path") (`notElem` ['@', '?', '#'])
+      ref <- optional $ char '@' *> takeWhileP (Just "ref") (`notElem` ['?', '#'])
       _query <- optional $ char '?' *> takeWhileP (Just "query") (/= '#')
       commit <- optional $ char '#' *> takeRest
-      pure (repository, mfilter (not . Text.null) commit)
+      pure (scheme <> authority <> path, mfilter (not . Text.null) commit <|> mfilter (not . Text.null) ref)
 
 -- | Reads a source package's name and the location of its manifest:
 --

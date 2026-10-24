@@ -12,7 +12,7 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
-  DepType (CondaType, GitType, PipType, UnresolvedPathType),
+  DepType (CondaType, GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -24,7 +24,7 @@ import Path.IO (makeAbsolute)
 import Strategy.Conda.CondaEnvCreate (CondaEnvDep (..), parseCondaEnvDep)
 import Strategy.Conda.Naming (condaDependencyName)
 import Strategy.Pixi (PixiManifest (PixiToml), PixiProject (..), findProjects, getDeps)
-import Strategy.Pixi.Manifest (PixiManifestDeps (PixiManifestDeps), PyprojectPixiDeps (PyprojectPixiDeps))
+import Strategy.Pixi.Manifest (Feature (Feature), PixiManifestDeps (manifestCondaDeps, manifestPypiDeps), PyprojectPixiDeps (PyprojectPixiDeps), environmentPypiDeps)
 import Strategy.Pixi.PixiLock (
   CondaArtifact (..),
   PypiSource (PypiGit, PypiLocalPath, PypiRegistry),
@@ -353,7 +353,7 @@ spec = do
   describe "declared dependencies" $
     it' "are direct, matching PyPI names in normalized form" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-edges.lock|]
-      graph <- analyze (PixiManifestDeps (Set.singleton "LibFoo") (Map.singleton "Zope.Interface" mempty)) path
+      graph <- analyze (mempty{manifestCondaDeps = Set.singleton "LibFoo", manifestPypiDeps = Map.singleton (Feature "default") $ Map.singleton "Zope.Interface" mempty}) path
 
       expectDirect'
         [ condaDep "conda-forge" "linux-64" "app" "1.0" [EnvProduction]
@@ -414,13 +414,16 @@ spec = do
     it' "declares [project] dependencies, dependency groups, [tool.pixi] tables, and python" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pyproject-manifest/pyproject.toml|]
       PyprojectPixiDeps declared <- readContentsToml path
+      let pypiIn env = Map.keysSet . (`environmentPypiDeps` env) <$> declared
+          everywhere = Set.fromList ["snakemake-interface-common", "throttler", "pyyaml", "snakemake-executor-plugin-slurm"]
 
-      declared
-        `shouldBe'` Just
-          ( PixiManifestDeps
-              (Set.singleton "python")
-              (Map.fromList [(name, mempty) | name <- ["snakemake-interface-common", "throttler", "pyyaml", "ruff", "snakemake-executor-plugin-slurm", "pytest"]])
-          )
+      (manifestCondaDeps <$> declared) `shouldBe'` Just (Set.singleton "python")
+      pypiIn "default" `shouldBe'` Just everywhere
+      -- The style dependency group is a feature of the same name.
+      pypiIn "quality" `shouldBe'` Just (Set.insert "ruff" everywhere)
+      pypiIn "test" `shouldBe'` Just (Set.insert "pytest" everywhere)
+      -- The dev group includes the style group.
+      (Map.lookup (Feature "dev") . manifestPypiDeps =<< declared) `shouldBe'` Just (Map.singleton "ruff" mempty)
 
     it' "marks the packages it declares as direct" $
       withFixture [reldir|test/Pixi/testdata/pyproject-manifest|] $ \project -> do
@@ -468,7 +471,7 @@ spec = do
       expectEdge' locked requests pysocks
       Graphing.hasEdge requests chardet locked `shouldBe'` False
 
-      declared <- analyze (PixiManifestDeps mempty (Map.singleton "requests" (Set.singleton "use_chardet_on_py3"))) path
+      declared <- analyze (mempty{manifestPypiDeps = Map.singleton (Feature "default") . Map.singleton "requests" $ Set.singleton "use_chardet_on_py3"}) path
       expectEdge' declared requests chardet
 
   describe "packages built from source" $ do
@@ -489,3 +492,49 @@ spec = do
       expectEdge' graph sdlExample (sdl2 "linux-64")
       expectEdge' graph sdlExample (sdl2 "osx-arm64")
       expectEdge' graph myPackage sdlExample
+
+  describe "a v6 package built from git" $
+    it' "is reported by its repository at the locked commit" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v6-git-source.lock|]
+      graph <- analyze mempty path
+      let rattlerBuild = mkDep GitType "https://github.com/prefix-dev/rattler-build" (Just "5cf0bbaf1413268dc91fd7f5b51ffc148881cd09") [EnvOther "backends-release"]
+          libgcc = condaDep "conda-forge" "linux-64" "libgcc" "15.2.0" [EnvOther "backends-release"]
+
+      expectDeps' [rattlerBuild, libgcc] graph
+      expectEdge' graph rattlerBuild libgcc
+
+  describe "a source package at a git ref" $
+    it' "is reported by its repository, with the ref as the version" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7-git-refs.lock|]
+      graph <- analyze mempty path
+
+      expectDeps'
+        [ mkDep GitType "https://github.com/NVIDIA/numba-cuda" (Just "main") [EnvProduction]
+        , -- The @ before the host belongs to the SSH user.
+          mkDep GitType "ssh://git@github.com/example/tools.git" (Just "v0.1.0") [EnvProduction]
+        ]
+        graph
+
+  describe "a relative build path" $
+    it' "is joined only onto a manifest's local location" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7-source-paths.lock|]
+      graph <- analyze mempty path
+
+      expectDeps'
+        [ -- It names a directory within the repository or archive.
+          mkDep GitType "https://github.com/example/mono-repo.git" (Just "abc123def456abc123def456abc123def456abc1") [EnvProduction]
+        , mkDep URLType "https://example.com/pkgs/mono-repo-1.2.0.tar.gz" (Just "1.2.0") [EnvProduction]
+        , mkDep UnresolvedPathType (toText $ "recipes/my-package" </> "../../src/lib") (Just "2.1.0") [EnvProduction]
+        ]
+        graph
+
+  describe "extras a feature requests" $
+    it' "only apply in environments that include the feature" $
+      withFixture [reldir|test/Pixi/testdata/feature-extras|] $ \project -> do
+        graph <- dependencyGraph <$> getDeps project
+        let requests version env = mkDep PipType "requests" (Just version) [env]
+            pysocks = mkDep PipType "pysocks" (Just "1.7.1") [EnvProduction, EnvOther "minimum"]
+
+        expectEdge' graph (requests "2.34.2" EnvProduction) pysocks
+        -- The minimum environment leaves out the default feature, which requests the socks extra.
+        Graphing.hasEdge (requests "2.31.0" $ EnvOther "minimum") pysocks graph `shouldBe'` False
