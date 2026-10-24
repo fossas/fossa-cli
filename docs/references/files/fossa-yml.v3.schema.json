@@ -280,6 +280,10 @@
                         {
                             "const": "uv",
                             "description": "For uv targets (python)"
+                        },
+                        {
+                            "const": "pixi",
+                            "description": "For pixi targets (python)"
                         }
                     ],
                     "description": "Target (package manager)"
