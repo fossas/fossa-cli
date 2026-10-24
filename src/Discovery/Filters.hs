@@ -21,6 +21,7 @@ module Discovery.Filters (
   Exclude,
   pathAllowed,
   toolAllowed,
+  nodeToolFamily,
   consumerAllowed,
   withMultiToolFilter,
   withToolFilter,
@@ -200,12 +201,18 @@ toolAllowed filters tool = tool `Set.member` allowedTools filters
 -- | Tool families that are gated together: a consumer for a member of a
 -- family is enabled when ANY member of the family is allowed — the same
 -- any-of semantics 'withMultiToolFilter' applies inside multi-tool
--- strategies (e.g. the package.json strategy covers Yarn, npm, pnpm, and Bun
--- workspaces).
+-- strategies.
 toolFamilies :: [[DiscoveredProjectType]]
-toolFamilies =
-  [ [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType]
-  ]
+toolFamilies = [nodeToolFamily]
+
+-- | The JS package-manager family covered by the package.json strategy
+-- ("Strategy.Node"): one strategy discovers Yarn, npm, pnpm, and Bun
+-- workspaces, so they gate together.  Single definition — the broadcast gate
+-- (via 'toolFamilies') and the strategy's own 'withMultiToolFilter' calls
+-- must not drift apart.
+nodeToolFamily :: [DiscoveredProjectType]
+nodeToolFamily =
+  [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType]
 
 -- | Whether a consumer of @tool@ may start under @filters@: 'toolAllowed',
 -- except that a member of a 'toolFamilies' entry is allowed when any family
