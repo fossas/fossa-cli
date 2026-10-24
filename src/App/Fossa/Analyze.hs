@@ -68,7 +68,7 @@ import App.Fossa.Config.Analyze (
 import App.Fossa.Config.Analyze qualified as Config
 import App.Fossa.Config.Common (DestinationMeta (..), destinationApiOpts, destinationMetadata)
 import App.Fossa.Ficus.Analyze (analyzeWithFicus)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
+import App.Fossa.Ficus.Types (FicusAnalysisResults (vendoredDependencyScanResults), FicusSnippetScanFlag (SnippetScanSkipHeaders, SnippetScanSkipHeadersLimit), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults))
 import App.Fossa.Ficus.Workflow qualified as Workflow
 import App.Fossa.FirstPartyScan (runFirstPartyScan)
 import App.Fossa.Lernie.Analyze (analyzeWithLernie)
@@ -359,6 +359,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       allowedTactics = Config.allowedTacticTypes cfg
       withoutDefaultFilters = Config.withoutDefaultFilters cfg
       enableSnippetScan = Config.snippetScan cfg
+      snippetScanFlags = foldMap skipHeadersFlags $ Config.snippetScanSkipHeaders cfg
+      skipHeadersFlags opts = SnippetScanSkipHeaders : maybe [] (pure . SnippetScanSkipHeadersLimit) (Config.skipHeadersLimit opts)
       enableVendetta = Config.xVendetta cfg
       -- Discovery runs with `mempty` when `--no-discovery-exclusion` is set
       -- (see definition further down). Log against the same filter set so the
@@ -424,6 +426,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               maybeApiOpts
               revision
               ficusStrategies
+              snippetScanFlags
               (Config.licenseScanPathFilters vendoredDepsOptions)
               (orgSnippetScanSourceCodeRetentionDays =<< orgInfo)
               (Config.debugDir cfg)

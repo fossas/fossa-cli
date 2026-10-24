@@ -7,6 +7,7 @@ module App.Fossa.Ficus.Analyze (
   -- Exported for reuse by other ficus subcommands
   execFicusStreaming,
   -- Exported for testing
+  ficusCommand,
   singletonFicusMessage,
   vendoredDepsToSourceUnit,
 )
@@ -26,12 +27,14 @@ import App.Fossa.Ficus.Types (
   FicusMessages (..),
   FicusPerStrategyFlag (..),
   FicusScanStats (..),
+  FicusSnippetScanFlag,
   FicusSnippetScanResults (..),
   FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta),
   FicusVendoredDependency (..),
   FicusVendoredDependencyScanResults (..),
   FicusVendoredLocation (..),
   ficusVendoredLocationPath,
+  renderFicusPerStrategyFlag,
  )
 import App.Types (ProjectRevision (..))
 import Control.Applicative ((<|>))
@@ -109,12 +112,13 @@ analyzeWithFicus ::
   Maybe ApiOpts ->
   ProjectRevision ->
   [FicusStrategy] ->
+  [FicusSnippetScanFlag] -> -- Snippet-scan flags requested by the user, e.g. to skip file headers
   Maybe LicenseScanPathFilters ->
   Maybe Int ->
   Maybe FilePath -> -- Debug directory (if enabled)
   m (Maybe FicusAnalysisResults)
-analyzeWithFicus rootDir apiOpts revision strategies filters snippetScanRetentionDays maybeDebugDir = do
-  Just <$> analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRetentionDays maybeDebugDir
+analyzeWithFicus rootDir apiOpts revision strategies snippetScanFlags filters snippetScanRetentionDays maybeDebugDir = do
+  Just <$> analyzeWithFicusAndFlags rootDir apiOpts revision strategies snippetScanFlags filters snippetScanRetentionDays maybeDebugDir
 
 analyzeWithFicusMain ::
   ( Has Diagnostics sig m
@@ -129,7 +133,25 @@ analyzeWithFicusMain ::
   Maybe Int ->
   Maybe FilePath -> -- Debug directory (if enabled)
   m FicusAnalysisResults
-analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRetentionDays maybeDebugDir = do
+analyzeWithFicusMain rootDir apiOpts revision strategies =
+  -- Keeps its signature for hubble, which does not pass snippet-scan flags.
+  analyzeWithFicusAndFlags rootDir apiOpts revision strategies []
+
+analyzeWithFicusAndFlags ::
+  ( Has Diagnostics sig m
+  , Has (Lift IO) sig m
+  , Has Logger sig m
+  ) =>
+  Path Abs Dir ->
+  Maybe ApiOpts ->
+  ProjectRevision ->
+  [FicusStrategy] ->
+  [FicusSnippetScanFlag] ->
+  Maybe LicenseScanPathFilters ->
+  Maybe Int ->
+  Maybe FilePath -> -- Debug directory (if enabled)
+  m FicusAnalysisResults
+analyzeWithFicusAndFlags rootDir apiOpts revision strategies snippetScanFlags filters snippetScanRetentionDays maybeDebugDir = do
   logDebugWithTime "Preparing Ficus analysis configuration..."
   ficusResults <- runFicus maybeDebugDir ficusConfig
   logDebugWithTime "runFicus completed, processing results..."
@@ -148,6 +170,7 @@ analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRete
         , ficusConfigSecret = apiOptsApiKey <$> apiOpts
         , ficusConfigRevision = revision
         , ficusConfigFlags = [All $ FicusAllFlag SkipHiddenFiles, All $ FicusAllFlag Gitignore]
+        , ficusConfigSnippetScanFlags = snippetScanFlags
         , ficusConfigSnippetScanRetentionDays = snippetScanRetentionDays
         , ficusConfigStrategies = strategies
         }
@@ -449,7 +472,9 @@ ficusCommand ficusConfig bin debugMode = do
   where
     snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
     debugArgs = ["--debug" | debugMode]
-    configArgs endpoint = debugArgs ++ ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
+    configArgs endpoint = debugArgs ++ ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore"] ++ snippetScanFlagArgs ++ ["--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
+    -- Only the snippet-scan flags are rendered here; the @all:@ flags in 'ficusConfigFlags' are hard-coded above.
+    snippetScanFlagArgs = concatMap (\flag -> ["--set", renderFicusPerStrategyFlag $ SnippetScan flag]) $ ficusConfigSnippetScanFlags ficusConfig
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)

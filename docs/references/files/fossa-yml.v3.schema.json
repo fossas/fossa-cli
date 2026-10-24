@@ -355,6 +355,22 @@
                             }
                         }
                     }
+                },
+                "snippetScan": {
+                    "type": "object",
+                    "description": "Options for snippet scanning, described in https://github.com/fossas/fossa-cli/blob/master/docs/features/snippet-scanning.md. These options only take effect when `fossa analyze` runs with `--snippet-scan`, and are ignored otherwise.",
+                    "properties": {
+                        "skipHeaders": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "If true, skip license headers, comments and imports at the start of each file when fingerprinting. Header skipping is enabled if either this setting or the `--snippet-scan-skip-headers` flag enables it."
+                        },
+                        "skipHeadersLimit": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "The maximum number of lines skipped in each file when header skipping is enabled. `0` (the default) means no limit. `--snippet-scan-skip-headers-limit` overrides this setting. Has no effect unless header skipping is enabled."
+                        }
+                    }
                 }
             }
         },

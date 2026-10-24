@@ -1,0 +1,5 @@
+version: 3
+vendoredDependencies:
+  snippetScan:
+    skipHeaders: true
+    skipHeadersLimit: 2.5
