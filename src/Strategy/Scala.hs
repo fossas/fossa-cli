@@ -126,8 +126,8 @@ pathToText = toText . toFilePath
 data SbtTargets = SbtTargets (Maybe ByteString) [Path Abs File] [MavenProjectClosure]
 
 -- | Turn the accumulated per-directory 'SbtTargets' into discovered projects.
-postDiscover :: Applicative m => [SbtTargets] -> m [DiscoveredProject ScalaProject]
-postDiscover targets = pure (concatMap (map mkProject . toScalaProjects) targets)
+postDiscover :: Applicative m => Path Abs Dir -> [SbtTargets] -> m [DiscoveredProject ScalaProject]
+postDiscover _ targets = pure (concatMap (map mkProject . toScalaProjects) targets)
 
 -- | Flatten one 'SbtTargets' entry into its member 'ScalaProject's.
 toScalaProjects :: SbtTargets -> [ScalaProject]
