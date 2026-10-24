@@ -176,6 +176,16 @@ spec = do
       collected `shouldBe'` [binFile]
       step `shouldBe'` WalkContinue
 
+    itWithTempDir' "reads nothing when go-binary analysis is disabled" $ \dir -> do
+      let binFile = dir </> [relfile|libgo.so|]
+          disabledConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) False
+      sendIO $ BS.writeFile (toFilePath binFile) "\NULgo buildinfo..."
+      -- If the flag check were removed, contentIsBinary would read and collect
+      -- the binary file, failing this pin.
+      (collected, step) <- runReader disabledConfig (discoverVisitor dir [] [binFile])
+      collected `shouldBe'` []
+      step `shouldBe'` WalkContinue
+
   -- The batch phase's gate: when go-binary analysis is off, finalize must not
   -- even read the collected candidates (and therefore never execs millhone) —
   -- matching the old private walk, which short-circuited before walking.

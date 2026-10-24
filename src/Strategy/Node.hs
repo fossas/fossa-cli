@@ -52,7 +52,7 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters, withMultiToolFilter)
+import Discovery.Filters (AllFilters, nodeToolFamily, withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
@@ -132,7 +132,7 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType] $
+discover dir = withMultiToolFilter nodeToolFamily $
   context "NodeJS" $ do
     manifestList <- context "Finding nodejs/pnpm projects" $ collectManifests dir
     manifestMap <- context "Reading manifest files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
@@ -176,7 +176,7 @@ finalizeProjects ::
   -- | manifests collected by 'discoverVisitor'
   m [Manifest] ->
   m [DiscoveredProject NodeProject]
-finalizeProjects _ collect = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType] $
+finalizeProjects _ collect = withMultiToolFilter nodeToolFamily $
   context "NodeJS" $
     do
       manifestList <- context "Finding nodejs/pnpm projects" collect
