@@ -354,6 +354,11 @@ data Resolution
   | RegistryResolve RegistryResolution
   | TarballResolve TarballResolution
   | DirectoryResolve DirectoryResolution
+  | -- | A platform binary rather than an npm package: pnpm 10.14+ records a
+    -- runtime declared in @devEngines.runtime@ (e.g. @node\@runtime:24.19.0@)
+    -- with @resolution: {type: variations, variants: [...]}@, one download per
+    -- platform and no top-level @integrity@ or @tarball@.
+    BinaryResolve
   deriving (Show, Eq, Ord)
 
 data GitResolution = GitResolution
@@ -370,8 +375,15 @@ newtype DirectoryResolution = DirectoryResolution {directory :: Text} deriving (
 
 instance FromJSON Resolution where
   parseJSON = Yaml.withObject "Resolution" $ \obj ->
-    gitRes obj <|> tarballRes obj <|> directoryRes obj <|> registryRes obj
+    binaryRes obj <|> gitRes obj <|> tarballRes obj <|> directoryRes obj <|> registryRes obj
     where
+      binaryRes :: Object -> Parser Resolution
+      binaryRes obj = do
+        resolutionType <- obj .: "type"
+        if resolutionType `elem` ["variations", "binary" :: Text]
+          then pure BinaryResolve
+          else fail ("not a binary resolution: " <> toString resolutionType)
+
       directoryRes :: Object -> Parser Resolution
       directoryRes obj = DirectoryResolve . DirectoryResolution <$> obj .: "directory"
 

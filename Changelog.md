@@ -1,7 +1,8 @@
 # FOSSA CLI Changelog
 
-## 3.21.0
+## Unreleased
 
+- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
 - pixi: Added support for pixi projects via `pixi.lock`. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
 
 ## 3.20.7
