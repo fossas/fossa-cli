@@ -4,6 +4,7 @@
 module Node.NodeSpec (spec) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
+import Control.Carrier.Reader (runReader)
 import Data.Foldable (for_)
 import Data.Glob (unsafeGlobRel)
 import Data.Map qualified as Map
@@ -11,7 +12,6 @@ import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.Tagged (applyTag)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), Dependency (dependencyEnvironments, dependencyName, dependencyVersion), VerConstraint (CCompatible))
-import Control.Carrier.Reader (runReader)
 import Discovery.Filters (AllFilters (..), comboInclude)
 import Discovery.Walk (walkWithFilters')
 import Graphing qualified
@@ -49,7 +49,7 @@ import Types (
     dependencyManifestFiles
   ),
   DiscoveredProject (DiscoveredProject, projectBuildTargets, projectData, projectPath, projectType),
-  DiscoveredProjectType (NpmProjectType, YarnProjectType),
+  DiscoveredProjectType (NpmProjectType),
   FoundTargets (FoundTargets, ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
   TargetFilter (TypeTarget),
