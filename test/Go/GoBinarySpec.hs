@@ -4,6 +4,7 @@
 
 module Go.GoBinarySpec (spec) where
 
+import App.Fossa.Config.Analyze (StrategyConfig (..), UseGitBackedCargoLocators (..))
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Lift (sendIO)
 import Control.Exception (throwIO)
@@ -12,7 +13,6 @@ import Data.ByteString.Char8 qualified as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import App.Fossa.Config.Analyze (StrategyConfig (..), UseGitBackedCargoLocators (..))
 import DepTypes (
   DepType (GoType),
   Dependency (..),
