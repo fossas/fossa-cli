@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
+- Poetry: path dependencies in `pyproject.toml` and `poetry.lock` are now analyzed by path dependency analysis (`--experimental-analyze-path-dependencies`), resolving them on disk and license scanning them instead of dropping them.
+- Swift/SwiftPM: `.package(path:)` dependencies in `Package.swift` are now analyzed by path dependency analysis (`--experimental-analyze-path-dependencies`) instead of being dropped.
+- Dart/pub: path dependencies declared in `pubspec.yaml` and `pubspec.lock` are now analyzed by path dependency analysis (`--experimental-analyze-path-dependencies`) instead of being dropped.
 
 ## 3.20.7
 

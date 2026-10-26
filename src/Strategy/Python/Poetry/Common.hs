@@ -18,7 +18,7 @@ import Data.Set qualified as Set
 import Data.Text (Text, replace, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
-  DepType (GitType, PipType, URLType),
+  DepType (GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (
     CEq
@@ -50,7 +50,7 @@ getPoetryBuildBackend project = buildBackend =<< pyprojectBuildSystem project
 
 -- | Supported pyproject dependencies.
 supportedPyProjectDep :: PoetryDependency -> Bool
-supportedPyProjectDep (PyProjectPoetryPathDependencySpec _) = False
+supportedPyProjectDep (PyProjectPoetryPathDependencySpec _) = True
 supportedPyProjectDep _ = True
 
 -- | Logs all ignored dependencies for debugger.
@@ -177,6 +177,7 @@ poetrytoDependency depEnvs name deps =
     depType = case deps of
       PyProjectPoetryGitDependencySpec _ -> GitType
       PyProjectPoetryUrlDependencySpec _ -> URLType
+      PyProjectPoetryPathDependencySpec _ -> UnresolvedPathType
       _ -> PipType
 
     depName = case deps of
@@ -258,6 +259,7 @@ makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanoni
     toDepType (Just lockPkgSrc) = case poetryLockPackageSourceType lockPkgSrc of
       "git" -> GitType
       "url" -> URLType
+      "directory" -> UnresolvedPathType
       _ -> PipType
 
     toDepLocs :: PoetryLockPackage -> [Text]

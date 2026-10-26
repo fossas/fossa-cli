@@ -8,7 +8,7 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
-import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepType (GitType, SwiftType, UnresolvedPathType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile (..), SwiftResolvedPackage (..))
 import Strategy.Swift.PackageSwift (
@@ -209,6 +209,16 @@ spec = do
     it "should ignore skipped dependencies" $ do
       let graph = buildGraph (SwiftPackage "5.7" [SkippedDependencies, GitSource $ gitDepExactly "some-url" "1.0.0"]) Nothing
       expectDeps [Dependency GitType "some-url" (Just $ CEq "1.0.0") [] mempty Map.empty] graph
+
+    it "should emit path dependencies as UnresolvedPathType named by their path" $ do
+      let graph = buildGraph (SwiftPackage "5.7" [PathSource "../..", PathSource "../local-lib"]) Nothing
+      let expectedDeps =
+            [ Dependency UnresolvedPathType "../.." Nothing [] mempty Map.empty
+            , Dependency UnresolvedPathType "../local-lib" Nothing [] mempty Map.empty
+            ]
+      expectDirect expectedDeps graph
+      expectDeps expectedDeps graph
+      expectEdges [] graph
 
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDeps =

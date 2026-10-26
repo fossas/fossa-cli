@@ -110,8 +110,8 @@ expectedPyProject =
             }
     }
 
-notSupportedPyProjectDependency :: PoetryDependency
-notSupportedPyProjectDependency = PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"}
+pathPyProjectDependency :: PoetryDependency
+pathPyProjectDependency = PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"}
 
 notSupportedPoetryLockDependency :: PoetryLockPackage
 notSupportedPoetryLockDependency =
@@ -140,6 +140,8 @@ expectedDeps =
   , dep GitType "https://github.com/numpy/numpy.git" (Just $ CEq "v0.13.2") prodEnvs
   , dep GitType "https://github.com/kennethreitz/requests.git" (Just $ CEq "next") prodEnvs
   , dep URLType "https://example.com/my-package-0.1.0.tar.gz" Nothing prodEnvs
+  , dep UnresolvedPathType "../my-package/dist/my-package-0.1.0.tar.gz" Nothing prodEnvs
+  , dep UnresolvedPathType "../my-package/" Nothing prodEnvs
   , dep PipType "black" (Just $ CEq "19.10b0") prodEnvs
   , dep PipType "pytest" Nothing devEnvs
   ]
@@ -227,8 +229,8 @@ spec = do
           Map.member "flask" prodDeps `shouldBe` True
 
   describe "supportedPyProjectDep" $
-    it "should return false when dependency is sourced from local path" $
-      supportedPyProjectDep notSupportedPyProjectDependency `shouldBe` False
+    it "should return true when dependency is sourced from local path" $
+      supportedPyProjectDep pathPyProjectDependency `shouldBe` True
 
   describe "supportedPoetryLockDep" $
     it "should return false when dependency is sourced from local path" $
@@ -349,6 +351,37 @@ spec = do
               }
           ]
           `shouldBe` Map.empty
+
+    -- Poetry writes local path dependencies (e.g. `poetry add ../local-lib`) into poetry.lock
+    -- with a `[package.source]` of type "directory" (distinct from "file", which is a local
+    -- tarball).
+    describe "when poetry lock dependency is from a directory (path) source" $
+      it "should emit an UnresolvedPathType named by the path source url" $
+        makePackageToLockDependencyMap
+          mempty
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "local_lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Just "main"
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../local-lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "local-lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "../local-lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
 
     describe "when poetry lock dependency is from secondary sources" $
       it "should include url into dependency location" $

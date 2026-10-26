@@ -37,6 +37,9 @@ In the event that caching is causing problems, FOSSA can be made to rescan this 
   - PDM (Python) projects via the [pdm strategy](./../strategies/languages/python/pdm.md).
   - Rust projects via the [Cargo strategy](./../strategies/languages/rust/cargo.md).
   - Python projects using [uv](./../strategies/languages/python/uv.md).
+  - Python projects using [Poetry](./../strategies/languages/python/poetry.md) (path dependencies in `pyproject.toml` and `poetry.lock`).
+  - Swift/SwiftPM projects via the [Swift strategy](./../strategies/platforms/ios/swift.md).
+  - Dart projects via the [Dart strategy](./../strategies/languages/dart/dart.md).
 
 ## Ecosystem support
 
@@ -52,9 +55,9 @@ Path dependency support has three layers, and a given ecosystem may stop at any 
 | [Cargo (Rust)](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-path-dependencies) | ✅ | ✅ | ✅ |
 | [PDM (Python)](https://pdm-project.org/latest/usage/dependency/) | ✅ | ✅ | ✅ |
 | [uv (Python)](https://docs.astral.sh/uv/concepts/projects/dependencies/#path-dependencies) | ✅ | ✅ | ✅ |
-| [Poetry (Python)](https://python-poetry.org/docs/dependency-specification/#local-dependencies) | ✅ | ✅ | ❌ dropped |
-| [SwiftPM](https://developer.apple.com/documentation/packagedescription/package/dependency/package(name:path:)) | ✅ | ✅ | ❌ dropped |
-| [Dart / pub](https://dart.dev/tools/pub/dependencies#path-dependencies) | ✅ | ✅ | ❌ dropped |
+| [Poetry (Python)](https://python-poetry.org/docs/dependency-specification/#local-dependencies) | ✅ | ✅ | ✅ |
+| [SwiftPM](https://developer.apple.com/documentation/packagedescription/package/dependency/package(name:path:)) | ✅ | ✅ | ✅ |
+| [Dart / pub](https://dart.dev/tools/pub/dependencies#path-dependencies) | ✅ | ✅ | ✅ |
 | [npm](https://docs.npmjs.com/cli/v10/configuring-npm/package-json#local-paths) | ✅ | ✅ | ❌ skipped |
 | [Yarn 2+](https://yarnpkg.com/protocol/file) (`file:` protocol) | ✅ | ✅ | ❌ unsupported resolver |
 | [pnpm](https://pnpm.io/lockfile) (`directory:` resolution) | ✅ | ✅ | ❌ reported as plain version |

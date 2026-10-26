@@ -26,7 +26,7 @@ import Data.Set (Set, fromList, member)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text, intercalate)
 import Data.Void (Void)
-import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepType (GitType, SwiftType, UnresolvedPathType), Dependency (..), VerConstraint (CEq))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
@@ -378,7 +378,16 @@ buildGraph manifestContent maybeResolvedContent =
     getName SkippedDependencies = Nothing
 
 toDependency :: SwiftPackageDep -> Maybe Dependency
-toDependency (PathSource _) = Nothing
+toDependency (PathSource path) =
+  Just
+    Dependency
+      { dependencyType = UnresolvedPathType
+      , dependencyName = path
+      , dependencyVersion = Nothing
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
 toDependency SkippedDependencies = Nothing
 toDependency (GitSource pkgDep) =
   Just $

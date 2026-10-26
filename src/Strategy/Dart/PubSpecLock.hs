@@ -32,7 +32,7 @@ import Data.Yaml (FromJSON (parseJSON), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, PubType),
+  DepType (GitType, PubType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -117,7 +117,7 @@ isSupported :: PubLockPackageMetadata -> Bool
 isSupported meta =
   case pubLockPackageSource meta of
     SdkSource _ -> False
-    PathSource _ -> False
+    PathSource _ -> True
     GitSource _ -> True
     HostedSource _ -> True
 
@@ -136,16 +136,19 @@ toDependency pkg meta =
     depType :: DepType
     depType = case pubLockPackageSource meta of
       GitSource{} -> GitType
+      PathSource{} -> UnresolvedPathType
       _ -> PubType
 
     depName :: Text
     depName = case pubLockPackageSource meta of
       GitSource (PubLockPackageGitSource gitUrl _) -> gitUrl
+      PathSource (PubLockPackagePathSource p) -> p
       _ -> unPackageName pkg
 
     depVersion :: Maybe VerConstraint
     depVersion = case pubLockPackageSource meta of
       GitSource (PubLockPackageGitSource _ ref) -> Just $ CEq ref
+      PathSource{} -> Nothing
       _ -> CEq <$> pubLockPackageVersion meta
 
     depLocation :: [Text]
