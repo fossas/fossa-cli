@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Discovery.WalkVisitorSpec (
@@ -13,12 +14,20 @@ import Data.Set qualified as Set
 import Data.Text (Text)
 import Discovery.Walk (WalkStep (..), findFileNamed, walk')
 import Discovery.WalkStream (walkStreamUnfiltered)
-import Discovery.WalkVisitor (runVisitor, runVisitors)
+import Discovery.WalkVisitor (
+  VisitorState (..),
+  applyVisitorStep,
+  initialVisitorState,
+  isSwallowed,
+  runVisitor,
+  runVisitors,
+ )
 import Path
 import Path.IO (createDir)
 import Streaming (Of, Stream)
 import Streaming.Prelude qualified as S
 import Test.Effect
+import Test.Fixtures (absDir)
 import Test.Hspec
 
 spec :: Spec
@@ -178,6 +187,97 @@ spec =
         count `shouldBe'` 2
         length entries `shouldBe'` count
         sort visited `shouldBe'` sort [tmpDir, a]
+
+    -- Pure state-machine tests: the drivers only invoke visitors on
+    -- non-swallowed listings, so the state machine itself is what decides
+    -- which listings are swallowed.
+    describe "visitor state machine" $ do
+      let root = absDir
+          a = root </> $(mkRelDir "a")
+          aSub = a </> $(mkRelDir "sub")
+          aDeeper = aSub </> $(mkRelDir "deeper")
+          b = root </> $(mkRelDir "b")
+          c = root </> $(mkRelDir "c")
+
+      it' "stops swallowing once the DFS escapes the skipped scope" $
+        let st = applyVisitorStep WalkSkipAll a initialVisitorState
+         in do
+              isSwallowed st aSub `shouldBe'` True
+              isSwallowed st aDeeper `shouldBe'` True
+              isSwallowed st b `shouldBe'` False
+              -- At the sibling, a's decision is dead forever: dropped from
+              -- the state, so the live frontier shrinks instead of growing.
+              let st' = applyVisitorStep WalkContinue b st
+              vsPruned st' `shouldBe'` []
+              isSwallowed st' aSub `shouldBe'` False
+
+      it' "WalkSkipSome swallows each named sibling regardless of descent order" $
+        -- The visitor names ["b", "a"] at root, but the walk descends into
+        -- "a" first: both subtrees must be swallowed, siblings outside both
+        -- must not be.  This rules out any single-root design.
+        let st = applyVisitorStep (WalkSkipSome ["b", "a"]) root initialVisitorState
+         in do
+              isSwallowed st a `shouldBe'` True
+              isSwallowed st aDeeper `shouldBe'` True
+              isSwallowed st b `shouldBe'` True
+              isSwallowed st c `shouldBe'` False
+
+      it' "cannot act inside a swallowed subtree" $
+        -- A visitor is never invoked inside a swallowed subtree (pinned by
+        -- the driver tests above), so no new decision can be made there;
+        -- every depth below the skipped root stays swallowed.  Applying a
+        -- step deeper in the scope keeps the outer scope alive (no nesting
+        -- can occur, but the state must still compare sensibly).
+        let st = applyVisitorStep WalkSkipAll a initialVisitorState
+         in do
+              isSwallowed st aDeeper `shouldBe'` True
+              let st' = applyVisitorStep WalkSkipAll aSub st
+              vsPruned st' `shouldBe'` [(aSub, [aSub]), (a, [a])]
+              isSwallowed st' (aDeeper </> $(mkRelDir "x")) `shouldBe'` True
+
+      it' "a skip inside an unskipped child coexists with the ancestor's skip and dies at its sibling" $
+        -- root/ skips node_modules; the walk descends into the unskipped
+        -- root/vendor/ and skips vendor/cache there.  Both live decisions
+        -- coexist: the deeper one swallows its subtree, the ancestor's keeps
+        -- swallowing node_modules, and the unskipped sibling of cache stays
+        -- visible.  Once the DFS reaches vendor/other, the cache decision is
+        -- dead (dropped) but the ancestor's is not.
+        let vendor = root </> $(mkRelDir "vendor")
+            vCache = vendor </> $(mkRelDir "cache")
+            vCacheInner = vCache </> $(mkRelDir "inner")
+            vOther = vendor </> $(mkRelDir "other")
+            nodeModules = root </> $(mkRelDir "node_modules")
+            nodeModulesDeep = nodeModules </> $(mkRelDir "pkg")
+         in do
+              let st0 = applyVisitorStep (WalkSkipSome ["node_modules"]) root initialVisitorState
+                  st1 = applyVisitorStep (WalkSkipSome ["cache"]) vendor st0
+              vsPruned st1 `shouldBe'` [(vendor, [vCache]), (root, [nodeModules])]
+              isSwallowed st1 vCacheInner `shouldBe'` True
+              isSwallowed st1 nodeModulesDeep `shouldBe'` True
+              isSwallowed st1 vOther `shouldBe'` False
+              let st2 = applyVisitorStep WalkContinue vOther st1
+              -- Still inside vendor's scope: the cache decision stays live
+              -- (DFS may still descend into cache after other), so it is
+              -- neither dropped nor forgettable.
+              vsPruned st2 `shouldBe'` [(vendor, [vCache]), (root, [nodeModules])]
+              isSwallowed st2 vCacheInner `shouldBe'` True
+              isSwallowed st2 nodeModulesDeep `shouldBe'` True
+              -- Once the DFS backtracks above vendor entirely, the cache
+              -- decision is dead (dropped), but the ancestor's is not.
+              let st3 = applyVisitorStep WalkContinue (root </> $(mkRelDir "src")) st2
+              vsPruned st3 `shouldBe'` [(root, [nodeModules])]
+              isSwallowed st3 vCacheInner `shouldBe'` False
+              isSwallowed st3 nodeModulesDeep `shouldBe'` True
+
+      it' "drops unparseable skip names silently" $
+        let st = applyVisitorStep (WalkSkipSome ["", "sub"]) a initialVisitorState
+         in vsPruned st `shouldBe'` [(a, [aSub])]
+
+      it' "WalkStop marks the visitor done and stays comparable" $
+        let st = applyVisitorStep WalkStop a initialVisitorState
+         in do
+              st `shouldBe'` initialVisitorState{vsDone = True}
+              (st == initialVisitorState) `shouldBe'` False
 
 -- | A visitor that records every invocation and skips the whole subtree of
 -- any directory holding @marker.txt@.

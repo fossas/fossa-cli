@@ -24,8 +24,6 @@ module Discovery.WalkVisitor (
 ) where
 
 import Data.Maybe (mapMaybe)
-import Data.Set (Set)
-import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Traversable qualified as Trav
 import Discovery.Walk (WalkStep (..))
@@ -35,41 +33,68 @@ import Streaming (Of (..), Stream, lift)
 import Streaming.Prelude qualified as S
 
 -- | Participation state of one visitor over the shared walk: whether the
--- visitor has stopped ('vsDone') and the roots of the subtrees it swallows
--- ('vsPruned'), where a swallowed listing is one whose directory equals or
--- lies below a pruned root.
+-- visitor has stopped ('vsDone') and its live skip decisions ('vsPruned'),
+-- where a swallowed listing is one whose directory equals or lies below one
+-- of those decisions' subtree roots.
+--
+-- Each decision is a @(scope, roots)@ pair: @scope@ is the directory at
+-- which the visitor emitted its 'Discovery.Walk.WalkSkipAll' or
+-- 'Discovery.Walk.WalkSkipSome' step, @roots@ the subtree roots it produced
+-- (one for 'Discovery.Walk.WalkSkipAll', k for 'Discovery.Walk.WalkSkipSome',
+-- unparseable names dropped exactly like 'Discovery.Walk.walk').
+--
+-- Correctness relies on the shared stream being DFS-ordered: 'walkStream'
+-- mirrors "Discovery.Walk"'s order, and 'driveVisitor' reads the same
+-- listing sequence for every visitor.  A visitor is only invoked on
+-- non-swallowed listings, so every decision it emits is made outside all
+-- existing roots (roots stay pairwise disjoint) and a decision only matters
+-- for the contiguous run of DFS listings inside its scope.  Once the walk
+-- backtracks above a decision's scope, that entry is dead: 'applyVisitorStep'
+-- drops dead entries at every non-swallowed listing, keeping the list
+-- bounded by tree depth plus one decision's arity instead of growing with
+-- every skip.
 data VisitorState = VisitorState
   { vsDone :: Bool
-  , vsPruned :: Set (Path Abs Dir)
+  , vsPruned :: [(Path Abs Dir, [Path Abs Dir])]
   }
   deriving (Eq, Show)
 
 -- | State of a fresh visitor.
 initialVisitorState :: VisitorState
-initialVisitorState = VisitorState{vsDone = False, vsPruned = Set.empty}
+initialVisitorState = VisitorState{vsDone = False, vsPruned = []}
 
--- | Whether @dir@ is at or below a subtree root in 'vsPruned'.
+-- | Whether @dir@ is at or below a subtree root of a live skip decision.
+-- Stale decisions (whose scope the DFS has backtracked above) are ignored;
+-- 'applyVisitorStep' additionally drops them from the state.
 isSwallowed :: VisitorState -> Path Abs Dir -> Bool
-isSwallowed state dir = any (isBelowRoot dir) (Set.toList (vsPruned state))
+isSwallowed state dir =
+  any
+    (\root -> root == dir || isProperPrefixOf root dir)
+    [root | (scope, roots) <- vsPruned state, atOrAboveScope dir scope, root <- roots]
   where
-    isBelowRoot candidate root = root == candidate || isProperPrefixOf root candidate
+    atOrAboveScope candidate scope = scope == candidate || isProperPrefixOf scope candidate
 
 -- | Fold a visitor's 'WalkStep' into its own state, mirroring the
 -- per-strategy walk in "Discovery.Walk": the step was produced at @dir@ (so
 -- the visit still counts), and only that visitor is affected.
 applyVisitorStep :: WalkStep -> Path Abs Dir -> VisitorState -> VisitorState
-applyVisitorStep step dir state = case step of
-  WalkContinue -> state
-  -- The visitor stopped: keep the pruned set for determinism, but it no
-  -- longer matters because the visitor is never invoked again.
-  WalkStop -> state{vsDone = True}
-  WalkSkipAll -> state{vsPruned = Set.insert dir (vsPruned state)}
-  WalkSkipSome names -> state{vsPruned = foldr addName (vsPruned state) names}
+applyVisitorStep step dir state0 =
+  let state = state0{vsPruned = pruneDead (vsPruned state0)}
+   in case step of
+        WalkContinue -> state
+        -- The visitor stopped: keep the live decisions for determinism, but
+        -- they no longer matter because the visitor is never invoked again.
+        WalkStop -> state{vsDone = True}
+        WalkSkipAll -> state{vsPruned = (dir, [dir]) : vsPruned state}
+        WalkSkipSome names -> state{vsPruned = (dir, roots) : vsPruned state}
+          where
+            roots = mapMaybe (fmap (dir </>) . parse) names
+            -- Unparseable names are dropped silently, exactly like
+            -- 'Discovery.Walk.walk'.
+            parse name = parseRelDir (toString name)
   where
-    -- Unparseable names are dropped silently, exactly like 'Discovery.Walk.walk'.
-    addName name acc = case parseRelDir (toString name) of
-      Nothing -> acc
-      Just rel -> Set.insert (dir </> rel) acc
+    -- Decisions whose scope the DFS has backtracked above are dead forever.
+    pruneDead = filter (\(scope, _) -> scope == dir || isProperPrefixOf scope dir)
 
 -- | A strategy's per-directory collector, mirroring the old per-strategy walk
 -- callback: it returns its output for the listing plus its next 'WalkStep'.
