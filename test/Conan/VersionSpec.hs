@@ -29,3 +29,4 @@ spec = do
       "Conan version 2.0.0" `shouldParseInto` (version 2 0 0 [] [])
       "Conan version 1.0.0" `shouldParseInto` (version 1 0 0 [] [])
       "Conan version 1.63.0" `shouldParseInto` (version 1 63 0 [] [])
+      "Conan version 2.33.0.1" `shouldParseInto` (version 2 33 0 [] [])
