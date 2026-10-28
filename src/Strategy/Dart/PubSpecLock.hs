@@ -182,7 +182,7 @@ logIgnoredPackages lockContent = for_ notSupportedDependenciesMsgs (logDebug . p
     notSupportedDependenciesMsgs = map (<> " : ignored in analyses. Dependency's source is not supported!") notSupportedPackages
 
     notSupportedPackages :: [Text]
-    notSupportedPackages = map (unPackageName . fst) (Map.toList $ Map.filter isSupported $ packages lockContent)
+    notSupportedPackages = map (unPackageName . fst) (Map.toList $ Map.filter (not . isSupported) $ packages lockContent)
 
 analyzePubLockFile ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>
