@@ -358,13 +358,13 @@ buildGraph :: SwiftPackage -> Maybe SwiftPackageResolvedFile -> Graphing.Graphin
 buildGraph manifestContent maybeResolvedContent =
   case maybeResolvedContent of
     Nothing -> induceJust $ directs (map toDependency $ packageDependencies manifestContent)
-    -- If dependency (url) is present in the manifest, promote them to direct dependency
-    -- Otherwise, keep them as deep dependencies. Since Package.resolved does not include
-    -- dependencies sourced from local path, we do not need to do any filtering.
+    -- If a resolved content is discovered, use it to resolve the git (url) dependencies.
+    -- Since Package.resolved does not include dependencies sourced from local path, we add
+    -- the path dependencies of the manifest as direct dependencies here. Git dependencies
+    -- that are present in the manifest are then promoted to direct dependencies below.
     Just resolvedContent ->
       promoteToDirect (isDirect depInManifest) $
-        deeps $
-          resolvedDependenciesOf resolvedContent
+        directs pathDependencies <> deeps (resolvedDependenciesOf resolvedContent)
   where
     isDirect :: Set Text -> Dependency -> Bool
     isDirect s dep = (dependencyName dep) `member` s
@@ -376,6 +376,13 @@ buildGraph manifestContent maybeResolvedContent =
     getName (PathSource path) = Just path
     getName (GitSource pkg) = Just $ srcOf pkg
     getName SkippedDependencies = Nothing
+
+    pathDependencies :: [Dependency]
+    pathDependencies = mapMaybe toDependency $ filter isPathSource $ packageDependencies manifestContent
+
+    isPathSource :: SwiftPackageDep -> Bool
+    isPathSource (PathSource _) = True
+    isPathSource _ = False
 
 toDependency :: SwiftPackageDep -> Maybe Dependency
 toDependency (PathSource path) =

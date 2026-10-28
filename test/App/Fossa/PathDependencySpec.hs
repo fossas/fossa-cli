@@ -139,6 +139,19 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` expectedResult
 
+  it' "should skip unresolvable path dependencies, without aborting the enrichment pass" $ do
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchData
+    expectLicenseScanUpload
+    expectPathDependencyFinalize
+    expectNoAnalyzedPathRevisions
+
+    let result = mkProjectResult cwd (graphWithUnPathDep <> direct unresolvablePathDep)
+    let expectedResult = mkProjectResult cwd (direct resolvedPathDep <> direct unresolvablePathDep)
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    result' `shouldBe'` expectedResult
+
   it' "should not perform path dependency scan and upload, if path dependency is already analyzed" $ do
     expectOrg orgSupportPathDeps{orgRequiresFullFileUploads = False}
     expectAnalyzedPathRevisions
@@ -240,6 +253,9 @@ nonProdUPathDepOnly =
   (mkDep UnresolvedPathType)
     { dependencyEnvironments = Set.singleton EnvTesting
     }
+
+unresolvablePathDep :: Dependency
+unresolvablePathDep = (mkDep UnresolvedPathType){dependencyName = "does-not-exist"}
 
 resolvedPathDep :: Dependency
 resolvedPathDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ fixtureDirHash}

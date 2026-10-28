@@ -311,3 +311,37 @@ spec = do
       expectDirect expectedDirectDeps graph
       expectDeps (expectedDirectDeps ++ expectedDeepDeps) graph
       expectEdges [] graph
+
+    it "should keep path dependencies from the manifest when resolved content only pins git dependencies" $ do
+      -- 'Package.resolved' never contains local path dependencies, so when a resolved file is
+      -- discovered it only carries git pins. The path dependencies declared in the manifest must
+      -- still make it into the graph, as direct dependencies.
+      let expectedDirectDeps =
+            [ Dependency UnresolvedPathType "../.." Nothing [] mempty Map.empty
+            , Dependency GitType "dep-A" (CEq <$> Just "some-rev-A") [] mempty Map.empty
+            ]
+      let expectedDeepDeps = []
+
+      let graph =
+            buildGraph
+              ( SwiftPackage
+                  "5.3"
+                  [ GitSource $ gitDepFrom "dep-A" "1.2.2"
+                  , PathSource "../.."
+                  ]
+              )
+              ( Just $
+                  SwiftPackageResolvedFile
+                    1
+                    [ SwiftResolvedPackage
+                        "depA"
+                        "dep-A"
+                        Nothing
+                        (Just "some-rev-A")
+                        (Just "1.2.5")
+                    ]
+              )
+
+      expectDirect expectedDirectDeps graph
+      expectDeps (expectedDirectDeps ++ expectedDeepDeps) graph
+      expectEdges [] graph

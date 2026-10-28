@@ -73,6 +73,7 @@ enrichPathDependencies ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has FossaApiClient sig m
+  , Has Logger sig m
   ) =>
   Flag IncludeAll ->
   VendoredDependencyOptions ->
@@ -124,6 +125,7 @@ resolvePaths ::
   , Has Exec sig m
   , Has ReadFS sig m
   , Has FossaApiClient sig m
+  , Has Logger sig m
   ) =>
   Bool ->
   VendoredDependencyOptions ->
@@ -145,7 +147,10 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
       let uniqDeps = NE.nub pathDeps
 
       -- 2. Get hash from the dependencies
-      depsWithMetadata <- catMaybes . NE.toList <$> traverse (metadataOf baseDir) uniqDeps
+      --
+      -- A single unresolvable path dependency should not abort the whole
+      -- enrichment pass; recover per-dependency and skip the offending one.
+      depsWithMetadata <- catMaybes . NE.toList <$> traverse resolveUnresolvedPathDep uniqDeps
 
       -- 3. Identify dependencies that have been already resolved!
       alreadyAnalyzed <-
@@ -174,6 +179,25 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
       Nothing -> dep
       Just (_, maybeDep) -> fromMaybe dep maybeDep
 
+    resolveUnresolvedPathDep ::
+      ( Has (Lift IO) sig m
+      , Has ReadFS sig m
+      , Has Diagnostics sig m
+      , Has Logger sig m
+      ) =>
+      Dependency -> m (Maybe (Dependency, SomeResolvedPath, Text))
+    resolveUnresolvedPathDep dep = do
+      maybeResolved <- recover $ metadataOf baseDir dep
+      case maybeResolved of
+        Nothing -> do
+          logInfo $
+            redText "NOTE: "
+              <> "path dependency '"
+              <> pretty (dependencyName dep)
+              <> "' could not be resolved, skipping license scan."
+          pure Nothing
+        Just resolved -> pure resolved
+
     resolvedLocators :: [(Dependency, Maybe Dependency)] -> [Locator]
     resolvedLocators deps = map toLocator (mapMaybe snd deps)
 
@@ -196,6 +220,7 @@ scanAndUpload ::
   , Has ReadFS sig m
   , Has StickyLogger sig m
   , Has FossaApiClient sig m
+  , Has Logger sig m
   ) =>
   Maybe LicenseScanPathFilters ->
   FileUpload ->
@@ -203,20 +228,27 @@ scanAndUpload ::
   (Dependency, SomeResolvedPath, Text) ->
   m (Dependency, Maybe Dependency)
 scanAndUpload pathFilters uploadKind projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
-  maybeLicenseUnits <- recover scan
-  case maybeLicenseUnits of
-    Nothing -> pure (rawDep, Nothing)
-    Just licenseUnits -> (rawDep,) <$> doUpload licenseUnits
+  case resolvedPath of
+    -- Single-file path dependencies are not supported (yet); emit a warning and keep the
+    -- dependency raw, skipping the license scan instead of failing the whole enrichment pass.
+    ResolvedFile _ -> do
+      logInfo $
+        redText "NOTE: "
+          <> "not license scanning single-file path dependency '"
+          <> pretty rawPath
+          <> "'; only directories are supported"
+      pure (rawDep, Nothing)
+    ResolvedDir dir -> do
+      maybeLicenseUnits <- recover $ do
+        logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
+        scannedLicenseUnits <- scanDirectory Nothing mempty pathFilters uploadKind dir
+        pure $ LicenseSourceUnit rawPath CliLicenseScanned scannedLicenseUnits
+      case maybeLicenseUnits of
+        Nothing -> pure (rawDep, Nothing)
+        Just licenseUnits -> (rawDep,) <$> doUpload licenseUnits
   where
     rawPath :: Text
     rawPath = dependencyName rawDep
-
-    scan = do
-      logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
-      licenseUnits <- case resolvedPath of
-        ResolvedDir dir -> scanDirectory Nothing mempty pathFilters uploadKind dir
-        ResolvedFile _ -> fatalText $ "path dependency for single file is not supported: " <> rawPath
-      pure $ LicenseSourceUnit rawPath CliLicenseScanned licenseUnits
 
     doUpload licSrcUnit = do
       logSticky $ "Uploading '" <> rawPath <> "' to secure S3 bucket"
