@@ -172,8 +172,8 @@ spec = do
               , pubLockPackageVersion = Just "1.4"
               , pubLockPackageEnvironment = []
               }
-      toDependency (PackageName "pkg_file") pkg `shouldBe`
-        Dependency
+      toDependency (PackageName "pkg_file") pkg
+        `shouldBe` Dependency
           { dependencyType = UnresolvedPathType
           , dependencyName = "/Users/dir/pkg_dir"
           , dependencyVersion = Just $ CEq "1.4"
@@ -190,8 +190,8 @@ spec = do
               , pubLockPackageVersion = Nothing
               , pubLockPackageEnvironment = []
               }
-      toDependency (PackageName "pkg_file") pkg `shouldBe`
-        Dependency
+      toDependency (PackageName "pkg_file") pkg
+        `shouldBe` Dependency
           { dependencyType = UnresolvedPathType
           , dependencyName = "/Users/dir/pkg_dir"
           , dependencyVersion = Nothing

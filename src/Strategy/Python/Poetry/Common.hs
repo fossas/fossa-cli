@@ -15,7 +15,7 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
-import Data.Text (Text, dropEnd, isPrefixOf, isSuffixOf, replace, stripPrefix, toLower)
+import Data.Text (Text, dropEnd, isSuffixOf, replace, stripPrefix, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (GitType, PipType, URLType, UnresolvedPathType),

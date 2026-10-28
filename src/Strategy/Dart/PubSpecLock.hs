@@ -150,7 +150,7 @@ toDependency pkg meta =
       GitSource (PubLockPackageGitSource _ ref) -> Just $ CEq ref
       -- pubspec.lock records a version for path-sourced packages too, so emit it
       -- (Poetry-lock convention: emit a version whenever the lockfile provides one).
-      PathSource {} -> CEq <$> pubLockPackageVersion meta
+      PathSource{} -> CEq <$> pubLockPackageVersion meta
       _ -> CEq <$> pubLockPackageVersion meta
 
     depLocation :: [Text]
