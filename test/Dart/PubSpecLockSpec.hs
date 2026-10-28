@@ -153,7 +153,7 @@ spec = do
             [ Dependency
                 { dependencyType = UnresolvedPathType
                 , dependencyName = "/Users/dir/pkg_dir"
-                , dependencyVersion = Nothing
+                , dependencyVersion = Just $ CEq "1.4"
                 , dependencyLocations = []
                 , dependencyEnvironments = mempty
                 , dependencyTags = Map.empty
@@ -163,6 +163,42 @@ spec = do
       let graph = buildGraph fileSources
       expectDirect [] graph
       expectDeps expectedDeps graph
+
+    it "should create a path-source dependency with its lockfile version" $ do
+      let pkg =
+            PubLockPackageMetadata
+              { pubLockPackageIsDirect = False
+              , pubLockPackageSource = PathSource $ PubLockPackagePathSource "/Users/dir/pkg_dir"
+              , pubLockPackageVersion = Just "1.4"
+              , pubLockPackageEnvironment = []
+              }
+      toDependency (PackageName "pkg_file") pkg `shouldBe`
+        Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "/Users/dir/pkg_dir"
+          , dependencyVersion = Just $ CEq "1.4"
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+
+    it "should create a path-source dependency with no version when the lockfile omits one" $ do
+      let pkg =
+            PubLockPackageMetadata
+              { pubLockPackageIsDirect = False
+              , pubLockPackageSource = PathSource $ PubLockPackagePathSource "/Users/dir/pkg_dir"
+              , pubLockPackageVersion = Nothing
+              , pubLockPackageEnvironment = []
+              }
+      toDependency (PackageName "pkg_file") pkg `shouldBe`
+        Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "/Users/dir/pkg_dir"
+          , dependencyVersion = Nothing
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
 
     it "should graph direct and deep dependencies" $ do
       let lockContent =
