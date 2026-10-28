@@ -189,7 +189,7 @@ spec = do
             [ Dependency
                 { dependencyType = UnresolvedPathType
                 , dependencyName = "./../dir"
-                , dependencyVersion = Nothing
+                , dependencyVersion = Just (CEq "1.8.0")
                 , dependencyLocations = []
                 , dependencyEnvironments = mempty
                 , dependencyTags = Map.empty
