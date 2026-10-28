@@ -15,7 +15,7 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
-import Data.Text (Text, dropEnd, isSuffixOf, replace, toLower)
+import Data.Text (Text, dropEnd, isPrefixOf, isSuffixOf, replace, stripPrefix, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
   DepType (GitType, PipType, URLType, UnresolvedPathType),
@@ -253,11 +253,30 @@ makePackageToLockDependencyMap prodPkgs prodDirectPaths pkgs = Map.fromList $ (\
         (Just src, paths)
           | poetryLockPackageSourceType src == "directory" -> any (samePath url) paths
           where
-            url = stripTrailingSlash $ poetryLockPackageSourceUrl src
+            url = normalizePath $ poetryLockPackageSourceUrl src
         _ -> False
 
+    -- Compare two path spellings for equality, ignoring lexical noise that does not
+    -- change the target directory: a leading "./", repeated slashes, and trailing
+    -- slashes. This is lexical normalization only: these functions have no baseDir,
+    -- so we deliberately do not attempt a filesystem-resolved comparison.
     samePath :: Text -> Text -> Bool
-    samePath a b = stripTrailingSlash a == stripTrailingSlash b
+    samePath a b = normalizePath a == normalizePath b
+
+    -- Normalize a path for comparison: drop a leading "./", collapse repeated
+    -- slashes into one, and drop a trailing "/".
+    normalizePath :: Text -> Text
+    normalizePath = stripTrailingSlash . collapseSlashes . stripLeadingDot
+
+    -- Drop a leading "./" so that "..\/lib" and "./..\/lib" compare equal.
+    stripLeadingDot :: Text -> Text
+    stripLeadingDot t = fromMaybe t (stripPrefix "./" t)
+
+    -- Collapse runs of "/" into a single "/" so that "a//b" and "a/b" compare equal.
+    collapseSlashes :: Text -> Text
+    collapseSlashes t =
+      let t' = replace "//" "/" t
+       in if t' == t then t else collapseSlashes t'
 
     -- Drop a single trailing '/' (but not the bare "/") so that "..\/lib/" and "..\/lib" compare equal.
     stripTrailingSlash :: Text -> Text

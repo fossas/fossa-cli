@@ -172,6 +172,36 @@ prodPathLibDep =
 noEnvPathLibDep :: Map.Map PackageName Dependency
 noEnvPathLibDep = Map.map (\d -> d{dependencyEnvironments = mempty}) prodPathLibDep
 
+-- A "directory"-sourced lock package named "lib" with the given source url.
+dirLockPkg :: Text -> PoetryLockPackage
+dirLockPkg url =
+  PoetryLockPackage
+    { poetryLockPackageName = PackageName "lib"
+    , poetryLockPackageVersion = "1.0.0"
+    , poetryLockPackageCategory = Nothing
+    , poetryLockPackageOptional = False
+    , poetryLockPackageDependencies = Map.empty
+    , poetryLockPackagePythonVersions = "*"
+    , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" url Nothing Nothing)
+    }
+
+-- The dependency emitted when "lib" matches a pyproject direct path dep as production.
+prodPathLibResolved :: Map.Map PackageName Dependency
+prodPathLibResolved =
+  Map.fromList
+    [
+      ( PackageName "lib"
+      , Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "a/b"
+          , dependencyVersion = Just $ CEq "1.0.0"
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.empty
+          }
+      )
+    ]
+
 decodeEither :: (Toml.Schema.FromValue a) => Text -> Either [String] a
 decodeEither f = case Toml.decode f of
   Toml.Success _ r -> Right r
@@ -506,6 +536,111 @@ spec = do
               , Dependency
                   { dependencyType = UnresolvedPathType
                   , dependencyName = "../lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = mempty
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+    -- A "directory"-sourced lock package is matched against the source paths of
+    -- pyproject direct path deps. The comparison must survive lexical divergence
+    -- beyond a trailing slash: a leading "./", repeated slashes, and trailing
+    -- slashes. This is lexical normalization only (no baseDir is available here).
+    describe "when pyproject path and lock url diverge lexically beyond a trailing slash" $ do
+      it "should match when pyproject path has a leading ./" $
+        do
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["./../lib"]
+            [dirLockPkg "../lib"]
+          `shouldBe` prodPathLibDep
+
+      it "should match when lock url has a leading ./" $
+        do
+          -- The dependency name is the lock url as written; only the environment is
+          -- hydrated by the matcher, so the name keeps its leading "./".
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["../lib"]
+            [dirLockPkg "./../lib"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "./../lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should match when pyproject path has repeated slashes" $
+        do
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["a//b"]
+            [dirLockPkg "a/b"]
+          `shouldBe` prodPathLibResolved
+
+      it "should match when lock url has repeated slashes" $
+        do
+          -- Again the name is the raw lock url; only the environment is hydrated.
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["a/b"]
+            [dirLockPkg "a//b"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "a//b"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should match with leading ./, repeated slashes and trailing slash combined" $
+        do
+          -- Dirty lock url; only the environment is hydrated, the name stays raw.
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["./a//b/"]
+            [dirLockPkg "a//b/"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "a//b/"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should still not match genuinely different paths" $
+        do
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["./a//b/"]
+            [dirLockPkg "a//c/"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "a//c/"
                   , dependencyVersion = Just $ CEq "1.0.0"
                   , dependencyLocations = []
                   , dependencyEnvironments = mempty
