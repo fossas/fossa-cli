@@ -18,16 +18,20 @@ import DepTypes (
   DepType (..),
   Dependency (..),
  )
+import Effect.ReadFS (readContentsToml, resolveDir, resolveFile)
 import Fossa.API.Types (AnalyzedPathDependency (AnalyzedPathDependency), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
-import Graphing (Graphing, direct)
+import Graphing (Graphing, direct, vertexList)
 import Path
 import Path.Extra (SomeResolvedPath (..))
 import Path.IO qualified as PIO
 import Srclib.Types (Locator (Locator))
-import Test.Effect (it', shouldBe', shouldSatisfy')
+import Strategy.Dart.PubSpecLock (analyzePubLockFile)
+import Strategy.Python.Poetry (graphFromPyProjectAndLockFile)
+import Strategy.Swift.PackageSwift (analyzePackageSwift)
+import Test.Effect (EffectStack, it', shouldBe', shouldMatchList', shouldSatisfy')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec
-import Test.MockApi (MockApi, alwaysReturns, returnsOnce, returnsOnceForAnyRequest)
+import Test.MockApi (MockApi, alwaysReturns, alwaysReturnsForAnyRequest, returnsOnce, returnsOnceForAnyRequest)
 import Types (DiscoveredProjectType (..), GraphBreadth (..), VerConstraint (..))
 
 spec :: Spec
@@ -35,6 +39,146 @@ spec = do
   hashSpec
   absPathOfSpec
   enrichPathDependenciesSpec
+  pathDependencyResolutionSpec
+
+-- | End-to-end-style resolution tests for the three new path-dependency
+-- ecosystems (Poetry, Swift/SwiftPM, Dart/pub).
+--
+-- Each test builds a graph the way the corresponding strategy builds it, from a
+-- fixture project directory on disk (containing a manifest and/or lockfile that
+-- declares a resolvable directory path dep and an unresolvable one), then runs
+-- the full resolution layer, 'enrichPathDependencies', and asserts that the
+-- resolvable dep is resolved (no longer 'UnresolvedPathType', with the uploaded
+-- name/version) while the unresolvable one is skipped (left 'UnresolvedPathType')
+-- and nothing crashes.
+pathDependencyResolutionSpec :: Spec
+pathDependencyResolutionSpec = do
+  cwd <- runIO PIO.getCurrentDir
+  poetryResolutionSpec cwd
+  swiftResolutionSpec cwd
+  dartResolutionSpec cwd
+
+-- | The fixture project directories, relative to the repo root (the test cwd).
+poetryProjRel :: Text
+poetryProjRel = "test/App/Fossa/PathDependency/testdata/poetry-proj"
+
+swiftProjRel :: Text
+swiftProjRel = "test/App/Fossa/PathDependency/testdata/swift-proj"
+
+dartProjRel :: Text
+dartProjRel = "test/App/Fossa/PathDependency/testdata/dart-proj"
+
+-- | 'enrichPathDependencies' with --include-unused-deps so that every
+-- unresolved path dependency is attempted regardless of its environment.
+runResolve :: ProjectResult -> EffectStack ProjectResult
+runResolve = enrichPathDependencies (toFlag IncludeAll True) noRescanOption Fixtures.projectRevision
+
+poetryResolutionSpec :: Path Abs Dir -> Spec
+poetryResolutionSpec cwd =
+  describe "Poetry path dependency resolution" $ do
+    it' "resolves a directory path dep and skips an unresolvable one" $ do
+      expectOrg orgSupportPathDeps
+      expectPathDependencyScanUrlForAnyRequest "my-lib" "1.0.0"
+      expectLicenseScanUploadForAnyRequest
+      expectPathDependencyFinalizeForAnyRequest
+      expectNoAnalyzedPathRevisions
+
+      -- Build the graph the way the Poetry strategy builds it: from the pyproject
+      -- and poetry.lock on disk. The fixture declares a resolvable ("lib") and an
+      -- unresolvable ("does-not-exist") directory path dependency.
+      projDir <- resolveDir cwd poetryProjRel
+      pyprojectPath <- resolveFile cwd (poetryProjRel <> "/pyproject.toml")
+      lockPath <- resolveFile cwd (poetryProjRel <> "/poetry.lock")
+      graph <-
+        graphFromPyProjectAndLockFile
+          <$> readContentsToml pyprojectPath
+          <*> readContentsToml lockPath
+      let pr = mkProjectResult projDir graph
+      result' <- runResolve pr
+      let graph' = projectResultGraph result'
+
+      -- The resolvable path dep is now resolved (PathType, uploaded name/version).
+      depWithType PathType "my-lib" graph' `shouldBe'` True
+      -- The unresolvable path dep is skipped and remains UnresolvedPathType.
+      depWithType UnresolvedPathType "does-not-exist" graph' `shouldBe'` True
+      -- Only the skipped dep remains unresolved.
+      (unresolvedPathDepNames graph') `shouldMatchList'` ["does-not-exist"]
+
+swiftResolutionSpec :: Path Abs Dir -> Spec
+swiftResolutionSpec cwd =
+  describe "Swift/SwiftPM path dependency resolution" $ do
+    it' "resolves a directory path dep and skips an unresolvable one" $ do
+      expectOrg orgSupportPathDeps
+      expectPathDependencyScanUrlForAnyRequest "swift-lib" "2.0.0"
+      expectLicenseScanUploadForAnyRequest
+      expectPathDependencyFinalizeForAnyRequest
+      expectNoAnalyzedPathRevisions
+
+      -- Build the graph the way the SwiftPM strategy builds it: from Package.swift
+      -- (+ Package.resolved) on disk. The manifest declares a resolvable ("lib")
+      -- and an unresolvable ("does-not-exist") directory path dependency.
+      projDir <- resolveDir cwd swiftProjRel
+      manifestPath <- resolveFile cwd (swiftProjRel <> "/Package.swift")
+      resolvedPath <- resolveFile cwd (swiftProjRel <> "/Package.resolved")
+      graph <- analyzePackageSwift manifestPath (Just resolvedPath)
+      let pr = mkProjectResult projDir graph
+      result' <- runResolve pr
+      let graph' = projectResultGraph result'
+
+      depWithType PathType "swift-lib" graph' `shouldBe'` True
+      depWithType UnresolvedPathType "does-not-exist" graph' `shouldBe'` True
+      (unresolvedPathDepNames graph') `shouldMatchList'` ["does-not-exist"]
+
+dartResolutionSpec :: Path Abs Dir -> Spec
+dartResolutionSpec cwd =
+  describe "Dart/pub path dependency resolution" $ do
+    it' "resolves a directory path dep and skips an unresolvable one" $ do
+      expectOrg orgSupportPathDeps
+      expectPathDependencyScanUrlForAnyRequest "dart-lib" "3.0.0"
+      expectLicenseScanUploadForAnyRequest
+      expectPathDependencyFinalizeForAnyRequest
+      expectNoAnalyzedPathRevisions
+
+      -- Build the graph the way the Dart strategy builds it: from pubspec.lock on
+      -- disk. The lock declares a resolvable ("lib") and an unresolvable
+      -- ("does-not-exist") directory path dependency.
+      projDir <- resolveDir cwd dartProjRel
+      lockPath <- resolveFile cwd (dartProjRel <> "/pubspec.lock")
+      (graph, _) <- analyzePubLockFile lockPath
+      let pr = mkProjectResult projDir graph
+      result' <- runResolve pr
+      let graph' = projectResultGraph result'
+
+      depWithType PathType "dart-lib" graph' `shouldBe'` True
+      depWithType UnresolvedPathType "does-not-exist" graph' `shouldBe'` True
+      (unresolvedPathDepNames graph') `shouldMatchList'` ["does-not-exist"]
+
+-- | True if the graph contains a dependency with the given type and name.
+depWithType :: DepType -> Text -> Graphing Dependency -> Bool
+depWithType dt n g =
+  any (\d -> dependencyType d == dt && dependencyName d == n) (Graphing.vertexList g)
+
+-- | Names of the dependencies that are still unresolved path dependencies.
+unresolvedPathDepNames :: Graphing Dependency -> [Text]
+unresolvedPathDepNames =
+  map dependencyName . filter (\d -> dependencyType d == UnresolvedPathType) . Graphing.vertexList
+
+-- | API expectations shared by the ecosystem resolution tests.
+
+-- | The scan-url response is keyed on a content hash we do not want to hardcode;
+-- 'alwaysReturnsForAnyRequest' matches regardless of the requested path/hash.
+expectPathDependencyScanUrlForAnyRequest :: Has MockApi sig m => Text -> Text -> m ()
+expectPathDependencyScanUrlForAnyRequest name version =
+  (GetPathDependencyScanUrl (PackageRevision "lib" "hash") Fixtures.projectRevision FileUploadMatchData)
+    `alwaysReturnsForAnyRequest` PathDependencyUpload Fixtures.signedUrl (UploadedPathDependencyLocator name version)
+
+expectLicenseScanUploadForAnyRequest :: Has MockApi sig m => m ()
+expectLicenseScanUploadForAnyRequest =
+  UploadLicenseScanResult Fixtures.signedUrl Fixtures.firstLicenseSourceUnit `alwaysReturnsForAnyRequest` ()
+
+expectPathDependencyFinalizeForAnyRequest :: Has MockApi sig m => m ()
+expectPathDependencyFinalizeForAnyRequest =
+  FinalizeLicenseScanForPathDependency [Locator "path" "lib" (Just "1.0.0")] False `alwaysReturnsForAnyRequest` ()
 
 absPathOfSpec :: Spec
 absPathOfSpec = describe "absPathOfSpec" $ do
@@ -135,6 +279,32 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
 
     let result = mkProjectResult cwd graphWithUnPathDep
     let expectedResult = mkProjectResult cwd . direct $ resolvedPathDep
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    result' `shouldBe'` expectedResult
+
+  it' "should skip unresolvable path dependencies, without aborting the enrichment pass" $ do
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchData
+    expectLicenseScanUpload
+    expectPathDependencyFinalize
+    expectNoAnalyzedPathRevisions
+
+    let result = mkProjectResult cwd (graphWithUnPathDep <> direct unresolvablePathDep)
+    let expectedResult = mkProjectResult cwd (direct resolvedPathDep <> direct unresolvablePathDep)
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    result' `shouldBe'` expectedResult
+
+  it' "should skip single-file path dependencies, without aborting the enrichment pass" $ do
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchData
+    expectLicenseScanUpload
+    expectPathDependencyFinalize
+    expectNoAnalyzedPathRevisions
+
+    let result = mkProjectResult cwd (graphWithUnPathDep <> direct filePathDep)
+    let expectedResult = mkProjectResult cwd (direct resolvedPathDep <> direct filePathDep)
 
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` expectedResult
@@ -240,6 +410,12 @@ nonProdUPathDepOnly =
   (mkDep UnresolvedPathType)
     { dependencyEnvironments = Set.singleton EnvTesting
     }
+
+unresolvablePathDep :: Dependency
+unresolvablePathDep = (mkDep UnresolvedPathType){dependencyName = "does-not-exist"}
+
+filePathDep :: Dependency
+filePathDep = (mkDep UnresolvedPathType){dependencyName = fixtureFile}
 
 resolvedPathDep :: Dependency
 resolvedPathDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ fixtureDirHash}

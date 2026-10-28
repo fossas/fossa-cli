@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "poetry-path-proj"
+version = "0.1.0"
+description = "Fixture project with directory path dependencies for resolution tests."
+
+[tool.poetry.dependencies]
+# A resolvable directory path dependency.
+my-lib = {path = "lib", develop = false}
+# An unresolvable directory path dependency (no such directory on disk).
+bad-lib = {path = "does-not-exist", develop = false}
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]

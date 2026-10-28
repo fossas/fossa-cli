@@ -110,8 +110,8 @@ expectedPyProject =
             }
     }
 
-notSupportedPyProjectDependency :: PoetryDependency
-notSupportedPyProjectDependency = PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"}
+pathPyProjectDependency :: PoetryDependency
+pathPyProjectDependency = PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../my-package/dist/my-package-0.1.0.tar.gz"}
 
 notSupportedPoetryLockDependency :: PoetryLockPackage
 notSupportedPoetryLockDependency =
@@ -140,6 +140,8 @@ expectedDeps =
   , dep GitType "https://github.com/numpy/numpy.git" (Just $ CEq "v0.13.2") prodEnvs
   , dep GitType "https://github.com/kennethreitz/requests.git" (Just $ CEq "next") prodEnvs
   , dep URLType "https://example.com/my-package-0.1.0.tar.gz" Nothing prodEnvs
+  , dep UnresolvedPathType "../my-package/dist/my-package-0.1.0.tar.gz" Nothing prodEnvs
+  , dep UnresolvedPathType "../my-package/" Nothing prodEnvs
   , dep PipType "black" (Just $ CEq "19.10b0") prodEnvs
   , dep PipType "pytest" Nothing devEnvs
   ]
@@ -150,6 +152,55 @@ expectedDeps =
     prodEnvs = EnvProduction
     devEnvs :: DepEnvironment
     devEnvs = EnvDevelopment
+
+prodPathLibDep :: Map.Map PackageName Dependency
+prodPathLibDep =
+  Map.fromList
+    [
+      ( PackageName "lib"
+      , Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "../lib"
+          , dependencyVersion = Just $ CEq "1.0.0"
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.empty
+          }
+      )
+    ]
+
+noEnvPathLibDep :: Map.Map PackageName Dependency
+noEnvPathLibDep = Map.map (\d -> d{dependencyEnvironments = mempty}) prodPathLibDep
+
+-- A "directory"-sourced lock package named "lib" with the given source url.
+dirLockPkg :: Text -> PoetryLockPackage
+dirLockPkg url =
+  PoetryLockPackage
+    { poetryLockPackageName = PackageName "lib"
+    , poetryLockPackageVersion = "1.0.0"
+    , poetryLockPackageCategory = Nothing
+    , poetryLockPackageOptional = False
+    , poetryLockPackageDependencies = Map.empty
+    , poetryLockPackagePythonVersions = "*"
+    , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" url Nothing Nothing)
+    }
+
+-- The dependency emitted when "lib" matches a pyproject direct path dep as production.
+prodPathLibResolved :: Map.Map PackageName Dependency
+prodPathLibResolved =
+  Map.fromList
+    [
+      ( PackageName "lib"
+      , Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "a/b"
+          , dependencyVersion = Just $ CEq "1.0.0"
+          , dependencyLocations = []
+          , dependencyEnvironments = Set.singleton EnvProduction
+          , dependencyTags = Map.empty
+          }
+      )
+    ]
 
 decodeEither :: (Toml.Schema.FromValue a) => Text -> Either [String] a
 decodeEither f = case Toml.decode f of
@@ -227,8 +278,8 @@ spec = do
           Map.member "flask" prodDeps `shouldBe` True
 
   describe "supportedPyProjectDep" $
-    it "should return false when dependency is sourced from local path" $
-      supportedPyProjectDep notSupportedPyProjectDependency `shouldBe` False
+    it "should return true when dependency is sourced from local path" $
+      supportedPyProjectDep pathPyProjectDependency `shouldBe` True
 
   describe "supportedPoetryLockDep" $
     it "should return false when dependency is sourced from local path" $
@@ -248,6 +299,7 @@ spec = do
   describe "makePackageToLockDependencyMap" $ do
     it "should map poetry lock package to dependency" $
       makePackageToLockDependencyMap
+        mempty
         mempty
         [ PoetryLockPackage
             { poetryLockPackageName = PackageName "pkgOne"
@@ -282,6 +334,7 @@ spec = do
       it "should replace poetry lock package name to git url" $
         makePackageToLockDependencyMap
           mempty
+          mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgWithGitSource"
               , poetryLockPackageVersion = "5.22.0.post0"
@@ -309,6 +362,7 @@ spec = do
     describe "when poetry lock dependency is from url source" $
       it "should replace poetry lock package name to url" $
         makePackageToLockDependencyMap
+          mempty
           mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromUrl"
@@ -338,6 +392,7 @@ spec = do
       it "should replace poetry lock package name to filepath" $
         makePackageToLockDependencyMap
           mempty
+          mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "pkgSourcedFromFile"
               , poetryLockPackageVersion = "1.21.0"
@@ -350,9 +405,254 @@ spec = do
           ]
           `shouldBe` Map.empty
 
-    describe "when poetry lock dependency is from secondary sources" $
+    -- Poetry writes local path dependencies (e.g. `poetry add ../local-lib`) into poetry.lock
+    -- with a `[package.source]` of type "directory" (distinct from "file", which is a local
+    -- tarball).
+    describe "when poetry lock dependency is from a directory (path) source" $
+      it "should emit an UnresolvedPathType named by the path source url" $
+        makePackageToLockDependencyMap
+          mempty
+          mempty
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "local_lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Just "main"
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../local-lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "local-lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "../local-lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+    -- Lockfiles generated by Poetry >= 1.5 (lock-version 2.0) drop the per-package
+    -- `category` field, so the environment has to be hydrated from pyproject direct deps.
+    describe "when poetry lock dependency has no category (lockfile >= 1.5)" $ do
+      it "should mark a directory-sourced package as production when pyproject declares it as a direct path dep" $
+        makePackageToLockDependencyMap
+          [PackageName "lib"]
+          mempty
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Nothing
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "../lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should match a directory-sourced package against an aliased path dep by source path" $
+        makePackageToLockDependencyMap
+          [PackageName "lib-alias"]
+          ["../lib"]
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Nothing
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` prodPathLibDep
+
+      it "should match a directory-sourced package against the path dep up to trailing slashes" $
+        makePackageToLockDependencyMap
+          mempty
+          ["../lib/"]
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Nothing
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` prodPathLibDep
+
+      it "should leave a directory-sourced package without environment when pyproject declares a different path" $
+        makePackageToLockDependencyMap
+          [PackageName "lib-alias"]
+          ["../other"]
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Nothing
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` noEnvPathLibDep
+
+      it "should leave a directory-sourced package without environment when pyproject does not declare it" $
+        makePackageToLockDependencyMap
+          mempty
+          mempty
+          [ PoetryLockPackage
+              { poetryLockPackageName = PackageName "lib"
+              , poetryLockPackageVersion = "1.0.0"
+              , poetryLockPackageCategory = Nothing
+              , poetryLockPackageOptional = False
+              , poetryLockPackageDependencies = Map.empty
+              , poetryLockPackagePythonVersions = "*"
+              , poetryLockPackageSource = Just (PoetryLockPackageSource "directory" "../lib" Nothing Nothing)
+              }
+          ]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "../lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = mempty
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+    -- A "directory"-sourced lock package is matched against the source paths of
+    -- pyproject direct path deps. The comparison must survive lexical divergence
+    -- beyond a trailing slash: a leading "./", repeated slashes, and trailing
+    -- slashes. This is lexical normalization only (no baseDir is available here).
+    describe "when pyproject path and lock url diverge lexically beyond a trailing slash" $ do
+      it "should match when pyproject path has a leading ./" $
+        do
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["./../lib"]
+            [dirLockPkg "../lib"]
+          `shouldBe` prodPathLibDep
+
+      it "should match when lock url has a leading ./" $
+        do
+          -- The dependency name is the lock url as written; only the environment is
+          -- hydrated by the matcher, so the name keeps its leading "./".
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["../lib"]
+            [dirLockPkg "./../lib"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "./../lib"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should match when pyproject path has repeated slashes" $
+        do
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["a//b"]
+            [dirLockPkg "a/b"]
+          `shouldBe` prodPathLibResolved
+
+      it "should match when lock url has repeated slashes" $
+        do
+          -- Again the name is the raw lock url; only the environment is hydrated.
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["a/b"]
+            [dirLockPkg "a//b"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "a//b"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should match with leading ./, repeated slashes and trailing slash combined" $
+        do
+          -- Dirty lock url; only the environment is hydrated, the name stays raw.
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["./a//b/"]
+            [dirLockPkg "a//b/"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "a//b/"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = Set.singleton EnvProduction
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+      it "should still not match genuinely different paths" $
+        do
+          makePackageToLockDependencyMap
+            [PackageName "lib-alias"]
+            ["./a//b/"]
+            [dirLockPkg "a//c/"]
+          `shouldBe` Map.fromList
+            [
+              ( PackageName "lib"
+              , Dependency
+                  { dependencyType = UnresolvedPathType
+                  , dependencyName = "a//c/"
+                  , dependencyVersion = Just $ CEq "1.0.0"
+                  , dependencyLocations = []
+                  , dependencyEnvironments = mempty
+                  , dependencyTags = Map.empty
+                  }
+              )
+            ]
+
+    describe "when poetry lock dependency is from secondary sources" $ do
       it "should include url into dependency location" $
         makePackageToLockDependencyMap
+          mempty
           mempty
           [ PoetryLockPackage
               { poetryLockPackageName = PackageName "myprivatepkg"

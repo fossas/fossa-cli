@@ -4,6 +4,9 @@
 
 - Conan: The Conan strategy now works with non-standard Conan version numbers. ([#1824](https://github.com/fossas/fossa-cli/pull/1824))
 - Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
+- Poetry: path dependencies in `pyproject.toml` and `poetry.lock` are now analyzed by path dependency analysis (`--experimental-analyze-path-dependencies`): directory targets are resolved on disk and license scanned instead of being dropped.
+- Swift/SwiftPM: `.package(path:)` dependencies in `Package.swift` are now analyzed by path dependency analysis (`--experimental-analyze-path-dependencies`) instead of being dropped.
+- Dart/pub: path dependencies declared in `pubspec.yaml` and `pubspec.lock` are now analyzed by path dependency analysis (`--experimental-analyze-path-dependencies`) instead of being dropped.
 
 ## 3.20.7
 

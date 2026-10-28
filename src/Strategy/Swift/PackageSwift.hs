@@ -26,7 +26,7 @@ import Data.Set (Set, fromList, member)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text, intercalate)
 import Data.Void (Void)
-import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepType (GitType, SwiftType, UnresolvedPathType), Dependency (..), VerConstraint (CEq))
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsParser)
 import Graphing (Graphing, deeps, directs, induceJust, promoteToDirect)
@@ -358,13 +358,13 @@ buildGraph :: SwiftPackage -> Maybe SwiftPackageResolvedFile -> Graphing.Graphin
 buildGraph manifestContent maybeResolvedContent =
   case maybeResolvedContent of
     Nothing -> induceJust $ directs (map toDependency $ packageDependencies manifestContent)
-    -- If dependency (url) is present in the manifest, promote them to direct dependency
-    -- Otherwise, keep them as deep dependencies. Since Package.resolved does not include
-    -- dependencies sourced from local path, we do not need to do any filtering.
+    -- If a resolved content is discovered, use it to resolve the git (url) dependencies.
+    -- Since Package.resolved does not include dependencies sourced from local path, we add
+    -- the path dependencies of the manifest as direct dependencies here. Git dependencies
+    -- that are present in the manifest are then promoted to direct dependencies below.
     Just resolvedContent ->
       promoteToDirect (isDirect depInManifest) $
-        deeps $
-          resolvedDependenciesOf resolvedContent
+        directs pathDependencies <> deeps (resolvedDependenciesOf resolvedContent)
   where
     isDirect :: Set Text -> Dependency -> Bool
     isDirect s dep = (dependencyName dep) `member` s
@@ -377,8 +377,24 @@ buildGraph manifestContent maybeResolvedContent =
     getName (GitSource pkg) = Just $ srcOf pkg
     getName SkippedDependencies = Nothing
 
+    pathDependencies :: [Dependency]
+    pathDependencies = mapMaybe toDependency $ filter isPathSource $ packageDependencies manifestContent
+
+    isPathSource :: SwiftPackageDep -> Bool
+    isPathSource (PathSource _) = True
+    isPathSource _ = False
+
 toDependency :: SwiftPackageDep -> Maybe Dependency
-toDependency (PathSource _) = Nothing
+toDependency (PathSource path) =
+  Just
+    Dependency
+      { dependencyType = UnresolvedPathType
+      , dependencyName = path
+      , dependencyVersion = Nothing
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
 toDependency SkippedDependencies = Nothing
 toDependency (GitSource pkgDep) =
   Just $

@@ -22,7 +22,7 @@ import Data.Yaml (FromJSON (parseJSON), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, PubType),
+  DepType (GitType, PubType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -125,7 +125,16 @@ toDependency environment _ (GitSource (PubSpecDepGitSource gitRef gitUrl)) =
       , dependencyTags = Map.empty
       }
 toDependency _ _ (SdkSource _) = Nothing
-toDependency _ _ (PathSource _) = Nothing
+toDependency environment _ (PathSource (PubSpecDepPathSource hostPath)) =
+  Just
+    Dependency
+      { dependencyType = UnresolvedPathType
+      , dependencyName = hostPath
+      , dependencyVersion = Nothing
+      , dependencyLocations = []
+      , dependencyEnvironments = Set.singleton environment
+      , dependencyTags = Map.empty
+      }
 
 -- | Updates all of 'A''s value, with 'B' value, when key of 'A' matches with key of 'B'.
 update :: Map PackageName PubSpecDepSource -> Map PackageName PubSpecDepSource -> Map PackageName PubSpecDepSource
@@ -177,7 +186,7 @@ logIgnoredPackages specContent = for_ notSupportedPackagesMsgs (logDebug . prett
     isSupported (GitSource _) = True
     isSupported (HostedSource _) = True
     isSupported (SdkSource _) = False
-    isSupported (PathSource _) = False
+    isSupported (PathSource _) = True
 
 analyzePubSpecFile ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>

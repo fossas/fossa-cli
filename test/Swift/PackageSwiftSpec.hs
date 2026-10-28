@@ -8,7 +8,7 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
-import DepTypes (DepType (GitType, SwiftType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepType (GitType, SwiftType, UnresolvedPathType), Dependency (..), VerConstraint (CEq))
 import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Strategy.Swift.PackageResolved (SwiftPackageResolvedFile (..), SwiftResolvedPackage (..))
 import Strategy.Swift.PackageSwift (
@@ -210,6 +210,16 @@ spec = do
       let graph = buildGraph (SwiftPackage "5.7" [SkippedDependencies, GitSource $ gitDepExactly "some-url" "1.0.0"]) Nothing
       expectDeps [Dependency GitType "some-url" (Just $ CEq "1.0.0") [] mempty Map.empty] graph
 
+    it "should emit path dependencies as UnresolvedPathType named by their path" $ do
+      let graph = buildGraph (SwiftPackage "5.7" [PathSource "../..", PathSource "../local-lib"]) Nothing
+      let expectedDeps =
+            [ Dependency UnresolvedPathType "../.." Nothing [] mempty Map.empty
+            , Dependency UnresolvedPathType "../local-lib" Nothing [] mempty Map.empty
+            ]
+      expectDirect expectedDeps graph
+      expectDeps expectedDeps graph
+      expectEdges [] graph
+
     it "should use git dependency type, when constraint is of branch, revision, or exact type" $ do
       let expectedDeps =
             [ Dependency GitType "some-url" (CEq <$> Just "some-ref") [] mempty Map.empty
@@ -295,6 +305,40 @@ spec = do
                         Nothing
                         Nothing
                         (Just "5.1.0")
+                    ]
+              )
+
+      expectDirect expectedDirectDeps graph
+      expectDeps (expectedDirectDeps ++ expectedDeepDeps) graph
+      expectEdges [] graph
+
+    it "should keep path dependencies from the manifest when resolved content only pins git dependencies" $ do
+      -- 'Package.resolved' never contains local path dependencies, so when a resolved file is
+      -- discovered it only carries git pins. The path dependencies declared in the manifest must
+      -- still make it into the graph, as direct dependencies.
+      let expectedDirectDeps =
+            [ Dependency UnresolvedPathType "../.." Nothing [] mempty Map.empty
+            , Dependency GitType "dep-A" (CEq <$> Just "some-rev-A") [] mempty Map.empty
+            ]
+      let expectedDeepDeps = []
+
+      let graph =
+            buildGraph
+              ( SwiftPackage
+                  "5.3"
+                  [ GitSource $ gitDepFrom "dep-A" "1.2.2"
+                  , PathSource "../.."
+                  ]
+              )
+              ( Just $
+                  SwiftPackageResolvedFile
+                    1
+                    [ SwiftResolvedPackage
+                        "depA"
+                        "dep-A"
+                        Nothing
+                        (Just "some-rev-A")
+                        (Just "1.2.5")
                     ]
               )
 

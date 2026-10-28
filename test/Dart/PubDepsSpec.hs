@@ -166,7 +166,7 @@ spec = do
         ]
         graph
 
-    it "should ignore path dependency" $ do
+    it "should graph path dependency as UnresolvedPathType" $ do
       let pubDepsContent = [PubDepPackage (PackageName "pkg_path") (Just "1.10.0") Nothing True]
       let lockContent =
             PubLockContent
@@ -185,8 +185,18 @@ spec = do
               }
 
       let graph = buildGraph lockContent pubDepsContent
-      expectDirect [] graph
-      expectDeps [] graph
+      let expectedDeps =
+            [ Dependency
+                { dependencyType = UnresolvedPathType
+                , dependencyName = "./../dir"
+                , dependencyVersion = Just (CEq "1.8.0")
+                , dependencyLocations = []
+                , dependencyEnvironments = mempty
+                , dependencyTags = Map.empty
+                }
+            ]
+      expectDirect expectedDeps graph
+      expectDeps expectedDeps graph
       expectEdges [] graph
 
     it "should ignore sdk dependency" $ do
@@ -281,7 +291,7 @@ spec = do
                       ( PackageName "pkg_deep"
                       , PubLockPackageMetadata
                           { pubLockPackageIsDirect = False
-                          , pubLockPackageSource = PathSource $ PubLockPackagePathSource "some/path/"
+                          , pubLockPackageSource = SdkSource $ PubLockPackageSdkSource "pkg_deep_source"
                           , pubLockPackageVersion = Just "1.10.0"
                           , pubLockPackageEnvironment = []
                           }

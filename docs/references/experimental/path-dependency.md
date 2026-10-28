@@ -32,10 +32,45 @@ In the event that caching is causing problems, FOSSA can be made to rescan this 
 ## Limitations
 
 - Currently, path dependencies do not support vulnerability scanning.
+- Currently, only path dependencies that point at a directory are license scanned; path dependencies that point at a single file are not supported: the CLI logs a note and the dependency is reported without license scan results.
 - Currently, path dependencies are only supported in:
   - `golang` using the [gomod strategy](./../strategies/languages/golang/gomodules.md).
   - PDM (Python) projects via the [pdm strategy](./../strategies/languages/python/pdm.md).
   - Rust projects via the [Cargo strategy](./../strategies/languages/rust/cargo.md).
+  - Python projects using [uv](./../strategies/languages/python/uv.md).
+  - Python projects using [Poetry](./../strategies/languages/python/poetry.md) (path dependencies in `pyproject.toml` and `poetry.lock`).
+  - Swift/SwiftPM projects via the [Swift strategy](./../strategies/platforms/ios/swift.md).
+  - Dart projects via the [Dart strategy](./../strategies/languages/dart/dart.md).
+
+## Ecosystem support
+
+Path dependency support has three layers, and a given ecosystem may stop at any of them:
+
+1. **Concept**: the package manager lets a manifest or lockfile point at a directory on disk.
+2. **Parsed**: the CLI's strategy recognizes the path reference when reading the manifest or lockfile.
+3. **Analyzed**: the CLI treats it as a path dependency, i.e. resolves it on disk, license scans it, and reports the results as described above.
+
+| Ecosystem | Path dep concept | Parsed by CLI | Analyzed as path dep |
+| --- | --- | --- | --- |
+| [Go](https://go.dev/ref/mod#go-mod-file-replace) (gomod strategy) | ✅ | ✅ | ✅ |
+| [Cargo (Rust)](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-path-dependencies) | ✅ | ✅ | ✅ |
+| [PDM (Python)](https://pdm-project.org/latest/usage/dependency/) | ✅ | ✅ | ✅ |
+| [uv (Python)](https://docs.astral.sh/uv/concepts/projects/dependencies/#path-dependencies) | ✅ | ✅ | ✅ |
+| [Poetry (Python)](https://python-poetry.org/docs/dependency-specification/#local-dependencies) | ✅ | ✅ | ✅ |
+| [SwiftPM](https://developer.apple.com/documentation/packagedescription/package/dependency/package(name:path:)) | ✅ | ✅ | ✅ |
+| [Dart / pub](https://dart.dev/tools/pub/dependencies#path-dependencies) | ✅ | ✅ | ✅ |
+| [npm](https://docs.npmjs.com/cli/v10/configuring-npm/package-json#local-paths) | ✅ | ✅ | ❌ skipped |
+| [Yarn 2+](https://yarnpkg.com/protocol/file) (`file:` protocol) | ✅ | ✅ | ❌ unsupported resolver |
+| [pnpm](https://pnpm.io/lockfile) (`directory:` resolution) | ✅ | ✅ | ❌ reported as plain version |
+| [Bun](https://bun.com/docs/install/lockfile) (`file:` resolution) | ✅ | ✅ | ❌ reported as plain version |
+| [CocoaPods](https://guides.cocoapods.org/using/the-podfile.html) (`:path`) | ✅ | ✅ | ⚠️ podspec is read from disk for metadata, but the path is never license scanned |
+| [pip](https://pip.pypa.io/en/stable/reference/requirements-file-format/) (requirements.txt paths) | ✅ | ✅ | ❌ skipped |
+| [Bundler](https://bundler.io/man/gemfile.5.html) (`path:`) | ✅ | ❌ | ❌ |
+| [Composer](https://getcomposer.org/doc/05-repositories.md#path) (path repositories) | ✅ | ❌ | ❌ |
+| [Mix (Elixir)](https://hexdocs.pm/mix/Mix.Tasks.Deps.html) (`path:`) | ✅ | ❌ | ❌ |
+| [Yarn 1](https://classic.yarnpkg.com/en/docs/package-json/) | ✅ | ❌ | ❌ |
+| Pipenv | ✅ | ❌ | ❌ |
+| Maven, Gradle, NuGet, Conan, etc. | ❌ | n/a | n/a |
 
 ## F.A.Q
 
