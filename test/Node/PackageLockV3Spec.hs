@@ -4,7 +4,7 @@ module Node.PackageLockV3Spec (
   spec,
 ) where
 
-import Data.Aeson (eitherDecodeFileStrict')
+import Data.Aeson (eitherDecodeFileStrict', eitherDecodeStrict)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (isNothing)
 import Data.Set (Set)
@@ -36,7 +36,7 @@ import Srclib.Types (
  )
 import Strategy.Node.Npm.PackageLockV3 (
   NpmLockV3Resolved (unNpmLockV3Resolved),
-  PackageLockV3 (packages),
+  PackageLockV3 (lockFileVersion, packages),
   PackageLockV3Package (plV3PkgResolved),
   PackageName (PackageName),
   PackagePath (PackageLockV3PathKey, PackageLockV3Root, PackageLockV3WorkSpace),
@@ -64,6 +64,9 @@ workspaceLinksPackageLockPath = $(mkRelFile "workspace-links-package-lock.json")
 namelessWorkspacePackageLockPath :: Path Rel File
 namelessWorkspacePackageLockPath = $(mkRelFile "nameless-workspace-package-lock.json")
 
+workspaceNameInModulePathLockPath :: Path Rel File
+workspaceNameInModulePathLockPath = $(mkRelFile "ws-name-in-module-path-package-lock.json")
+
 spec :: Spec
 spec = do
   currentDir <- runIO getCurrentDir
@@ -72,6 +75,7 @@ spec = do
 
   -- Resolved Field
   packageLockParseSpec parsingFixtureDir
+  packageLockRejectSpec
 
   -- Helpers
   isV3CompatibleSpec
@@ -82,6 +86,7 @@ spec = do
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> workspaceNestedModulePackageLockPath) workspaceNestedModulePackageLockGraphSpec
   checkGraph (graphingFixtureDir </> multiLevelVendorLockPath) multiLevelVendorLockGraphSpec
+  checkGraph (graphingFixtureDir </> workspaceNameInModulePathLockPath) workspaceNameInModulePathGraphSpec
 
   -- Target scoping
   checkGraph (graphingFixtureDir </> fixtureSimplePackageLockPath) simplePackageLockScopingSpec
@@ -129,6 +134,12 @@ vendorPrefixesSpec = do
         `shouldBe` [ "ws/myPkg/node_modules/@someOrg/a/node_modules/b/node_modules/"
                    , "ws/myPkg/node_modules/@someOrg/a/node_modules/"
                    , "ws/myPkg/node_modules/"
+                   ]
+
+    it "should only strip the leading workspace path, even when it recurs in a module name" $ do
+      vendorPrefixes "ui/node_modules/@radix-ui/react-slot" (Just "ui")
+        `shouldBe` [ "ui/node_modules/@radix-ui/react-slot/node_modules/"
+                   , "ui/node_modules/"
                    ]
 
 isV3CompatibleSpec :: Spec
@@ -214,6 +225,19 @@ packageLockParseSpec testDir =
                 (PackageLockV3PathKey "node_modules/" $ PackageName "foo")
                 (packages pkgLockV3)
       foo `shouldBe'` Nothing
+
+packageLockRejectSpec :: Spec
+packageLockRejectSpec =
+  describe "parsing a package-lock.json that cannot be analyzed" $ do
+    it "should reject a lockfile without a root entry instead of building a partial graph" $ do
+      let lockfile = "{\"lockfileVersion\": 3, \"packages\": {\"node_modules/foo\": {\"version\": \"1.0.0\"}}}"
+      fmap lockFileVersion (eitherDecodeStrict lockfile :: Either String PackageLockV3)
+        `shouldBe` Left "Error in $: Could not find root node in package-lock.json! Is this faulty package-lock.json file?"
+
+    it "should reject a lockfile that is not v3 compatible" $ do
+      let lockfile = "{\"lockfileVersion\": 2, \"packages\": {\"\": {\"version\": \"1.0.0\"}}}"
+      fmap lockFileVersion (eitherDecodeStrict lockfile :: Either String PackageLockV3)
+        `shouldBe` Left "Error in $: Provided lockfile is not v3 compatible!"
 
 simplePackageLockGraphSpec :: PackageLockV3 -> Spec
 simplePackageLockGraphSpec pkgLockV3 = do
@@ -433,6 +457,18 @@ workspaceNestedModulePackageLockGraphSpec pkgLockV3 = do
       hasDep (mkProdDep "b@2.0.0")
       hasDep (mkProdDep "c@1.0.0")
       hasEdge (mkProdDep "b@2.0.0") (mkProdDep "c@1.0.0")
+
+workspaceNameInModulePathGraphSpec :: PackageLockV3 -> Spec
+workspaceNameInModulePathGraphSpec pkgLockV3 = do
+  let graph :: Graphing Dependency
+      graph = buildGraph Nothing pkgLockV3
+
+  describe "buildGraph with a workspace path that recurs in a module name" $ do
+    -- The workspace "ui" vendors ui-kit, which vendors its own tslib@2; the root uses tslib@1.
+    it "should resolve the vendored dependency of a module whose name contains the workspace path" $ do
+      expectDirect [mkProdDep "tslib@1.14.0", mkProdDep "ui-kit@1.1.0"] graph
+      expectDeps [mkProdDep "tslib@1.14.0", mkProdDep "ui-kit@1.1.0", mkProdDep "tslib@2.8.0"] graph
+      expectEdge graph (mkProdDep "ui-kit@1.1.0") (mkProdDep "tslib@2.8.0")
 
 simplePackageLockScopingSpec :: PackageLockV3 -> Spec
 simplePackageLockScopingSpec pkgLockV3 = do

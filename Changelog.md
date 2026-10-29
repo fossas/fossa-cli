@@ -1,8 +1,13 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.30.9
 
 - Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
+- Npm: `package-lock.json` v3 analysis no longer reports the top-level version of a dependency vendored under a workspace whose directory name recurs in a package name. ([#1826](https://github.com/fossas/fossa-cli/pull/1826))
+
+## 3.20.8
+
+- Conan: The Conan strategy now works with non-standard Conan version numbers. ([#1824](https://github.com/fossas/fossa-cli/pull/1824))
 - Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
 
 ## 3.20.7
