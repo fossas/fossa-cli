@@ -14,10 +14,17 @@
 -- drivable strategies (Mix, Fpm, Leiningen, Gomodules, Composer, Cocoapods,
 -- Conda, Cabal) are exercised here.  Each visitor accumulates its own raw
 -- projects into a private sink and is finalized exactly like runAnalyzers.
+--
+-- A second describe covers the two self-discovering strategies, Maven and Npm,
+-- which have no 'discoverVisitor': they are run directly through their own
+-- 'Strategy.Maven.discover' / 'Strategy.Node.discover' entry points on the same
+-- materialized tree under the analysis carrier stack, and a final top-level
+-- case asserts all eleven projects across both mechanisms.
 module Analysis.SharedWalkDiscoverySpec (
   spec,
 ) where
 
+import Analysis.FixtureUtils (FixtureEnvironment (LocalEnvironment), testRunner, withResult)
 import Analysis.Fixtures.MultiProjectTree (multiProjectTree)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Reader (ReaderC, ask, runReader)
@@ -46,7 +53,9 @@ import Strategy.Fpm qualified as Fpm
 import Strategy.Gomodules qualified as Gomodules
 import Strategy.Haskell.Cabal qualified as Cabal
 import Strategy.Leiningen qualified as Leiningen
+import Strategy.Maven qualified as Maven
 import Strategy.Mix qualified as Mix
+import Strategy.Node qualified as Node
 import Streaming.Prelude qualified as S
 import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
@@ -193,6 +202,38 @@ runDiscovery tmp = do
   materialize tmp
   runSharedWalk (collectWalk tmp)
 
+-- | Drive the self-discovering strategies ("Strategy.Maven" and
+-- "Strategy.Node") directly through their own 'discover' entry points rather
+-- than through the shared-walk visitor wiring they do not export.  These
+-- strategies walk the tree themselves, so each is run against the same
+-- materialized @tmp@ root under the analysis carrier stack
+-- ("Analysis.FixtureUtils.testRunner"), which supplies the ReadFS backend,
+-- Diagnostics, Logger, and AllFilters reader each 'discover' requires.
+runMavenDiscover :: Path Abs Dir -> IO [Entry]
+runMavenDiscover tmp = do
+  materialize tmp
+  res <- testRunner (Maven.discover tmp) LocalEnvironment
+  withResult res $ \_ projects -> pure (concatMap toEntries projects)
+
+runNodeDiscover :: Path Abs Dir -> IO [Entry]
+runNodeDiscover tmp = do
+  materialize tmp
+  res <- testRunner (Node.discover tmp) LocalEnvironment
+  withResult res $ \_ projects -> pure (concatMap toEntries projects)
+
+-- | The entries the two self-discovering strategies must return, pinned to the
+-- absolute directory containing each manifest.
+expectedSelfDiscoverEntries :: Path Abs Dir -> [Entry]
+expectedSelfDiscoverEntries tmp =
+  [ ("maven", tmp)
+  , ("npm", tmp </> [reldir|apps|])
+  ]
+
+-- | The full set of projects across both mechanisms: the shared-walk visitors
+-- plus the two self-discovering strategies, each pinned to its manifest dir.
+expectedFullEntries :: Path Abs Dir -> [Entry]
+expectedFullEntries tmp = expectedEntries tmp <> expectedSelfDiscoverEntries tmp
+
 -- | Create (and clean up) a uniquely named temp dir in the system temp dir.
 withTempDir :: String -> (Path Abs Dir -> IO a) -> IO a
 withTempDir label act = do
@@ -234,3 +275,22 @@ spec =
             go2 = tmp </> [reldir|services/internal/worker|]
         Set.member ("gomod", go1) goSet `shouldBe` True
         Set.member ("gomod", go2) goSet `shouldBe` True
+
+    describe "self-discovering strategies (Maven, Node)" $ do
+      it "Maven.discover finds the root pom.xml project at the tree root" $
+        withTempDir "integration-SelfDiscovering-Maven" $ \tmp -> do
+          entries <- runMavenDiscover tmp
+          Set.fromList entries `shouldBe` Set.fromList [("maven", tmp)]
+
+      it "Node.discover finds the npm project under apps/" $
+        withTempDir "integration-SelfDiscovering-Node" $ \tmp -> do
+          entries <- runNodeDiscover tmp
+          Set.fromList entries `shouldBe` Set.fromList [("npm", tmp </> [reldir|apps|])]
+
+    it "discovers all 11 projects across both shared-walk and self-discovering mechanisms" $
+      withTempDir "integration-FullSet" $ \tmp -> do
+        walkEntries <- runDiscovery tmp
+        mavenEntries <- runMavenDiscover tmp
+        nodeEntries <- runNodeDiscover tmp
+        Set.fromList (walkEntries <> mavenEntries <> nodeEntries)
+          `shouldBe` Set.fromList (expectedFullEntries tmp)
