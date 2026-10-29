@@ -14,6 +14,13 @@
 --   * root @pom.xml@                              — scenario 1: a project at the tree root (Maven)
 --   * @apps@ (@package.json@, @mix.exs@, @fpm.toml@) — scenario 2: 2-3 sibling projects in one subdir
 --                                                     (Npm, Elixir, Fortran)
+--   * @apps\/build@ (@fpm.toml@, @mix.exs@) — scenario 5: skip isolation.  Fpm's visitor emits
+--                                                   WalkSkipSome ["build"] at @apps@, so it never
+--                                                   descends into @apps\/build@ and does not report
+--                                                   its @fpm.toml@ project, yet Mix (which skips
+--                                                   "deps"/"_build", not "build") still discovers
+--                                                   @apps\/build\/mix.exs@.  Pinned by the
+--                                                   SharedWalkDiscovery skip-isolation case.
 --   * @deep\/l1\/l2\/l3\/leaf\/project.clj@        — scenario 3: nested several levels deep, with
 --                                                   empty directories (@l1@, @l2@, @l3@) between
 --                                                   each level (created as empty dirs when the
@@ -103,6 +110,36 @@ multiProjectTree =
         <> "version = \"0.1.0\"\n\n"
         <> "[dependencies]\n"
         <> "toml-f = { git = \"https://github.com/toml-f/toml-f\", tag = \"v0.2.1\" }\n"
+    )
+  , -- Skip-isolation pin: a second project nested in apps/build/.  Fpm's
+    -- discoverVisitor emits WalkSkipSome [\"build\"] at apps/, so it never
+    -- descends into apps/build/ and does NOT report this project even though
+    -- it holds its own fpm.toml.  The mix.exs alongside it is discovered by
+    -- Mix (which skips \"deps\"/\"_build\", not \"build\"), proving the project
+    -- is still found by a non-skipping strategy while being swallowed by fpm.
+    -- Derived from example-projects/fortran/with-fpm and elixir/with-mix.
+
+    ( [relfile|apps/build/fpm.toml|]
+    , "name = \"nested-fpm\"\n"
+        <> "version = \"0.2.0\"\n\n"
+        <> "[dependencies]\n"
+        <> "toml-f = { git = \"https://github.com/toml-f/toml-f\", tag = \"v0.2.1\" }\n"
+    )
+  ,
+    ( [relfile|apps/build/mix.exs|]
+    , "defmodule Nested.MixProject do\n"
+        <> "  use Mix.Project\n\n"
+        <> "  def project do\n"
+        <> "    [\n"
+        <> "      app: :nested,\n"
+        <> "      version: \"0.2.0\",\n"
+        <> "      elixir: \"~> 1.12\",\n"
+        <> "      deps: deps()\n"
+        <> "    ]\n"
+        <> "  end\n\n"
+        <> "  def application do\n"
+        <> "    [extra_applications: [:logger]]\n"
+        <> "  end\n"
     )
   , -- Scenario 4 (part a): a Go module at moderate depth. Go also appears again
     -- at a greater depth for the duplicate-type case (derived from
