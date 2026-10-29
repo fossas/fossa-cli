@@ -800,6 +800,7 @@ test-suite integration-tests
     Analysis.ErlangSpec
     Analysis.FixtureExpectationUtils
     Analysis.FixtureUtils
+    Analysis.Fixtures.MultiProjectTree
     Analysis.GoSpec
     Analysis.GradleSpec
     Analysis.LicenseScannerSpec
