@@ -825,6 +825,7 @@ test-suite integration-tests
     Analysis.RubySpec
     Analysis.RustSpec
     Analysis.ScalaSpec
+    Analysis.SharedWalkDiscoverySpec
     Analysis.SwiftSpec
     Container.AnalysisSpec
     Container.FixtureUtils
