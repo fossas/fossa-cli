@@ -110,7 +110,7 @@ collectWalk tmpDir = do
         , accumulateConsumer CabalProjectType (msgFor CabalProjectType) cabalSink Cabal.discoverVisitor
         ]
 
-  -- filters is mempty here (see runSharedWalk); its gating/interplay is
+  -- filters is mempty (supplied by testRunner); its gating/interplay is
   -- covered by WalkBroadcastSpec and WalkStreamSpec, so we do not re-pin it.
   withWalkBroadcast filters tmpDir consumers
 
