@@ -6,32 +6,23 @@
 -- depths. Each manifest is derived from a real example project under
 -- @example-projects@ and trimmed to exactly one real dependency.
 --
--- The consumer (piece 2) materializes these files under a temp root and runs
--- the shared discovery walk over the result.
+-- The consumer (Analysis.SharedWalkDiscoverySpec) materializes these files
+-- under a temp root and runs the shared discovery walk over the result.
 --
 -- Subtree → reviewer scenario pinned:
 --
---   * root @pom.xml@                              — scenario 1: a project at the tree root (Maven)
---   * @apps@ (@package.json@, @mix.exs@, @fpm.toml@) — scenario 2: 2-3 sibling projects in one subdir
---                                                     (Npm, Elixir, Fortran)
---   * @apps\/build@ (@fpm.toml@, @mix.exs@) — scenario 5: skip isolation.  Fpm's visitor emits
---                                                   WalkSkipSome ["build"] at @apps@, so it never
---                                                   descends into @apps\/build@ and does not report
---                                                   its @fpm.toml@ project, yet Mix (which skips
---                                                   "deps"/"_build", not "build") still discovers
---                                                   @apps\/build\/mix.exs@.  Pinned by the
---                                                   SharedWalkDiscovery skip-isolation case.
---   * @deep\/l1\/l2\/l3\/leaf\/project.clj@        — scenario 3: nested several levels deep, with
---                                                   empty directories (@l1@, @l2@, @l3@) between
---                                                   each level (created as empty dirs when the
---                                                   parent directories of the single leaf file
---                                                   are materialized) (Leiningen)
---   * @libs\/go-app@ and @services\/internal\/worker@ (@go.mod@) — scenario 4: two projects of the
---                                                   same ecosystem (Go) at different depths
+--   * root @pom.xml@                       — scenario 1: project at the tree root (Maven)
+--   * @apps@                               — scenario 2: sibling projects in one subdir (Npm, Elixir, Fortran)
+--   * @apps\/build@                        — scenario 5: skip isolation. Fpm's visitor emits WalkSkipSome
+--                                            ["build"] at @apps@, so it never descends and does not
+--                                            report its fpm.toml project, yet Mix (which skips
+--                                            "deps"/"_build", not "build") still discovers the mix.exs
+--   * @deep\/l1\/l2\/l3\/leaf@              — scenario 3: nested several levels deep, with empty
+--                                            directories between each level (Leiningen)
+--   * @libs\/go-app@, @services\/internal\/worker@ — scenario 4: same ecosystem (Go) at different depths
 --
---   The remaining subtrees add ecosystem coverage: @composer@ (Composer, needs
---   composer.lock to discover), @cocoapods@ (CocoaPods), @conda@ (Conda) and
---   @cabal@ (Cabal).
+-- Remaining subtrees add ecosystem coverage: @composer@, @cocoapods@, @conda@
+-- and @cabal@.
 module Analysis.Fixtures.MultiProjectTree (
   multiProjectTree,
 ) where
@@ -111,13 +102,11 @@ multiProjectTree =
         <> "[dependencies]\n"
         <> "toml-f = { git = \"https://github.com/toml-f/toml-f\", tag = \"v0.2.1\" }\n"
     )
-  , -- Skip-isolation pin: a second project nested in apps/build/.  Fpm's
-    -- discoverVisitor emits WalkSkipSome [\"build\"] at apps/, so it never
-    -- descends into apps/build/ and does NOT report this project even though
-    -- it holds its own fpm.toml.  The mix.exs alongside it is discovered by
-    -- Mix (which skips \"deps\"/\"_build\", not \"build\"), proving the project
-    -- is still found by a non-skipping strategy while being swallowed by fpm.
-    -- Derived from example-projects/fortran/with-fpm and elixir/with-mix.
+  , -- Skip-isolation pin: Fpm's discoverVisitor emits WalkSkipSome
+    -- ["build"] at apps/, so fpm never reports this project even though it
+    -- holds its own fpm.toml; Mix (which skips "deps"/"_build", not
+    -- "build") still discovers the mix.exs below.  Derived from
+    -- example-projects/fortran/with-fpm and elixir/with-mix.
 
     ( [relfile|apps/build/fpm.toml|]
     , "name = \"nested-fpm\"\n"
@@ -141,9 +130,8 @@ multiProjectTree =
         <> "    [extra_applications: [:logger]]\n"
         <> "  end\n"
     )
-  , -- Scenario 4 (part a): a Go module at moderate depth. Go also appears again
-    -- at a greater depth for the duplicate-type case (derived from
-    -- example-projects/path-dependency).
+  , -- Scenario 4 (part a): Go at moderate depth (part b repeats it at
+    -- greater depth). Derived from example-projects/path-dependency.
 
     ( [relfile|libs/go-app/go.mod|]
     , "module example.com/app\n\n"
