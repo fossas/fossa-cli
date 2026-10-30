@@ -2,6 +2,7 @@ module Strategy.R (
   discover,
   findProjects,
   mkProject,
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
@@ -74,7 +75,10 @@ findProjects ::
   ) =>
   Path Abs Dir ->
   m [RProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RProject], WalkStep)
+discoverVisitor dir _ files = do
   let lockFile = findFileNamed "renv.lock" files
   let descriptionFile = findFileNamed "DESCRIPTION" files
   let skipRenvLibs = WalkSkipSome ["renv"]

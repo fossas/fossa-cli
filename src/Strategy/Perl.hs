@@ -5,6 +5,8 @@ module Strategy.Perl (
   PackageName (..),
   PerlMeta (..),
   buildGraph,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -52,7 +54,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject PerlProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PerlProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PerlProject], WalkStep)
+discoverVisitor dir _ files = do
   -- We prefer MYMETA over META.
   -- Reference: https://metacpan.org/dist/App-mymeta_requires/view/bin/mymeta-requires
   case asum $ map (`findFileNamed` files) ["MYMETA.json", "MYMETA.yml", "META.json", "META.yml"] of

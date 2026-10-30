@@ -3,6 +3,7 @@
 module Strategy.SwiftPM (
   discover,
   mkProject,
+  discoverVisitor,
   SwiftProject,
 ) where
 
@@ -18,6 +19,7 @@ import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
+  mergeWalkSteps,
   walkWithFilters',
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
@@ -66,6 +68,42 @@ findProjects dir = do
   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
   pure (swiftPackageProjects <> xCodeProjects)
+
+-- | Combined per-directory collector for the shared discovery walk.  SwiftPM
+-- looks for both Swift package manifests and Xcode projects in the same
+-- directory, so this runs both checks once and merges their skip decisions.
+discoverVisitor ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SwiftProject], WalkStep)
+discoverVisitor dir _ files = do
+  let packageManifestFile = findFileNamed "Package.swift" files
+  let packageResolvedFile = findFileNamed "Package.resolved" files
+  let (swiftProj, swiftStep) =
+        case (packageManifestFile, packageResolvedFile) of
+          (Just manifestFile, resolvedFile) ->
+            ([PackageProject $ SwiftPackageProject manifestFile dir resolvedFile], WalkSkipSome [".build"])
+          (Nothing, _) ->
+            ([], WalkContinue)
+  let xcodeProjectFile = findFileNamed "project.pbxproj" files
+  (xcodeProj, xcodeStep) <- case xcodeProjectFile of
+    Nothing ->
+      pure ([], WalkContinue)
+    Just projFile -> do
+      resolvedFile <- findFirstResolvedFileRecursively dir
+      xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
+      if xCodeProjWithDependencies
+        then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
+        else debugXCodeWithoutSwiftDeps projFile $> ([], WalkContinue)
+  pure
+    ( swiftProj <> xcodeProj
+    , if not (null swiftProj) || not (null xcodeProj)
+        then WalkSkipSome [".build"]
+        else mergeWalkSteps [swiftStep, xcodeStep]
+    )
 
 findSwiftPackageProjects ::
   ( Has ReadFS sig m

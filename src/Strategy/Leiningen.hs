@@ -18,6 +18,7 @@ module Strategy.Leiningen (
   Deps (..),
   ClojureDep (..),
   LeiningenProject (..),
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -107,7 +108,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject LeiningenProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [LeiningenProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([LeiningenProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "project.clj" files of
     Nothing -> pure ([], WalkContinue)
     Just projectClj -> do
