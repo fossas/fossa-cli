@@ -5,9 +5,10 @@ module Pixi.PixiLockSpec (
   spec,
 ) where
 
+import Control.Effect.Diagnostics (errorBoundary)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -16,6 +17,8 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Result (Result (Failure, Success), renderFailure)
+import Effect.Logger (renderIt)
 import Effect.ReadFS (readContentsToml)
 import GraphUtil (expectDeps', expectDirect', expectEdge')
 import Graphing qualified
@@ -35,7 +38,7 @@ import Strategy.Pixi.PixiLock (
   parseCondaArtifactUrl,
  )
 import System.FilePath ((</>))
-import Test.Effect (EffectStack, expectFatal', expectationFailure', it', shouldBe')
+import Test.Effect (EffectStack, expectFatal', expectationFailure', it', shouldBe', shouldContain', shouldMatchList')
 import Test.Hspec
 import Text.Megaparsec (parse)
 import Types (DependencyResults (dependencyGraph))
@@ -326,6 +329,19 @@ spec = do
       outOfRangeVersionWarning 6 `shouldBe` Nothing
       outOfRangeVersionWarning 7 `shouldBe` Nothing
 
+  describe "a lockfile in an unsupported version that doesn't decode" $ do
+    let failsWithWarning file warning = do
+          result <- errorBoundary . analyze mempty =<< makeAbsolute file
+          case result of
+            Success _ _ -> expectationFailure' "expected the lockfile not to decode"
+            Failure warnings errors -> toString (renderIt $ renderFailure warnings errors "") `shouldContain'` warning
+
+    it' "says a version before 4 isn't supported" $
+      failsWithWarning [relfile|test/Pixi/testdata/pixi-v3.lock|] "lock version 3 is older than 4, which is not officially supported!"
+
+    it' "suggests upgrading fossa-cli for a newer version" $
+      failsWithWarning [relfile|test/Pixi/testdata/pixi-v8-renamed-packages.lock|] "upgrade fossa-cli"
+
   describe "analyze a malformed lockfile with an unknown version" $
     it' "fails when environments is a list instead of a map" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v8-malformed.lock|]
@@ -349,6 +365,21 @@ spec = do
       graph <- analyze mempty path
 
       expectDeps' [] graph
+
+  describe "analyze a lockfile whose environments hold only the workspace" $
+    it' "reports an empty graph, without counting packages no environment uses" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7-build-packages.lock|]
+      graph <- analyze mempty path
+
+      expectDeps' [] graph
+
+  describe "a workspace nested in another one" $
+    it' "is found along with the outer one" $ do
+      outer <- makeAbsolute [reldir|test/Pixi/testdata/nested-workspaces|]
+      inner <- makeAbsolute [reldir|test/Pixi/testdata/nested-workspaces/services/api|]
+      projects <- findProjects outer
+
+      map pixiDir projects `shouldMatchList'` [outer, inner]
 
   describe "declared dependencies" $
     it' "are direct, matching PyPI names in normalized form" $ do

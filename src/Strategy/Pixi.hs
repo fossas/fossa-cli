@@ -17,7 +17,7 @@ import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
-  WalkStep (WalkContinue, WalkSkipAll),
+  WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
   walkWithFilters',
  )
@@ -47,7 +47,8 @@ findProjects = walkWithFilters' $ \dir _ files -> do
               , pixiLock = lockFile
               , pixiManifest = (PixiToml <$> findFileNamed "pixi.toml" files) <|> (PyprojectToml <$> findFileNamed "pyproject.toml" files)
               }
-      pure ([project], WalkSkipAll)
+      -- `.pixi` holds installed environments. Workspaces nested below have their own lock.
+      pure ([project], WalkSkipSome [".pixi"])
 
 data PixiProject = PixiProject
   { pixiDir :: Path Abs Dir

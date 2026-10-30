@@ -160,6 +160,13 @@ instance FromJSON PixiPackageEntry where
   parseJSON value =
     pure . either (UnreadableEntry . toText) PackageEntry $ parseEither parseJSON value
 
+-- | Read before the rest, so a version this parser doesn't know gets its
+-- warning even when the other keys don't decode.
+newtype PixiLockVersion = PixiLockVersion Int
+
+instance FromJSON PixiLockVersion where
+  parseJSON = withObject "PixiLockVersion" $ \obj -> PixiLockVersion <$> obj .: "version"
+
 instance FromJSON PixiLockFile where
   parseJSON = withObject "PixiLockFile" $ \obj ->
     PixiLockFile
@@ -529,13 +536,16 @@ relativeToManifest location path
 
 analyze :: (Has ReadFS sig m, Has Diagnostics sig m) => PixiManifestDeps -> Path Abs File -> m (Graphing Dependency)
 analyze declared lockPath = do
+  PixiLockVersion version <- readContentsYaml lockPath
+  for_ (outOfRangeVersionWarning version) warn
   lockFile <- readContentsYaml @PixiLockFile lockPath
-  for_ (outOfRangeVersionWarning $ pixiLockVersion lockFile) warn
   graph <- buildGraph declared lockFile
-  -- A workspace-only lockfile legitimately produces an empty graph.
-  let isWorkspaceEntry (PackageEntry p) = either (const False) isWorkspacePackage $ toDependency (Just p) (pixiPkgLocator p) EnvProduction
-      isWorkspaceEntry (UnreadableEntry _) = False
-      entries = length . filter (not . isWorkspaceEntry) $ pixiLockPackages lockFile
+  -- A workspace-only lockfile legitimately produces an empty graph. Packages no
+  -- environment uses, like the ones pixi builds source packages with, don't count.
+  let metadata = foldMap (\case PackageEntry p -> Map.singleton (pixiPkgLocator p) p; UnreadableEntry _ -> mempty) $ pixiLockPackages lockFile
+      isWorkspace locator = either (const False) isWorkspacePackage $ toDependency (Map.lookup locator metadata) locator EnvProduction
+      used = foldMap (foldMap (Set.fromList . map envPackageLocator) . pixiEnvPackages) $ pixiLockEnvironments lockFile
+      entries = Set.size $ Set.filter (not . isWorkspace) used
   if entries > 0 && null (Graphing.vertexList graph)
     then fatal $ PixiLockYieldedNoDeps (pixiLockVersion lockFile) entries
     else pure graph
