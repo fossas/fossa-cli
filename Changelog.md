@@ -2,6 +2,7 @@
 
 ## 3.30.9
 
+- Telemetry: `fossa analyze` now reports how long each of its phases took, alongside the existing per-analyzer timings.
 - Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
 - Npm: `package-lock.json` v3 analysis no longer reports the top-level version of a dependency vendored under a workspace whose directory name recurs in a package name. ([#1826](https://github.com/fossas/fossa-cli/pull/1826))
 
