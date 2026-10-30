@@ -255,8 +255,8 @@ exportImage imgSrc dir = context "Exporting Image" $ do
 -- A 'Diagnostics' failure must not escape a forked task: the pool worker running it would exit
 -- without ever marking the task as finished, every other thread would then wait forever for it,
 -- and the run would die with "thread blocked indefinitely in an STM transaction" instead of
--- reporting the error. So each task's result is collected, and the first failure is rethrown
--- once every task has finished.
+-- reporting the error. So each task's result is collected, and the failures are rethrown as one
+-- combined failure once every task has finished.
 runTasks ::
   ( Has (Lift IO) sig m
   , Has Diagnostics sig m
