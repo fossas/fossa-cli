@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Embedded tools: extracting a bundled tool (themis, lernie, millhone, ...) while another command is being started no longer fails with a busy-file error.
 - Npm: `package-lock.json` v3 analysis no longer reports the top-level version of a dependency vendored under a workspace whose directory name recurs in a package name. ([#1826](https://github.com/fossas/fossa-cli/pull/1826))
 
 ## 3.20.8
