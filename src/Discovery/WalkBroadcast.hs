@@ -40,7 +40,7 @@ import Data.Functor (void, ($>))
 import Data.IORef (IORef, atomicModifyIORef')
 import Data.Kind (Type)
 import Data.Text (Text)
-import Discovery.Filters (AllFilters, toolAllowed)
+import Discovery.Filters (AllFilters, consumerAllowed)
 import Discovery.Walk (WalkStep (WalkContinue))
 import Discovery.WalkStream (DirListing, walkStream)
 import Discovery.WalkVisitor (Visitor, driveVisitor)
@@ -110,7 +110,7 @@ broadcastStream filters listings consumers =
   unless (null enabled) startAll
   where
     enabled :: [WalkConsumer o m]
-    enabled = filter (toolAllowed filters . wcProjectType) consumers
+    enabled = filter (consumerAllowed filters . wcProjectType) consumers
 
     -- The master channel carries @Just listing@ per visit and a terminal
     -- @Nothing@ marker once the walk finishes; this is how consumer channels
