@@ -1,31 +1,22 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE QuasiQuotes #-}
 
--- | Integration test that materializes the checked-in multi-project fixture
--- tree ("Analysis.Fixtures.MultiProjectTree") under a temp dir and drives the
--- real per-strategy discovery visitors through the shared-walk wiring.
+-- | Materializes the checked-in multi-project fixture tree
+-- ("Analysis.Fixtures.MultiProjectTree") under a temp dir and drives discovery
+-- over it, mirroring "App.Fossa.Analyze.runAnalyzers".
 --
--- The shared-walk cases drive the *production* broadcast path: each strategy's
--- per-directory visitor is wrapped in a "Discovery.WalkBroadcast.accumulateConsumer"
--- sink exactly like "App.Fossa.Analyze.prepare" does, all the consumers are
--- fanned out through "Discovery.WalkBroadcast.withWalkBroadcast" (forked walker
--- + one consumer thread per enabled strategy, STM fan-out, tool gating), and
--- each sink is finalized with "Discovery.Simple.cachedDiscover" like
--- runAnalyzers finalizes a strategy.  Only strategies that export a
--- per-directory 'discoverVisitor' can be driven this way.  Of the fixture's
--- ten ecosystems, Maven ("Strategy.Maven", via
--- "Discovery.Simple.simpleDiscover") and Npm ("Strategy.Node", via 'discover')
--- have no visitor, so they are not part of the shared walk; the eight drivable
--- strategies (Mix, Fpm, Leiningen, Gomodules, Composer, Cocoapods, Conda,
--- Cabal) are exercised here.  Each visitor accumulates its own raw projects
--- into a private sink and is finalized exactly like runAnalyzers.
+-- The shared-walk cases go through the production broadcast path: each
+-- strategy's 'discoverVisitor' is wrapped in a
+-- "Discovery.WalkBroadcast.accumulateConsumer" sink, all consumers are fanned
+-- out through "Discovery.WalkBroadcast.withWalkBroadcast", and each sink is
+-- finalized with "Discovery.Simple.cachedDiscover".  Only strategies that
+-- export a 'discoverVisitor' can be driven this way: of the fixture's ten
+-- ecosystems, Maven ("Strategy.Maven") and Npm ("Strategy.Node") have no
+-- visitor, so the eight drivable strategies are exercised here.
 --
--- A second describe covers the two self-discovering strategies, Maven and Npm,
--- which have no 'discoverVisitor': they are run directly through their own
--- 'Strategy.Maven.discover' / 'Strategy.Node.discover' entry points on the same
--- materialized tree under the analysis carrier stack
--- ("Analysis.FixtureUtils.testRunner"), which supplies the ReadFS backend,
--- Diagnostics, Logger, and AllFilters reader each 'discover' requires.
+-- A second describe runs the two self-discovering strategies directly through
+-- their own 'discover' entry points on the same tree, under
+-- "Analysis.FixtureUtils.testRunner".
 module Analysis.SharedWalkDiscoverySpec (
   spec,
 ) where
@@ -102,10 +93,9 @@ toEntries dp = [(projectTypeToText (projectType dp), projectPath dp)]
 msgFor :: DiscoveredProjectType -> Text
 msgFor t = "Error discovering projects for " <> projectTypeToText t
 
--- | Finalize one accumulateConsumer sink exactly like runAnalyzers does: read
--- the all-or-nothing state, and a recorded error ('Left') fails the whole
--- strategy via 'fatalText' (so the finalizer discards the collection), while a
--- healthy collection ('Right') is handed to the strategy's finalizer.
+-- | Finalize one accumulateConsumer sink like runAnalyzers: a recorded error
+-- ('Left') fails the whole strategy via 'fatalText'; a healthy collection
+-- ('Right') is handed to the strategy's finalizer.
 finalizeSink :: IORef (Either Text [a]) -> SharedWalkC IO [a]
 finalizeSink sink = do
   state <- sendIO (readIORef sink)
@@ -133,8 +123,7 @@ collectWalk tmpDir = do
   condaSink <- sendIO (newIORef (Right ([])))
   cabalSink <- sendIO (newIORef (Right ([])))
 
-  let -- One broadcast consumer per strategy, built exactly like production:
-      -- accumulateConsumer wraps the strategy's discoverVisitor.
+  let -- One broadcast consumer per strategy, built exactly like production.
       consumers =
         [ accumulateConsumer MixProjectType (msgFor MixProjectType) mixSink Mix.discoverVisitor
         , accumulateConsumer FpmProjectType (msgFor FpmProjectType) fpmSink Fpm.discoverVisitor
@@ -146,9 +135,7 @@ collectWalk tmpDir = do
         , accumulateConsumer CabalProjectType (msgFor CabalProjectType) cabalSink Cabal.discoverVisitor
         ]
 
-  -- One shared walk fans out to every consumer through the production broadcast
-  -- path (forked walker, STM fan-out, per-consumer tool gating).  filters is
-  -- mempty here (see runSharedWalk); the gating/interplay it exercises is
+  -- filters is mempty here (see runSharedWalk); its gating/interplay is
   -- covered by WalkBroadcastSpec and WalkStreamSpec, so we do not re-pin it.
   withWalkBroadcast filters tmpDir consumers
 
@@ -206,13 +193,8 @@ runDiscovery tmp = do
   materialize tmp
   runSharedWalk (collectWalk tmp)
 
--- | Drive the self-discovering strategies ("Strategy.Maven" and
--- "Strategy.Node") directly through their own 'discover' entry points rather
--- than through the shared-walk visitor wiring they do not export.  These
--- strategies walk the tree themselves, so each is run against the same
--- materialized @tmp@ root under the analysis carrier stack
--- ("Analysis.FixtureUtils.testRunner"), which supplies the ReadFS backend,
--- Diagnostics, Logger, and AllFilters reader each 'discover' requires.
+-- | Drive Maven and Node through their own 'discover' entry points (they have
+-- no 'discoverVisitor') over the same materialized tree.
 runMavenDiscover :: Path Abs Dir -> IO [Entry]
 runMavenDiscover tmp = do
   materialize tmp
@@ -238,11 +220,8 @@ expectedSelfDiscoverEntries tmp =
 expectedFullEntries :: Path Abs Dir -> [Entry]
 expectedFullEntries tmp = expectedEntries tmp <> expectedSelfDiscoverEntries tmp
 
--- | Create (and clean up) a uniquely named temp dir in the system temp dir.
---
--- Exception-safe: the dir is created, then @act@ runs masked inside 'bracket';
--- if @act@ throws (e.g. a failing assertion) the tree is still removed, so a
--- failing case never leaks a temp dir behind it.
+-- | Create a uniquely named temp dir and run @act@ inside it.  'bracket'
+-- guarantees cleanup even when @act@ throws (e.g. a failing assertion).
 withTempDir :: String -> (Path Abs Dir -> IO a) -> IO a
 withTempDir label act = do
   sysTemp <- getTemporaryDirectory >>= parseAbsDir
@@ -284,12 +263,11 @@ spec =
     it "fpm's WalkSkipSome [\"build\"] swallows apps/build while mix still discovers it" $
       withTempDir "integration-SkipIsolation" $ \tmp -> do
         materialize tmp
-        -- Fpm skips the "build" subtree; mix does not (it skips "deps"/"_build"),
-        -- so apps/build/ (which holds both a fpm.toml and a mix.exs) is found by
-        -- mix but swallowed by fpm's own skip decision.  Only these two consumers
-        -- run, so the pin is isolated to the skipping vs non-skipping strategies.
-        -- The broadcast + both finalizers run in the shared-walk stack; the sinks
-        -- are plain IORefs created beforehand.
+        -- Fpm skips the "build" subtree; mix does not (it skips
+        -- "deps"/"_build"), so apps/build/ (which holds both a fpm.toml and a
+        -- mix.exs) is found by mix but swallowed by fpm's own skip decision.
+        -- Only these two consumers run, isolating the pin to the skipping vs
+        -- non-skipping strategies.
         fpmSink <- newIORef (Right ([]))
         mixSink <- newIORef (Right ([]))
         (fpmFinal, mixFinal) <-
