@@ -71,9 +71,7 @@ deps/
 _build/
 |]
     )
-  , -- Scenario 2: three sibling projects in one subdirectory (apps/).
-    -- Npm (derived from example-projects/javascript/with-package-json).
-
+  ,
     ( [relfile|apps/package.json|]
     , [r|
 {
@@ -86,8 +84,7 @@ _build/
 }
 |]
     )
-  , -- Elixir (derived from example-projects/elixir/with-mix).
-
+  ,
     ( [relfile|apps/mix.exs|]
     , [r|
 defmodule Example.MixProject do
@@ -114,8 +111,7 @@ defmodule Example.MixProject do
 end
 |]
     )
-  , -- Fortran (derived from example-projects/fortran/with-fpm).
-
+  ,
     ( [relfile|apps/fpm.toml|]
     , [r|
 name = "with-fpm"
@@ -125,12 +121,7 @@ version = "0.1.0"
 toml-f = { git = "https://github.com/toml-f/toml-f", tag = "v0.2.1" }
 |]
     )
-  , -- Skip-isolation pin: Fpm's discoverVisitor emits WalkSkipSome
-    -- ["build"] at apps/, so fpm never reports this project even though it
-    -- holds its own fpm.toml; Mix (which skips "deps"/"_build", not
-    -- "build") still discovers the mix.exs below.  Derived from
-    -- example-projects/fortran/with-fpm and elixir/with-mix.
-
+  ,
     ( [relfile|apps/build/fpm.toml|]
     , [r|
 name = "nested-fpm"
@@ -160,9 +151,7 @@ defmodule Nested.MixProject do
   end
 |]
     )
-  , -- Scenario 4 (part a): Go at moderate depth (part b repeats it at
-    -- greater depth). Derived from example-projects/path-dependency.
-
+  ,
     ( [relfile|libs/go-app/go.mod|]
     , [r|
 module example.com/app
@@ -172,10 +161,7 @@ go 1.14
 require github.com/Masterminds/squirrel v1.4.0
 |]
     )
-  , -- Scenario 3: one project nested several levels deep, with empty
-    -- directories (l1, l2, l3) between each level. Leiningen. Derived from
-    -- example-projects/clojure/with-lein.
-
+  ,
     ( [relfile|deep/l1/l2/l3/leaf/project.clj|]
     , [r|
 (defproject with-lein "0.1.0"
@@ -184,9 +170,7 @@ require github.com/Masterminds/squirrel v1.4.0
   :dependencies [[org.clojure/clojure "1.10.3"]])
 |]
     )
-  , -- Scenario 4 (part b): a second Go module at a greater depth, so the same
-    -- ecosystem (Go) appears at two different depths.
-
+  ,
     ( [relfile|services/internal/worker/go.mod|]
     , [r|
 module example.com/services/worker
@@ -196,8 +180,7 @@ go 1.14
 require github.com/Masterminds/squirrel v1.4.0
 |]
     )
-  , -- Composer. Discovery reads composer.lock, so both files are required.
-    -- Derived from example-projects/php.
+  , -- Composer discovery requires the companion composer.lock; deleting either file breaks this fixture.
 
     ( [relfile|composer/composer.json|]
     , [r|
@@ -232,8 +215,7 @@ require github.com/Masterminds/squirrel v1.4.0
 }
 |]
     )
-  , -- CocoaPods. Derived from example-projects/cocoapods/simple-cocoapods-example.
-
+  ,
     ( [relfile|cocoapods/Podfile|]
     , [r|
 platform :ios, '14.0'
@@ -258,8 +240,7 @@ PODFILE CHECKSUM: c6a1f6e5b0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5
 COCOAPODS: 1.11.3
 |]
     )
-  , -- Conda. Derived from example-projects/conda/conda-forge-ex.
-
+  ,
     ( [relfile|conda/environment.yml|]
     , [r|
 name: example-conda
@@ -270,8 +251,7 @@ dependencies:
 prefix: /Users/example/anaconda3/envs/example-conda
 |]
     )
-  , -- Cabal. Derived from example-projects/fossa-deps/unarchived-vendored-dependencies.
-
+  ,
     ( [relfile|cabal/example-cabal.cabal|]
     , [r|
 cabal-version:      2.4
