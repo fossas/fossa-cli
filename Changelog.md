@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Container scanning: `fossa container analyze` now reports the registry error when an image layer cannot be downloaded, instead of failing with an internal threading error. ([#1827](https://github.com/fossas/fossa-cli/pull/1827))
+
 ## 3.30.9
 
 - Telemetry: `fossa analyze` now reports how long each of its phases took, alongside the existing per-analyzer timings.

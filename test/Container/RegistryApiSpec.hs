@@ -4,10 +4,12 @@ module Container.RegistryApiSpec (spec) where
 
 import Container.Docker.OciManifest (OciManifestConfig (configDigest), OciManifestV2 (ociConfig))
 import Container.Docker.SourceParser (RegistryImageSource, RepoDigest (RepoDigest), parseImageUrl)
+import Control.Carrier.ContainerRegistryApi (runTasks)
 import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), parseAuthChallenge)
 import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, safeReplaceToken, updateToken)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
+import Control.Carrier.TaskPool (Progress)
 import Control.Concurrent.STM (newEmptyTMVarIO)
 import Control.Effect.ContainerRegistryApi (ContainerRegistryApi, getImageManifest)
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText, fromEitherShow)
@@ -15,10 +17,11 @@ import Control.Effect.Lift (Lift)
 import Data.Foldable (for_, traverse_)
 import Data.Text (Text)
 import Data.Void (Void)
-import ResultUtil (expectFailure)
+import Diag.Result (Result (Failure, Success), renderFailure)
+import ResultUtil (assertOnSuccess, expectFailure)
 import System.Timeout (timeout)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Expectation, Spec, describe, it, shouldBe)
+import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, shouldBe, shouldContain)
 import Test.Hspec.Megaparsec (shouldParse)
 import Text.Megaparsec (Parsec, parse)
 import Text.Megaparsec.Error (ParseErrorBundle)
@@ -53,6 +56,34 @@ spec = do
   registryApiSpec
   parseAuthChallengeSpec
   safeReplaceTokenSpec
+  runTasksSpec
+
+-- Blob downloads are forked onto a task pool. A task that fails through 'Diagnostics' has to be
+-- reported once the pool has drained: otherwise the worker running it exits without marking the
+-- task as finished, the remaining threads wait forever for it, and the run dies with "thread
+-- blocked indefinitely in an STM transaction".
+runTasksSpec :: Spec
+runTasksSpec =
+  describe "runTasks" $ do
+    it "should return every task's result in order" $ do
+      result <- runStack . runDiagnostics $ runTasks 2 noProgress (pure <$> [1 :: Int .. 10])
+      assertOnSuccess result $ \_ results -> results `shouldBe` [1 .. 10]
+
+    it "should report every failed task instead of blocking forever" $ do
+      -- Without the fix this never returns, since a failing task's worker exits silently.
+      result <-
+        timeout 5_000_000 . runStack . runDiagnostics $
+          runTasks 2 noProgress [pure (1 :: Int), fatalText "registry rejected blob one", pure 3, fatalText "registry rejected blob two"]
+      case result of
+        Nothing -> expectationFailure "runTasks did not return after its tasks failed"
+        Just (Success _ _) -> expectationFailure "expected a failure"
+        Just (Failure ws eg) -> do
+          let rendered = show (renderFailure ws eg "An issue occurred")
+          rendered `shouldContain` "registry rejected blob one"
+          rendered `shouldContain` "registry rejected blob two"
+  where
+    noProgress :: Applicative m => Progress -> m ()
+    noProgress = const (pure ())
 
 -- Blob downloads share one 'RegistryCtx' across the task pool's threads, and 'getToken' waits
 -- while another thread is replacing the token. A failed replacement therefore has to put the
