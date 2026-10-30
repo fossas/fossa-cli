@@ -1,0 +1,38 @@
+# Trimmed from prefix-dev/pixi's crates/pixi_record/src/test_fixtures/full_source_records.lock,
+# where build sources are relative to manifests in a git repository and in the
+# workspace. The package whose manifest is in an archive follows rattler's
+# SourceIdentifier docs.
+version: 7
+platforms:
+- name: noarch
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      noarch:
+      - conda_source: git-child-test[7ed0aa73] @ git+https://github.com/example/mono-repo.git?subdirectory=recipes&branch=main#abc123def456abc123def456abc123def456abc1
+      - conda_source: archive-child-test[5a1c0e9b] @ https://example.com/pkgs/mono-repo-1.2.0.tar.gz
+      - conda_source: path-child-test[9d062313] @ recipes/my-package
+packages:
+- conda_source: git-child-test[7ed0aa73] @ git+https://github.com/example/mono-repo.git?subdirectory=recipes&branch=main#abc123def456abc123def456abc123def456abc1
+  version: 1.1.0
+  build: h234567_0
+  subdir: noarch
+  source:
+    path: ../src
+  timestamp: 1626502400
+- conda_source: archive-child-test[5a1c0e9b] @ https://example.com/pkgs/mono-repo-1.2.0.tar.gz
+  version: 1.2.0
+  build: h345678_0
+  subdir: noarch
+  source:
+    path: ../src
+  timestamp: 1626502400
+- conda_source: path-child-test[9d062313] @ recipes/my-package
+  version: 2.1.0
+  build: h890123_0
+  subdir: noarch
+  source:
+    path: ../../src/lib
+  timestamp: 1626502400

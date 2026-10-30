@@ -1,0 +1,16 @@
+# The workspace package at `conda: .` is omitted, leaving an empty graph.
+version: 6
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda: .
+packages:
+- conda: .
+  name: my-data-package
+  version: 0.1.0
+  build: hbf21a9e_0
+  subdir: noarch
+  depends: []
