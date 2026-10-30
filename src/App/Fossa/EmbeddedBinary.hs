@@ -24,7 +24,14 @@ import App.Version.TH (themisVersionQ)
 import Codec.Compression.Lzma qualified as Lzma
 import Control.Effect.Exception (bracket)
 import Control.Effect.Lift (Has, Lift, sendIO)
+#ifdef mingw32_HOST_OS
 import Data.ByteString (ByteString, writeFile)
+#else
+import Control.Exception (bracketOnError, finally)
+import Data.ByteString (ByteString, hPut)
+import System.IO (hClose)
+import System.Posix.IO (FdOption (CloseOnExec), OpenFileFlags (trunc), OpenMode (WriteOnly), closeFd, defaultFileFlags, fdToHandle, openFd, setFdOption)
+#endif
 import Data.ByteString.Lazy qualified as BL
 import Data.FileEmbed.Extra (embedFileIfExists)
 import Data.Foldable (traverse_)
@@ -164,8 +171,31 @@ writeBinary dest bin = do
 writeExecutable :: Path Abs File -> ByteString -> IO ()
 writeExecutable path content = do
   ensureDir $ parent path
-  writeFile (fromAbsFile path) content
+  writeCloseOnExec (fromAbsFile path) content
   makeExecutable path
+
+#ifdef mingw32_HOST_OS
+-- Windows neither inherits these descriptors nor refuses to run a file that is open for writing
+-- with @ETXTBSY@, so a plain write is fine there.
+writeCloseOnExec :: FilePath -> ByteString -> IO ()
+writeCloseOnExec = writeFile
+#else
+
+-- | Writes the file through a close-on-exec descriptor.
+--
+-- 'writeFile' leaves its descriptor inheritable, so a process spawned by another thread while the
+-- binary is being written (strategies run in a task pool, and the integration specs run in
+-- parallel) keeps a write handle on it for as long as that process runs, and executing the
+-- binary in the meantime fails with @Text file busy@ (@ETXTBSY@). A close-on-exec descriptor is
+-- dropped by the child the moment it execs, so nothing but this writer ever holds the binary open.
+writeCloseOnExec :: FilePath -> ByteString -> IO ()
+writeCloseOnExec file content = do
+  handle <-
+    bracketOnError (openFd file WriteOnly (Just 0o644) defaultFileFlags{trunc = True}) closeFd $ \fd -> do
+      setFdOption fd CloseOnExec True
+      fdToHandle fd
+  hPut handle content `finally` hClose handle
+#endif
 
 extractedPath :: PackagedBinary -> Path Rel File
 extractedPath bin = case bin of

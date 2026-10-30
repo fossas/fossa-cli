@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Embedded tools: extracting a bundled tool (themis, lernie, millhone, ...) while another command is being started no longer fails with a busy-file error. ([#1828](https://github.com/fossas/fossa-cli/pull/1828))
+
 ## 3.30.9
 
 - Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
