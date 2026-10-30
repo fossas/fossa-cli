@@ -23,11 +23,10 @@ module Analysis.SharedWalkDiscoverySpec (
 
 import Analysis.FixtureUtils (FixtureEnvironment (LocalEnvironment), testRunner, withResult)
 import Analysis.Fixtures.MultiProjectTree (multiProjectTree)
-import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
-import Control.Carrier.Reader (ReaderC, ask, runReader)
-import Control.Carrier.Stack (StackC, runStack)
-import Control.Effect.Diagnostics (fatalText)
-import Control.Effect.Lift (sendIO)
+import Control.Algebra (Has)
+import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Reader (Reader, ask)
 import Control.Exception (bracket)
 import Data.Foldable (traverse_)
 import Data.Functor (($>))
@@ -35,11 +34,10 @@ import Data.IORef (IORef, newIORef, readIORef)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (cachedDiscover)
 import Discovery.WalkBroadcast (accumulateConsumer, withWalkBroadcast)
-import Effect.ReadFS (ReadFSIOC, runReadFSIO)
+import Effect.ReadFS (ReadFS)
 import Path
 import Path.IO qualified as PIO
 import Strategy.Cocoapods qualified as Cocoapods
@@ -56,30 +54,7 @@ import System.Directory (getTemporaryDirectory)
 import System.Random (randomIO)
 import Test.Hspec
 import Text.Printf (printf)
-import Type.Operator (type ($))
 import Types (DiscoveredProject (projectPath, projectType), DiscoveredProjectType (..), projectTypeToText)
-
--- | The effect stack the shared walk and the cached finalizers run in: the
--- ReadFS backend, the Diagnostics carrier (so 'fatalText' in the sink
--- finalizer works), and the AllFilters reader.  The base monad is IO, which
--- satisfies 'Lift IO' automatically.
-type SharedWalkC m =
-  ReadFSIOC
-    $ DiagnosticsC
-    $ ReaderC AllFilters
-    $ StackC m
-
--- | Interpret a "SharedWalkC" computation down to IO, extracting the success
--- value and turning any diagnostic failure into an IO error.
-runSharedWalk :: SharedWalkC IO a -> IO a
-runSharedWalk act =
-  runStack (runReader (mempty :: AllFilters) (runDiagnostics (runReadFSIO act))) >>= extractResult
-
-extractResult :: Result a -> IO a
-extractResult res =
-  case res of
-    Success _ a -> pure a
-    Failure ws eg -> fail (show (renderFailure ws eg "shared-walk discovery failed"))
 
 -- | One project as the walk reports it: the strategy's text label plus the
 -- absolute directory containing its manifest.
@@ -96,7 +71,7 @@ msgFor t = "Error discovering projects for " <> projectTypeToText t
 -- | Finalize one accumulateConsumer sink like runAnalyzers: a recorded error
 -- ('Left') fails the whole strategy via 'fatalText'; a healthy collection
 -- ('Right') is handed to the strategy's finalizer.
-finalizeSink :: IORef (Either Text [a]) -> SharedWalkC IO [a]
+finalizeSink :: (Has Diagnostics sig m, Has (Lift IO) sig m) => IORef (Either Text [a]) -> m [a]
 finalizeSink sink = do
   state <- sendIO (readIORef sink)
   case state of
@@ -106,7 +81,7 @@ finalizeSink sink = do
 -- | Drive every drivable strategy's visitor over the production broadcast path
 -- rooted at @tmpDir@, then finalize each sink with 'cachedDiscover'.  Returns
 -- the discovered entries across all eight strategies.
-collectWalk :: Path Abs Dir -> SharedWalkC IO [Entry]
+collectWalk :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has ReadFS sig m) => Path Abs Dir -> m [Entry]
 collectWalk tmpDir = do
   filters <- ask
 
@@ -191,7 +166,8 @@ materialize tmp = traverse_ writeEntry multiProjectTree
 runDiscovery :: Path Abs Dir -> IO [Entry]
 runDiscovery tmp = do
   materialize tmp
-  runSharedWalk (collectWalk tmp)
+  res <- testRunner (collectWalk tmp) LocalEnvironment
+  withResult res $ \_ projects -> pure projects
 
 -- | Drive Maven and Node through their own 'discover' entry points (they have
 -- no 'discoverVisitor') over the same materialized tree.
@@ -270,15 +246,19 @@ spec =
         -- non-skipping strategies.
         fpmSink <- newIORef (Right ([]))
         mixSink <- newIORef (Right ([]))
-        (fpmFinal, mixFinal) <-
-          runSharedWalk $ do
-            let fpmConsumer = accumulateConsumer FpmProjectType (msgFor FpmProjectType) fpmSink Fpm.discoverVisitor
-                mixConsumer = accumulateConsumer MixProjectType (msgFor MixProjectType) mixSink Mix.discoverVisitor
-            -- filters mempty: gating is covered elsewhere (WalkBroadcastSpec).
-            withWalkBroadcast (mempty :: AllFilters) tmp [fpmConsumer, mixConsumer]
-            fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject (finalizeSink fpmSink)
-            mixFinal <- cachedDiscover MixProjectType Mix.mkProject (finalizeSink mixSink)
-            pure (fpmFinal, mixFinal)
+        res <-
+          testRunner
+            ( do
+                let fpmConsumer = accumulateConsumer FpmProjectType (msgFor FpmProjectType) fpmSink Fpm.discoverVisitor
+                    mixConsumer = accumulateConsumer MixProjectType (msgFor MixProjectType) mixSink Mix.discoverVisitor
+                -- filters mempty: gating is covered elsewhere (WalkBroadcastSpec).
+                withWalkBroadcast (mempty :: AllFilters) tmp [fpmConsumer, mixConsumer]
+                fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject (finalizeSink fpmSink)
+                mixFinal <- cachedDiscover MixProjectType Mix.mkProject (finalizeSink mixSink)
+                pure (fpmFinal, mixFinal)
+            )
+            LocalEnvironment
+        (fpmFinal, mixFinal) <- withResult res $ \_ pair -> pure pair
         let fpmDirs = Set.fromList (map projectPath fpmFinal)
             mixDirs = Set.fromList (map projectPath mixFinal)
             apps = tmp </> [reldir|apps|]
