@@ -243,6 +243,13 @@ fn recursive_jars_in_jars(
         }
     };
     for path in archive.clone().file_names() {
+        let path = match path {
+            Ok(path) => path,
+            Err(e) => {
+                warn!("failed to read zip entry name: {e:?}");
+                continue;
+            }
+        };
         debug!("file_name: {path}");
         if !path.ends_with(".jar") {
             continue;
@@ -250,7 +257,7 @@ fn recursive_jars_in_jars(
 
         debug!(?path, "jar file found");
         let mut zip_file = archive
-            .by_name(path)
+            .by_name(path.as_ref())
             .context("getting zip file info by path")?;
         if !zip_file.is_file() {
             debug!(?path, "skipped: not a file");
@@ -260,7 +267,7 @@ fn recursive_jars_in_jars(
         zip_file
             .read_to_end(&mut buffer)
             .context("reading jar from zip into buffer")?;
-        let joined_path = Path::new(&containing_jar_path).join(path);
+        let joined_path = Path::new(&containing_jar_path).join(path.as_ref());
 
         // fingerprint the jar
         match Combined::from_buffer(buffer.clone()) {
