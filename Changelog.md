@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
+
 ## 3.20.10
 
 - Container scanning: `fossa container analyze` now reports the registry error when an image layer cannot be downloaded, instead of failing with an internal threading error. ([#1827](https://github.com/fossas/fossa-cli/pull/1827))
