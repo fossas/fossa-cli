@@ -30,7 +30,7 @@ import Data.Aeson (
 import Data.Foldable (find, for_, traverse_)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Data.Maybe (catMaybes, isJust, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text, breakOnEnd)
@@ -581,7 +581,7 @@ vendorPrefixes path ws = prefixWithWS . reverse $ possiblePrefixes
     prefixWithoutWS :: Text
     prefixWithoutWS = case ws of
       Nothing -> path
-      Just ws' -> Text.replace ws' "" path
+      Just ws' -> fromMaybe path (Text.stripPrefix ws' path)
 
     prefixWithWS :: [Text] -> [Text]
     prefixWithWS result = case ws of

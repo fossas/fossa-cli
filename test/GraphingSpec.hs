@@ -245,6 +245,38 @@ shrinkingSpec = context "Shrinking" $ do
       expectDeps [5] graph'
       expectEdges [] graph'
 
+    it "pruneUnreachable after shrink removes truly disconnected subgraphs" $ do
+      -- Graph: Root -> 1 (direct) -> 2, plus isolated 3 -> 4
+      let graph :: Graphing Int
+          graph = Graphing.directs [1] <> Graphing.edges [(1, 2), (3, 4)]
+
+          shrunk :: Graphing Int
+          shrunk = Graphing.shrinkWithoutPromotionToDirect (\(x :: Int) -> x /= 3) graph
+
+          pruned :: Graphing Int
+          pruned = Graphing.pruneUnreachable shrunk
+
+      expectDeps [1, 2, 4] shrunk
+      expectDirect [1] shrunk
+      expectDeps [1, 2] pruned
+      expectEdges [(1, 2)] pruned
+
+    it "pruneUnreachable keeps nodes reachable via prod path, drops those reachable only via pruned path" $ do
+      -- Root -> 1 (prod) -> 3, plus Root -> 2 (dev) -> 3, plus Root -> 2 (dev) -> 4
+      let graph :: Graphing Int
+          graph = Graphing.directs [1, 2] <> Graphing.edges [(1, 3), (2, 3), (2, 4)]
+
+          shrunk :: Graphing Int
+          shrunk = Graphing.shrinkWithoutPromotionToDirect (\(x :: Int) -> x /= 2) graph
+
+          pruned :: Graphing Int
+          pruned = Graphing.pruneUnreachable shrunk
+
+      expectDeps [1, 3, 4] shrunk
+      expectDirect [1] shrunk
+      expectDeps [1, 3] pruned
+      expectEdges [(1, 3)] pruned
+
 getRootsOfSpec :: Spec
 getRootsOfSpec =
   describe "getRootsOf" $ do

@@ -6,6 +6,9 @@
 module Control.Carrier.ContainerRegistryApi (
   runContainerRegistryApi,
   ContainerRegistryApiC,
+
+  -- * for testing
+  runTasks,
 ) where
 
 import App.Fossa.Analyze (updateProgress)
@@ -41,7 +44,6 @@ import Container.Docker.SourceParser (
   toRegistryApiHost,
  )
 import Control.Algebra (Has)
-import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.ContainerRegistryApi.Authorization (applyAuthToken, getAuthToken, mkRequest)
 import Control.Carrier.ContainerRegistryApi.Common (
   RegistryCtx (RegistryCtx),
@@ -53,7 +55,7 @@ import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (ReaderC, ask, runReader)
 import Control.Carrier.Simple (SimpleC, interpret)
 import Control.Carrier.StickyLogger (runStickyLogger)
-import Control.Carrier.TaskPool (withTaskPool)
+import Control.Carrier.TaskPool (Progress, withTaskPool)
 import Control.Concurrent (getNumCapabilities, myThreadId)
 import Control.Concurrent.STM (newEmptyTMVarIO)
 import Control.Effect.ContainerRegistryApi (
@@ -62,20 +64,26 @@ import Control.Effect.ContainerRegistryApi (
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
+  errorBoundary,
   fatal,
   fatalText,
   fromEither,
   fromMaybeText,
+  rethrow,
  )
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader)
 import Control.Effect.TaskPool (forkTask)
 import Control.Monad (when)
+import Control.Monad.Trans (lift)
 import Data.Aeson (eitherDecode, encode)
 import Data.ByteString (ByteString, writeFile)
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Conduit.Zlib (ungzip)
 import Data.Error (getSourceLocation)
+import Data.Foldable (for_, toList)
+import Data.IORef (atomicModifyIORef', newIORef, readIORef)
+import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe, isNothing)
 import Data.String.Conversion (
   LazyStrict (toStrict),
@@ -234,14 +242,37 @@ exportImage imgSrc dir = context "Exporting Image" $ do
   let blobs = blobEntries manifest
 
   capabilities <- max 2 <$> sendIO getNumCapabilities
-  runStickyLogger SevInfo . runFinally
-    $ context "Downloading image artifact from registry"
-      . withTaskPool capabilities (updateProgress)
-      . runAtomicCounter
-    $ do
-      traverse (forkTask . exportBlob manager imgSrc dir) blobs
+  _ <-
+    runStickyLogger SevInfo . runFinally $
+      context "Downloading image artifact from registry" $
+        runTasks capabilities updateProgress (map (exportBlob manager imgSrc dir) (toList blobs))
 
   mkTarball dir manifest imgSrc
+
+-- | Runs the actions concurrently in a task pool of the given size, waits for all of them, and
+-- returns their results in order.
+--
+-- A 'Diagnostics' failure must not escape a forked task: the pool worker running it would exit
+-- without ever marking the task as finished, every other thread would then wait forever for it,
+-- and the run would die with "thread blocked indefinitely in an STM transaction" instead of
+-- reporting the error. So each task's result is collected, and the failures are rethrown as one
+-- combined failure once every task has finished.
+runTasks ::
+  ( Has (Lift IO) sig m
+  , Has Diagnostics sig m
+  ) =>
+  Int ->
+  (Progress -> m ()) ->
+  [m a] ->
+  m [a]
+runTasks numWorkers reportProgress actions = do
+  results <- sendIO $ newIORef Map.empty
+  withTaskPool numWorkers reportProgress $
+    for_ (zip [0 :: Int ..] actions) $ \(index, action) ->
+      forkTask $ do
+        result <- errorBoundary $ lift action
+        sendIO $ atomicModifyIORef' results (\collected -> (Map.insert index result collected, ()))
+  traverse rethrow . Map.elems =<< sendIO (readIORef results)
 
 -- | Exports a Blob to a directory.
 exportBlob ::

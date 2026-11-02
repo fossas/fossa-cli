@@ -3,6 +3,20 @@
 ## Unreleased
 
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
+
+## 3.20.10
+
+- Container scanning: `fossa container analyze` now reports the registry error when an image layer cannot be downloaded, instead of failing with an internal threading error. ([#1827](https://github.com/fossas/fossa-cli/pull/1827))
+- Telemetry: `fossa analyze` now reports how long each of its phases took, alongside the existing per-analyzer timings. ([#1829](https://github.com/fossas/fossa-cli/pull/1829))
+
+## 3.20.9
+
+- Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
+- Npm: `package-lock.json` v3 analysis no longer reports the top-level version of a dependency vendored under a workspace whose directory name recurs in a package name. ([#1826](https://github.com/fossas/fossa-cli/pull/1826))
+
+## 3.20.8
+
+- Conan: The Conan strategy now works with non-standard Conan version numbers. ([#1824](https://github.com/fossas/fossa-cli/pull/1824))
 - Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
 
 ## 3.20.7
