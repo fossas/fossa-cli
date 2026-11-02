@@ -7,6 +7,8 @@ module App.Fossa.LicenseScanner (
   scanVendoredDep,
   calculateVendoredHash,
   scanDirectory,
+  scanArchive,
+  ScannableArchive (..),
 ) where
 
 import App.Fossa.EmbeddedBinary (ThemisBins, withThemisAndIndex)

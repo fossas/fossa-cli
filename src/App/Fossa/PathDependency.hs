@@ -11,7 +11,7 @@ module App.Fossa.PathDependency (
 import App.Docs (pathDependencyDocsUrl)
 import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType))
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
-import App.Fossa.LicenseScanner (scanDirectory)
+import App.Fossa.LicenseScanner (ScannableArchive (..), scanArchive, scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
 import App.Types (FileUpload (..), ProjectRevision)
 import Codec.Archive.Tar qualified as Tar
@@ -229,15 +229,24 @@ scanAndUpload ::
   m (Dependency, Maybe Dependency)
 scanAndUpload pathFilters uploadKind projectRevision (rawDep, resolvedPath, version) = context "Path Dependency" $ do
   case resolvedPath of
-    -- Single-file path dependencies are not supported (yet); emit a warning and keep the
-    -- dependency raw, skipping the license scan instead of failing the whole enrichment pass.
-    ResolvedFile _ -> do
-      logInfo $
-        redText "NOTE: "
-          <> "not license scanning single-file path dependency '"
-          <> pretty rawPath
-          <> "'; only directories are supported"
-      pure (rawDep, Nothing)
+    -- Single-file path dependencies: supported archives are extracted and
+    -- license scanned (mirroring scanVendoredDep); other files cannot be
+    -- scanned, so emit a note and keep the dependency raw instead of failing
+    -- the whole enrichment pass.
+    ResolvedFile file -> do
+      maybeLicenseUnits <- recover $ do
+        logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
+        scannedLicenseUnits <- scanArchive (parent file) pathFilters uploadKind (ScannableArchive file)
+        pure $ LicenseSourceUnit rawPath CliLicenseScanned scannedLicenseUnits
+      case maybeLicenseUnits of
+        Nothing -> do
+          logInfo $
+            redText "NOTE: "
+              <> "not license scanning single-file path dependency '"
+              <> pretty rawPath
+              <> "'; not a supported archive format"
+          pure (rawDep, Nothing)
+        Just licenseUnits -> (rawDep,) <$> doUpload licenseUnits
     ResolvedDir dir -> do
       maybeLicenseUnits <- recover $ do
         logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"

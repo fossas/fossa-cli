@@ -32,7 +32,7 @@ In the event that caching is causing problems, FOSSA can be made to rescan this 
 ## Limitations
 
 - Currently, path dependencies do not support vulnerability scanning.
-- Currently, only path dependencies that point at a directory are license scanned; path dependencies that point at a single file are not supported: the CLI logs a note and the dependency is reported without license scan results.
+- Path dependencies that point at a single file are license scanned only when the file is a supported archive (e.g. `.zip`, `.tar.gz`); other single files (e.g. a bare `.py`) are not supported: the CLI logs a note and the dependency is reported without license scan results.
 - Currently, path dependencies are only supported in:
   - `golang` using the [gomod strategy](./../strategies/languages/golang/gomodules.md).
   - PDM (Python) projects via the [pdm strategy](./../strategies/languages/python/pdm.md).

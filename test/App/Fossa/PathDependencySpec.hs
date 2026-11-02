@@ -309,6 +309,19 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` expectedResult
 
+  it' "should license scan and upload a single-file archive path dependency" $ do
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchDataArchive
+    expectLicenseScanUpload
+    expectPathDependencyFinalizeArchive
+    expectNoAnalyzedPathRevisions
+
+    let result = mkProjectResult cwd (direct archiveFileDep)
+    let expectedResult = mkProjectResult cwd . direct $ resolvedArchiveDep
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    result' `shouldBe'` expectedResult
+
   it' "should not perform path dependency scan and upload, if path dependency is already analyzed" $ do
     expectOrg orgSupportPathDeps{orgRequiresFullFileUploads = False}
     expectAnalyzedPathRevisions
@@ -417,6 +430,18 @@ unresolvablePathDep = (mkDep UnresolvedPathType){dependencyName = "does-not-exis
 filePathDep :: Dependency
 filePathDep = (mkDep UnresolvedPathType){dependencyName = fixtureFile}
 
+archiveFile :: Text
+archiveFile = "test/App/Fossa/PathDependency/testdata/example.zip"
+
+archiveFileHash :: Text
+archiveFileHash = "60a303c42918bbeabe0b7ecc9e1b9708"
+
+archiveFileDep :: Dependency
+archiveFileDep = (mkDep UnresolvedPathType){dependencyName = archiveFile}
+
+resolvedArchiveDep :: Dependency
+resolvedArchiveDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ archiveFileHash}
+
 resolvedPathDep :: Dependency
 resolvedPathDep = (mkDep PathType){dependencyName = "1", dependencyVersion = Just . CEq $ fixtureDirHash}
 
@@ -474,6 +499,18 @@ expectLicenseScanUpload = (UploadLicenseScanResult Fixtures.signedUrl Fixtures.f
 
 expectPathDependencyFinalize :: Has MockApi sig m => m ()
 expectPathDependencyFinalize = (FinalizeLicenseScanForPathDependency [Locator "path" "1" $ Just fixtureDirHash]) False `returnsOnce` ()
+
+expectPathDependencyMatchDataArchive :: Has MockApi sig m => m ()
+expectPathDependencyMatchDataArchive =
+  ( GetPathDependencyScanUrl
+      (PackageRevision archiveFile archiveFileHash)
+      (Fixtures.projectRevision)
+      FileUploadMatchData
+  )
+    `returnsOnce` PathDependencyUpload (Fixtures.signedUrl) (UploadedPathDependencyLocator "1" archiveFileHash)
+
+expectPathDependencyFinalizeArchive :: Has MockApi sig m => m ()
+expectPathDependencyFinalizeArchive = (FinalizeLicenseScanForPathDependency [Locator "path" "1" $ Just archiveFileHash]) False `returnsOnce` ()
 
 expectNoAnalyzedPathRevisions :: Has MockApi sig m => m ()
 expectNoAnalyzedPathRevisions = GetAnalyzedPathRevisions Fixtures.projectRevision `returnsOnce` []
