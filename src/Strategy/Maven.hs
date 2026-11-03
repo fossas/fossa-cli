@@ -146,7 +146,7 @@ getDepsPlugin ::
   m (Graphing MavenDependency, GraphBreadth)
 getDepsPlugin closure =
   context "Plugin analysis" $
-    Plugin.analyze' (PomClosure.closurePoms closure) (parent $ PomClosure.closurePath closure)
+    Plugin.analyze' (PomClosure.closurePoms closure) (PomClosure.closureAnalysisRoot closure)
 
 getDepsPluginLegacy ::
   ( CandidateCommandEffs sig m
@@ -157,7 +157,7 @@ getDepsPluginLegacy ::
   m (Graphing MavenDependency, GraphBreadth)
 getDepsPluginLegacy closure =
   context "Legacy Plugin analysis" $
-    Plugin.analyzeLegacy' (PomClosure.closurePoms closure) (parent $ PomClosure.closurePath closure)
+    Plugin.analyzeLegacy' (PomClosure.closurePoms closure) (PomClosure.closureAnalysisRoot closure)
 
 getDepsTreeCmd ::
   ( Has (Lift IO) sig m
@@ -168,8 +168,8 @@ getDepsTreeCmd ::
   m (Graphing MavenDependency, GraphBreadth)
 getDepsTreeCmd closure =
   context "Dynamic analysis" $
-    DepTreeCmd.analyze . parent $
-      PomClosure.closurePath closure
+    DepTreeCmd.analyze $
+      PomClosure.closureAnalysisRoot closure
 
 getStaticAnalysis ::
   ( Has (Lift IO) sig m
