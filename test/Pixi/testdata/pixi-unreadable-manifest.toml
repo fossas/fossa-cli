@@ -1,0 +1,2 @@
+# A dependency table written as a list, which pixi rejects.
+dependencies = ["python"]

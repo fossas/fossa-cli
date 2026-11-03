@@ -1,0 +1,4 @@
+[workspace]
+name = "api"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
