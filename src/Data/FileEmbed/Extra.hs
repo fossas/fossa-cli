@@ -10,9 +10,9 @@ import Data.FileEmbed (embedFile, makeRelativeToProject)
 import Data.Foldable (traverse_)
 import Data.Maybe (isJust)
 import Language.Haskell.TH (reportWarning, runIO)
-import Language.Haskell.TH.Syntax (Exp (LitE), Lit (..), Q)
+import Language.Haskell.TH.Syntax (Exp (LitE), Lit (..), Q, qAddDependentFile)
 import Path (parseAbsFile)
-import Path.IO (doesFileExist)
+import Path.IO (doesFileExist, getFileSize)
 import System.Directory (getCurrentDirectory, listDirectory)
 import System.Environment (lookupEnv)
 import System.FilePath (isRelative, splitPath, takeDirectory)
@@ -31,7 +31,16 @@ embedFileIfExists inputPath = do
     (_, Just path) -> do
       exists <- doesFileExist path
       if exists
-        then embedFile' inputPath
+        then do
+          -- Re-embed when the file changes. Without this GHC has no dependency on
+          -- the file's content, so a test binary compiled while the artifact was
+          -- absent or mid-build silently embeds empty bytes and keeps them forever.
+          qAddDependentFile inputPath'
+          size <- getFileSize path
+          when (size == 0) $
+            reportWarning $
+              "Embedding empty file: " <> inputPath
+          embedFile' inputPath
         else do
           reportWarning $ "File " <> inputPath <> " not found"
           pure (LitE $ StringL "")

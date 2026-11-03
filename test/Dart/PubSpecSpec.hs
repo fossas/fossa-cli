@@ -121,7 +121,7 @@ spec = do
       expectDeps expectedGraphDeps graph
       expectDirect expectedGraphDeps graph
 
-    it "should not graph, if dependency is overriden, and the new source is not supported" $ do
+    it "should graph, if dependency is overriden, and the new source is a supported path" $ do
       let pubSpecContent =
             PubSpecContent
               { pubSpecDependencies = Just $ Map.fromList [(PackageName "pkg_b", GitSource $ PubSpecDepGitSource (Just "release-0.9") "https://github.com/user/pkg_b")]
@@ -130,9 +130,19 @@ spec = do
               }
 
       let graph = buildGraph pubSpecContent
+      let expectedGraphDeps =
+            [ Dependency
+                { dependencyType = UnresolvedPathType
+                , dependencyName = "./some/dir"
+                , dependencyVersion = Nothing
+                , dependencyLocations = []
+                , dependencyEnvironments = Set.singleton EnvProduction
+                , dependencyTags = Map.empty
+                }
+            ]
       expectEdges [] graph
-      expectDeps [] graph
-      expectDirect [] graph
+      expectDeps expectedGraphDeps graph
+      expectDirect expectedGraphDeps graph
 
     it "should graph, if dependency is overriden, and the new source is supported" $ do
       let pubSpecContent =
@@ -158,7 +168,7 @@ spec = do
       expectDeps expectedGraphDeps graph
       expectDirect expectedGraphDeps graph
 
-    it "should not graph dependency of path sources" $ do
+    it "should graph dependency of path sources" $ do
       let pubSpecContent =
             PubSpecContent
               { pubSpecDependencies = Just $ Map.fromList [(PackageName "pkg_sdk", PathSource $ PubSpecDepPathSource "./../some-dir/")]
@@ -166,9 +176,19 @@ spec = do
               , pubSpecDependenciesOverrides = Nothing
               }
       let graph = buildGraph pubSpecContent
+      let expectedGraphDeps =
+            [ Dependency
+                { dependencyType = UnresolvedPathType
+                , dependencyName = "./../some-dir/"
+                , dependencyVersion = Nothing
+                , dependencyLocations = []
+                , dependencyEnvironments = Set.singleton EnvProduction
+                , dependencyTags = Map.empty
+                }
+            ]
       expectEdges [] graph
-      expectDeps [] graph
-      expectDirect [] graph
+      expectDeps expectedGraphDeps graph
+      expectDirect expectedGraphDeps graph
 
     it "should not graph dependency of sdk sources" $ do
       let pubSpecContent =

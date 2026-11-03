@@ -46,9 +46,15 @@ import Strategy.Python.Errors (
   MissingPoetryLockFile (..),
   commitPoetryLockToVCS,
  )
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, toCanonicalName)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, samePathSpelling, toCanonicalName)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryMetadata (poetryMetadataLockVersion))
-import Strategy.Python.Poetry.PyProject (PyProject (..), PyProjectTool (..), allPoetryProductionDeps)
+import Strategy.Python.Poetry.PyProject (
+  PoetryDependency (..),
+  PyProject (..),
+  PyProjectPoetryPathDependency (..),
+  PyProjectTool (..),
+  allPoetryProductionDeps,
+ )
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PoetryProjectType), GraphBreadth (..))
 
 newtype PyProjectTomlFile = PyProjectTomlFile {pyProjectTomlPath :: Path Abs File} deriving (Eq, Ord, Show, Generic)
@@ -232,7 +238,16 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
       Nothing -> False
       Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
         Nothing -> False
-        Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) directDeps
+        Just _ -> any (nameEquals dep) directDeps
+
+    -- Path dependencies are keyed by verbatim path spellings on both sides
+    -- (the pyproject "path" and the lock's "directory" url), so compare them
+    -- lexically; every other dep type compares canonical package names.
+    nameEquals :: Dependency -> Dependency -> Bool
+    nameEquals dep n =
+      if dependencyType dep == UnresolvedPathType
+        then samePathSpelling (dependencyName n) (dependencyName dep)
+        else toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)
 
     pkgs :: [PoetryLockPackage]
     pkgs = poetryLockPackages poetryLock
@@ -256,10 +271,20 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
     canonicalPkgName name = PackageName . toCanonicalName $ unPackageName name
 
     mapOfDependency :: Map PackageName Dependency
-    mapOfDependency = makePackageToLockDependencyMap prodPkgNames pkgs
+    mapOfDependency = makePackageToLockDependencyMap prodPkgNames prodPathDepNames pkgs
 
     prodPkgNames :: [PackageName]
     prodPkgNames = PackageName <$> Map.keys (allPoetryProductionDeps pyProject)
+
+    -- Source paths of direct production path deps, as written in pyproject.toml.
+    -- The lock entry for such a dep is named after the package's dist name,
+    -- which can differ from the key used in pyproject, so it is matched by source path.
+    prodPathDepNames :: [Text]
+    prodPathDepNames = concatMap pathDepName (Map.elems (allPoetryProductionDeps pyProject))
+      where
+        pathDepName :: PoetryDependency -> [Text]
+        pathDepName (PyProjectPoetryPathDependencySpec spec) = [sourcePath spec]
+        pathDepName _ = []
 
     -- Pip packages are [case insensitive](https://www.python.org/dev/peps/pep-0508/#id21), but poetry.lock may use
     -- non-canonical name for reference. Try to lookup with provided name, otherwise fallback to canonical naming.

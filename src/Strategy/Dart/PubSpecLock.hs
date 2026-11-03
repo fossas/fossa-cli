@@ -32,7 +32,7 @@ import Data.Yaml (FromJSON (parseJSON), (.:), (.:?))
 import Data.Yaml qualified as Yaml
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
-  DepType (GitType, PubType),
+  DepType (GitType, PubType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (CEq),
  )
@@ -117,7 +117,7 @@ isSupported :: PubLockPackageMetadata -> Bool
 isSupported meta =
   case pubLockPackageSource meta of
     SdkSource _ -> False
-    PathSource _ -> False
+    PathSource _ -> True
     GitSource _ -> True
     HostedSource _ -> True
 
@@ -136,16 +136,21 @@ toDependency pkg meta =
     depType :: DepType
     depType = case pubLockPackageSource meta of
       GitSource{} -> GitType
+      PathSource{} -> UnresolvedPathType
       _ -> PubType
 
     depName :: Text
     depName = case pubLockPackageSource meta of
       GitSource (PubLockPackageGitSource gitUrl _) -> gitUrl
+      PathSource (PubLockPackagePathSource p) -> p
       _ -> unPackageName pkg
 
     depVersion :: Maybe VerConstraint
     depVersion = case pubLockPackageSource meta of
       GitSource (PubLockPackageGitSource _ ref) -> Just $ CEq ref
+      -- pubspec.lock records a version for path-sourced packages too, so emit it
+      -- (Poetry-lock convention: emit a version whenever the lockfile provides one).
+      PathSource{} -> CEq <$> pubLockPackageVersion meta
       _ -> CEq <$> pubLockPackageVersion meta
 
     depLocation :: [Text]
@@ -177,7 +182,7 @@ logIgnoredPackages lockContent = for_ notSupportedDependenciesMsgs (logDebug . p
     notSupportedDependenciesMsgs = map (<> " : ignored in analyses. Dependency's source is not supported!") notSupportedPackages
 
     notSupportedPackages :: [Text]
-    notSupportedPackages = map (unPackageName . fst) (Map.toList $ Map.filter isSupported $ packages lockContent)
+    notSupportedPackages = map (unPackageName . fst) (Map.toList $ Map.filter (not . isSupported) $ packages lockContent)
 
 analyzePubLockFile ::
   (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) =>

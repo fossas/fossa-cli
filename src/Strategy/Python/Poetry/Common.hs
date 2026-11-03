@@ -2,6 +2,7 @@ module Strategy.Python.Poetry.Common (
   getPoetryBuildBackend,
   makePackageToLockDependencyMap,
   pyProjectDeps,
+  samePathSpelling,
   logIgnoredDeps,
   toCanonicalName,
 
@@ -15,10 +16,10 @@ import Data.Map (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
-import Data.Text (Text, replace, toLower)
+import Data.Text (Text, dropEnd, isSuffixOf, replace, stripPrefix, toLower)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvOther, EnvProduction, EnvTesting),
-  DepType (GitType, PipType, URLType),
+  DepType (GitType, PipType, URLType, UnresolvedPathType),
   Dependency (..),
   VerConstraint (
     CEq
@@ -50,7 +51,7 @@ getPoetryBuildBackend project = buildBackend =<< pyprojectBuildSystem project
 
 -- | Supported pyproject dependencies.
 supportedPyProjectDep :: PoetryDependency -> Bool
-supportedPyProjectDep (PyProjectPoetryPathDependencySpec _) = False
+supportedPyProjectDep (PyProjectPoetryPathDependencySpec _) = True
 supportedPyProjectDep _ = True
 
 -- | Logs all ignored dependencies for debugger.
@@ -177,6 +178,7 @@ poetrytoDependency depEnvs name deps =
     depType = case deps of
       PyProjectPoetryGitDependencySpec _ -> GitType
       PyProjectPoetryUrlDependencySpec _ -> URLType
+      PyProjectPoetryPathDependencySpec _ -> UnresolvedPathType
       _ -> PipType
 
     depName = case deps of
@@ -219,9 +221,41 @@ poetrytoDependency depEnvs name deps =
 toCanonicalName :: Text -> Text
 toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 
+-- | Compare two path spellings for equality, ignoring lexical noise that does not
+-- change the target directory: a leading "./", repeated slashes, and trailing
+-- slashes. This is lexical normalization only: these functions have no baseDir,
+-- so we deliberately do not attempt a filesystem-resolved comparison.
+samePathSpelling :: Text -> Text -> Bool
+samePathSpelling a b = normalizePath a == normalizePath b
+
+-- | Normalize a path for 'samePathSpelling': drop a leading "./", collapse repeated
+-- slashes into one, and drop a trailing "/".
+normalizePath :: Text -> Text
+normalizePath = stripTrailingSlash . collapseSlashes . stripLeadingDot
+
+-- Drop a leading "./" so that "..\/lib" and "./..\/lib" compare equal.
+stripLeadingDot :: Text -> Text
+stripLeadingDot t = fromMaybe t (stripPrefix "./" t)
+
+-- Collapse runs of "/" into a single "/" so that "a//b" and "a/b" compare equal.
+collapseSlashes :: Text -> Text
+collapseSlashes t =
+  let t' = replace "//" "/" t
+   in if t' == t then t else collapseSlashes t'
+
+-- Drop a single trailing '/' (but not the bare "/") so that "..\/lib/" and "..\/lib" compare equal.
+stripTrailingSlash :: Text -> Text
+stripTrailingSlash p = if isSuffixOf "/" p && dropEnd 1 p /= mempty then dropEnd 1 p else p
+
 -- | Maps poetry lock package to map of package name and associated dependency.
-makePackageToLockDependencyMap :: [PackageName] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
-makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanonicalPackageName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
+--
+-- 'prodDirectPaths' are the source paths of production path dependencies as
+-- written in pyproject.toml. A lock package with a "directory" source whose url
+-- matches one of them is treated as a direct production dependency too: its lock
+-- name is the package's dist name, which can differ from the key the user wrote
+-- for the path dependency (e.g. @my-lib-alias = {path = "..\/lib"}@).
+makePackageToLockDependencyMap :: [PackageName] -> [Text] -> [PoetryLockPackage] -> Map.Map PackageName Dependency
+makePackageToLockDependencyMap prodPkgs prodDirectPaths pkgs = Map.fromList $ (\x -> (lockCanonicalPackageName x, toDependency x)) <$> (filter supportedPoetryLockDep pkgs)
   where
     canonicalPkgName :: PackageName -> PackageName
     canonicalPkgName = PackageName . toCanonicalName . unPackageName
@@ -233,7 +267,22 @@ makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanoni
     canonicalProdPkgNames = Set.fromList $ map canonicalPkgName prodPkgs
 
     isProductionDirectDep :: PoetryLockPackage -> Bool
-    isProductionDirectDep pkg = lockCanonicalPackageName pkg `Set.member` canonicalProdPkgNames
+    isProductionDirectDep pkg =
+      lockCanonicalPackageName pkg `Set.member` canonicalProdPkgNames
+        || isDirectorySourceOfDirectPathDep pkg
+
+    -- Matches a "directory"-sourced lock package against the source path of a
+    -- direct pyproject path dependency. Divergent-but-equivalent spellings (a
+    -- leading "./", repeated or trailing slashes) compare equal via
+    -- 'samePathSpelling', since users commonly write @path = "..\/lib/"@ while poetry stores the url as @"..\/lib"@.
+    isDirectorySourceOfDirectPathDep :: PoetryLockPackage -> Bool
+    isDirectorySourceOfDirectPathDep pkg =
+      case (poetryLockPackageSource pkg, prodDirectPaths) of
+        (Just src, paths)
+          | poetryLockPackageSourceType src == "directory" -> any (samePathSpelling url) paths
+          where
+            url = poetryLockPackageSourceUrl src
+        _ -> False
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =
@@ -258,6 +307,7 @@ makePackageToLockDependencyMap prodPkgs pkgs = Map.fromList $ (\x -> (lockCanoni
     toDepType (Just lockPkgSrc) = case poetryLockPackageSourceType lockPkgSrc of
       "git" -> GitType
       "url" -> URLType
+      "directory" -> UnresolvedPathType
       _ -> PipType
 
     toDepLocs :: PoetryLockPackage -> [Text]

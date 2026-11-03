@@ -143,13 +143,62 @@ spec = do
       Map.null (packages sdkSources) `shouldBe` False
       buildGraph sdkSources `shouldBe` Graphing.empty
 
-    it "should not create graphing for packages sourced from file" $ do
+    it "should create graphing for packages sourced from a path" $ do
       let fileSources =
             PubLockContent $
               Map.filterWithKey (\x _ -> (unPackageName x) == "pkg_file") (packages expectedLockFile)
 
       Map.null (packages fileSources) `shouldBe` False
-      buildGraph fileSources `shouldBe` Graphing.empty
+      let expectedDeps =
+            [ Dependency
+                { dependencyType = UnresolvedPathType
+                , dependencyName = "/Users/dir/pkg_dir"
+                , dependencyVersion = Just $ CEq "1.4"
+                , dependencyLocations = []
+                , dependencyEnvironments = mempty
+                , dependencyTags = Map.empty
+                }
+            ]
+      -- pkg_file is a deep (non-direct) dependency in the lock file.
+      let graph = buildGraph fileSources
+      expectDirect [] graph
+      expectDeps expectedDeps graph
+
+    it "should create a path-source dependency with its lockfile version" $ do
+      let pkg =
+            PubLockPackageMetadata
+              { pubLockPackageIsDirect = False
+              , pubLockPackageSource = PathSource $ PubLockPackagePathSource "/Users/dir/pkg_dir"
+              , pubLockPackageVersion = Just "1.4"
+              , pubLockPackageEnvironment = []
+              }
+      toDependency (PackageName "pkg_file") pkg
+        `shouldBe` Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "/Users/dir/pkg_dir"
+          , dependencyVersion = Just $ CEq "1.4"
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
+
+    it "should create a path-source dependency with no version when the lockfile omits one" $ do
+      let pkg =
+            PubLockPackageMetadata
+              { pubLockPackageIsDirect = False
+              , pubLockPackageSource = PathSource $ PubLockPackagePathSource "/Users/dir/pkg_dir"
+              , pubLockPackageVersion = Nothing
+              , pubLockPackageEnvironment = []
+              }
+      toDependency (PackageName "pkg_file") pkg
+        `shouldBe` Dependency
+          { dependencyType = UnresolvedPathType
+          , dependencyName = "/Users/dir/pkg_dir"
+          , dependencyVersion = Nothing
+          , dependencyLocations = []
+          , dependencyEnvironments = mempty
+          , dependencyTags = Map.empty
+          }
 
     it "should graph direct and deep dependencies" $ do
       let lockContent =
