@@ -21,6 +21,7 @@ import Control.Carrier.StickyLogger (logSticky)
 import Control.Effect.Diagnostics (
   Diagnostics,
   context,
+  errorBoundary,
   fatalText,
   fromEither,
   recover,
@@ -45,8 +46,9 @@ import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepType (..), Dependency (..), VerConstraint (CEq))
+import Diag.Result (Result (Failure, Success), renderFailureWithoutWarnings)
 import Effect.Exec (Exec)
-import Effect.Logger (Logger, logInfo, pretty, redText)
+import Effect.Logger (Logger, logInfo, logWarn, pretty, redText)
 import Effect.ReadFS (
   Has,
   ReadFS,
@@ -234,26 +236,33 @@ scanAndUpload pathFilters uploadKind projectRevision (rawDep, resolvedPath, vers
     -- scanned, so emit a note and keep the dependency raw instead of failing
     -- the whole enrichment pass.
     ResolvedFile file -> do
-      maybeLicenseUnits <- recover $ do
+      maybeLicenseUnits <- errorBoundary $ do
         logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
         scannedLicenseUnits <- scanArchive (parent file) pathFilters uploadKind (ScannableArchive file)
         pure $ LicenseSourceUnit rawPath CliLicenseScanned scannedLicenseUnits
       case maybeLicenseUnits of
-        Nothing -> do
+        Failure _ errGroup -> do
           logInfo $
             redText "NOTE: "
               <> "not license scanning single-file path dependency '"
               <> pretty rawPath
-              <> "'; not a supported archive format"
+              <> "'; could not be license scanned, reporting without scan results."
+          logInfo (renderFailureWithoutWarnings errGroup "An issue occurred")
           pure (rawDep, Nothing)
-        Just licenseUnits -> (rawDep,) <$> doUpload licenseUnits
+        Success _ licenseUnits -> (rawDep,) <$> doUpload licenseUnits
     ResolvedDir dir -> do
       maybeLicenseUnits <- recover $ do
         logSticky $ "License Scanning '" <> rawPath <> "' at '" <> toText resolvedPath <> "'"
         scannedLicenseUnits <- scanDirectory Nothing mempty pathFilters uploadKind dir
         pure $ LicenseSourceUnit rawPath CliLicenseScanned scannedLicenseUnits
       case maybeLicenseUnits of
-        Nothing -> pure (rawDep, Nothing)
+        Nothing -> do
+          logWarn $
+            redText "NOTE: "
+              <> "not license scanning path dependency directory '"
+              <> pretty rawPath
+              <> "'; could not be license scanned, reporting without scan results."
+          pure (rawDep, Nothing)
         Just licenseUnits -> (rawDep,) <$> doUpload licenseUnits
   where
     rawPath :: Text

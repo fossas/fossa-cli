@@ -6,7 +6,8 @@ module Python.PoetrySpec (
 
 import Data.Map qualified as Map
 import Data.Set qualified as Set
-import Data.Text (Text, splitOn)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
 import GraphUtil (expectDeps', expectDirect', expectEdges')
 import Graphing (Graphing)
@@ -134,6 +135,12 @@ spec = do
       it "should match an aliased path dep (TOML key != lock package name) by its source path" $
         graphFromPyProjectAndLockFile aliasedPathDepPyProject pathDepV2Lock `shouldBe` pathDepExpectedGraph
 
+      -- pyproject spells the path with a trailing slash and a leading "./"
+      -- while poetry.lock stores the url bare: divergent-but-equivalent spellings
+      -- must still yield a direct, production-environment lock node.
+      it "should treat divergent-but-equivalent path spellings as a direct production dependency" $
+        graphFromPyProjectAndLockFile trailingSlashPathDepPyProject pathDepV2Lock `shouldBe` pathDepExpectedGraph
+
       it "should keep the development environment when the aliased path dep is a dev-group dependency" $
         envOfPathNodes (graphFromPyProjectAndLockFile aliasedDevPathDepPyProject pathDepV2Lock)
           `shouldBe` [Set.singleton EnvDevelopment]
@@ -194,6 +201,10 @@ spec = do
 pathDepSpec :: PoetryDependency
 pathDepSpec = PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "../lib"}
 
+-- The same path dependency, spelled with a leading "./" and a trailing slash.
+trailingSlashPathDepSpec :: PoetryDependency
+trailingSlashPathDepSpec = PyProjectPoetryPathDependencySpec $ PyProjectPoetryPathDependency{sourcePath = "./../lib/"}
+
 pathDepPyProject :: PyProject
 pathDepPyProject =
   PyProject
@@ -206,6 +217,11 @@ pathDepPyProject =
             , pyprojectPoetry = Just $ PyProjectPoetry Nothing Nothing Nothing (Map.fromList [("lib", pathDepSpec)]) mempty Nothing
             }
     }
+
+-- 'pathDepPyProject' with the path dependency spelled "./../lib/" instead of "../lib".
+trailingSlashPathDepPyProject :: PyProject
+trailingSlashPathDepPyProject =
+  pathDepPyProject{pyprojectTool = Just $ PyProjectTool (Just $ PyProjectPoetry Nothing Nothing Nothing (Map.fromList [("lib", trailingSlashPathDepSpec)]) mempty Nothing) Nothing}
 
 pathDepLockPackage :: PoetryLockPackage
 pathDepLockPackage =
@@ -468,11 +484,10 @@ watchdog :: Dependency
 watchdog = mkPipDevDep "watchdog@4.0.0"
 
 mkDep :: DepType -> Text -> Maybe DepEnvironment -> Dependency
-mkDep dt nameAtVersion env = do
-  let nameAndVersionSplit = splitOn "@" nameAtVersion
-      name = head nameAndVersionSplit
-      version = last nameAndVersionSplit
-  Dependency
+mkDep dt nameAtVersion env =
+  let (name, versionAt) = Text.breakOn "@" nameAtVersion
+      version = Text.drop 1 versionAt
+   in Dependency
     dt
     name
     (CEq <$> (Just version))

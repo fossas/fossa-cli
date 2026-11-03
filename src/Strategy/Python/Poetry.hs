@@ -46,7 +46,7 @@ import Strategy.Python.Errors (
   MissingPoetryLockFile (..),
   commitPoetryLockToVCS,
  )
-import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, toCanonicalName)
+import Strategy.Python.Poetry.Common (getPoetryBuildBackend, logIgnoredDeps, makePackageToLockDependencyMap, pyProjectDeps, samePathSpelling, toCanonicalName)
 import Strategy.Python.Poetry.PoetryLock (PackageName (..), PoetryLock (..), PoetryLockPackage (..), PoetryMetadata (poetryMetadataLockVersion))
 import Strategy.Python.Poetry.PyProject (
   PoetryDependency (..),
@@ -238,7 +238,16 @@ graphFromPyProjectAndLockFile pyProject poetryLock = graph
       Nothing -> False
       Just (PyProjectTool{pyprojectPoetry}) -> case pyprojectPoetry of
         Nothing -> False
-        Just _ -> any (\n -> toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)) directDeps
+        Just _ -> any (nameEquals dep) directDeps
+
+    -- Path dependencies are keyed by verbatim path spellings on both sides
+    -- (the pyproject "path" and the lock's "directory" url), so compare them
+    -- lexically; every other dep type compares canonical package names.
+    nameEquals :: Dependency -> Dependency -> Bool
+    nameEquals dep n =
+      if dependencyType dep == UnresolvedPathType
+        then samePathSpelling (dependencyName n) (dependencyName dep)
+        else toCanonicalName (dependencyName n) == toCanonicalName (dependencyName dep)
 
     pkgs :: [PoetryLockPackage]
     pkgs = poetryLockPackages poetryLock

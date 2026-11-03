@@ -2,6 +2,7 @@ module Strategy.Python.Poetry.Common (
   getPoetryBuildBackend,
   makePackageToLockDependencyMap,
   pyProjectDeps,
+  samePathSpelling,
   logIgnoredDeps,
   toCanonicalName,
 
@@ -220,6 +221,32 @@ poetrytoDependency depEnvs name deps =
 toCanonicalName :: Text -> Text
 toCanonicalName t = toLower $ replace "_" "-" (replace "." "-" t)
 
+-- | Compare two path spellings for equality, ignoring lexical noise that does not
+-- change the target directory: a leading "./", repeated slashes, and trailing
+-- slashes. This is lexical normalization only: these functions have no baseDir,
+-- so we deliberately do not attempt a filesystem-resolved comparison.
+samePathSpelling :: Text -> Text -> Bool
+samePathSpelling a b = normalizePath a == normalizePath b
+
+-- | Normalize a path for 'samePathSpelling': drop a leading "./", collapse repeated
+-- slashes into one, and drop a trailing "/".
+normalizePath :: Text -> Text
+normalizePath = stripTrailingSlash . collapseSlashes . stripLeadingDot
+
+-- Drop a leading "./" so that "..\/lib" and "./..\/lib" compare equal.
+stripLeadingDot :: Text -> Text
+stripLeadingDot t = fromMaybe t (stripPrefix "./" t)
+
+-- Collapse runs of "/" into a single "/" so that "a//b" and "a/b" compare equal.
+collapseSlashes :: Text -> Text
+collapseSlashes t =
+  let t' = replace "//" "/" t
+   in if t' == t then t else collapseSlashes t'
+
+-- Drop a single trailing '/' (but not the bare "/") so that "..\/lib/" and "..\/lib" compare equal.
+stripTrailingSlash :: Text -> Text
+stripTrailingSlash p = if isSuffixOf "/" p && dropEnd 1 p /= mempty then dropEnd 1 p else p
+
 -- | Maps poetry lock package to map of package name and associated dependency.
 --
 -- 'prodDirectPaths' are the source paths of production path dependencies as
@@ -245,42 +272,17 @@ makePackageToLockDependencyMap prodPkgs prodDirectPaths pkgs = Map.fromList $ (\
         || isDirectorySourceOfDirectPathDep pkg
 
     -- Matches a "directory"-sourced lock package against the source path of a
-    -- direct pyproject path dependency. Trailing slashes are ignored, since users
-    -- commonly write @path = "..\/lib/"@ while poetry stores the url as @"..\/lib"@.
+    -- direct pyproject path dependency. Divergent-but-equivalent spellings (a
+    -- leading "./", repeated or trailing slashes) compare equal via
+    -- 'samePathSpelling', since users commonly write @path = "..\/lib/"@ while poetry stores the url as @"..\/lib"@.
     isDirectorySourceOfDirectPathDep :: PoetryLockPackage -> Bool
     isDirectorySourceOfDirectPathDep pkg =
       case (poetryLockPackageSource pkg, prodDirectPaths) of
         (Just src, paths)
-          | poetryLockPackageSourceType src == "directory" -> any (samePath url) paths
+          | poetryLockPackageSourceType src == "directory" -> any (samePathSpelling url) paths
           where
-            url = normalizePath $ poetryLockPackageSourceUrl src
+            url = poetryLockPackageSourceUrl src
         _ -> False
-
-    -- Compare two path spellings for equality, ignoring lexical noise that does not
-    -- change the target directory: a leading "./", repeated slashes, and trailing
-    -- slashes. This is lexical normalization only: these functions have no baseDir,
-    -- so we deliberately do not attempt a filesystem-resolved comparison.
-    samePath :: Text -> Text -> Bool
-    samePath a b = normalizePath a == normalizePath b
-
-    -- Normalize a path for comparison: drop a leading "./", collapse repeated
-    -- slashes into one, and drop a trailing "/".
-    normalizePath :: Text -> Text
-    normalizePath = stripTrailingSlash . collapseSlashes . stripLeadingDot
-
-    -- Drop a leading "./" so that "..\/lib" and "./..\/lib" compare equal.
-    stripLeadingDot :: Text -> Text
-    stripLeadingDot t = fromMaybe t (stripPrefix "./" t)
-
-    -- Collapse runs of "/" into a single "/" so that "a//b" and "a/b" compare equal.
-    collapseSlashes :: Text -> Text
-    collapseSlashes t =
-      let t' = replace "//" "/" t
-       in if t' == t then t else collapseSlashes t'
-
-    -- Drop a single trailing '/' (but not the bare "/") so that "..\/lib/" and "..\/lib" compare equal.
-    stripTrailingSlash :: Text -> Text
-    stripTrailingSlash p = if isSuffixOf "/" p && dropEnd 1 p /= mempty then dropEnd 1 p else p
 
     toDependency :: PoetryLockPackage -> Dependency
     toDependency pkg =
