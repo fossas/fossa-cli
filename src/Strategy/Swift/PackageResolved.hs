@@ -3,6 +3,7 @@ module Strategy.Swift.PackageResolved (
   SwiftResolvedPackage (..),
   resolvedDependenciesOf,
   parsePackageResolved,
+  analyzePackageResolved,
 ) where
 
 import Control.Carrier.Diagnostics (Diagnostics, Has, context, warn)
@@ -24,6 +25,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import DepTypes (DepType (GitType), Dependency (..), VerConstraint (CEq))
 import Effect.ReadFS (ReadFS, readContentsJson)
+import Graphing (Graphing, directs)
 import Path (Abs, File, Path)
 
 parsePackageResolved :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m SwiftPackageResolvedFile
@@ -123,6 +125,11 @@ instance FromJSON SwiftResolvedPackage where
       <*> (obj .:? "state" |?> "branch")
       <*> (obj .:? "state" |?> "revision")
       <*> (obj .:? "state" |?> "version")
+
+-- | Reports every pin as a direct dependency. Package.resolved alone cannot tell which
+-- packages the manifest declares, so direct and deep dependencies are not distinguished.
+analyzePackageResolved :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m (Graphing Dependency)
+analyzePackageResolved path = directs . resolvedDependenciesOf <$> parsePackageResolved path
 
 -- Note, Package.resolved does not include path dependencies.
 resolvedDependenciesOf :: SwiftPackageResolvedFile -> [Dependency]

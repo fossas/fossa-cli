@@ -12,13 +12,15 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 | Resolve the package graph with `swift package show-dependencies`         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                          | :x:                |
 | Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
 | Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:                | :x:                          | :white_check_mark: |
+| Parse dependencies from `Package.resolved` only                          | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
 | Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
 | Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:                | :x:                          | :white_check_mark: |
 
 For a Swift package (a directory with a `Package.swift`), FOSSA CLI first runs
 `swift package show-dependencies --format json` in the package directory and builds the dependency graph from its output.
 If the command fails (for example because `swift` is not installed, or the dependencies cannot be fetched), FOSSA CLI falls back to parsing `Package.swift` and `Package.resolved` as described below, and reports the failure as a warning.
-With `--static-only-analysis`, or in `--strict` mode, only the respective parsing strategy is used.
+If `Package.swift` cannot be parsed either, FOSSA CLI falls back once more to `Package.resolved` alone: every pinned package is then reported as a direct dependency, because the lockfile does not record which packages the manifest declares directly.
+With `--static-only-analysis` the command is never run, and in `--strict` mode no fallback is used.
 
 Note that `swift package show-dependencies` resolves the package like `swift build` does: it may fetch dependencies over the network into `.build/checkouts` and create or update `Package.resolved`.
 It runs fastest after a build, when the checkouts already exist.
@@ -97,6 +99,8 @@ If `Package.resolved` is discovered, the following transitive dependencies will 
 - https://github.com/apple/swift-log.git with version 1.4.2
 
 If `Package.resolved` is not discovered, only direct dependencies will be reported. 
+
+If `Package.swift` cannot be parsed but `Package.resolved` is discovered, all of the above will be reported as direct dependencies.
 
 ### Xcode Project and `Package.resolved`
 
