@@ -655,6 +655,7 @@ fixtureStrategyConfig =
     , resolvePathDependencies = False
     , useGitBackedCargoLocators = ANZ.UseGitBackedCargoLocators True
     , enableGoBinaryAnalysis = False
+    , uvConfig = Nothing
     }
 
 vendoredDepsOptions :: VendoredDependencyOptions

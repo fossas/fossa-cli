@@ -12,13 +12,15 @@ module Strategy.Python.Uv (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
+import App.Fossa.Config.Analyze (StrategyConfig (uvConfig))
+import App.Fossa.Config.ConfigFile (UvConfig (..))
 import Control.Effect.Diagnostics (
   Diagnostics,
   Has,
   context,
   run,
  )
-import Control.Effect.Reader (Reader)
+import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
 import Data.Foldable (fold, for_, traverse_)
 import Data.Map.Strict (Map)
@@ -54,9 +56,12 @@ import Graphing (
   getRootsOf,
   gmap,
   hasPredecessors,
+  induce,
   promoteToDirect,
+  pruneUnreachable,
   shrink,
   shrinkRoots,
+  vertexList,
  )
 import Path (Abs, Dir, File, Path, parent)
 import Toml.Schema qualified
@@ -103,13 +108,15 @@ instance AnalyzeProject UvProject where
 analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
+  , Has (Reader StrategyConfig) sig m
   ) =>
   UvProject ->
   m DependencyResults
 analyze project = context "uv" $ do
+  cfg <- asks uvConfig
   lock <- context "Getting dependencies from uv.lock" $ readContentsToml (uvLockfile project)
 
-  let graph = buildGraph lock
+  let graph = buildGraph cfg lock
   pure $
     DependencyResults
       { dependencyGraph = graph
@@ -117,9 +124,8 @@ analyze project = context "uv" $ do
       , dependencyManifestFiles = [uvLockfile project]
       }
 
-buildGraph :: UvLock -> Graphing Dependency
-buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ do
-  traverse_ mkEdges packages
+buildGraph :: Maybe UvConfig -> UvLock -> Graphing Dependency
+buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedGroups
   where
     packages = uvlockPackages lock
     packagesByName = Map.fromListWith (<>) $ map (\p -> (uvlockPackageName p, [p])) packages
@@ -136,15 +142,28 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
         [uvlockPackageName p | p <- uvlockPackages lock, isWorkspacePackage (uvlockPackageSource p)]
     removeWorkspacePackages = shrink (\dep -> not $ dependencyName dep `Set.member` workspaceNames)
 
+    productionGroups = maybe mempty (Set.map normalizeGroupName . uvProductionGroups) cfg
+    excludedGroups = maybe mempty (Set.map normalizeGroupName . uvExcludeGroups) cfg
+
+    -- A package's dependency groups, by name, without the excluded ones.
+    groups :: UvLockPackage -> Map Text [UvLockPackageDependency]
+    groups pkg = Map.withoutKeys (uvlockPackageDevDependencies pkg) excludedGroups
+
+    -- Every package's edges, leaving out the dependency groups named in `excluded`.
+    graphOf :: Set Text -> Graphing UvLockPackage
+    graphOf excluded = run . evalGrapher $ traverse_ (mkEdges excluded) packages
+
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
-    mkEdges :: Has (Grapher UvLockPackage) sig m => UvLockPackage -> m ()
-    mkEdges fromPkg@UvLockPackage{..} =
-      for_ (uvlockPackageDependencies <> uvlockPackageDevDependencies <> fold uvlockPackageOptionalDependencies) $
-        traverse_ (edge fromPkg) . resolveDependency
+    -- A group or extra can install the package itself, e.g. `dev = ["my-project[test]"]`. That
+    -- edge is skipped, since it would leave the project with a predecessor and no longer a root.
+    mkEdges :: Has (Grapher UvLockPackage) sig m => Set Text -> UvLockPackage -> m ()
+    mkEdges excluded fromPkg@UvLockPackage{..} =
+      for_ (uvlockPackageDependencies <> fold (Map.withoutKeys uvlockPackageDevDependencies excluded) <> fold uvlockPackageOptionalDependencies) $
+        traverse_ (edge fromPkg) . filter (/= fromPkg) . resolveDependency
 
     -- The directList currently contains the uv package being scanned. This package lists the
-    -- prod dependencies (under the dependencies field) and the dev dependencies (under the dev-dependencies field)
+    -- prod dependencies (under the dependencies field) and its dependency groups (under the dev-dependencies field)
     -- Use this to set the correct environment on each of these packages.
     markRootEnvs :: Graphing UvLockPackage -> Graphing Dependency
     markRootEnvs gr = gmap (applyLabels) gr
@@ -163,18 +182,27 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
             referencedBy :: [UvLockPackageDependency] -> DepEnvironment -> Maybe DepEnvironment
             referencedBy deps env = if any (`dependencyMatches` pkg) deps then Just env else Nothing
 
-        prodDeps = foldMap uvlockPackageDependencies $ directList gr
-        -- Legacy format has dev dependencies under the dev-dependencies field
-        -- New format has dev dependencies under optional-dependencies.dev
+        prodDeps =
+          foldMap uvlockPackageDependencies (directList gr)
+            <> foldMap (fold . (`Map.restrictKeys` productionGroups) . groups) (directList gr)
+        -- Every other dependency group is dev. Older projects list dev dependencies as an extra,
+        -- under optional-dependencies.dev.
         devDeps =
-          foldMap uvlockPackageDevDependencies (directList gr)
+          foldMap (fold . (`Map.withoutKeys` productionGroups) . groups) (directList gr)
             <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
 
     -- Locate the root nodes of the graph and mark these as direct dependencies
     -- The root node will be the uv package being scanned, not its dependencies, so we will need to later
     -- call `shrinkRoots` to remove this package and promote its dependencies to direct dependencies
+    -- Roots are found with every group's edges drawn, since an excluded group's packages lose their edge
+    -- from the project but aren't roots. Packages that only an excluded group reaches are dropped.
     markDirectDeps :: Graphing UvLockPackage -> Graphing UvLockPackage
-    markDirectDeps gr = promoteToDirect (not . hasPredecessors gr) gr
+    markDirectDeps gr = induce (`Set.notMember` excludedOnly) (promoteToDirect isRoot gr)
+      where
+        withEveryGroup = graphOf mempty
+        isRoot = not . hasPredecessors withEveryGroup
+        reachable = Set.fromList . vertexList . pruneUnreachable . promoteToDirect isRoot
+        excludedOnly = reachable withEveryGroup `Set.difference` reachable gr
 
     toDependency :: UvLockPackage -> Set DepEnvironment -> Dependency
     toDependency UvLockPackage{..} envs =
@@ -277,7 +305,8 @@ data UvLockPackage = UvLockPackage
   , uvlockPackageVersion :: Maybe Text
   , uvlockPackageSource :: UvLockPackageSource
   , uvlockPackageDependencies :: [UvLockPackageDependency]
-  , uvlockPackageDevDependencies :: [UvLockPackageDependency]
+  , uvlockPackageDevDependencies :: Map Text [UvLockPackageDependency]
+  -- ^ Every dependency group (https://peps.python.org/pep-0735/) by name, from `[package.dev-dependencies]`
   , uvlockPackageOptionalDependencies :: Map Text [UvLockPackageDependency]
   }
   deriving (Eq, Ord, Show)
@@ -290,7 +319,7 @@ instance Toml.Schema.FromValue UvLockPackage where
         <*> Toml.Schema.optKey "version"
         <*> Toml.Schema.reqKey "source"
         <*> (fromMaybe [] <$> Toml.Schema.optKey "dependencies")
-        <*> (maybe [] uvlockPackageDevDependenciesInt <$> Toml.Schema.optKey "dev-dependencies")
+        <*> (fromMaybe mempty <$> Toml.Schema.optKey "dev-dependencies")
         <*> Toml.Schema.pickKey
           [ Toml.Schema.Key
               "optional-dependencies"
@@ -350,11 +379,10 @@ isWorkspacePackage (SourceEditable _) = True
 isWorkspacePackage (SourceVirtual _) = True
 isWorkspacePackage _ = False
 
-newtype UvLockPackageDevDependencies = UvLockPackageDevDependencies
-  {uvlockPackageDevDependenciesInt :: [UvLockPackageDependency]}
-  deriving (Eq, Ord, Show)
-
-instance Toml.Schema.FromValue UvLockPackageDevDependencies where
-  fromValue =
-    Toml.Schema.parseTableFromValue $
-      UvLockPackageDevDependencies . fromMaybe [] <$> Toml.Schema.optKey "dev"
+-- uv writes dependency group names to uv.lock normalized as PEP 503 describes: lowercased, with each
+-- run of '-', '_', and '.' replaced by a single '-'. https://peps.python.org/pep-0503/#normalized-names
+normalizeGroupName :: Text -> Text
+normalizeGroupName = Text.toLower . foldMap collapse . Text.groupBy (\a b -> isSeparator a == isSeparator b)
+  where
+    isSeparator = (`elem` ['-', '_', '.'])
+    collapse chunk = if Text.any isSeparator chunk then "-" else chunk

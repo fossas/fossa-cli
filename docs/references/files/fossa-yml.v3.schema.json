@@ -586,6 +586,26 @@
                     ]
                 }
             ]
+        },
+        "uv": {
+            "type": "object",
+            "description": "FOSSA reports the packages in every uv dependency group as development dependencies. These settings change that for the groups you list.",
+            "properties": {
+                "production-groups": {
+                    "type": "array",
+                    "description": "The dependency groups to report as production dependencies.",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "exclude-groups": {
+                    "type": "array",
+                    "description": "The dependency groups to leave out of the results, even with --include-unused-deps. A group in both lists is left out.",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         }
     },
     "required": [

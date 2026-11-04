@@ -1,0 +1,50 @@
+version = 1
+revision = 5
+requires-python = ">=3.13"
+
+[[package]]
+name = "idna"
+version = "3.20"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "imagesize"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "iniconfig"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "selfref"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "idna" },
+]
+
+[package.optional-dependencies]
+test = [
+    { name = "iniconfig" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "selfref", extra = ["test"] },
+]
+docs-build = [
+    { name = "imagesize" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "idna" },
+    { name = "iniconfig", marker = "extra == 'test'" },
+]
+provides-extras = ["test"]
+
+[package.metadata.requires-dev]
+dev = [{ name = "selfref", extras = ["test"] }]
+docs-build = [{ name = "imagesize" }]
