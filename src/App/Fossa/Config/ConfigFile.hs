@@ -18,6 +18,7 @@ module App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   VendoredDependencyConfigs (..),
   MavenScopeConfig (..),
+  UvConfig (..),
   ReachabilityConfigFile (..),
   ConfigReleaseGroup (..),
   ConfigReleaseGroupProject (..),
@@ -67,6 +68,7 @@ import Effect.Logger (
  )
 import Effect.ReadFS (ReadFS, doesFileExist, getCurrentDir, readContentsYaml)
 import Errata (Errata (..))
+import GHC.Generics (Generic)
 import Path (
   Abs,
   Dir,
@@ -201,6 +203,7 @@ data ConfigFile = ConfigFile
   , configPaths :: Maybe ConfigPaths
   , configExperimental :: Maybe ExperimentalConfigs
   , configMavenScope :: Maybe MavenScopeConfig
+  , configUv :: Maybe UvConfig
   , configVendoredDependencies :: Maybe VendoredDependencyConfigs
   , configTelemetry :: Maybe ConfigTelemetry
   , configCustomLicenseSearch :: Maybe [ConfigGrepEntry]
@@ -291,6 +294,14 @@ newtype ExperimentalGradleConfigs = ExperimentalGradleConfigs
 data MavenScopeConfig = MavenScopeOnlyConfig (Set Text) | MavenScopeExcludeConfig (Set Text)
   deriving (Eq, Ord, Show)
 
+data UvConfig = UvConfig
+  { uvProductionGroups :: Set Text
+  , uvExcludeGroups :: Set Text
+  }
+  deriving (Eq, Ord, Show, Generic)
+
+instance ToJSON UvConfig
+
 instance FromJSON (Path Abs File -> ConfigFile) where
   parseJSON = withObject "ConfigFile" $ \obj ->
     ConfigFile
@@ -304,6 +315,7 @@ instance FromJSON (Path Abs File -> ConfigFile) where
       <*> obj .:? "paths"
       <*> obj .:? "experimental"
       <*> obj .:? "maven"
+      <*> obj .:? "uv"
       <*> obj .:? "vendoredDependencies"
       <*> obj .:? "telemetry"
       <*> obj .:? "customLicenseSearch"
@@ -369,6 +381,12 @@ instance FromJSON MavenScopeConfig where
   parseJSON = withObject "MavenScopeConfig" $ \obj ->
     MavenScopeOnlyConfig . Set.fromList <$> (obj .: "scope-only" .!= [])
       <|> MavenScopeExcludeConfig . Set.fromList <$> (obj .:? "scope-exclude" .!= [])
+
+instance FromJSON UvConfig where
+  parseJSON = withObject "UvConfig" $ \obj ->
+    UvConfig
+      <$> (obj .:? "production-groups" .!= mempty)
+      <*> (obj .:? "exclude-groups" .!= mempty)
 
 instance FromJSON ConfigTelemetry where
   parseJSON = withObject "ConfigTelemetry" $ \obj ->

@@ -17,6 +17,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalConfigs (..),
   ExperimentalGradleConfigs (ExperimentalGradleConfigs),
   MavenScopeConfig (..),
+  UvConfig (..),
   VendoredDependencyConfigs (..),
   resolveConfigFile,
  )
@@ -49,6 +50,7 @@ expectedConfigFile path =
     , configPaths = Nothing
     , configExperimental = Just expectedExperimentalConfig
     , configMavenScope = Just expectedMavenScopeConfig
+    , configUv = Just expectedUvConfig
     , configVendoredDependencies = Just expectedVendoredDependencies
     , configTelemetry = Nothing
     , configCustomLicenseSearch = Just expectedLicenseSearch
@@ -126,6 +128,13 @@ expectedExperimentalConfig =
 expectedMavenScopeConfig :: MavenScopeConfig
 expectedMavenScopeConfig =
   MavenScopeOnlyConfig (Set.fromList ["compile", "runtime"])
+
+expectedUvConfig :: UvConfig
+expectedUvConfig =
+  UvConfig
+    { uvProductionGroups = Set.fromList ["server"]
+    , uvExcludeGroups = Set.fromList ["lint"]
+    }
 
 expectedVendoredDependencies :: VendoredDependencyConfigs
 expectedVendoredDependencies =

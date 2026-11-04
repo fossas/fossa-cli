@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- uv: Every dependency group is reported as development unless `.fossa.yml` makes it production or excludes it. ([#1830](https://github.com/fossas/fossa-cli/pull/1830))
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
 
 ## 3.20.10
