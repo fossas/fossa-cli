@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Swift: Add dynamic Swift strategy which uses`swift package show-dependencies`
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
 
 ## 3.20.10
