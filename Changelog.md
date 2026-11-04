@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed.
+
 ## 3.20.13
 
 - Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
