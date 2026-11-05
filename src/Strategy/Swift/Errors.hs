@@ -2,6 +2,8 @@ module Strategy.Swift.Errors (
   MissingPackageResolvedFile (..),
   MissingPackageResolvedFileHelp (..),
   SkippedComputedDependencies (..),
+  FailedToShowDependencies (..),
+  FailedToShowDependenciesHelp (..),
 
   -- * docs
   swiftFossaDocUrl,
@@ -48,4 +50,22 @@ instance ToDiagnostic SkippedComputedDependencies where
   renderDiagnostic (SkippedComputedDependencies path) = do
     let header = "Some dependencies in " <> toText (show path) <> " are computed by Swift code, which FOSSA CLI cannot evaluate"
     let body = "Those dependencies are only reported from Package.resolved, as transitive dependencies. Declare them as `.package(...)` literals to have them reported as direct dependencies."
+    Errata (Just header) [] (Just body)
+
+-- | @swift package show-dependencies@ failed for the package in the given directory.
+newtype FailedToShowDependencies = FailedToShowDependencies (Path Abs Dir)
+
+instance ToDiagnostic FailedToShowDependencies where
+  renderDiagnostic :: FailedToShowDependencies -> Errata
+  renderDiagnostic (FailedToShowDependencies dir) = do
+    let header = "Could not resolve the dependency graph of the Swift package in: " <> toText (show dir)
+    Errata (Just header) [] Nothing
+
+data FailedToShowDependenciesHelp = FailedToShowDependenciesHelp
+
+instance ToDiagnostic FailedToShowDependenciesHelp where
+  renderDiagnostic :: FailedToShowDependenciesHelp -> Errata
+  renderDiagnostic FailedToShowDependenciesHelp = do
+    let header = "Ensure `swift` is on the PATH and `swift package show-dependencies --format json` succeeds in the package directory"
+    let body = "Without it, dependencies are read from Package.swift and Package.resolved, which does not report the edges between them."
     Errata (Just header) [] (Just body)

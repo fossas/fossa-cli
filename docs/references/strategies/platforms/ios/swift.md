@@ -7,12 +7,23 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 
 # Swift Analysis
 
-| Strategy                                                                 | Direct Deps        | Transitive Deps    | Edges | Classifies Test Dependencies | Container Scanning |
-| ------------------------------------------------------------------------ | ------------------ | ------------------ | ----- | ---------------------------- | ------------------ |
-| Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:   | :x:                          | :white_check_mark: |
-| Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:   | :x:                          | :white_check_mark: |
-| Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:   | :x:                          | :white_check_mark: |
-| Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:   | :x:                          | :white_check_mark: |
+| Strategy                                                                 | Direct Deps        | Transitive Deps    | Edges              | Classifies Test Dependencies | Container Scanning |
+| ------------------------------------------------------------------------ | ------------------ | ------------------ | ------------------ | ---------------------------- | ------------------ |
+| Resolve the package graph with `swift package show-dependencies`         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                          | :x:                |
+| Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
+| Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:                | :x:                          | :white_check_mark: |
+| Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
+| Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:                | :x:                          | :white_check_mark: |
+
+For a Swift package (a directory with a `Package.swift`), FOSSA CLI first runs
+`swift package show-dependencies --format json` in the package directory and builds the dependency graph from its output.
+If the command fails (for example because `swift` is not installed, or the dependencies cannot be fetched), FOSSA CLI falls back to parsing `Package.swift` and `Package.resolved` as described below, and reports the failure as a warning.
+With `--static-only-analysis`, or in `--strict` mode, only the respective parsing strategy is used.
+
+Note that `swift package show-dependencies` resolves the package like `swift build` does: it may fetch dependencies over the network into `.build/checkouts` and create or update `Package.resolved`.
+It runs fastest after a build, when the checkouts already exist.
+
+Xcode projects are always analyzed by parsing `project.pbxproj`, because `swift package` cannot read them.
 
 - Manifest file: `Package.swift`, must begin with `// swift-tools-version:` string, followed by version number specifier. 
 - We follow swift package manager's convention and presume properties of the package are defined in a single nested initializer statement and are not modified after initialization.
@@ -20,7 +31,8 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 
 ## Limitations
 
-- Path dependencies are ignored in the analysis (e.g. `package(path: "./../local-pkg")`)
+- When `swift package show-dependencies` is used, a path dependency (e.g. `package(path: "./../local-pkg")`) is reported as a [path dependency](../../../experimental/path-dependency.md), which is only analyzed with `--experimental-analyze-path-dependencies`. Without that flag the local package is omitted and its remote dependencies are reported as transitive dependencies.
+- When `Package.swift` is parsed, path dependencies are ignored in the analysis.
 - If the Xcode project dependencies are sourced via a local path, they will be ignored in the analysis.
 - Only Xcode project files in ASCII plist format with UTF-8 encoding are supported.
 
@@ -139,8 +151,8 @@ targets:
 
 ### Swift packages sourced from local directories are not discovered in the analysis. Is there a workaround?
 
-This is a current limitation. For swift package manager analysis, we only support non-path dependencies at the moment. 
-To include local dependencies, you can use `fossa-deps.yml` file to upload the local package for license scanning and analysis.
+When the package graph is resolved with `swift package show-dependencies`, local packages are reported as path dependencies and can be analyzed with the `--experimental-analyze-path-dependencies` flag.
+Otherwise, you can use `fossa-deps.yml` file to upload the local package for license scanning and analysis.
 
 ```yaml
 # in fossa-deps.yml
