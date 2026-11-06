@@ -6,6 +6,7 @@ module Strategy.NuGet (
   getDeps,
   mkProject,
   NuGetProject (..),
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -49,7 +50,10 @@ discover ::
 discover = simpleDiscover findProjects mkProject NuGetProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NuGetProject], WalkStep)
+discoverVisitor dir _ files = do
   case findProjectAssetsJsonFile files of
     Just file -> pure ([NuGetProject file], WalkContinue)
     Nothing -> do

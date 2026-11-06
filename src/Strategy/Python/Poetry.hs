@@ -9,6 +9,8 @@ module Strategy.Python.Poetry (
   PyProjectTomlFile (..),
   PoetryLockFile (..),
   ProjectDir (..),
+  mkProject,
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -111,7 +113,10 @@ findProjects ::
   ) =>
   Path Abs Dir ->
   m [PoetryProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PoetryProject], WalkStep)
+discoverVisitor dir _ files = do
   let poetryLockFile = findFileNamed "poetry.lock" files
   let pyprojectFile = findFileNamed "pyproject.toml" files
 

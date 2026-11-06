@@ -1,5 +1,7 @@
 module Strategy.Glide (
   discover,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -27,7 +29,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject GlideProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GlideProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GlideProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "glide.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lockfile -> pure ([GlideProject lockfile dir], WalkSkipAll)

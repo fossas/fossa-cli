@@ -10,6 +10,8 @@ module Strategy.Haskell.Stack (
   PackageName (..),
   StackDep (..),
   StackLocation (..),
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -116,7 +118,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject StackProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [StackProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([StackProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "stack.yaml" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> pure ([StackProject dir file], WalkSkipAll)

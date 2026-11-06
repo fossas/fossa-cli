@@ -1,6 +1,8 @@
 module Strategy.Python.PDM.Pdm (
   discover,
   analyze,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics)
@@ -46,7 +48,10 @@ discover ::
 discover = simpleDiscover findProjects mkProject PdmProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PdmProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PdmProject], WalkStep)
+discoverVisitor dir _ files = do
   let pyprojectFile = findFileNamed "pyproject.toml" files
   let pdmlockFile = findFileNamed "pdm.lock" files
 
