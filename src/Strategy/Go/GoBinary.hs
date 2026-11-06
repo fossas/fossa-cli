@@ -20,8 +20,8 @@
 -- container analysis path; this module shells out to it and converts the
 -- result into a dependency graph.
 module Strategy.Go.GoBinary (
-  discover,
-  findProjects,
+  discoverVisitor,
+  finalizeProjects,
   toProjects,
   mkProject,
   getDeps,
@@ -55,9 +55,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (WalkStep (WalkContinue), walkWithFilters')
+import Discovery.Walk (WalkStep (WalkContinue))
 import Effect.Exec (AllowErr (Never), Command (..), Exec, Has, execJson')
 import Effect.ReadFS (ReadFS, contentIsBinary)
 import GHC.Generics (Generic)
@@ -127,37 +125,48 @@ instance AnalyzeProject GoBinaryProject where
   -- Reading bytes already on disk; no build tool is invoked.
   analyzeProjectStaticOnly _ = getDeps
 
-discover ::
+-- | Per-directory collector for the shared discovery walk: candidate binaries
+-- are pre-filtered by 'contentIsBinary' (a cheap prefix read); millhone applies
+-- the precise magic/size checks and the buildinfo parse.
+--
+-- The flag check lives HERE, not just in 'finalizeProjects': the walk itself is
+-- shared and touches every directory regardless, but the per-file prefix reads
+-- are the cost we can skip — the old private walk short-circuited before
+-- walking, so a disabled strategy must read nothing.
+discoverVisitor ::
   ( Has ReadFS sig m
-  , Has Exec sig m
   , Has Diagnostics sig m
-  , Has (Lift IO) sig m
-  , Has (Reader AllFilters) sig m
   , Has (Reader StrategyConfig) sig m
   ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject GoBinaryProject]
-discover = simpleDiscover findProjects mkProject GoBinaryProjectType
+  Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([Path Abs File], WalkStep)
+discoverVisitor _ _ files = do
+  enabled <- enableGoBinaryAnalysis <$> ask
+  if not enabled
+    then pure ([], WalkContinue)
+    else do
+      binaries <- filterM contentIsBinary files
+      pure (binaries, WalkContinue)
 
--- | Walk for candidate files, then hand the whole batch to millhone in a single
--- invocation. 'contentIsBinary' is a cheap pre-filter (it only reads a prefix);
--- millhone applies the precise magic/size checks and the buildinfo parse.
-findProjects ::
+-- | Batch phase for the shared discovery walk: hand the whole collected
+-- candidate batch to millhone in a single invocation and match its results
+-- back to the candidate paths.
+finalizeProjects ::
   ( Has ReadFS sig m
   , Has Exec sig m
   , Has Diagnostics sig m
   , Has (Lift IO) sig m
-  , Has (Reader AllFilters) sig m
   , Has (Reader StrategyConfig) sig m
   ) =>
   Path Abs Dir ->
-  m [GoBinaryProject]
-findProjects dir = do
+  -- | candidate binaries collected by 'discoverVisitor'
+  m [Path Abs File] ->
+  m [DiscoveredProject GoBinaryProject]
+finalizeProjects dir collect = do
   enabled <- enableGoBinaryAnalysis <$> ask
   if not enabled
     then pure []
     else do
-      candidates <- walkWithFilters' collectBinaries dir
+      candidates <- collect
       if null candidates
         then pure []
         else do
@@ -169,11 +178,7 @@ findProjects dir = do
             warnThenRecover @Text "Error reading Go buildinfo (millhone)" $
               context "Reading Go buildinfo" $
                 analyzeGoBinaries dir candidates
-          pure . toProjects candidates $ concat discovered
-  where
-    collectBinaries _ _ files = do
-      binaries <- filterM contentIsBinary files
-      pure (binaries, WalkContinue)
+          pure . map mkProject . toProjects candidates $ concat discovered
 
 -- | Match millhone's results back to the paths we handed it and group them by
 -- containing directory, dropping any binary whose buildinfo yields no usable

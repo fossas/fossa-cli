@@ -4,6 +4,7 @@
 module Node.NodeSpec (spec) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
+import Control.Carrier.Reader (runReader)
 import Data.Foldable (for_)
 import Data.Glob (unsafeGlobRel)
 import Data.Map qualified as Map
@@ -11,10 +12,12 @@ import Data.Set qualified as Set
 import Data.Set.NonEmpty (nonEmpty)
 import Data.Tagged (applyTag)
 import DepTypes (DepEnvironment (EnvDevelopment, EnvProduction), Dependency (dependencyEnvironments, dependencyName, dependencyVersion), VerConstraint (CCompatible))
+import Discovery.Filters (AllFilters (..), comboInclude)
+import Discovery.Walk (walkWithFilters')
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, extractDepListsForTargets, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
+import Strategy.Node (NodeProject (NPMLock), discover, discoverVisitor, extractDepListsForTargets, finalizeProjects, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -49,6 +52,7 @@ import Types (
   DiscoveredProjectType (NpmProjectType),
   FoundTargets (FoundTargets, ProjectWithoutTargets),
   GraphBreadth (Complete, Partial),
+  TargetFilter (TypeTarget),
  )
 
 spec :: Spec
@@ -64,6 +68,38 @@ spec = do
   catalogFallbackSpec currDir
   resolvePnpmImporterKeysSpec currDir
   unnamedWorkspaceRootSpec currDir
+  sharedWalkSpec currDir
+
+-- | Pin the shared broadcast walk wiring ('discoverVisitor' collecting over
+-- "Discovery.Walk.walkWithFilters'", 'finalizeProjects' batching) against the
+-- pre-broadcast 'discover' path: both must find the same projects.
+sharedWalkSpec :: Path Abs Dir -> Spec
+sharedWalkSpec currDir = describe "shared broadcast walk (discoverVisitor + finalizeProjects)" $ do
+  it' "discovers the same projects as discover" $
+    do
+      let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+      oldProjects <- discover workspaceDir
+      newProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
+      newProjects `shouldBe'` oldProjects
+
+  it' "produces projects under a yarn-only allow-list (any-of family gate)" $
+    do
+      -- The strategy is keyed to npm for broadcast gating, but self-gates via
+      -- withMultiToolFilter's any-of semantics over the JS tool family; a
+      -- yarn-only include list must therefore still produce projects.
+      let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+          yarnOnly = (mempty :: AllFilters){includeFilters = comboInclude [TypeTarget "yarn"] []}
+      oldProjects <- runReader yarnOnly (discover workspaceDir)
+      newProjects <- runReader yarnOnly (finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir))
+      newProjects `shouldBe'` oldProjects
+      null newProjects `shouldBe'` False
+
+  it' "produces nothing when no node-family tool is allow-listed" $
+    do
+      let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
+          cargoOnly = (mempty :: AllFilters){includeFilters = comboInclude [TypeTarget "cargo"] []}
+      projects <- runReader cargoOnly (finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir))
+      projects `shouldBe'` []
 
 discoveredWorkSpaceProj :: Path Abs Dir -> DiscoveredProject NodeProject
 discoveredWorkSpaceProj currDir =

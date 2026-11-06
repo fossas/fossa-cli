@@ -146,8 +146,8 @@ spec =
           newResult <-
             runReader filters $
               do
-                cargoNew <- cachedDiscover CargoProjectType Cargo.mkProject (sendIO $ readIORef cargoSink)
-                composerNew <- cachedDiscover ComposerProjectType Composer.mkProject (sendIO $ readIORef composerSink)
+                cargoNew <- cachedDiscover CargoProjectType Cargo.mkProject tmpDir (sendIO $ readIORef cargoSink)
+                composerNew <- cachedDiscover ComposerProjectType Composer.mkProject tmpDir (sendIO $ readIORef composerSink)
                 pure (cargoNew, composerNew)
           -- Old path: each strategy walks the tree itself (walkWithFilters')
           -- under the same filters.
