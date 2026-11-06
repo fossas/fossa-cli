@@ -12,7 +12,7 @@ We will not scan `.build` directory if the `Package.swift` or Xcode project file
 | Resolve the package graph with `swift package show-dependencies`         | :white_check_mark: | :white_check_mark: | :white_check_mark: | :x:                          | :x:                |
 | Parse dependencies from `Package.swift`                                  | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
 | Parse dependencies from `Package.swift` and `Package.resolved`           | :white_check_mark: | :white_check_mark: | :x:                | :x:                          | :white_check_mark: |
-| Parse dependencies from `Package.resolved` only                          | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
+| Parse dependencies from `Package.resolved` only                          | :white_check_mark: | :warning:          | :x:                | :x:                          | :white_check_mark: |
 | Parse dependencies from Xcode's `project.pbxproj`                        | :white_check_mark: | :x:                | :x:                | :x:                          | :white_check_mark: |
 | Parse dependencies from Xcode's `project.pbxproj` and `Package.resolved` | :white_check_mark: | :white_check_mark: | :x:                | :x:                          | :white_check_mark: |
 
