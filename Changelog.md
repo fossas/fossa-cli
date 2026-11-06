@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Yarn: local `file:`, `link:` and `portal:` dependencies in a Yarn 2+ `yarn.lock` no longer warn that their package could not be found.
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
 
 ## 3.20.10
