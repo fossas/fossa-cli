@@ -80,9 +80,9 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     }
   where
     filteredGraph :: Graphing Dependency
-    -- Prune before shrinking out subproject, path and googlesource nodes.
-    -- Their children become direct and must stay. Children of dropped dev
-    -- deps must still go.
+    -- When the CLI removes a subproject or local folder dep, it keeps that
+    -- node's libraries attached to the parent. Only libraries tagged as dev or
+    -- test are dropped.
     filteredGraph = Graphing.shrink isSupportedType pruned
       where
         pruned =
