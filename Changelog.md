@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Analysis: Dependencies of Gradle subprojects, local path dependencies (Cargo, Go, uv, PDM, Swift) and Googlesource dependencies are no longer missing from results. They now appear as direct dependencies.
 - Swift: Add dynamic Swift strategy which uses`swift package show-dependencies` ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
