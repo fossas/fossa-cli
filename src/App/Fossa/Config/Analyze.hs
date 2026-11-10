@@ -72,17 +72,18 @@ import App.Fossa.Config.ConfigFile (
  )
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Lernie.Types (GrepEntry (..), GrepOptions (..))
+import App.Fossa.ProjectInference (inferGitRemote)
 import App.Fossa.Reachability.Types (ReachabilityConfig (..))
 import App.Fossa.Subcommand (EffStack, GetCommonOpts (getCommonOpts), GetSeverity (getSeverity), SubCommand (SubCommand))
 import App.Fossa.VSI.Types qualified as VSI
 import App.Types (
-  BaseDir,
+  BaseDir (..),
   FirstPartyScansFlag (..),
   Mode (..),
   OverrideDynamicAnalysisBinary (..),
   OverrideProject (OverrideProject),
   ProjectMetadata (projectLabel),
-  ProjectRevision,
+  ProjectRevision (projectGitRemote),
  )
 import Control.Effect.Diagnostics (
   Diagnostics,
@@ -571,9 +572,13 @@ mergeStandardOpts ::
 mergeStandardOpts maybeDebugDir maybeConfig envvars cliOpts@AnalyzeCliOpts{..} = do
   let basedir = collectBaseDir analyzeBaseDir
       scanDestination = collectScanDestination maybeConfig envvars cliOpts
-      revisionData =
-        collectRevisionData' basedir maybeConfig WriteOnly $
-          OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
+      revisionData = do
+        revision <-
+          collectRevisionData' basedir maybeConfig WriteOnly $
+            OverrideProject (optProjectName commons) (optProjectRevision commons) (analyzeBranch)
+        -- Read on its own, so the upload carries it even when --project names the project.
+        gitRemote <- inferGitRemote . unBaseDir =<< basedir
+        pure revision{projectGitRemote = gitRemote}
       vsiModeOpts = collectVsiModeOptions cliOpts
       filters = collectFilters maybeConfig cliOpts
       mavenScopeFilters = collectMavenScopeFilters maybeConfig
