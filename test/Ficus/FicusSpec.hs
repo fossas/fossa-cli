@@ -49,7 +49,7 @@ spec = do
 
       currentDir <- sendIO PIO.getCurrentDir
       let testDataDir = currentDir </> fixtureDir
-          revision = ProjectRevision "ficus-integration-test" "testdata-123456" (Just "integration-test")
+          revision = ProjectRevision "ficus-integration-test" "testdata-123456" (Just "integration-test") Nothing
 
       -- Check if test data exists
       testDataExists <- sendIO $ PIO.doesDirExist testDataDir
@@ -130,7 +130,7 @@ spec = do
               , ficusConfigOnly = [GlobFilter "product-a/**", GlobFilter "product-b/**"]
               , ficusConfigEndpoint = Nothing
               , ficusConfigSecret = Nothing
-              , ficusConfigRevision = ProjectRevision "ficus-test" "123456" Nothing
+              , ficusConfigRevision = ProjectRevision "ficus-test" "123456" Nothing Nothing
               , ficusConfigFlags = []
               , ficusConfigSnippetScanRetentionDays = Nothing
               , ficusConfigStrategies = [FicusStrategySnippetScan, FicusStrategyVendetta]

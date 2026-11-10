@@ -777,6 +777,8 @@ uploadAnalysis apiOpts ProjectRevision{..} metadata sourceUnits ficusResults = f
           <> mkMetadataOpts metadata projectName
           -- Don't include branch if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty ("branch" =:) projectBranch
+          -- Core stores the repository the remote names when the project has none.
+          <> maybe mempty ("gitRemote" =:) projectGitRemote
           -- Don't include snippetAnalysisId if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty (("snippetAnalysisId" =:) . ficusSnippetScanResultsAnalysisId) ficusResults
   resp <- req POST (uploadUrl baseUrl) (ReqBodyJson sourceUnits) jsonResponse (baseOpts <> opts)
@@ -829,6 +831,8 @@ uploadAnalysisWithFirstPartyLicenses apiOpts ProjectRevision{..} metadata upload
             =: toText uploadKind
           <> mkMetadataOpts metadata projectName
           <> maybe mempty ("branch" =:) projectBranch
+          -- Core stores the repository the remote names when the project has none.
+          <> maybe mempty ("gitRemote" =:) projectGitRemote
           -- Don't include snippetAnalysisId if it doesn't exist, core may not handle empty string properly.
           <> maybe mempty (("snippetAnalysisId" =:) . ficusSnippetScanResultsAnalysisId) ficusResults
   resp <- req POST (uploadWithFirstPartyUrl baseUrl) (NoReqBody) jsonResponse (baseOpts <> opts)

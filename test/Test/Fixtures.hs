@@ -341,6 +341,7 @@ projectRevision =
     { App.projectName = "testProjectName"
     , App.projectRevision = "testRevision"
     , App.projectBranch = Just "testBranch"
+    , App.projectGitRemote = Nothing
     }
 
 diffRevision :: DiffRevision

@@ -48,7 +48,7 @@ revisionFileName :: Path Rel File
 revisionFileName = $(mkRelFile ".fossa.revision")
 
 mergeOverride :: OverrideProject -> InferredProject -> ProjectRevision
-mergeOverride OverrideProject{..} InferredProject{..} = ProjectRevision name revision branch
+mergeOverride OverrideProject{..} InferredProject{..} = ProjectRevision name revision branch Nothing
   where
     name = fromMaybe inferredName overrideName
     revision = fromMaybe inferredRevision overrideRevision

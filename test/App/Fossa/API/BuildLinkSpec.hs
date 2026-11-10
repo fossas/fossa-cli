@@ -69,7 +69,7 @@ spec = do
       it' "should render simple locators" $ do
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
             org = Just $ mkOrg (OrgId 1)
-            revision = ProjectRevision "" "not this revision" $ Just "master123"
+            revision = ProjectRevision "" "not this revision" (Just "master123") Nothing
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
         actual `shouldBe'` simpleSamlPath
@@ -77,7 +77,7 @@ spec = do
       it' "should render git@ locators" $ do
         let locator = Locator "fetcher@123/abc" "git@github.com/user/repo" $ Just "revision@123/abc"
             org = Just $ mkOrg (OrgId 103)
-            revision = ProjectRevision "not this project name" "not this revision" $ Just "weird--branch"
+            revision = ProjectRevision "not this project name" "not this revision" (Just "weird--branch") Nothing
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
         actual `shouldBe'` gitSamlPath
@@ -85,7 +85,7 @@ spec = do
       it' "should render full url correctly" $ do
         let locator = Locator "a" "b" $ Just "c"
             org = Just $ mkOrg (OrgId 33)
-            revision = ProjectRevision "" "not this revision" $ Just "master"
+            revision = ProjectRevision "" "not this revision" (Just "master") Nothing
         actual <- getBuildURLWithOrg org revision Fixtures.apiOpts locator
 
         actual `shouldBe'` fullSamlURL
@@ -93,7 +93,7 @@ spec = do
     describe "Standard URL Builder" $ do
       it' "should render simple links" $ do
         let locator = Locator "haskell" "89/spectrometer" $ Just "revision123"
-            revision = ProjectRevision "" "not this revision" $ Just "master"
+            revision = ProjectRevision "" "not this revision" (Just "master") Nothing
         actual <- getBuildURLWithOrg Nothing revision Fixtures.apiOpts locator
 
         actual `shouldBe'` simpleStandardURL
@@ -103,7 +103,7 @@ spec = do
         GetApiOpts `returnsOnce` Fixtures.apiOpts
         GetOrganization `returnsOnce` mkOrg (OrgId 1)
         let locator = Locator "fetcher123" "project123" $ Just "revision123"
-            revision = ProjectRevision "" "not this revision" $ Just "master123"
+            revision = ProjectRevision "" "not this revision" (Just "master123") Nothing
         actual <- getFossaBuildUrl revision locator
 
         actual `shouldBe'` simpleSamlPath
