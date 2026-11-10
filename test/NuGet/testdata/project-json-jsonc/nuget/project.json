@@ -1,0 +1,18 @@
+{
+  // NuGet reads project.json with Json.NET, which accepts comments and trailing commas.
+  "dependencies": {
+    "one": "1.0.0", /* pinned */
+    "two": "2.*",
+    // "unused": "0.0.1"
+  },
+  "frameworks": {
+    "net46": {
+      "dependencies": {
+        "three": {
+          "version": "3.0.0",
+          "type": "sometype"
+        }
+      }
+    }
+  }
+}

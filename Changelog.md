@@ -5,6 +5,7 @@
 - Swift: Add dynamic Swift strategy which uses`swift package show-dependencies` ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
+- NuGet: `project.json` files that contain comments or trailing commas no longer fail analysis. ([#1835](https://github.com/fossas/fossa-cli/pull/1835))
 
 ## 3.20.10
 
