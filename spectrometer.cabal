@@ -764,6 +764,7 @@ test-suite unit-tests
     System.ArgsSpec
     Test.Effect
     Test.Fixtures
+    Test.Git
     Test.MockApi
     Test.MockDockerEngineApi
     Yarn.V1.YarnLockV1Spec
