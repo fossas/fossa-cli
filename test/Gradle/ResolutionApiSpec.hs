@@ -210,3 +210,15 @@ spec = do
           map sourceDepLocator (buildDependencies bu) `shouldMatchList` map toLocator [commonsText, commonsLang, slf4j]
           map sourceDepImports (filter ((== toLocator commonsText) . sourceDepLocator) (buildDependencies bu))
             `shouldBe` [[toLocator commonsLang]]
+
+    it "should drop dependencies reached only through a test subproject" $ do
+      let lib = (mkProject ":lib" EnvTesting){dependencyEnvironments = Set.singleton EnvTesting}
+          commonsText = mkMavenDep "org.apache.commons:commons-text" EnvProduction
+          slf4j = mkMavenDep "org.slf4j:slf4j-api" EnvProduction
+          graph = Graphing.directs [lib, slf4j] <> Graphing.edge lib commonsText
+
+      case sourceUnitBuild (toSourceUnit False "test" graph GradleProjectType Complete []) of
+        Nothing -> expectationFailure "expected a build"
+        Just bu -> do
+          buildImports bu `shouldMatchList` [toLocator slf4j]
+          map sourceDepLocator (buildDependencies bu) `shouldMatchList` [toLocator slf4j]
