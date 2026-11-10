@@ -49,6 +49,7 @@ import Control.Carrier.ContainerRegistryApi.Common (
   RegistryCtx (RegistryCtx),
   fromResponse,
   getContentType,
+  registryRequest,
  )
 
 import Control.Carrier.Finally (runFinally)
@@ -311,7 +312,7 @@ exportBlob manager imgSrc dir (digest, isGzip, targetFilename) = do
     let req' = applyAuthToken token req
 
     -- Download image artifact
-    sendIO . runResourceT $ do
+    registryRequest . runResourceT $ do
       response <- HTTPConduit.http req' manager
       runConduit $
         HTTPConduit.responseBody response
