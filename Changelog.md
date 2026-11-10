@@ -2,12 +2,13 @@
 
 ## Unreleased
 
+- Analysis: With `--x-workflow` set, `fossa analyze` now renders the unfiltered dependency graphs (with per-dependency scope environments) as a `projectFindings` document. It is included in the stdout JSON output and merged into the uploaded workflow result.
+- Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
+- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
 - Yarn: dependencies installed under an npm alias in a Yarn 1 `yarn.lock` are now reported as the package they install instead of the alias name. ([#1849](https://github.com/fossas/fossa-cli/pull/1849))
 - Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
 - Elixir: git dependencies pinned to a tag or branch containing a hyphen, slash or underscore no longer fail analysis. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
 - Elixir: compiled git dependencies are now reported at the commit they are locked to instead of their package version. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
-- Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
-- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
 
 ## 3.20.13
 
