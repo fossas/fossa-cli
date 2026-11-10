@@ -41,6 +41,7 @@ import App.Fossa.Analyze.ForkAlias (
   translateLocatorWithForkAliases,
  )
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
+import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
 import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
   AnalysisScanResult (AnalysisScanResult),
@@ -120,6 +121,8 @@ import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
 import Control.Monad (guard, join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
+import Data.Aeson.Key (fromText)
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
@@ -531,6 +534,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
+  -- The unfiltered graphs rendered as a findings document, gated on --x-workflow
+  -- like the workflow run. The renderer is total, so this cannot fail the
+  -- analysis.
+  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings filteredProjects') else Nothing
+
   reachabilityUnitsResult <-
     case orgInfo of
       (Just (Organization{orgSupportsReachability = False})) -> pure []
@@ -563,7 +571,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let translatedScannedSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) scannedSourceUnits
   let allTranslatedSourceUnits = map (mergeForkAliasLabels forkAliasLabels) (translatedAdditionalSourceUnits ++ translatedScannedSourceUnits)
 
-  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
+  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap projectFindings
 
   scanUnits <-
     case (keywordSearchResultsFound, checkForEmptyUpload projectScans filteredProjects' allTranslatedSourceUnits licenseSourceUnits) of
@@ -576,7 +584,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults workflowData
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (mergeProjectFindings projectFindings workflowData)
             doAssertRevisionBinaries iatAssertion locator
   sendToDestination doUpload destination outputResult
 
@@ -721,12 +729,26 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Aeson.Value
-buildResult srcUnits projects licenseSourceUnits forkAliasMap =
-  Aeson.object
+-- | Combine the ficus workflow payload with the project findings into one
+-- object for upload. Both absent means nothing to upload; findings alone are
+-- uploaded under @projectFindings@. A non-object ficus payload is preserved
+-- verbatim under @workflowResult@ so no data is lost.
+mergeProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Maybe Aeson.Value
+mergeProjectFindings projectFindings workflowData = case (projectFindings, workflowData) of
+  (Nothing, other) -> other
+  (Just findings, Nothing) -> Just $ Aeson.object ["projectFindings" .= findings]
+  (Just findings, Just (Aeson.Object obj)) -> Just $ Aeson.Object (KeyMap.insert (fromText "projectFindings") findings obj)
+  (Just findings, Just other) -> Just $ Aeson.object ["workflowResult" .= other, "projectFindings" .= findings]
+
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Maybe Aeson.Value -> Aeson.Value
+buildResult srcUnits projects licenseSourceUnits forkAliasMap projectFindings =
+  Aeson.object $
     [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
+      <> case projectFindings of
+        Nothing -> []
+        Just findings -> [("projectFindings", findings)]
   where
     mergedUnits = case licenseSourceUnits of
       Nothing -> map sourceUnitToFullSourceUnit srcUnits
