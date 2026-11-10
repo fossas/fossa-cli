@@ -376,10 +376,11 @@ stripUtf8Bom :: ByteString -> ByteString
 stripUtf8Bom bs = fromMaybe bs (BS.stripPrefix "\xEF\xBB\xBF" bs)
 
 -- | Read JSONC (JSON with Comments) from a file.
--- Strips single-line comments, block comments, and trailing commas before parsing as JSON.
+-- Strips a leading UTF-8 byte order mark, single-line comments, block comments,
+-- and trailing commas before parsing as JSON.
 readContentsJsonc :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsJsonc file = context ("Parsing JSONC file '" <> toText (toString file) <> "'") $ do
-  contents <- readContentsText file
+  contents <- decodeUtf8 . stripUtf8Bom <$> readContentsBS file
   case eitherDecodeStrict . encodeUtf8 =<< stripJsonc contents of
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a

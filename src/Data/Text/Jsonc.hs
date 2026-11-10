@@ -11,9 +11,11 @@ import Text.Megaparsec (
   anySingle,
   eof,
   lookAhead,
+  many,
   manyTill,
   runParser,
   satisfy,
+  takeWhile1P,
   takeWhileP,
   try,
   (<|>),
@@ -82,16 +84,19 @@ blockComment = do
   _ <- manyTill anySingle (string "*/")
   pure ""
 
--- | Parse a trailing comma (comma followed by optional whitespace
--- then @}@ or @]@) and discard only the comma, preserving whitespace.
+-- | Parse a trailing comma (comma followed by optional whitespace and
+-- comments, then @}@ or @]@) and discard only the comma, preserving whitespace.
 trailingComma :: Parser Text
 trailingComma = do
   _ <- try $ do
     _ <- char ','
-    _ <- lookAhead (takeWhileP Nothing isJsonWhitespace *> satisfy isClosingBracket)
+    _ <- lookAhead (many (whitespace <|> lineComment <|> blockComment) *> satisfy isClosingBracket)
     pure ()
   pure ""
   where
+    whitespace :: Parser Text
+    whitespace = takeWhile1P Nothing isJsonWhitespace
+
     isClosingBracket :: Char -> Bool
     isClosingBracket c = c == '}' || c == ']'
 

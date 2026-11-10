@@ -1,14 +1,21 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module NuGet.ProjectJsonSpec (
   spec,
 ) where
 
 import Data.Aeson
 import Data.ByteString qualified as BS
+import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
 import DepTypes
 import GraphUtil
+import Path (mkRelDir, (</>))
+import Path.IO (getCurrentDir)
 import Strategy.NuGet.ProjectJson
+import Test.Effect (it', shouldBe')
 import Test.Hspec
+import Types (DependencyResults (dependencyGraph))
 
 dependencyOne :: Dependency
 dependencyOne =
@@ -56,6 +63,8 @@ dependencyOneOverride =
 
 spec :: Spec
 spec = do
+  currentDir <- runIO getCurrentDir
+  let jsoncDir = currentDir </> $(mkRelDir "test/NuGet/testdata/project-json-jsonc")
   testFile <- runIO (BS.readFile "test/NuGet/testdata/project.json")
   frameworkDepsFile <- runIO (BS.readFile "test/NuGet/testdata/project-framework-deps.json")
   noDepsFile <- runIO (BS.readFile "test/NuGet/testdata/project-no-deps.json")
@@ -108,3 +117,17 @@ spec = do
       case eitherDecodeStrict noDepsFile of
         Right obj -> obj `shouldNotSatisfy` looksLikeNuGetManifest
         Left _ -> expectationFailure "failed to parse"
+
+  -- NuGet reads project.json with Json.NET, and Nx reads its own project.json
+  -- with jsonc-parser: both accept comments and trailing commas.
+  describe "project.json with comments and trailing commas" $ do
+    it' "analyzes a NuGet manifest" $ do
+      results <- traverse getDeps =<< findProjects (jsoncDir </> $(mkRelDir "nuget"))
+      length results `shouldBe'` 1
+      for_ results $ \result -> do
+        expectDeps' [dependencyOne, dependencyTwo, dependencyThree] (dependencyGraph result)
+        expectDirect' [dependencyOne, dependencyTwo, dependencyThree] (dependencyGraph result)
+
+    it' "does not claim a project.json from another tool (e.g. Nx)" $ do
+      projects <- findProjects (jsoncDir </> $(mkRelDir "nx"))
+      projects `shouldBe'` []

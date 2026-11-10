@@ -114,6 +114,18 @@ spec = describe "stripJsonc" $ do
         [r|{"url": "https://example.com/path", "pattern": "/* glob */",}|]
         [r|{"url": "https://example.com/path", "pattern": "/* glob */"}|]
 
+    it "parses JSONC whose trailing commas are followed by comments" $
+      shouldRoundTrip
+        [r|{
+"items": [
+  1, // kept: another element follows
+  2, // dropped: only comments follow
+  // 3
+],
+/* "last": true */
+}|]
+        [r|{"items": [1, 2]}|]
+
 shouldRoundTrip :: Text -> Text -> Expectation
 shouldRoundTrip input expectedJson =
   case stripJsonc input of
