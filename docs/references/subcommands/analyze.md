@@ -314,6 +314,7 @@ Specifically, `fossa-cli` by default skips any targets found within the followin
 - `third-party/`
 - `Carthage/`
 - `Checkouts/`
+- `.build/`
 
 To disable default filters, provide `--without-default-filters` flag when performing `fossa analyze` command. Currently,
 it is not possible to disable only a subset of default filters. If you would like to only apply a subset of default filters, you can

@@ -310,6 +310,7 @@ ignoredPaths =
   , "third-party/"
   , "Carthage/"
   , "Checkouts/"
+  , ".build/" -- SwiftPM build directory; dependency clones under checkouts/ carry their own manifests
   ]
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
