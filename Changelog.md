@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Analysis: With `--x-workflow` set, `fossa analyze` now renders the unfiltered dependency graphs (with per-dependency scope environments) as a `projectFindings` document. It is included in the stdout JSON output and merged into the uploaded workflow result.
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
 - SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
 

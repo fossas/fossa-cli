@@ -194,6 +194,7 @@ library
     App.Fossa.Analyze.GraphMangler
     App.Fossa.Analyze.LicenseAnalyze
     App.Fossa.Analyze.Project
+    App.Fossa.Analyze.ProjectFindings
     App.Fossa.Analyze.Record
     App.Fossa.Analyze.ScanSummary
     App.Fossa.Analyze.Types
@@ -585,6 +586,7 @@ test-suite unit-tests
     Android.UtilSpec
     App.DocsSpec
     App.Fossa.Analyze.ForkAliasSpec
+    App.Fossa.Analyze.ProjectFindingsSpec
     App.Fossa.Analyze.UploadSpec
     App.Fossa.AnalyzeSpec
     App.Fossa.API.BuildLinkSpec
