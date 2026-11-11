@@ -1,0 +1,40 @@
+lockfileVersion: '9.0'
+
+# Aliases, trimmed from pnpm's own lockfile (v9.15.0). A dependency installed
+# under another name is written as the full key of the package it resolves to:
+# the importer's "execa" is safe-execa, and @isaacs/cliui requires
+# string-width 4.2.3 as "string-width-cjs" beside string-width 5.1.2.
+
+importers:
+  .:
+    dependencies:
+      '@isaacs/cliui':
+        specifier: ^8.0.2
+        version: 8.0.2
+      execa:
+        specifier: npm:safe-execa@0.1.2
+        version: safe-execa@0.1.2
+
+packages:
+  '@isaacs/cliui@8.0.2':
+    resolution: {integrity: test}
+  path-name@1.0.0:
+    resolution: {integrity: test}
+  safe-execa@0.1.2:
+    resolution: {integrity: test}
+  string-width@4.2.3:
+    resolution: {integrity: test}
+  string-width@5.1.2:
+    resolution: {integrity: test}
+
+snapshots:
+  '@isaacs/cliui@8.0.2':
+    dependencies:
+      string-width: 5.1.2
+      string-width-cjs: string-width@4.2.3
+  path-name@1.0.0: {}
+  safe-execa@0.1.2:
+    dependencies:
+      path-name: 1.0.0
+  string-width@4.2.3: {}
+  string-width@5.1.2: {}

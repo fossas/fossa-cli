@@ -1,0 +1,21 @@
+lockfileVersion: '6.0'
+
+# The safe-execa alias of pnpm-9-aliases as pnpm's own v6 lockfile (v8.15.0)
+# writes it: the reference is the package key, leading slash included.
+
+dependencies:
+  execa:
+    specifier: npm:safe-execa@0.1.2
+    version: /safe-execa@0.1.2
+
+packages:
+
+  /path-name@1.0.0:
+    resolution: {integrity: test}
+    dev: false
+
+  /safe-execa@0.1.2:
+    resolution: {integrity: test}
+    dependencies:
+      path-name: 1.0.0
+    dev: false

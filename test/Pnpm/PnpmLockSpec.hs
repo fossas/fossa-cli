@@ -29,6 +29,8 @@ import Path (Abs, File, Path, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Node.Pnpm.PnpmLock (buildGraph, parsePnpmLockfile, resolveImporterKey)
 import Strategy.Node.Pnpm.Types (RegistryResolution (..), Resolution (..))
+import Strategy.Node.Pnpm.V4_8 (getPkgNameVersionV5, getPkgNameVersionV6)
+import Strategy.Node.Pnpm.V9 (getPkgNameVersionV9)
 import Test.Hspec (Expectation, Spec, describe, expectationFailure, it, runIO, shouldBe, shouldContain, shouldNotContain)
 
 mkProdDep :: Text -> Dependency
@@ -160,6 +162,7 @@ spec = do
     resolutionSpec
 
   parsePnpmLockfileSpec
+  packageKeySpec
 
   -- Both fixtures declare sharp as an optional dependency of the project and
   -- fsevents as an optional dependency of chokidar.
@@ -171,6 +174,34 @@ spec = do
 
   describe "optional dependencies in a v6 lockfile" $
     checkGraph pnpmLockV6Optional optionalDepsSpec
+
+  let pnpmLockV9Aliases = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-aliases/pnpm-lock.yaml")
+  let pnpmLockV6Aliases = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-lock-v6-aliases.yaml")
+
+  -- Both fixtures install safe-execa under the alias "execa"; the v9 one also
+  -- has @isaacs/cliui requiring string-width 4.2.3 as "string-width-cjs".
+  describe "aliased dependencies" $ do
+    checkGraph pnpmLockV9Aliases $ \graph ->
+      it "reports a v9 alias as the package its reference names" $ do
+        let cliui = (mkProdDep "cliui@8.0.2"){dependencyName = "@isaacs/cliui"}
+        expectDirect [cliui, mkProdDep "safe-execa@0.1.2"] graph
+        expectDeps
+          [ cliui
+          , mkProdDep "path-name@1.0.0"
+          , mkProdDep "safe-execa@0.1.2"
+          , mkProdDep "string-width@4.2.3"
+          , mkProdDep "string-width@5.1.2"
+          ]
+          graph
+        expectEdge graph (mkProdDep "safe-execa@0.1.2") (mkProdDep "path-name@1.0.0")
+        expectEdge graph cliui (mkProdDep "string-width@4.2.3")
+        expectEdge graph cliui (mkProdDep "string-width@5.1.2")
+
+    checkGraph pnpmLockV6Aliases $ \graph ->
+      it "reports a v6 alias as the package its reference names" $ do
+        expectDirect [mkProdDep "safe-execa@0.1.2"] graph
+        expectDeps [mkProdDep "path-name@1.0.0", mkProdDep "safe-execa@0.1.2"] graph
+        expectEdge graph (mkProdDep "safe-execa@0.1.2") (mkProdDep "path-name@1.0.0")
 
   let pnpmPeerContexts = currentDir </> $(mkRelFile "test/Pnpm/testdata/pnpm-9-peer-contexts/pnpm-lock.yaml")
   describe "unfiltered peer resolution contexts" $
@@ -383,6 +414,26 @@ parsePnpmLockfileSpec = describe "parsePnpmLockfile" $ do
     case parsePnpmLockfile (BS8.pack threeDocumentDocs) of
       Left err -> toString err `shouldContain` "more than two YAML documents"
       Right _ -> expectationFailure "expected a too-many-documents error"
+
+-- | The name and version each lockfile format's key parser reads from a
+-- @packages@ key: every reported pnpm dependency gets both from there.
+packageKeySpec :: Spec
+packageKeySpec = describe "package keys" $ do
+  describe "v5: /name/version" $ do
+    it "reads an unscoped key" $ getPkgNameVersionV5 "/pkg-a/1.0.0" `shouldBe` Just ("pkg-a", "1.0.0")
+    it "reads a scoped key with a peer suffix" $ getPkgNameVersionV5 "/@babel/plugin-syntax-jsx/7.18.6_@babel+core@7.19.0" `shouldBe` Just ("@babel/plugin-syntax-jsx", "7.18.6_@babel+core@7.19.0")
+    it "rejects a key without the leading slash" $ getPkgNameVersionV5 "pkg-a/1.0.0" `shouldBe` Nothing
+    it "rejects a key without a version" $ getPkgNameVersionV5 "/pkg-a" `shouldBe` Nothing
+  describe "v6 to v8: /name@version" $ do
+    it "reads an unscoped key" $ getPkgNameVersionV6 "/pkg-a@1.0.0" `shouldBe` Just ("pkg-a", "1.0.0")
+    it "reads a scoped key with peer suffixes" $ getPkgNameVersionV6 "/@clerk/nextjs@4.22.1(next@13.4.10)(react@18.2.0)" `shouldBe` Just ("@clerk/nextjs", "4.22.1(next@13.4.10)(react@18.2.0)")
+    it "rejects a key without the leading slash" $ getPkgNameVersionV6 "pkg-a@1.0.0" `shouldBe` Nothing
+    it "rejects a key without a version" $ getPkgNameVersionV6 "/pkg-a" `shouldBe` Nothing
+  describe "v9: name@version" $ do
+    it "reads an unscoped key" $ getPkgNameVersionV9 "pkg-a@1.0.0" `shouldBe` Just ("pkg-a", "1.0.0")
+    it "reads a key with a leading slash" $ getPkgNameVersionV9 "/pkg-a@1.0.0" `shouldBe` Just ("pkg-a", "1.0.0")
+    it "reads a scoped key with a peer suffix" $ getPkgNameVersionV9 "@angular/core@1.0.0(babel@1.0.0)" `shouldBe` Just ("@angular/core", "1.0.0(babel@1.0.0)")
+    it "rejects a key without a version" $ getPkgNameVersionV9 "pkg-a" `shouldBe` Nothing
 
 -- A document that is valid YAML but not a valid lockfile fails the whole parse.
 invalidFirstDoc :: String
