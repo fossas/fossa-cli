@@ -1,7 +1,11 @@
+{-# LANGUAGE DerivingStrategies #-}
+
 module App.Fossa.Analyze.Project (
   ProjectResult (..),
   mkResult,
   shouldKeepUnreachableDeps,
+  RawGraph (RawGraph, unRawGraph),
+  PublishedGraph (PublishedGraph, unPublishedGraph),
 ) where
 
 import App.Util (FileAncestry (..))
@@ -12,6 +16,16 @@ import Path
 import Path.Extra (SomePath (SomeFile), tryMakeRelative)
 import Types
 
+-- | The dependency graph as discovered, before 'Graphing.pruneUnreachable'.
+-- Findings render from this view; it is never pruned or enriched.
+newtype RawGraph = RawGraph {unRawGraph :: Graphing Dependency}
+  deriving stock (Eq, Ord, Show)
+
+-- | The published dependency graph: pruned by 'mkResult', then enriched.
+-- What is uploaded as the project.
+newtype PublishedGraph = PublishedGraph {unPublishedGraph :: Graphing Dependency}
+  deriving stock (Eq, Ord, Show)
+
 mkResult :: Path Abs Dir -> DiscoveredProject n -> Maybe FileAncestry -> (DependencyResults) -> ProjectResult
 mkResult basedir project pathPrefix dependencyResults =
   ProjectResult
@@ -19,18 +33,20 @@ mkResult basedir project pathPrefix dependencyResults =
     , projectResultPath = projectPath project
     , -- Captured before the prune below: the pruned graph is the published view,
       -- but consumers such as findings need the resolution as discovered.
-      projectResultUnprunedGraph = graph
+      projectResultUnprunedGraph = RawGraph graph
     , projectResultGraph =
-        -- FIXME: this is a hack to work around analyzers that aren't able to
-        -- determine which dependencies are direct or have no edges. Without this hack, all of
-        -- their dependencies would be filtered out. The real fix to this is to
-        -- have a separate designation for "reachable" vs "direct" on nodes in a
-        -- Graphing, where direct deps are inherently reachable.
-        if null (Graphing.directList graph)
-          || null (Graphing.edgesList graph)
-          || shouldKeepUnreachableDeps (projectType project)
-          then graph
-          else Graphing.pruneUnreachable graph
+        PublishedGraph
+          ( -- FIXME: this is a hack to work around analyzers that aren't able to
+            -- determine which dependencies are direct or have no edges. Without this hack, all of
+            -- their dependencies would be filtered out. The real fix to this is to
+            -- have a separate designation for "reachable" vs "direct" on nodes in a
+            -- Graphing, where direct deps are inherently reachable.
+            if null (Graphing.directList graph)
+              || null (Graphing.edgesList graph)
+              || shouldKeepUnreachableDeps (projectType project)
+              then graph
+              else Graphing.pruneUnreachable graph
+          )
     , projectResultGraphBreadth = dependencyGraphBreadth dependencyResults
     , projectResultManifestFiles = prefixedManifestFiles
     }
@@ -48,11 +64,11 @@ mkResult basedir project pathPrefix dependencyResults =
 data ProjectResult = ProjectResult
   { projectResultType :: DiscoveredProjectType
   , projectResultPath :: Path Abs Dir
-  , projectResultUnprunedGraph :: Graphing Dependency
+  , projectResultUnprunedGraph :: RawGraph
   -- ^ The dependency graph as discovered, before 'Graphing.pruneUnreachable'.
   -- Findings must capture the pre-prune resolution; 'projectResultGraph' is
   -- the pruned view that is published.
-  , projectResultGraph :: Graphing Dependency
+  , projectResultGraph :: PublishedGraph
   , projectResultGraphBreadth :: GraphBreadth
   , projectResultManifestFiles :: [SomePath]
   }

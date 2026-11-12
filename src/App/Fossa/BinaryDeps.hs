@@ -5,7 +5,7 @@ module App.Fossa.BinaryDeps (
 )
 where
 
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.BinaryDeps.Jar (resolveJar)
 import App.Fossa.BinaryDeps.Nupkg (resolveNupkg)
 import App.Fossa.BinaryDeps.Whl (resolveWhl)
@@ -84,7 +84,7 @@ shouldFingerprintDir dir filters = not shouldExclude && shouldInclude
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
 toProject :: Path Abs Dir -> ProjectResult
-toProject dir = ProjectResult BinaryDepsProjectType dir mempty mempty Complete []
+toProject dir = ProjectResult BinaryDepsProjectType dir (RawGraph mempty) (PublishedGraph mempty) Complete []
 
 toSourceUnit :: ProjectResult -> [BinaryDiscoveredDep] -> SourceUnit
 toSourceUnit project deps = do
