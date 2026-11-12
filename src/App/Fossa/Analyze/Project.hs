@@ -17,6 +17,9 @@ mkResult basedir project pathPrefix dependencyResults =
   ProjectResult
     { projectResultType = projectType project
     , projectResultPath = projectPath project
+    , -- Captured before the prune below: the pruned graph is the published view,
+      -- but consumers such as findings need the resolution as discovered.
+      projectResultUnprunedGraph = graph
     , projectResultGraph =
         -- FIXME: this is a hack to work around analyzers that aren't able to
         -- determine which dependencies are direct or have no edges. Without this hack, all of
@@ -45,6 +48,10 @@ mkResult basedir project pathPrefix dependencyResults =
 data ProjectResult = ProjectResult
   { projectResultType :: DiscoveredProjectType
   , projectResultPath :: Path Abs Dir
+  , projectResultUnprunedGraph :: Graphing Dependency
+  -- ^ The dependency graph as discovered, before 'Graphing.pruneUnreachable'.
+  -- Findings must capture the pre-prune resolution; 'projectResultGraph' is
+  -- the pruned view that is published.
   , projectResultGraph :: Graphing Dependency
   , projectResultGraphBreadth :: GraphBreadth
   , projectResultManifestFiles :: [SomePath]

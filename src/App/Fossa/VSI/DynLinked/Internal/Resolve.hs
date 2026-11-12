@@ -62,7 +62,7 @@ toSourceUnit root distro dependencies = do
     updatedDesc :: SourceUserDefDep -> SourceUserDefDep
     updatedDesc d = d{srcUserDepDescription = Just "Unmanaged dynamically linked dependency"}
     toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-    toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
+    toProject dir graph = ProjectResult VsiProjectType dir graph graph Complete []
 
 toDependency :: LinuxDistro -> ResolvedLinuxPackage -> Dependency
 toDependency distro ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of

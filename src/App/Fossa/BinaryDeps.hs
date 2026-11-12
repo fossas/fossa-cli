@@ -84,7 +84,7 @@ shouldFingerprintDir dir filters = not shouldExclude && shouldInclude
     isPrefixedOrEqual a b = a == b || isProperPrefixOf b a -- swap order of isProperPrefixOf comparison because we want to know if dir is prefixed by any filter
 
 toProject :: Path Abs Dir -> ProjectResult
-toProject dir = ProjectResult BinaryDepsProjectType dir mempty Complete []
+toProject dir = ProjectResult BinaryDepsProjectType dir mempty mempty Complete []
 
 toSourceUnit :: ProjectResult -> [BinaryDiscoveredDep] -> SourceUnit
 toSourceUnit project deps = do

@@ -148,6 +148,7 @@ import Effect.Logger (
   logDebug,
   logInfo,
   logStdout,
+  logWarn,
   renderIt,
  )
 import Effect.ReadFS (ReadFS)
@@ -534,11 +535,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     (False, _) -> traverse (withPathDependencyNudge includeAll) filteredProjects
   logDebug $ "Filtered projects with path dependencies: " <> pretty (show filteredProjects')
 
-  -- The unfiltered graphs rendered as a findings document, gated on --x-workflow
-  -- like the workflow run. The renderer is total, so this cannot fail the
-  -- analysis.
-  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings filteredProjects') else Nothing
-
   reachabilityUnitsResult <-
     case orgInfo of
       (Just (Organization{orgSupportsReachability = False})) -> pure []
@@ -562,6 +558,19 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
+
+  -- The unfiltered (pre-prune) graphs rendered as a findings document, gated on
+  -- --x-workflow like the workflow run. The renderer is total, so this cannot
+  -- fail the analysis.
+  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
+
+  -- The analysis-workflow upload rejects payloads above its ~30 MiB cap; flag
+  -- a findings document that could blow it on its own, before anything is sent.
+  let warnOversizedFindings doc =
+        when (BL.length (Aeson.encode doc) > 25 * 1024 * 1024) $
+          logWarn "projectFindings document may exceed the analysis-workflow 30 MiB upload cap and be rejected"
+  traverse_ warnOversizedFindings projectFindings
+
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
 
@@ -584,6 +593,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
+            -- 'mergeProjectFindings' overwrites an existing key; warn first so a
+            -- future ficus payload that grows one is not silently lost.
+            when (clobbersProjectFindings projectFindings workflowData) $
+              logWarn "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
             locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (mergeProjectFindings projectFindings workflowData)
             doAssertRevisionBinaries iatAssertion locator
   sendToDestination doUpload destination outputResult
@@ -729,10 +742,19 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
+-- | True when 'mergeProjectFindings' would overwrite an existing
+-- @projectFindings@ key in the ficus payload. Defensive: ficus never emits that
+-- key today, but the caller must warn before overwriting one.
+clobbersProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Bool
+clobbersProjectFindings (Just _) (Just (Aeson.Object obj)) = KeyMap.member (fromText "projectFindings") obj
+clobbersProjectFindings _ _ = False
+
 -- | Combine the ficus workflow payload with the project findings into one
 -- object for upload. Both absent means nothing to upload; findings alone are
 -- uploaded under @projectFindings@. A non-object ficus payload is preserved
--- verbatim under @workflowResult@ so no data is lost.
+-- verbatim under @workflowResult@ so no data is lost. Overwrites an existing
+-- @projectFindings@ key silently — check 'clobbersProjectFindings' at the call
+-- site before calling this.
 mergeProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Maybe Aeson.Value
 mergeProjectFindings projectFindings workflowData = case (projectFindings, workflowData) of
   (Nothing, other) -> other

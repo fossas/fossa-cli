@@ -19,7 +19,7 @@ import DepTypes (
   Dependency (..),
  )
 import Fossa.API.Types (AnalyzedPathDependency (AnalyzedPathDependency), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
-import Graphing (Graphing, direct)
+import Graphing (Graphing, deep, direct, hasVertex)
 import Path
 import Path.Extra (SomeResolvedPath (..))
 import Path.IO qualified as PIO
@@ -117,6 +117,33 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     let result = mkProjectResult cwd graphWithUnPathDep
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` result
+
+  it' "should leave the unpruned graph untouched when enrichment resolves the published graph" $ do
+    expectGetApiOpts
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchData
+    expectLicenseScanUpload
+    expectPathDependencyFinalize
+    expectNoAnalyzedPathRevisions
+
+    -- A disconnected dependency unreachable from the direct set: it would be
+    -- deleted by mkResult's prune, so it can only exist in the unpruned view.
+    -- Findings render from that view, so enrichment must not overwrite it with
+    -- the pruned one.
+    let unpruned = graphWithUnPathDep <> deep nonProdUPathDepOnly
+        result = (mkProjectResult cwd graphWithUnPathDep){projectResultUnprunedGraph = unpruned}
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    projectResultUnprunedGraph result' `shouldBe'` unpruned
+    hasVertex nonProdUPathDepOnly (projectResultUnprunedGraph result') `shouldBe'` True
+
+  it' "should leave the unpruned graph untouched when relabeling unresolved path deps" $ do
+    let unpruned = graphWithUnPathDep <> deep nonProdUPathDepOnly
+        result = (mkProjectResult cwd graphWithUnPathDep){projectResultUnprunedGraph = unpruned}
+
+    let result' = enrichPathDependencies' result
+    projectResultUnprunedGraph result' `shouldBe'` unpruned
+    hasVertex nonProdUPathDepOnly (projectResultUnprunedGraph result') `shouldBe'` True
 
   it' "should not perform path dependency enrichment, if result has no unresolved deps" $ do
     expectGetApiOpts
@@ -255,6 +282,7 @@ mkProjectResult path deps =
   ProjectResult
     { projectResultType = YarnProjectType
     , projectResultPath = path
+    , projectResultUnprunedGraph = deps
     , projectResultGraph = deps
     , projectResultGraphBreadth = Partial
     , projectResultManifestFiles = mempty
