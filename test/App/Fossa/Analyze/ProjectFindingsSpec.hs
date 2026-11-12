@@ -4,7 +4,7 @@
 module App.Fossa.Analyze.ProjectFindingsSpec (spec) where
 
 import App.Fossa.Analyze.ForkAlias (mkForkAliasMap)
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
 import Data.Aeson ((.=))
@@ -78,8 +78,8 @@ mkProject projectType unpruned breadth =
   ProjectResult
     { projectResultType = projectType
     , projectResultPath = testPath
-    , projectResultUnprunedGraph = unpruned
-    , projectResultGraph = Graphing.pruneUnreachable unpruned
+    , projectResultUnprunedGraph = RawGraph unpruned
+    , projectResultGraph = PublishedGraph (Graphing.pruneUnreachable unpruned)
     , projectResultGraphBreadth = breadth
     , projectResultManifestFiles = []
     }

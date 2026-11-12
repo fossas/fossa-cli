@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze (
@@ -562,14 +563,17 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- The unfiltered (pre-prune) graphs rendered as a findings document, gated on
   -- --x-workflow like the workflow run. The renderer is total, so this cannot
   -- fail the analysis.
-  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
+  let renderedFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
 
-  -- The analysis-workflow upload rejects payloads above its ~30 MiB cap; flag
-  -- a findings document that could blow it on its own, before anything is sent.
-  let warnOversizedFindings doc =
-        when (BL.length (Aeson.encode doc) > 25 * 1024 * 1024) $
-          logWarn "projectFindings document may exceed the analysis-workflow 30 MiB upload cap and be rejected"
-  traverse_ warnOversizedFindings projectFindings
+  -- The analysis-workflow upload caps payloads at ~30 MiB and a failed upload
+  -- fails the run; findings are adjunct data, so an oversized document is
+  -- dropped (with a warning) rather than dooming the upload.
+  let dropOversizedFindings doc = do
+        let oversized = BL.length (Aeson.encode doc) > 25 * 1024 * 1024
+        when oversized $
+          logWarn "projectFindings document exceeds the analysis-workflow ~30 MiB upload cap; dropping it instead of failing the run"
+        pure (if oversized then Nothing else Just doc)
+  projectFindings <- join <$> traverse dropOversizedFindings renderedFindings
 
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
@@ -593,11 +597,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            -- 'mergeProjectFindings' overwrites an existing key; warn first so a
-            -- future ficus payload that grows one is not silently lost.
+            -- projectFindings is a CLI-owned key: the uploaded payload is the
+            -- CLI's output, so our findings replace anything a workflow payload
+            -- carries. Debug-level: nothing for a user to act on.
             when (clobbersProjectFindings projectFindings workflowData) $
-              logWarn "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (mergeProjectFindings projectFindings workflowData)
+              logDebug "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (unWorkflowUploadPayload <$> (fmap WorkflowUploadPayload workflowData <> fmap projectFindingsPayload projectFindings))
             doAssertRevisionBinaries iatAssertion locator
   sendToDestination doUpload destination outputResult
 
@@ -742,25 +747,32 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
--- | True when 'mergeProjectFindings' would overwrite an existing
--- @projectFindings@ key in the ficus payload. Defensive: ficus never emits that
--- key today, but the caller must warn before overwriting one.
+-- | True when the CLI-owned @projectFindings@ key would replace an existing
+-- @projectFindings@ key in the ficus payload. Overwriting is by contract (the
+-- uploaded payload is the CLI's output), hence debug visibility only.
 clobbersProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Bool
 clobbersProjectFindings (Just _) (Just (Aeson.Object obj)) = KeyMap.member (fromText "projectFindings") obj
 clobbersProjectFindings _ _ = False
 
--- | Combine the ficus workflow payload with the project findings into one
--- object for upload. Both absent means nothing to upload; findings alone are
--- uploaded under @projectFindings@. A non-object ficus payload is preserved
--- verbatim under @workflowResult@ so no data is lost. Overwrites an existing
--- @projectFindings@ key silently — check 'clobbersProjectFindings' at the call
--- site before calling this.
-mergeProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Maybe Aeson.Value
-mergeProjectFindings projectFindings workflowData = case (projectFindings, workflowData) of
-  (Nothing, other) -> other
-  (Just findings, Nothing) -> Just $ Aeson.object ["projectFindings" .= findings]
-  (Just findings, Just (Aeson.Object obj)) -> Just $ Aeson.Object (KeyMap.insert (fromText "projectFindings") findings obj)
-  (Just findings, Just other) -> Just $ Aeson.object ["workflowResult" .= other, "projectFindings" .= findings]
+-- | The JSON payload uploaded to the analysis-workflows endpoint. Combines by
+-- object key-union with the RIGHT operand winning, so the CLI-owned
+-- @projectFindings@ key (from 'projectFindingsPayload') replaces any key a
+-- workflow payload carries. The workflow payload is always a JSON object per
+-- the WorkflowResult contract; the non-object branch is defensive only.
+newtype WorkflowUploadPayload = WorkflowUploadPayload {unWorkflowUploadPayload :: Aeson.Value}
+  deriving stock (Eq, Show)
+
+instance Semigroup WorkflowUploadPayload where
+  WorkflowUploadPayload left <> WorkflowUploadPayload right = case (left, right) of
+    (Aeson.Object ka, Aeson.Object kb) -> WorkflowUploadPayload (Aeson.Object (KeyMap.union kb ka))
+    (_, right') -> WorkflowUploadPayload right'
+
+instance Monoid WorkflowUploadPayload where
+  mempty = WorkflowUploadPayload (Aeson.Object KeyMap.empty)
+
+-- | The findings' contribution to the upload payload.
+projectFindingsPayload :: Aeson.Value -> WorkflowUploadPayload
+projectFindingsPayload doc = WorkflowUploadPayload (Aeson.object [fromText "projectFindings" .= doc])
 
 buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Maybe Aeson.Value -> Aeson.Value
 buildResult srcUnits projects licenseSourceUnits forkAliasMap projectFindings =

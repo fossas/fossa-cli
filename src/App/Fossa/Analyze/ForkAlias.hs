@@ -16,7 +16,7 @@ module App.Fossa.Analyze.ForkAlias (
 ) where
 
 import App.Fossa.Analyze.GraphMangler (graphingToGraph)
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), unPublishedGraph)
 import App.Fossa.ManualDeps (
   ForkAlias (..),
   ForkAliasEntry (..),
@@ -149,5 +149,5 @@ buildProject forkAliasMap project =
   Aeson.object
     [ "path" .= projectResultPath project
     , "type" .= projectResultType project
-    , "graph" .= graphingToGraph (translateDependencyGraph forkAliasMap (projectResultGraph project))
+    , "graph" .= graphingToGraph (translateDependencyGraph forkAliasMap (unPublishedGraph (projectResultGraph project)))
     ]

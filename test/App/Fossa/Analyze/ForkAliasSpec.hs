@@ -13,7 +13,7 @@ import App.Fossa.Analyze.ForkAlias (
   translateDependencyGraph,
   translateLocatorWithForkAliases,
  )
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..), forkAliasEntryToLocator)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Key qualified as Key
@@ -259,8 +259,8 @@ spec = do
             ProjectResult
               { projectResultType = CargoProjectType
               , projectResultPath = testPath
-              , projectResultUnprunedGraph = graph
-              , projectResultGraph = graph
+              , projectResultUnprunedGraph = RawGraph graph
+              , projectResultGraph = PublishedGraph graph
               , projectResultGraphBreadth = Complete
               , projectResultManifestFiles = []
               }
