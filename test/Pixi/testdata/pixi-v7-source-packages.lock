@@ -1,0 +1,61 @@
+# Trimmed from prefix-dev/pixi's examples/pixi-build/cpp-git-source, where
+# sdl_example's manifest is in the workspace but its source is a git
+# repository. my-package is built from a local path, as in rattler's lock
+# tests, and depends on sdl_example. viewer's source sits beside its manifest,
+# as in pixi's package source docs.
+version: 7
+platforms:
+- name: linux-64
+- name: osx-arm64
+environments:
+  default:
+    channels:
+    - url: https://prefix.dev/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://prefix.dev/conda-forge/linux-64/sdl2-2.32.56-h54a6638_0.conda
+      - conda_source: sdl_example[10db969c] @ .
+      - conda_source: my-package[bfd2b14c] @ my-package-linux
+      - conda_source: viewer[5be1c0d2] @ packages/viewer
+      osx-arm64:
+      - conda: https://prefix.dev/conda-forge/osx-arm64/sdl2-2.32.56-h248ca61_0.conda
+      - conda_source: sdl_example[d21a19fc] @ .
+packages:
+- conda: https://prefix.dev/conda-forge/linux-64/sdl2-2.32.56-h54a6638_0.conda
+- conda: https://prefix.dev/conda-forge/osx-arm64/sdl2-2.32.56-h248ca61_0.conda
+- conda_source: sdl_example[10db969c] @ .
+  variants:
+    c_stdlib: sysroot
+    c_stdlib_version: '2.28'
+    target_platform: linux-64
+  depends:
+  - sdl2 >=2.32.56,<3.0a0
+  source:
+    git: https://github.com/prefix-dev/pixi-build-testsuite
+    rev: 34d90eaf81fa042ace51ec27af28b1e487c79f32
+    subdir: tests/data/pixi_build/cpp-with-path-to-source/project
+- conda_source: sdl_example[d21a19fc] @ .
+  variants:
+    c_stdlib: macosx_deployment_target
+    c_stdlib_version: '13.0'
+    target_platform: osx-arm64
+  depends:
+  - sdl2 >=2.32.56,<3.0a0
+  source:
+    git: https://github.com/prefix-dev/pixi-build-testsuite
+    rev: 34d90eaf81fa042ace51ec27af28b1e487c79f32
+    subdir: tests/data/pixi_build/cpp-with-path-to-source/project
+- conda_source: my-package[bfd2b14c] @ my-package-linux
+  version: 1.0.0
+  subdir: noarch
+  noarch: generic
+  depends:
+  - sdl_example
+  license: MIT
+- conda_source: viewer[5be1c0d2] @ packages/viewer
+  version: 0.2.0
+  subdir: linux-64
+  depends:
+  - sdl2 >=2.32.56,<3.0a0
+  source:
+    path: ../src
