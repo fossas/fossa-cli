@@ -9,7 +9,7 @@ module App.Fossa.PathDependency (
 ) where
 
 import App.Docs (pathDependencyDocsUrl)
-import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType))
+import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType, projectResultUnprunedGraph))
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
 import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
@@ -87,6 +87,9 @@ enrichPathDependencies includeAll options projectRevision pr = do
   if orgSupportsPathDependencyScans org
     then do
       graph' <- resolvePaths includeAll' options projectRevision org baseDir graph
+      -- Only the published view is enriched: resolvePaths scans and uploads, so
+      -- it must not run twice, and the unpruned graph stays the resolution as
+      -- discovered.
       pure $ pr{projectResultGraph = graph'}
     else pure pr
 
@@ -96,6 +99,7 @@ enrichPathDependencies' :: ProjectResult -> ProjectResult
 enrichPathDependencies' pr = do
   let graph = projectResultGraph pr
   let graph' = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d) graph
+  -- The unpruned graph is left as discovered (see enrichPathDependencies).
   pr{projectResultGraph = graph'}
 
 withPathDependencyNudge :: Has Logger sig m => Flag IncludeAll -> ProjectResult -> m ProjectResult

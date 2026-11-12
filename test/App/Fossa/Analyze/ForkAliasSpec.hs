@@ -259,6 +259,7 @@ spec = do
             ProjectResult
               { projectResultType = CargoProjectType
               , projectResultPath = testPath
+              , projectResultUnprunedGraph = graph
               , projectResultGraph = graph
               , projectResultGraphBreadth = Complete
               , projectResultManifestFiles = []

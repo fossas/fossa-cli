@@ -154,7 +154,7 @@ mkDiscoveredProjectScan projectType dir breadth =
       dpi
       ( Success
           []
-          (ProjectResult projectType dir empty breadth mempty)
+          (ProjectResult projectType dir empty empty breadth mempty)
       )
   )
   where
