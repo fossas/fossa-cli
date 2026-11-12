@@ -22,7 +22,7 @@ import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
-import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, toolAllowed)
+import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, consumerAllowed, toolAllowed)
 import Discovery.Walk (WalkStep (..), findFileNamed)
 import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, withWalkBroadcast)
 import Discovery.WalkStream (DirListing (..))
@@ -113,6 +113,37 @@ gatingSpec =
         count `shouldBe'` 0
         out <- sendIO $ IOR.readIORef outRef
         out `shouldSatisfy'` null
+
+    it' "starts a consumer whose tool family has any allowed member" $
+      withTempDir "test-Discovery-WalkBroadcast-family-gate" $ \tmpDir -> do
+        let web = tmpDir </> $(mkRelDir "web")
+        sendIO $ do
+          traverse_ createDir [web]
+          writeFile (toFilePath (web </> $(mkRelFile "package.json"))) "{}"
+
+        -- The package.json strategy is keyed to npm for gating, but it covers
+        -- Yarn, npm, pnpm, and Bun workspaces.  Allow-listing yarn only must
+        -- still start the npm-keyed consumer: pre-shared-walk, the strategy
+        -- self-gated via withMultiToolFilter's any-of semantics, and the
+        -- broadcast gate must not narrow that to npm alone.
+        let yarnOnlyFilters = (mempty :: AllFilters){includeFilters = comboInclude [TypeTarget "yarn"] []}
+        consumerAllowed yarnOnlyFilters NpmProjectType `shouldBe'` True
+        toolAllowed yarnOnlyFilters NpmProjectType `shouldBe'` False
+
+        counterRef <- sendIO $ IOR.newIORef 0
+        outRef <- sendIO $ IOR.newIORef ([] :: [Path Abs Dir])
+        let consumer =
+              WalkConsumer
+                { wcProjectType = NpmProjectType
+                , wcVisitor = countingConsumer counterRef outRef
+                }
+        withWalkBroadcast yarnOnlyFilters tmpDir [consumer]
+
+        -- The consumer ran despite npm itself being unlisted.
+        count <- sendIO $ IOR.readIORef counterRef
+        count `shouldBe'` 2 -- root + web
+        out <- sendIO $ IOR.readIORef outRef
+        out `shouldSatisfy'` (not . null)
 
     it' "invokes a consumer whose tool is allowed" $
       withTempDir "test-Discovery-WalkBroadcast-allow" $ \tmpDir -> do
