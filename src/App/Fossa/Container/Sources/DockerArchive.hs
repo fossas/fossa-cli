@@ -8,7 +8,7 @@ module App.Fossa.Container.Sources.DockerArchive (
 
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
 import App.Fossa.Analyze.Debug (diagToDebug)
-import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
+import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc, WalkedFunc))
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (analyzeProjectStaticOnly),
@@ -260,6 +260,10 @@ runAnalyzers systemDepsOnly osInfo filters withoutDefaultFilters = do
     $ layerAnalyzers osInfo systemDepsOnly
   where
     single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters)
+    -- Container layers support only the simple per-strategy discoveries above;
+    -- 'WalkedFunc' strategies are never listed in 'layerAnalyzers', so this
+    -- case is statically unreachable and skipped.
+    single WalkedFunc{} = pure ()
     basedir = Path $ toString fixedVfsRoot
 
 runDependencyAnalysis ::
@@ -401,6 +405,8 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
   where
     run = traverse_ findTargets $ layerAnalyzers osInfo False
     findTargets (DiscoverFunc f) = withDiscoveredProjects f basedir (renderLayerTarget basedir layerType)
+    -- See 'single' above: 'WalkedFunc' strategies never appear in 'layerAnalyzers'.
+    findTargets WalkedFunc{} = pure ()
     basedir = Path $ toString fixedVfsRoot
 
 -- | Retrieves OS information from the layers of a Docker image.
