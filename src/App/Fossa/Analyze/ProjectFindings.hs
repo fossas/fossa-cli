@@ -1,7 +1,7 @@
 module App.Fossa.Analyze.ProjectFindings (renderProjectFindings) where
 
 import App.Fossa.Analyze.ForkAlias (translateLocatorWithForkAliases)
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), unRawGraph)
 import App.Fossa.ManualDeps (ForkAlias)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -23,20 +23,23 @@ import Srclib.Types (Locator, renderLocator)
 import Types (GraphBreadth (Complete, Partial))
 
 -- | Render the pre-prune dependency resolution of each project as a findings
--- document matching the @fossa/workflows/v1beta1@ @ProjectFindings@ wire
--- shape: per project, a locator-keyed occurrence map mirroring
--- @RepoAnalysis.dependencies@ (key = the fork-aliased locator) plus a sibling
--- indexed graph carrying the structure the flat map loses. Determination
--- fields this producer cannot adjudicate (@rawScope@, @isOptional@,
--- @linking@, @distribution@, @provenance@) are omitted; consumers must read
--- their absence as "no determination was made".
+-- document matching the @fossa/workflows/v1beta1@ @ProjectFindings@ contract:
 --
--- Nodes are identified only by index into @nodes@: two nodes may share a
--- locator and are distinguished by environments. Ordering is fully
--- deterministic for cross-run stability: nodes sort by (rendered aliased
--- locator, rendered environments) with the raw locator as a final tiebreak;
--- occurrence rows are sorted by scope; edges are deduplicated index pairs;
--- direct-node indices are sorted.
+-- > {"projects": [{
+-- >   "projectType": "gradle", "path": "packages/cli",
+-- >   "breadth": "GRAPH_BREADTH_COMPLETE",
+-- >   "dependencies": {"mvn+org.example:lib$1.0.0": {"occurrences": [
+-- >     {"module": "packages/cli", "isDirect": true, "scope": "production",
+-- >      "aliasedFrom": "github+myorg/lib$1.0.0"}]}},
+-- >   "graph": {"nodes": [{"locator": "mvn+org.example:lib$1.0.0",
+-- >                         "environments": ["production"]}],
+-- >             "edges": [{"fromIndex": 1, "toIndex": 0}], "directNodes": [1]}}]}
+--
+-- @aliasedFrom@ is present only when a fork alias changed the locator. Nodes
+-- are identified by index, not locator. Determination fields this producer
+-- cannot adjudicate (@rawScope@, @isOptional@, @linking@, @distribution@,
+-- @provenance@) are omitted: consumers read absence as "no determination was
+-- made".
 renderProjectFindings :: Map.Map Locator ForkAlias -> [ProjectResult] -> Aeson.Value
 renderProjectFindings forkAliasMap projects =
   Aeson.object ["projects" .= map (renderProject forkAliasMap) projects]
@@ -53,7 +56,7 @@ renderProject forkAliasMap project =
   where
     -- Findings capture the resolution before 'pruneUnreachable';
     -- 'projectResultGraph' is the pruned, published view.
-    graph = projectResultUnprunedGraph project
+    graph = unRawGraph (projectResultUnprunedGraph project)
     pathText = toText (toFilePath (projectResultPath project))
     directSet :: Set.Set Dependency
     directSet = Set.fromList (Graphing.directList graph)
