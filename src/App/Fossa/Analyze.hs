@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze (
@@ -41,6 +42,7 @@ import App.Fossa.Analyze.ForkAlias (
   translateLocatorWithForkAliases,
  )
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
+import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
 import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
   AnalysisScanResult (AnalysisScanResult),
@@ -120,6 +122,8 @@ import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
 import Control.Monad (guard, join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
+import Data.Aeson.Key (fromText)
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
@@ -145,6 +149,7 @@ import Effect.Logger (
   logDebug,
   logInfo,
   logStdout,
+  logWarn,
   renderIt,
  )
 import Effect.ReadFS (ReadFS)
@@ -554,6 +559,22 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
+
+  -- The unfiltered (pre-prune) graphs rendered as a findings document, gated on
+  -- --x-workflow like the workflow run. The renderer is total, so this cannot
+  -- fail the analysis.
+  let renderedFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
+
+  -- The analysis-workflow upload caps payloads at ~30 MiB and a failed upload
+  -- fails the run; findings are adjunct data, so an oversized document is
+  -- dropped (with a warning) rather than dooming the upload.
+  let dropOversizedFindings doc = do
+        let oversized = BL.length (Aeson.encode doc) > 25 * 1024 * 1024
+        when oversized $
+          logWarn "projectFindings document exceeds the analysis-workflow ~30 MiB upload cap; dropping it instead of failing the run"
+        pure (if oversized then Nothing else Just doc)
+  projectFindings <- join <$> traverse dropOversizedFindings renderedFindings
+
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
 
@@ -563,7 +584,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let translatedScannedSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) scannedSourceUnits
   let allTranslatedSourceUnits = map (mergeForkAliasLabels forkAliasLabels) (translatedAdditionalSourceUnits ++ translatedScannedSourceUnits)
 
-  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
+  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap projectFindings
 
   scanUnits <-
     case (keywordSearchResultsFound, checkForEmptyUpload projectScans filteredProjects' allTranslatedSourceUnits licenseSourceUnits) of
@@ -576,7 +597,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults workflowData
+            -- projectFindings is a CLI-owned key: the uploaded payload is the
+            -- CLI's output, so our findings replace anything a workflow payload
+            -- carries. Debug-level: nothing for a user to act on.
+            when (clobbersProjectFindings projectFindings workflowData) $
+              logDebug "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (unWorkflowUploadPayload <$> (fmap WorkflowUploadPayload workflowData <> fmap projectFindingsPayload projectFindings))
             doAssertRevisionBinaries iatAssertion locator
   sendToDestination doUpload destination outputResult
 
@@ -721,12 +747,42 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Aeson.Value
-buildResult srcUnits projects licenseSourceUnits forkAliasMap =
-  Aeson.object
+-- | True when the CLI-owned @projectFindings@ key would replace an existing
+-- @projectFindings@ key in the ficus payload. Overwriting is by contract (the
+-- uploaded payload is the CLI's output), hence debug visibility only.
+clobbersProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Bool
+clobbersProjectFindings (Just _) (Just (Aeson.Object obj)) = KeyMap.member (fromText "projectFindings") obj
+clobbersProjectFindings _ _ = False
+
+-- | The JSON payload uploaded to the analysis-workflows endpoint. Combines by
+-- object key-union with the RIGHT operand winning, so the CLI-owned
+-- @projectFindings@ key (from 'projectFindingsPayload') replaces any key a
+-- workflow payload carries. The workflow payload is always a JSON object per
+-- the WorkflowResult contract; the non-object branch is defensive only.
+newtype WorkflowUploadPayload = WorkflowUploadPayload {unWorkflowUploadPayload :: Aeson.Value}
+  deriving stock (Eq, Show)
+
+instance Semigroup WorkflowUploadPayload where
+  WorkflowUploadPayload left <> WorkflowUploadPayload right = case (left, right) of
+    (Aeson.Object ka, Aeson.Object kb) -> WorkflowUploadPayload (Aeson.Object (KeyMap.union kb ka))
+    (_, right') -> WorkflowUploadPayload right'
+
+instance Monoid WorkflowUploadPayload where
+  mempty = WorkflowUploadPayload (Aeson.Object KeyMap.empty)
+
+-- | The findings' contribution to the upload payload.
+projectFindingsPayload :: Aeson.Value -> WorkflowUploadPayload
+projectFindingsPayload doc = WorkflowUploadPayload (Aeson.object [fromText "projectFindings" .= doc])
+
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Maybe Aeson.Value -> Aeson.Value
+buildResult srcUnits projects licenseSourceUnits forkAliasMap projectFindings =
+  Aeson.object $
     [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
+      <> case projectFindings of
+        Nothing -> []
+        Just findings -> [("projectFindings", findings)]
   where
     mergedUnits = case licenseSourceUnits of
       Nothing -> map sourceUnitToFullSourceUnit srcUnits

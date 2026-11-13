@@ -9,7 +9,7 @@ module App.Fossa.PathDependency (
 ) where
 
 import App.Docs (pathDependencyDocsUrl)
-import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType))
+import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType, projectResultUnprunedGraph), PublishedGraph (PublishedGraph), unPublishedGraph)
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
 import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
@@ -82,26 +82,30 @@ enrichPathDependencies ::
 enrichPathDependencies includeAll options projectRevision pr = do
   org <- getOrganization
   let baseDir = projectResultPath pr
-  let graph = projectResultGraph pr
+  let graph = unPublishedGraph (projectResultGraph pr)
   let includeAll' = (fromFlag IncludeAll includeAll)
   if orgSupportsPathDependencyScans org
     then do
       graph' <- resolvePaths includeAll' options projectRevision org baseDir graph
-      pure $ pr{projectResultGraph = graph'}
+      -- Only the published view is enriched: resolvePaths scans and uploads, so
+      -- it must not run twice, and the unpruned graph stays the resolution as
+      -- discovered.
+      pure $ pr{projectResultGraph = PublishedGraph graph'}
     else pure pr
 
 -- | Updates 'ProjectResult' dependency graph, by updating
 -- unresolved path dependency, without license scan, or endpoint upload.
 enrichPathDependencies' :: ProjectResult -> ProjectResult
 enrichPathDependencies' pr = do
-  let graph = projectResultGraph pr
+  let graph = unPublishedGraph (projectResultGraph pr)
   let graph' = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d) graph
-  pr{projectResultGraph = graph'}
+  -- The unpruned graph is left as discovered (see enrichPathDependencies).
+  pr{projectResultGraph = PublishedGraph graph'}
 
 withPathDependencyNudge :: Has Logger sig m => Flag IncludeAll -> ProjectResult -> m ProjectResult
 withPathDependencyNudge includeAll pr = do
   let includeAll' = (fromFlag IncludeAll includeAll)
-  let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep includeAll') $ vertexList $ projectResultGraph pr
+  let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep includeAll') $ vertexList $ unPublishedGraph (projectResultGraph pr)
 
   -- Only nudge users, if they have any path dependencies!
   when (isJust maybePathDeps) $ do

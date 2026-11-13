@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Analysis: With `--x-workflow` set, `fossa analyze` now renders the unfiltered dependency graphs (with per-dependency scope environments) as a `projectFindings` document. It is included in the stdout JSON output and merged into the uploaded workflow result.
 - Swift: Add dynamic Swift strategy which uses`swift package show-dependencies` ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
