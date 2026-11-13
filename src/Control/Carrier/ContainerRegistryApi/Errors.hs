@@ -3,16 +3,23 @@ module Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody (..),
   UnknownApiError (..),
   FailedToParseAuthChallenge (..),
+  RegistryRequestFailed (..),
   errCodeToErrKind,
 ) where
 
+import Control.Exception (displayException)
 import Data.Aeson (FromJSON (parseJSON), withObject, withText, (.:))
 import Data.Error (renderErrataStack)
-import Data.String.Conversion (ToText (toText), toString)
+import Data.String.Conversion (ToText (toText), decodeUtf8, toString)
 import Data.Text (Text)
 import Diag.Diagnostic (ToDiagnostic (..), renderDiagnostic)
 import Effect.Logger (renderIt)
 import Errata (Errata (..))
+import Network.HTTP.Client (
+  HttpExceptionContent (ConnectionFailure, ConnectionTimeout, InternalException, ResponseTimeout),
+  Request (method),
+  getUri,
+ )
 import Network.HTTP.Types (Status (statusCode))
 import Network.URI (URI)
 import Prettyprinter (indent, pretty, vsep)
@@ -117,3 +124,21 @@ instance ToDiagnostic FailedToParseAuthChallenge where
     let header = "Failed to parse authorization challenge"
         body = err
     Errata (Just header) [] (Just body)
+
+-- | A request to the registry got no response at all: the host could not be resolved, the
+-- connection was refused, reset or timed out, or the TLS handshake failed. http-client reports
+-- these as an exception instead of a response.
+data RegistryRequestFailed = RegistryRequestFailed Request HttpExceptionContent
+
+instance ToDiagnostic RegistryRequestFailed where
+  renderDiagnostic (RegistryRequestFailed req content) = do
+    let header = "Request to the registry failed: " <> decodeUtf8 (method req) <> " " <> toText (show (getUri req))
+    Errata (Just header) [] (Just $ reason content)
+    where
+      reason :: HttpExceptionContent -> Text
+      reason = \case
+        ConnectionFailure err -> "Could not connect to the registry: " <> toText (displayException err)
+        ConnectionTimeout -> "Timed out while connecting to the registry."
+        ResponseTimeout -> "The registry did not respond in time."
+        InternalException err -> toText (displayException err)
+        other -> toText (show other)

@@ -6,7 +6,7 @@ import Container.Docker.OciManifest (OciManifestConfig (configDigest), OciManife
 import Container.Docker.SourceParser (RegistryImageSource, RepoDigest (RepoDigest), parseImageUrl)
 import Control.Carrier.ContainerRegistryApi (runTasks)
 import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), parseAuthChallenge)
-import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, safeReplaceToken, updateToken)
+import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, logHttp, safeReplaceToken, updateToken)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.TaskPool (Progress)
@@ -14,10 +14,13 @@ import Control.Concurrent.STM (newEmptyTMVarIO)
 import Control.Effect.ContainerRegistryApi (ContainerRegistryApi, getImageManifest)
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText, fromEitherShow)
 import Control.Effect.Lift (Lift)
+import Control.Exception (throwIO)
 import Data.Foldable (for_, traverse_)
 import Data.Text (Text)
 import Data.Void (Void)
 import Diag.Result (Result (Failure, Success), renderFailure)
+import Effect.Logger (ignoreLogger)
+import Network.HTTP.Client (ManagerSettings (managerRawConnection), Request (method), defaultManagerSettings, newManager, parseRequest)
 import ResultUtil (assertOnSuccess, expectFailure)
 import System.Timeout (timeout)
 import Test.Effect (it', shouldBe')
@@ -57,6 +60,25 @@ spec = do
   parseAuthChallengeSpec
   safeReplaceTokenSpec
   runTasksSpec
+  logHttpSpec
+
+-- http-client throws an 'HttpException' when a request gets no response at all (the registry's
+-- host cannot be resolved, the connection is refused or times out). It has to be reported through
+-- 'Diagnostics': otherwise it escapes the container scan as "An exception occurred:
+-- HttpExceptionRequest ..." with no context about which registry request failed.
+logHttpSpec :: Spec
+logHttpSpec =
+  describe "logHttp" $
+    it "should report a request that gets no response as a registry error" $ do
+      manager <- newManager defaultManagerSettings{managerRawConnection = pure (\_ _ _ -> throwIO (userError "simulated: could not resolve host"))}
+      req <- parseRequest "http://registry.invalid/v2/some-repo/manifests/latest"
+      result <- runStack . runDiagnostics . ignoreLogger $ logHttp req{method = "HEAD"} manager
+      case result of
+        Success _ _ -> expectationFailure "expected a failure"
+        Failure ws eg -> do
+          let rendered = show (renderFailure ws eg "An issue occurred")
+          rendered `shouldContain` "HEAD http://registry.invalid/v2/some-repo/manifests/latest"
+          rendered `shouldContain` "simulated: could not resolve host"
 
 -- Blob downloads are forked onto a task pool. A task that fails through 'Diagnostics' has to be
 -- reported once the pool has drained: otherwise the worker running it exits without marking the
