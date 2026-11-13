@@ -31,7 +31,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as TL
 import Diag.Result (Result (..))
-import Graphing (empty)
 import Path (
   Abs,
   Dir,

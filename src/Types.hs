@@ -16,6 +16,7 @@ module Types (
   DiscoveredProjectType (..),
   LicenseScanPathFilters (..),
   projectTypeToText,
+  renderGraphType,
 ) where
 
 import Data.Aeson (
@@ -219,11 +220,11 @@ instance FromJSON GraphBreadth where
 instance ToJSON GraphBreadth where
   -- render as text
   toJSON = toJSON . renderGraphType
-    where
-      renderGraphType :: GraphBreadth -> Text
-      renderGraphType = \case
-        Complete -> "complete"
-        Partial -> "partial"
+
+renderGraphType :: GraphBreadth -> Text
+renderGraphType = \case
+  Complete -> "complete"
+  Partial -> "partial"
 
 newtype BuildTarget = BuildTarget {unBuildTarget :: Text}
   deriving (Eq, Ord, Show, ToJSON)
