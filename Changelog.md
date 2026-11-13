@@ -7,6 +7,7 @@
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
 - Pnpm: Dependencies installed under an npm alias are no longer reported under the alias name with no version. ([#1837](https://github.com/fossas/fossa-cli/pull/1837))
+- Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
 
 ## 3.20.10
 
