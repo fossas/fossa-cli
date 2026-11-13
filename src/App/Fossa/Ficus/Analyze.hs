@@ -7,6 +7,7 @@ module App.Fossa.Ficus.Analyze (
   -- Exported for reuse by other ficus subcommands
   execFicusStreaming,
   -- Exported for testing
+  ficusCommand,
   singletonFicusMessage,
   vendoredDepsToSourceUnit,
 )
@@ -144,6 +145,7 @@ analyzeWithFicusMain rootDir apiOpts revision strategies filters snippetScanRete
       FicusConfig
         { ficusConfigRootDir = rootDir
         , ficusConfigExclude = maybe [] licenseScanPathFiltersExclude filters
+        , ficusConfigOnly = maybe [] licenseScanPathFiltersOnly filters
         , ficusConfigEndpoint = apiOptsUri =<< apiOpts
         , ficusConfigSecret = apiOptsApiKey <$> apiOpts
         , ficusConfigRevision = revision
@@ -449,11 +451,12 @@ ficusCommand ficusConfig bin debugMode = do
   where
     snippetScanRetentionDays = ficusConfigSnippetScanRetentionDays ficusConfig
     debugArgs = ["--debug" | debugMode]
-    configArgs endpoint = debugArgs ++ ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
+    configArgs endpoint = debugArgs ++ ["analyze", "--secret", secret, "--endpoint", endpoint, "--locator", locator, "--set", "all:skip-hidden-files", "--set", "all:gitignore", "--exclude", ".git", "--exclude", ".git/**"] ++ configExcludes ++ configOnly ++ configStrategies ++ maybe [] (\days -> ["--snippet-scan-retention-days", toText days]) snippetScanRetentionDays ++ [targetDir]
     targetDir = toText $ toFilePath $ ficusConfigRootDir ficusConfig
     secret = maybe "" (toText . unApiKey) $ ficusConfigSecret ficusConfig
     locator = renderLocator $ Locator "custom" (projectName $ ficusConfigRevision ficusConfig) (Just $ projectRevision $ ficusConfigRevision ficusConfig)
     configExcludes = concatMap (\path -> ["--exclude", unGlobFilter path]) $ ficusConfigExclude ficusConfig
+    configOnly = concatMap (\path -> ["--only", unGlobFilter path]) $ ficusConfigOnly ficusConfig
     configStrategies = concatMap (\strategy -> ["--strategy", strategyToArg strategy]) $ ficusConfigStrategies ficusConfig
     strategyToArg = \case
       FicusStrategySnippetScan -> "snippet-scanning"

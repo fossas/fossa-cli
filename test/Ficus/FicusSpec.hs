@@ -3,8 +3,9 @@
 
 module Ficus.FicusSpec (spec) where
 
-import App.Fossa.Ficus.Analyze (analyzeWithFicus, vendoredDepsToSourceUnit)
-import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependency (..), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults), FicusVendoredLocation (..))
+import App.Fossa.EmbeddedBinary (withFicusBinary)
+import App.Fossa.Ficus.Analyze (analyzeWithFicus, ficusCommand, vendoredDepsToSourceUnit)
+import App.Fossa.Ficus.Types (FicusAnalysisResults (..), FicusConfig (..), FicusSnippetScanResults (..), FicusStrategy (FicusStrategySnippetScan, FicusStrategyVendetta), FicusVendoredDependency (..), FicusVendoredDependencyScanResults (FicusVendoredDependencyScanResults), FicusVendoredLocation (..))
 import App.Types (ProjectRevision (..))
 import Control.Effect.Lift (sendIO)
 import Control.Timeout (Duration (Seconds))
@@ -13,14 +14,16 @@ import Data.Aeson.Key qualified as Key
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.String.Conversion (toText)
 import Data.Vector qualified
+import Effect.Exec (Command (..))
 import Fossa.API.Types (ApiKey (..), ApiOpts (..))
 import Path (Dir, Path, Rel, reldir, (</>))
 import Path.IO qualified as PIO
 import Srclib.Types (SourceUnit (..), SourceUnitBuild (..), SourceUnitDependency (..))
 import System.Environment (lookupEnv)
-import Test.Effect (expectationFailure', it', shouldBe', shouldSatisfy')
+import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldNotContain', shouldSatisfy')
 import Test.Hspec
 import Text.URI (mkURI)
+import Types (GlobFilter (..))
 
 fixtureDir :: Path Rel Dir
 fixtureDir = [reldir|test/Ficus/testdata|]
@@ -116,3 +119,23 @@ spec = do
               _ -> expectationFailure "Expected 'vendored' array in metadata"
             _ -> expectationFailure "Expected object in sourceDepData"
           _ -> expectationFailure "Expected exactly one dependency"
+
+  describe "ficusCommand" $ do
+    it' "passes each only filter as --only, and none when only is unset" $ do
+      rootDir <- sendIO PIO.getCurrentDir
+      let config =
+            FicusConfig
+              { ficusConfigRootDir = rootDir
+              , ficusConfigExclude = [GlobFilter "**/test/**"]
+              , ficusConfigOnly = [GlobFilter "product-a/**", GlobFilter "product-b/**"]
+              , ficusConfigEndpoint = Nothing
+              , ficusConfigSecret = Nothing
+              , ficusConfigRevision = ProjectRevision "ficus-test" "123456" Nothing
+              , ficusConfigFlags = []
+              , ficusConfigSnippetScanRetentionDays = Nothing
+              , ficusConfigStrategies = [FicusStrategySnippetScan, FicusStrategyVendetta]
+              }
+      (withOnly, withoutOnly) <- withFicusBinary $ \bin ->
+        (,) <$> ficusCommand config bin False <*> ficusCommand config{ficusConfigOnly = []} bin False
+      cmdArgs withOnly `shouldContain'` ["--only", "product-a/**", "--only", "product-b/**"]
+      cmdArgs withoutOnly `shouldNotContain'` ["--only"]

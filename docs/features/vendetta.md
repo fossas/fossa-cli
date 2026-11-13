@@ -22,8 +22,7 @@ When `--x-vendetta` is enabled, the CLI:
 1. **Hashes Files**: Creates MD5 hashes of the contents of all relevant files.
 2. **Filters Content**: By default, skips directories like `.git/`, and hidden
     directories. This includes, from `.fossa.yml`,
-    `vendoredDependencies.licenseScanPathFilters.exclude`, documented further
-    below.
+    `vendoredDependencies.licenseScanPathFilters`, documented further below.
 5. **Uploads Hashes**: Sends only the hashes to FOSSA's servers.
 6. **Receives Matches**: Gets back information about any matching open source
    components.
@@ -47,17 +46,20 @@ By default, Vendetta excludes common non-production directories and follows
 - Hidden directories.
 - Globs as directed by `.gitignore` files.
 
-#### Custom Exclude Filtering
+#### Custom Path Filtering
 
-You can customize which files and directories are excluded from Vendetta by
-configuring exclude filters in your `.fossa.yml` file. Note that Vendetta scans
-currently only support exclude patterns, not `only` patterns.
+You can customize which files and directories Vendetta scans by configuring
+path filters in your `.fossa.yml` file. When `only` is set, Vendetta only scans
+files that match at least one `only` pattern. Files that match an `exclude`
+pattern are skipped, even if they also match `only`.
 
 For example:
 ```yaml
 version: 3
 vendoredDependencies:
   licenseScanPathFilters:
+    only:
+      - "src/**"
     exclude:
       - "**/test/**"
       - "**/tests/**"
@@ -71,12 +73,10 @@ vendoredDependencies:
 
 **Important Notes:**
 
-- Vendetta scanning only use the `exclude` filters from `licenseScanPathFilters`
-  — `only` filters are ignored for this use-case.
 - Path filters use standard glob patterns (e.g., `**/*` for recursive matching,
   `*` for single-directory matching).
-- The configuration goes in the
-  `vendoredDependencies.licenseScanPathFilters.exclude` section.
+- The configuration goes in the `vendoredDependencies.licenseScanPathFilters`
+  section.
 - These exclude patterns are passed directly to the Ficus scanning engine as
   `--exclude` arguments.
 - Default exclusions (hidden files, `.gitignore` patterns) are applied in
