@@ -68,6 +68,8 @@ Please refer to detailed walkthrough [Installing FOSSA CLI](./docs/walkthroughs/
 
 ### Integrating your project with FOSSA
 
+If your organization uses its own FOSSA server, read [Generating an API key](#generating-an-api-key) before you run these steps.
+
 #### TL;DR, Linux, Mac, \*nix-like
 
 ```sh
