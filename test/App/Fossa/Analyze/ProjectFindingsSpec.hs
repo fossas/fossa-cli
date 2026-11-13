@@ -1,12 +1,10 @@
-{-# LANGUAGE CPP #-}
-{-# LANGUAGE TemplateHaskell #-}
-
 module App.Fossa.Analyze.ProjectFindingsSpec (spec) where
 
 import App.Fossa.Analyze.ForkAlias (mkForkAliasMap)
 import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
+import Control.Exception (throw)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Key (fromText)
@@ -17,18 +15,17 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (..), DepType (CargoType, GoType, MavenType, NodeJSType), Dependency (..), VerConstraint (CEq))
 import Graphing (Graphing)
 import Graphing qualified
-import Path (Abs, Dir, Path, mkAbsDir, toFilePath)
+import Path (Abs, Dir, Path, parseAbsDir, toFilePath)
 import Srclib.Types (Locator)
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Types (DiscoveredProjectType (CargoProjectType, GradleProjectType, NpmProjectType), GraphBreadth (Complete, Partial))
 
-#ifdef mingw32_HOST_OS
+-- Parses on both Windows and POSIX without CPP (see Ficus.WorkflowSpec).
+mustParse :: (Show e) => (String -> Either e p) -> String -> p
+mustParse f s = either (throw . userError . show) id (f s)
+
 testPath :: Path Abs Dir
-testPath = $(mkAbsDir "C:/repo")
-#else
-testPath :: Path Abs Dir
-testPath = $(mkAbsDir "/repo")
-#endif
+testPath = mustParse parseAbsDir "/repo"
 
 -- | mvn+org.example:a$1.0.0, production-only
 depA :: Dependency

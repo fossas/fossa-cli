@@ -1,26 +1,28 @@
+{-# LANGUAGE DerivingStrategies #-}
+
 module App.Fossa.Analyze.ProjectFindings (renderProjectFindings) where
 
 import App.Fossa.Analyze.ForkAlias (translateLocatorWithForkAliases)
 import App.Fossa.Analyze.Project (ProjectResult (..), unRawGraph)
 import App.Fossa.ManualDeps (ForkAlias)
-import Data.Aeson ((.=))
+import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Key (fromText)
 import Data.Bifunctor (bimap)
 import Data.Function (on)
-import Data.List (sort, sortBy)
+import Data.List (sort, sortBy, sortOn)
 import Data.Map qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import DepTypes (DepEnvironment (..), Dependency (..))
-import Graphing (Graphing)
+import Data.Text qualified as Text
+import DepTypes (DepEnvironment (..), Dependency (..), renderEnvironment)
 import Graphing qualified
 import Path (toFilePath)
 import Srclib.Converter (toLocator)
 import Srclib.Types (Locator, renderLocator)
-import Types (GraphBreadth (Complete, Partial))
+import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 
 -- | Render the pre-prune dependency resolution of each project as a findings
 -- document matching the @fossa/workflows/v1beta1@ @ProjectFindings@ contract:
@@ -42,20 +44,117 @@ import Types (GraphBreadth (Complete, Partial))
 -- made".
 renderProjectFindings :: Map.Map Locator ForkAlias -> [ProjectResult] -> Aeson.Value
 renderProjectFindings forkAliasMap projects =
-  Aeson.object ["projects" .= map (renderProject forkAliasMap) projects]
+  toJSON (FindingsDocument (map (renderProject forkAliasMap) projects))
 
-renderProject :: Map.Map Locator ForkAlias -> ProjectResult -> Aeson.Value
+newtype FindingsDocument = FindingsDocument {findingsProjects :: [AnalyzedProjectFindings]}
+  deriving stock (Eq, Show)
+
+instance ToJSON FindingsDocument where
+  toJSON (FindingsDocument projects) = object ["projects" .= projects]
+
+data AnalyzedProjectFindings = AnalyzedProjectFindings
+  { findingsProjectType :: DiscoveredProjectType
+  , findingsPath :: Text
+  , findingsBreadth :: GraphBreadth
+  , findingsDependencies :: Map.Map Text FindingsOccurrences
+  , findingsGraph :: IndexedGraph
+  }
+  deriving stock (Eq, Show)
+
+instance ToJSON AnalyzedProjectFindings where
+  toJSON p =
+    object
+      [ "projectType" .= toText (findingsProjectType p)
+      , "path" .= findingsPath p
+      , "breadth" .= renderWireBreadth (findingsBreadth p)
+      , "dependencies" .= findingsDependencies p
+      , "graph" .= findingsGraph p
+      ]
+
+-- | Wire spelling derived from the internal renderer: @GRAPH_BREADTH_@ plus
+-- its upper-cased spelling (@complete@ -> @GRAPH_BREADTH_COMPLETE@).
+renderWireBreadth :: GraphBreadth -> Text
+renderWireBreadth breadth = "GRAPH_BREADTH_" <> Text.toUpper (renderGraphType breadth)
+
+newtype FindingsOccurrences = FindingsOccurrences {findingsOccurrenceRows :: [FindingsOccurrence]}
+  deriving stock (Eq, Show)
+
+instance ToJSON FindingsOccurrences where
+  toJSON (FindingsOccurrences rows) = object ["occurrences" .= rows]
+
+data FindingsOccurrence = FindingsOccurrence
+  { findingsOccurrenceModule :: Text
+  , findingsOccurrenceIsDirect :: Bool
+  , findingsOccurrenceScope :: DepEnvironment
+  , findingsOccurrenceAliasedFrom :: Maybe Text
+  -- ^ Present only when a fork alias actually changed the dependency's locator.
+  }
+  deriving stock (Eq, Show)
+
+instance ToJSON FindingsOccurrence where
+  toJSON o =
+    object $
+      [ "module" .= findingsOccurrenceModule o
+      , "isDirect" .= findingsOccurrenceIsDirect o
+      , "scope" .= findingsOccurrenceScope o
+      ]
+        <> maybe [] (\raw -> [fromText "aliasedFrom" .= raw]) (findingsOccurrenceAliasedFrom o)
+
+data IndexedGraph = IndexedGraph
+  { indexedGraphNodes :: [FindingsNode]
+  , indexedGraphEdges :: [IndexedEdge]
+  , indexedGraphDirectNodes :: [Int]
+  }
+  deriving stock (Eq, Show)
+
+instance ToJSON IndexedGraph where
+  toJSON g =
+    object
+      [ "nodes" .= indexedGraphNodes g
+      , "edges" .= indexedGraphEdges g
+      , "directNodes" .= indexedGraphDirectNodes g
+      ]
+
+data FindingsNode = FindingsNode
+  { findingsNodeLocator :: Text
+  , findingsNodeEnvironments :: [DepEnvironment]
+  }
+  deriving stock (Eq, Show)
+
+instance ToJSON FindingsNode where
+  toJSON n =
+    object
+      [ "locator" .= findingsNodeLocator n
+      , "environments" .= findingsNodeEnvironments n
+      ]
+
+data IndexedEdge = IndexedEdge {indexedEdgeFrom :: Int, indexedEdgeTo :: Int}
+  deriving stock (Eq, Show)
+
+instance ToJSON IndexedEdge where
+  toJSON e =
+    object
+      [ "fromIndex" .= indexedEdgeFrom e
+      , "toIndex" .= indexedEdgeTo e
+      ]
+
+renderProject :: Map.Map Locator ForkAlias -> ProjectResult -> AnalyzedProjectFindings
 renderProject forkAliasMap project =
-  Aeson.object
-    [ "projectType" .= toText (projectResultType project)
-    , "path" .= pathText
-    , "breadth" .= renderBreadth (projectResultGraphBreadth project)
-    , "dependencies" .= dependenciesObject
-    , "graph" .= graphObject
-    ]
+  AnalyzedProjectFindings
+    { findingsProjectType = projectResultType project
+    , findingsPath = pathText
+    , findingsBreadth = projectResultGraphBreadth project
+    , findingsDependencies = dependencies
+    , findingsGraph =
+        IndexedGraph
+          { indexedGraphNodes = map renderNode nodes
+          , indexedGraphEdges = map (uncurry IndexedEdge) edges
+          , indexedGraphDirectNodes = directIndices
+          }
+    }
   where
-    -- Findings capture the resolution before 'pruneUnreachable';
-    -- 'projectResultGraph' is the pruned, published view.
+    -- Findings render the resolution as discovered, before publication
+    -- filtering; 'projectResultGraph' is the published, pruned view.
     graph = unRawGraph (projectResultUnprunedGraph project)
     pathText = toText (toFilePath (projectResultPath project))
     directSet :: Set.Set Dependency
@@ -67,19 +166,15 @@ renderProject forkAliasMap project =
     aliasedLocatorText :: Dependency -> Text
     aliasedLocatorText dep = renderLocator (translateLocatorWithForkAliases forkAliasMap (toLocator dep))
 
-    -- Present only when a fork alias actually changed this dependency's locator.
-    aliasedFrom :: Dependency -> Maybe Text
-    aliasedFrom dep
-      | translated /= raw = Just raw
-      | otherwise = Nothing
-      where
-        raw = rawLocatorText dep
-        translated = aliasedLocatorText dep
-
     -- The raw-locator tiebreak keeps indices stable between nodes whose (aliased
     -- locator, environments) pairs are identical.
     nodeKey :: Dependency -> (Text, [Text], Text)
-    nodeKey dep = (aliasedLocatorText dep, renderEnvironments dep, rawLocatorText dep)
+    nodeKey dep = (aliasedLocatorText dep, map renderEnvironment (sortedEnvironments dep), rawLocatorText dep)
+
+    -- Sorted by wire spelling, so output is deterministic regardless of graph
+    -- construction order.
+    sortedEnvironments :: Dependency -> [DepEnvironment]
+    sortedEnvironments = sortOn renderEnvironment . Set.toList . dependencyEnvironments
 
     nodes :: [Dependency]
     nodes = sortBy (compare `on` nodeKey) (Graphing.toList graph)
@@ -93,7 +188,7 @@ renderProject forkAliasMap project =
     lookupIndex dep = fromMaybe 0 (Map.lookup dep nodeIndex)
 
     -- Set dedups and sorts in one pass, so the ordering guarantee is local
-    -- rather than resting on 'edgesList'.
+    -- rather than resting on the graph's edge order.
     edges :: [(Int, Int)]
     edges =
       Set.toAscList
@@ -104,34 +199,22 @@ renderProject forkAliasMap project =
     directIndices :: [Int]
     directIndices = sort (map lookupIndex (Graphing.directList graph))
 
-    renderNode :: Dependency -> Aeson.Value
-    renderNode dep =
-      Aeson.object
-        [ "locator" .= aliasedLocatorText dep
-        , "environments" .= renderEnvironments dep
-        ]
+    renderNode :: Dependency -> FindingsNode
+    renderNode dep = FindingsNode (aliasedLocatorText dep) (sortedEnvironments dep)
 
-    graphObject :: Aeson.Value
-    graphObject =
-      Aeson.object
-        [ "nodes" .= map renderNode nodes
-        , "edges" .= map renderEdge edges
-        , "directNodes" .= directIndices
-        ]
-
-    -- \| Per translated locator, per scope: (isDirect, aliasedFrom). Rows are
+    -- Per translated locator, per scope: (isDirect, aliasedFrom). Rows are
     -- unique on scope by contract; when two nodes share a translated locator,
     -- their rows merge on scope with isDirect ORed and the first-encountered
     -- aliasedFrom kept (nodes are processed in sorted order).
-    occurrences :: Map.Map Text (Map.Map Text (Bool, Maybe Text))
+    occurrences :: Map.Map Text (Map.Map DepEnvironment (Bool, Maybe Text))
     occurrences = foldr addNodeOccurrence Map.empty nodes
 
     addNodeOccurrence dep = Map.insertWith mergeOccurrences (aliasedLocatorText dep) rows
       where
         isDirect = Set.member dep directSet
-        rows = Map.fromList [(renderEnvironment env, (isDirect, aliasedFrom dep)) | env <- Set.toList (dependencyEnvironments dep)]
+        rows = Map.fromList [(env, (isDirect, aliasedFrom dep)) | env <- Set.toList (dependencyEnvironments dep)]
 
-    mergeOccurrences :: Map.Map Text (Bool, Maybe Text) -> Map.Map Text (Bool, Maybe Text) -> Map.Map Text (Bool, Maybe Text)
+    mergeOccurrences :: Map.Map DepEnvironment (Bool, Maybe Text) -> Map.Map DepEnvironment (Bool, Maybe Text) -> Map.Map DepEnvironment (Bool, Maybe Text)
     mergeOccurrences = Map.unionWith combineRow
       where
         combineRow (isDirect1, aliased1) (isDirect2, aliased2) =
@@ -141,49 +224,25 @@ renderProject forkAliasMap project =
               (_, other) -> other
           )
 
-    dependenciesObject :: Aeson.Value
-    dependenciesObject =
-      Aeson.object $
-        [ (fromText locatorText, Aeson.object ["occurrences" .= renderOccurrences scopeMap])
+    -- Occurrence rows are emitted in wire-spelling order of their scope.
+    occurrenceRows :: Map.Map DepEnvironment (Bool, Maybe Text) -> [FindingsOccurrence]
+    occurrenceRows scopeMap =
+      [FindingsOccurrence pathText isDirect env aliased | (env, (isDirect, aliased)) <- sortOn (renderEnvironment . fst) (Map.toList scopeMap)]
+
+    -- A locator key is emitted only when it has at least one row; env-less
+    -- nodes stay visible through the graph sibling.
+    dependencies :: Map.Map Text FindingsOccurrences
+    dependencies =
+      Map.fromList
+        [ (locatorText, FindingsOccurrences (occurrenceRows scopeMap))
         | (locatorText, scopeMap) <- Map.toList occurrences
-        , -- 'DependencyOccurrences.occurrences' must never be empty when the key
-        -- is present; env-less nodes stay visible through the graph sibling.
-        not (Map.null scopeMap)
+        , not (Map.null scopeMap)
         ]
 
-    renderOccurrence :: (Text, (Bool, Maybe Text)) -> Aeson.Value
-    renderOccurrence (scope, (isDirect, aliasedFrom')) =
-      Aeson.object $
-        [ "module" .= pathText
-        , "isDirect" .= isDirect
-        , "scope" .= scope
-        ]
-          <> case aliasedFrom' of
-            Nothing -> []
-            Just raw -> [(fromText "aliasedFrom", Aeson.String raw)]
-
-    renderOccurrences :: Map.Map Text (Bool, Maybe Text) -> [Aeson.Value]
-    renderOccurrences = map renderOccurrence . Map.toList
-
-renderEdge :: (Int, Int) -> Aeson.Value
-renderEdge (fromIndex, toIndex) =
-  Aeson.object
-    [ "fromIndex" .= fromIndex
-    , "toIndex" .= toIndex
-    ]
-
--- | Sorted rendered environments; deterministic on purpose.
-renderEnvironments :: Dependency -> [Text]
-renderEnvironments Dependency{dependencyEnvironments} = sort $ map renderEnvironment $ Set.toList dependencyEnvironments
-
-renderEnvironment :: DepEnvironment -> Text
-renderEnvironment env = case env of
-  EnvProduction -> "production"
-  EnvDevelopment -> "development"
-  EnvTesting -> "testing"
-  EnvOther other -> "other:" <> other
-
-renderBreadth :: GraphBreadth -> Text
-renderBreadth breadth = case breadth of
-  Complete -> "GRAPH_BREADTH_COMPLETE"
-  Partial -> "GRAPH_BREADTH_PARTIAL"
+    aliasedFrom :: Dependency -> Maybe Text
+    aliasedFrom dep
+      | translated /= raw = Just raw
+      | otherwise = Nothing
+      where
+        raw = rawLocatorText dep
+        translated = aliasedLocatorText dep
