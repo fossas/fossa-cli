@@ -7,6 +7,7 @@ module DepTypes (
   insertLocation,
   hydrateDepEnvs,
   DepEnvironment (..),
+  renderEnvironment,
   DepType (..),
   VerConstraint (..),
 ) where
@@ -57,6 +58,18 @@ data DepEnvironment
   | -- | Other environments -- specifically for things like gradle configurations
     EnvOther Text
   deriving (Eq, Ord, Show)
+
+instance ToJSON DepEnvironment where
+  toJSON = toJSON . renderEnvironment
+
+-- | Canonical wire spelling for environments (occurrence scopes, node
+-- environments).
+renderEnvironment :: DepEnvironment -> Text
+renderEnvironment = \case
+  EnvProduction -> "production"
+  EnvDevelopment -> "development"
+  EnvTesting -> "testing"
+  EnvOther other -> "other:" <> other
 
 hydrateDepEnvs :: Graphing Dependency -> Graphing Dependency
 hydrateDepEnvs = hydrate dependencyEnvironments $ \envs dep ->

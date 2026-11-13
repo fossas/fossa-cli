@@ -88,8 +88,7 @@ enrichPathDependencies includeAll options projectRevision pr = do
     then do
       graph' <- resolvePaths includeAll' options projectRevision org baseDir graph
       -- Only the published view is enriched: resolvePaths scans and uploads, so
-      -- it must not run twice, and the unpruned graph stays the resolution as
-      -- discovered.
+      -- it must not run twice.
       pure $ pr{projectResultGraph = PublishedGraph graph'}
     else pure pr
 
@@ -99,7 +98,6 @@ enrichPathDependencies' :: ProjectResult -> ProjectResult
 enrichPathDependencies' pr = do
   let graph = unPublishedGraph (projectResultGraph pr)
   let graph' = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d) graph
-  -- The unpruned graph is left as discovered (see enrichPathDependencies).
   pr{projectResultGraph = PublishedGraph graph'}
 
 withPathDependencyNudge :: Has Logger sig m => Flag IncludeAll -> ProjectResult -> m ProjectResult

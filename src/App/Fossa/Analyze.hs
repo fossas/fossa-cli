@@ -149,7 +149,6 @@ import Effect.Logger (
   logDebug,
   logInfo,
   logStdout,
-  logWarn,
   renderIt,
  )
 import Effect.ReadFS (ReadFS)
@@ -560,20 +559,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
 
-  -- The unfiltered (pre-prune) graphs rendered as a findings document, gated on
-  -- --x-workflow like the workflow run. The renderer is total, so this cannot
-  -- fail the analysis.
-  let renderedFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
-
-  -- The analysis-workflow upload caps payloads at ~30 MiB and a failed upload
-  -- fails the run; findings are adjunct data, so an oversized document is
-  -- dropped (with a warning) rather than dooming the upload.
-  let dropOversizedFindings doc = do
-        let oversized = BL.length (Aeson.encode doc) > 25 * 1024 * 1024
-        when oversized $
-          logWarn "projectFindings document exceeds the analysis-workflow ~30 MiB upload cap; dropping it instead of failing the run"
-        pure (if oversized then Nothing else Just doc)
-  projectFindings <- join <$> traverse dropOversizedFindings renderedFindings
+  -- Findings ride the workflow upload; the server's own cap applies.
+  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
 
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
@@ -597,9 +584,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            -- projectFindings is a CLI-owned key: the uploaded payload is the
-            -- CLI's output, so our findings replace anything a workflow payload
-            -- carries. Debug-level: nothing for a user to act on.
+            -- The workflow payload's keys are all preserved; only the
+            -- CLI-owned "projectFindings" key is replaced by ours.
             when (clobbersProjectFindings projectFindings workflowData) $
               logDebug "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
             locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (unWorkflowUploadPayload <$> (fmap WorkflowUploadPayload workflowData <> fmap projectFindingsPayload projectFindings))
@@ -747,21 +733,20 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
--- | True when the CLI-owned @projectFindings@ key would replace an existing
--- @projectFindings@ key in the ficus payload. Overwriting is by contract (the
--- uploaded payload is the CLI's output), hence debug visibility only.
+-- | True when the workflow payload carries a @projectFindings@ key. Only that
+-- key is replaced by ours; the rest of the payload is preserved.
 clobbersProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Bool
 clobbersProjectFindings (Just _) (Just (Aeson.Object obj)) = KeyMap.member (fromText "projectFindings") obj
 clobbersProjectFindings _ _ = False
 
--- | The JSON payload uploaded to the analysis-workflows endpoint. Combines by
--- object key-union with the RIGHT operand winning, so the CLI-owned
--- @projectFindings@ key (from 'projectFindingsPayload') replaces any key a
--- workflow payload carries. The workflow payload is always a JSON object per
--- the WorkflowResult contract; the non-object branch is defensive only.
+-- | The JSON payload uploaded to the analysis-workflows endpoint.
 newtype WorkflowUploadPayload = WorkflowUploadPayload {unWorkflowUploadPayload :: Aeson.Value}
   deriving stock (Eq, Show)
 
+-- | Object key-union with the RIGHT operand winning, so the CLI-owned
+-- @projectFindings@ key (from 'projectFindingsPayload') replaces any key a
+-- workflow payload carries. The workflow payload is always a JSON object per
+-- the WorkflowResult contract; the non-object branch is defensive only.
 instance Semigroup WorkflowUploadPayload where
   WorkflowUploadPayload left <> WorkflowUploadPayload right = case (left, right) of
     (Aeson.Object ka, Aeson.Object kb) -> WorkflowUploadPayload (Aeson.Object (KeyMap.union kb ka))
