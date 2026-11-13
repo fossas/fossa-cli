@@ -111,7 +111,7 @@ To get started with integrating your project into FOSSA, you'll need to [generat
 > fossa analyze --endpoint https://yourcompany.fossa.com
 > ```
 >
-> Or set it once in [`.fossa.yml`](docs/references/files/fossa-yml.md#server):
+> Every `fossa` command needs the flag, including the `fossa analyze` steps below. To avoid repeating it, set the server once in [`.fossa.yml`](docs/references/files/fossa-yml.md#server):
 >
 > ```yaml
 > version: 3
