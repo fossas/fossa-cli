@@ -80,23 +80,19 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     }
   where
     filteredGraph :: Graphing Dependency
-    -- After shrinking out dev/non-publishable deps, prune any that become
-    -- unreachable so their transitive deps don't linger as orphaned SBOM
-    -- entries (ANE-3077). Keep the graph verbatim when it has no direct nodes
-    -- (pruning would drop everything), no edges, or is Swift/Gomod — the same
-    -- gate mkResult uses for analyzers that can't classify direct vs. edge.
-    -- Still prunes when leaveUnfiltered is True: that flag keeps non-production
-    -- deps, not unreachable orphans.
-    filteredGraph =
-      if null (Graphing.directList dependencies) || null (Graphing.edgesList dependencies) || shouldKeepUnreachableDeps projectType
-        then shrunk
-        else Graphing.pruneUnreachable shrunk
+    -- When the CLI removes a subproject or local folder dep, it keeps that
+    -- node's libraries attached to the parent. Only libraries tagged as dev or
+    -- test are dropped.
+    filteredGraph = Graphing.shrink isSupportedType pruned
       where
-        shrunk = Graphing.shrinkWithoutPromotionToDirect ff dependencies
-        ff =
+        pruned =
+          if null (Graphing.directList dependencies) || null (Graphing.edgesList dependencies) || shouldKeepUnreachableDeps projectType
+            then published
+            else Graphing.pruneUnreachable published
+        published =
           if leaveUnfiltered
-            then isSupportedType
-            else (\d -> shouldPublishDep d && isSupportedType d)
+            then dependencies
+            else Graphing.shrinkWithoutPromotionToDirect shouldPublishDep dependencies
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph
