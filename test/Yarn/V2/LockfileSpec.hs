@@ -6,6 +6,9 @@ module Yarn.V2.LockfileSpec (
 
 import Algebra.Graph.AdjacencyMap qualified as AM
 import Algebra.Graph.AdjacencyMap.Extra qualified as AME
+import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Stack (runStack)
+import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Tagged (applyTag)
@@ -27,6 +30,7 @@ import GraphUtil (
  )
 import Path (mkRelFile, (</>))
 import Path.IO (getCurrentDir)
+import ResultUtil (assertOnSuccess)
 import Strategy.Node.PackageJson (
   Development,
   FlatDeps (..),
@@ -48,9 +52,9 @@ import Strategy.Node.YarnV2.Resolvers (
   Package (GitPackage, NpmPackage, WorkspacePackage),
   resolveLocatorToPackage,
  )
-import Strategy.Node.YarnV2.YarnLock (analyze, buildGraph, stitchLockfile)
+import Strategy.Node.YarnV2.YarnLock (NoPackageForDescriptor (NoPackageForDescriptor), analyze, buildGraph, lookupPackage, stitchLockfile)
 import Test.Effect (it', shouldBe')
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldContain)
 
 -- End-to-end test on the example project from the dev docs
 spec :: Spec
@@ -64,6 +68,38 @@ spec = do
     it' "should work on the example from the dev docs" $ do
       stitched <- stitchLockfile exampleLockfile
       stitched `shouldBe'` exampleStitched
+
+    it "should resolve local path dependencies without warning" $ do
+      lockfile <- decodeFileThrow "test/Yarn/V2/testdata/yarn.lock-local-paths"
+      result <- runStack . runDiagnostics $ stitchLockfile lockfile
+      assertOnSuccess result $ \warnings stitched -> do
+        length warnings `shouldBe` 0
+        let root = Locator Nothing "root" "workspace:."
+            myTgz = Locator Nothing "my-tgz" "file:./my-tgz-1.0.0.tgz#./my-tgz-1.0.0.tgz::hash=1840fc&locator=root%40workspace%3A."
+        for_
+          [ (root, myTgz)
+          , (root, Locator Nothing "my-link" "link:./local-lib::locator=root%40workspace%3A.")
+          , (root, Locator Nothing "my-portal" "portal:./portal-src::locator=root%40workspace%3A.")
+          , (Locator (Just "spread-ai") "core" "workspace:packages/core", Locator Nothing "my-file" "file:../../local-lib#../../local-lib::hash=de3284&locator=%40spread-ai%2Fcore%40workspace%3Apackages%2Fcore")
+          , (myTgz, Locator Nothing "is-odd" "npm:3.0.1")
+          ]
+          $ \edge -> AM.edgeList stitched `shouldContain` [edge]
+
+  describe "lookupPackage" $
+    it "should match the locator-bound keys yarn writes for local path dependencies" $ do
+      let desc = Descriptor (Just "scope") "pkg"
+          bound range = desc (range <> "::locator=root%40workspace%3A.")
+          package ref = PackageDescription ref (Locator (Just "scope") "pkg" ref) []
+          mapping =
+            Map.fromList
+              [ (bound "file:./pkg-1.0.0.tgz", package "tgz")
+              , (bound "file:../pkg", package "dir")
+              , (bound "link:./pkg", package "link")
+              , (bound "portal:./pkg", package "portal")
+              ]
+      for_ [("./pkg-1.0.0.tgz", "tgz"), ("file:./pkg-1.0.0.tgz", "tgz"), ("../pkg", "dir"), ("file:../pkg", "dir"), ("link:./pkg", "link"), ("portal:./pkg", "portal")] $
+        \(range, ref) -> lookupPackage (desc range) mapping `shouldBe` Right (package ref)
+      lookupPackage (desc "./other.tgz") mapping `shouldBe` Left (NoPackageForDescriptor (desc "./other.tgz"))
 
   describe "resolveLocatorToPackage" $ do
     it' "should work on the example from the dev docs" $ do

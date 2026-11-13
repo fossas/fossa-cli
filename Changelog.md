@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Yarn: local `file:`, `link:` and `portal:` dependencies in a Yarn 2+ `yarn.lock` no longer warn that their package could not be found. ([#1832](https://github.com/fossas/fossa-cli/pull/1832))
 - Swift: Add dynamic Swift strategy which uses`swift package show-dependencies` ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
