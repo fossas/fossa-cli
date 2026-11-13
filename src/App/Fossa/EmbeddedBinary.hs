@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module App.Fossa.EmbeddedBinary (
-  BinaryPaths,
+  BinaryPaths (..),
   Ficus,
   Lernie,
   ThemisIndex,
