@@ -105,13 +105,7 @@ Follow [the installation instructions](#installation) above to install the FOSSA
 To get started with integrating your project into FOSSA, you'll need to [generate an API key](https://docs.fossa.com/docs/api-reference). You'll get this API key from the FOSSA web application ([app.fossa.com](https://app.fossa.com)).
 
 > [!IMPORTANT]
-> If your organization uses its own FOSSA server (for example `https://yourcompany.fossa.com` or an on-premise install), do not sign up at app.fossa.com. Create the API key on your own server under **Settings > Integrations > API**, then point the CLI at that server:
->
-> ```sh
-> fossa analyze --endpoint https://yourcompany.fossa.com
-> ```
->
-> Every `fossa` command needs the flag, including the `fossa analyze` steps below. To avoid repeating it, set the server once in [`.fossa.yml`](docs/references/files/fossa-yml.md#server):
+> If your organization uses its own FOSSA server (for example `https://yourcompany.fossa.com` or an on-premise install), do not sign up at app.fossa.com. Create the API key on your own server under **Settings > Integrations > API**. Then add `--endpoint https://yourcompany.fossa.com` to every `fossa` command, including the `fossa analyze` steps below, or set the server once in [`.fossa.yml`](docs/references/files/fossa-yml.md#server):
 >
 > ```yaml
 > version: 3
