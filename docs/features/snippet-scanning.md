@@ -18,7 +18,7 @@ When `--snippet-scan` is enabled, the CLI:
 1. **Hashes Files First**: Creates CRC64 hashes of all source files to identify which files need fingerprinting
 2. **Checks Necessity of Fingerprinting**: Checks with FOSSA servers to determine which file hashes are already known
 3. **Fingerprints New or Changed Files**: Uses the Ficus fingerprinting engine to create cryptographic fingerprints only for files not previously seen
-4. **Filters Content**: By default, skips directories like `.git/`, and hidden directories. This includes, from `.fossa.yml`, `vendoredDependencies.licenseScanPathFilters.exclude`, documented further below.
+4. **Filters Content**: By default, skips directories like `.git/`, and hidden directories. This includes, from `.fossa.yml`, `vendoredDependencies.licenseScanPathFilters`, documented further below.
 5. **Uploads Fingerprints**: Sends only the fingerprints to FOSSA's servers
 6. **Receives Matches**: Gets back information about any matching open source components
 7. **Uploads Match Contents**: For files that have matches, uploads source code content temporarily to FOSSA servers (see below for more details on what we send and how long it is retained for).
@@ -47,15 +47,17 @@ By default, snippet scanning excludes common non-production directories and foll
 - Hidden directories.
 - Globs as directed by `.gitignore` files.
 
-#### Custom Exclude Filtering
+#### Custom Path Filtering
 
-You can customize which files and directories are excluded from snippet scanning by configuring exclude filters in your `.fossa.yml` file. Note that snippet scanning currently only supports exclude patterns, not `only` patterns.
+You can customize which files and directories snippet scanning covers by configuring path filters in your `.fossa.yml` file. When `only` is set, snippet scanning only scans files that match at least one `only` pattern. Files that match an `exclude` pattern are skipped, even if they also match `only`.
 
 For example:
 ```yaml
 version: 3
 vendoredDependencies:
   licenseScanPathFilters:
+    only:
+      - "src/**"
     exclude:
       - "**/test/**"
       - "**/tests/**"
@@ -69,9 +71,8 @@ vendoredDependencies:
 
 **Important Notes:**
 
-- Snippet scanning only uses the `exclude` filters from `licenseScanPathFilters` - `only` filters are ignored for this use-case.
 - Path filters use standard glob patterns (e.g., `**/*` for recursive matching, `*` for single-directory matching).
-- The configuration goes in the `vendoredDependencies.licenseScanPathFilters.exclude` section.
+- The configuration goes in the `vendoredDependencies.licenseScanPathFilters` section.
 - These exclude patterns are passed directly to the Ficus fingerprinting engine as `--exclude` arguments.
 - Default exclusions (hidden files, `.gitignore` patterns) are applied in addition to custom excludes.
 
