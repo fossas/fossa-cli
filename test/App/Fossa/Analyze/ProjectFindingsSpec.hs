@@ -12,9 +12,8 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import DepTypes (DepEnvironment (..), DepType (CargoType, GoType, MavenType, NodeJSType), Dependency (..), VerConstraint (CEq))
-import Graphing (Graphing)
 import Graphing qualified
-import Path (Abs, Dir, Path, parseAbsDir, toFilePath)
+import Path (parseAbsDir, toFilePath)
 import Srclib.Types (Locator)
 import System.Directory (getTemporaryDirectory)
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
