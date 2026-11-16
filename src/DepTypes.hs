@@ -62,8 +62,7 @@ data DepEnvironment
 instance ToJSON DepEnvironment where
   toJSON = toJSON . renderEnvironment
 
--- | Canonical wire spelling for environments (occurrence scopes, node
--- environments).
+-- | Canonical wire spelling of an environment.
 renderEnvironment :: DepEnvironment -> Text
 renderEnvironment = \case
   EnvProduction -> "production"

@@ -13,6 +13,11 @@ module App.Fossa.Analyze (
   applyFiltersToProject,
   sendToDestination,
 
+  -- * Upload payload merge (for testing)
+  WorkflowUploadPayload (..),
+  clobbersProjectFindings,
+  projectFindingsPayload,
+
   -- * Fork alias translation (for testing)
 
   -- Re-exported from App.Fossa.Analyze.ForkAlias
@@ -624,7 +629,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let forkAliasMap = mkForkAliasMap forkAliases
 
   -- Findings ride the workflow upload; the server's own cap applies.
-  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings forkAliasMap filteredProjects') else Nothing
+  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings basedir forkAliasMap filteredProjects') else Nothing
 
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
@@ -648,8 +653,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            -- The workflow payload's keys are all preserved; only the
-            -- CLI-owned "projectFindings" key is replaced by ours.
             when (clobbersProjectFindings projectFindings workflowData) $
               logDebug "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
             locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (unWorkflowUploadPayload <$> (fmap WorkflowUploadPayload workflowData <> fmap projectFindingsPayload projectFindings))
@@ -797,8 +800,7 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
--- | True when the workflow payload carries a @projectFindings@ key. Only that
--- key is replaced by ours; the rest of the payload is preserved.
+-- | True when the workflow payload already carries a @projectFindings@ key.
 clobbersProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Bool
 clobbersProjectFindings (Just _) (Just (Aeson.Object obj)) = KeyMap.member (fromText "projectFindings") obj
 clobbersProjectFindings _ _ = False

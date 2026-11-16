@@ -125,8 +125,7 @@ withPathDependencyNudge includeAll pr = do
     projectLabel :: Text
     projectLabel = toText (projectResultType pr) <> " at: " <> toText (projectResultPath pr)
 
--- | Apply resolved path-dependency replacements to a graph. Deps with no
--- replacement (never scanned) pass through unchanged.
+-- | Deps with no replacement (never scanned) pass through unchanged.
 applyPathReplacements :: [(Dependency, Maybe Dependency)] -> Graphing Dependency -> Graphing Dependency
 applyPathReplacements deps = gmap replace
   where
@@ -134,9 +133,7 @@ applyPathReplacements deps = gmap replace
       Nothing -> dep
       Just (_, maybeDep) -> fromMaybe dep maybeDep
 
--- | Scan and Uploads path dependency from a graph, returning the
--- resolved replacements instead of a graph, so callers can apply
--- them to any graph view.
+-- | Scan and upload path dependencies from a graph, returning resolved replacements so any view can apply them.
 resolvePathDependencies ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
@@ -183,7 +180,6 @@ resolvePathDependencies leaveUnfiltered options projectRevision org baseDir grap
       unless (null resolvedLoc) $
         finalizeLicenseScanForPathDependency resolvedLoc False
 
-      -- 6. Return the resolved replacements for callers to apply to any view!
       pure (scannedDeps ++ alreadyScannedDeps)
   where
     resolvedLocators :: [(Dependency, Maybe Dependency)] -> [Locator]

@@ -19,9 +19,11 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (DepEnvironment (..), Dependency (..), renderEnvironment)
 import Graphing qualified
-import Path (toFilePath)
+import Path (Abs, Dir, Path, SomeBase (..), toFilePath)
+import Path.Extra (tryMakeRelative)
 import Srclib.Converter (toLocator)
 import Srclib.Types (Locator, renderLocator)
+import System.FilePath (dropTrailingPathSeparator)
 import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 
 -- | Render the pre-prune dependency resolution of each project as a findings
@@ -38,13 +40,15 @@ import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 -- >             "edges": [{"fromIndex": 1, "toIndex": 0}], "directNodes": [1]}}]}
 --
 -- @aliasedFrom@ is present only when a fork alias changed the locator. Nodes
--- are identified by index, not locator. Determination fields this producer
+-- are identified by index, not locator. Project paths are rendered relative to
+-- the scan target (falling back to the absolute path for projects outside it).
+-- Determination fields this producer
 -- cannot adjudicate (@rawScope@, @isOptional@, @linking@, @distribution@,
 -- @provenance@) are omitted: consumers read absence as "no determination was
 -- made".
-renderProjectFindings :: Map.Map Locator ForkAlias -> [ProjectResult] -> Aeson.Value
-renderProjectFindings forkAliasMap projects =
-  toJSON (FindingsDocument (map (renderProject forkAliasMap) projects))
+renderProjectFindings :: Path Abs Dir -> Map.Map Locator ForkAlias -> [ProjectResult] -> Aeson.Value
+renderProjectFindings basedir forkAliasMap projects =
+  toJSON (FindingsDocument (map (renderProject basedir forkAliasMap) projects))
 
 newtype FindingsDocument = FindingsDocument {findingsProjects :: [AnalyzedProjectFindings]}
   deriving stock (Eq, Show)
@@ -71,8 +75,6 @@ instance ToJSON AnalyzedProjectFindings where
       , "graph" .= findingsGraph p
       ]
 
--- | Wire spelling derived from the internal renderer: @GRAPH_BREADTH_@ plus
--- its upper-cased spelling (@complete@ -> @GRAPH_BREADTH_COMPLETE@).
 renderWireBreadth :: GraphBreadth -> Text
 renderWireBreadth breadth = "GRAPH_BREADTH_" <> Text.toUpper (renderGraphType breadth)
 
@@ -138,8 +140,8 @@ instance ToJSON IndexedEdge where
       , "toIndex" .= indexedEdgeTo e
       ]
 
-renderProject :: Map.Map Locator ForkAlias -> ProjectResult -> AnalyzedProjectFindings
-renderProject forkAliasMap project =
+renderProject :: Path Abs Dir -> Map.Map Locator ForkAlias -> ProjectResult -> AnalyzedProjectFindings
+renderProject basedir forkAliasMap project =
   AnalyzedProjectFindings
     { findingsProjectType = projectResultType project
     , findingsPath = pathText
@@ -153,10 +155,19 @@ renderProject forkAliasMap project =
           }
     }
   where
-    -- Findings render the resolution as discovered, before publication
-    -- filtering; 'projectResultGraph' is the published, pruned view.
     graph = unRawGraph (projectResultUnprunedGraph project)
-    pathText = toText (toFilePath (projectResultPath project))
+    -- Relative to the scan target per the proto contract; absolute fallback
+    -- for projects outside it.
+    -- The wire contract spells paths with forward slashes on every platform;
+    -- toFilePath is native and a component cannot contain a raw backslash.
+    wirePath = Text.replace "\\" "/" . toText . dropTrailingPathSeparator . toFilePath
+    -- Contract: empty when the project is the scan target itself;
+    -- tryMakeRelative only strips proper prefixes, so the equal case is open-coded.
+    pathText
+      | projectResultPath project == basedir = ""
+      | otherwise = case tryMakeRelative basedir (projectResultPath project) of
+          Rel rel -> wirePath rel
+          Abs absolute -> wirePath absolute
     directSet :: Set.Set Dependency
     directSet = Set.fromList (Graphing.directList graph)
 
@@ -171,8 +182,6 @@ renderProject forkAliasMap project =
     nodeKey :: Dependency -> (Text, [Text], Text)
     nodeKey dep = (aliasedLocatorText dep, map renderEnvironment (sortedEnvironments dep), rawLocatorText dep)
 
-    -- Sorted by wire spelling, so output is deterministic regardless of graph
-    -- construction order.
     sortedEnvironments :: Dependency -> [DepEnvironment]
     sortedEnvironments = sortOn renderEnvironment . Set.toList . dependencyEnvironments
 
@@ -229,8 +238,7 @@ renderProject forkAliasMap project =
     occurrenceRows scopeMap =
       [FindingsOccurrence pathText isDirect env aliased | (env, (isDirect, aliased)) <- sortOn (renderEnvironment . fst) (Map.toList scopeMap)]
 
-    -- A locator key is emitted only when it has at least one row; env-less
-    -- nodes stay visible through the graph sibling.
+    -- Env-less deps have no rows; they stay visible as graph nodes.
     dependencies :: Map.Map Text FindingsOccurrences
     dependencies =
       Map.fromList
