@@ -118,7 +118,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` result
 
-  it' "should leave the unpruned graph untouched when enrichment resolves the published graph" $ do
+  it' "should leave the unpruned graph untouched when path dependency enrichment resolves the published graph" $ do
     expectGetApiOpts
     expectOrg orgSupportPathDeps
     expectPathDependencyMatchData
@@ -128,7 +128,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
 
     -- A disconnected dependency unreachable from the direct set: it would be
     -- deleted by mkResult's prune, so it can only exist in the unpruned view.
-    -- Findings render from that view, so enrichment must not overwrite it with
+    -- Findings render from that view, so path dependency enrichment must not overwrite it with
     -- the pruned one.
     let unpruned = graphWithUnPathDep <> deep nonProdUPathDepOnly
         result = (mkProjectResult cwd graphWithUnPathDep){projectResultUnprunedGraph = RawGraph unpruned}
@@ -137,7 +137,7 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     unRawGraph (projectResultUnprunedGraph result') `shouldBe'` unpruned
     hasVertex nonProdUPathDepOnly (unRawGraph (projectResultUnprunedGraph result')) `shouldBe'` True
 
-  it' "should leave the unpruned graph untouched when relabeling unresolved path deps" $ do
+  it' "should leave the unpruned graph untouched when path dependency relabeling rewrites unresolved deps" $ do
     let unpruned = graphWithUnPathDep <> deep nonProdUPathDepOnly
         result = (mkProjectResult cwd graphWithUnPathDep){projectResultUnprunedGraph = RawGraph unpruned}
 
