@@ -6,7 +6,7 @@ import Container.Docker.OciManifest (OciManifestConfig (configDigest), OciManife
 import Container.Docker.SourceParser (RegistryImageSource, RepoDigest (RepoDigest), parseImageUrl)
 import Control.Carrier.ContainerRegistryApi (runTasks)
 import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), parseAuthChallenge)
-import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, logHttp, safeReplaceToken, updateToken)
+import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, logHttp, registryRequest, safeReplaceToken, updateToken)
 import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.TaskPool (Progress)
@@ -60,15 +60,15 @@ spec = do
   parseAuthChallengeSpec
   safeReplaceTokenSpec
   runTasksSpec
-  logHttpSpec
+  registryRequestSpec
 
 -- http-client throws an 'HttpException' when a request gets no response at all (the registry's
--- host cannot be resolved, the connection is refused or times out). It has to be reported through
--- 'Diagnostics': otherwise it escapes the container scan as "An exception occurred:
--- HttpExceptionRequest ..." with no context about which registry request failed.
-logHttpSpec :: Spec
-logHttpSpec =
-  describe "logHttp" $
+-- host cannot be resolved, the connection is refused or times out) or when a URL cannot be parsed.
+-- It has to be reported through 'Diagnostics': otherwise it escapes the container scan as "An
+-- exception occurred: HttpExceptionRequest ..." with no context about which registry request failed.
+registryRequestSpec :: Spec
+registryRequestSpec =
+  describe "registryRequest" $ do
     it "should report a request that gets no response as a registry error" $ do
       manager <- newManager defaultManagerSettings{managerRawConnection = pure (\_ _ _ -> throwIO (userError "simulated: could not resolve host"))}
       req <- parseRequest "http://registry.invalid/v2/some-repo/manifests/latest"
@@ -79,6 +79,14 @@ logHttpSpec =
           let rendered = show (renderFailure ws eg "An issue occurred")
           rendered `shouldContain` "HEAD http://registry.invalid/v2/some-repo/manifests/latest"
           rendered `shouldContain` "simulated: could not resolve host"
+
+    it "should report a registry url that cannot be parsed as a registry error" $ do
+      -- e.g. a malformed bearer realm in a registry's WWW-Authenticate challenge
+      let url = "ftp://registry.invalid/v2/token"
+      result <- runStack . runDiagnostics $ registryRequest (parseRequest url :: IO Request)
+      case result of
+        Success _ _ -> expectationFailure "expected a failure"
+        Failure ws eg -> show (renderFailure ws eg "An issue occurred") `shouldContain` url
 
 -- Blob downloads are forked onto a task pool. A task that fails through 'Diagnostics' has to be
 -- reported once the pool has drained: otherwise the worker running it exits without marking the

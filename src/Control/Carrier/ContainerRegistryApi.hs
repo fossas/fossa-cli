@@ -154,15 +154,15 @@ reqManager = sendIO $ newManager tlsManagerSettings
 
 -- | Manifest Endpoint.
 -- Refer to: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-manifests
-manifestEndpoint :: Has (Lift IO) sig m => RegistryImageSource -> m Request
+manifestEndpoint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => RegistryImageSource -> m Request
 manifestEndpoint (RegistryImageSource url scheme _ repo ref _) =
-  sendIO $ parseRequest (toString $ (toText . show $ scheme) <> toRegistryApiHost url <> "/v2/" <> repo <> "/manifests/" <> (toText . show $ ref))
+  registryRequest $ parseRequest (toString $ (toText . show $ scheme) <> toRegistryApiHost url <> "/v2/" <> repo <> "/manifests/" <> (toText . show $ ref))
 
 -- | Blob Endpoint.
 -- Refer to: https://github.com/opencontainers/distribution-spec/blob/main/spec.md#pulling-blobs
-blobEndpoint :: Has (Lift IO) sig m => RegistryImageSource -> m Request
+blobEndpoint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => RegistryImageSource -> m Request
 blobEndpoint (RegistryImageSource url scheme _ repo ref _) =
-  sendIO $ parseRequest (toString $ (toText . show $ scheme) <> toRegistryApiHost url <> "/v2/" <> repo <> "/blobs/" <> (toText . show $ ref))
+  registryRequest $ parseRequest (toString $ (toText . show $ scheme) <> toRegistryApiHost url <> "/v2/" <> repo <> "/blobs/" <> (toText . show $ ref))
 
 -- | Retrieve Manifest.
 getImageManifest ::
