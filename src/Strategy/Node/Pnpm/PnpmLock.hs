@@ -152,21 +152,28 @@ collapseNodes graph = Graphing.gmap report graph
 -- | Resolve a dependency to its lockfile key and reportable metadata.
 --
 -- Non-registry resolvers (tarball, git, directory) use the version value
--- directly as the @packages@ key. Registry resolvers use a constructed key.
+-- directly as the @packages@ key. So does a registry package installed under
+-- an alias (@"foo": "npm:bar\@1.2.3"@): its own name and version are the ones
+-- in that key. Other registry references use a constructed key.
 toResolvedDependency ::
   (Bool -> Set.Set DepEnvironment) ->
   Map Text PackageData ->
+  (Text -> Maybe (Text, Text)) ->
   (Text -> Text -> Text) ->
   Text ->
   Text ->
   Maybe PnpmNode
-toResolvedDependency toEnv pkgs mkPkg depName depVersion =
-  nonRegistry depVersion
-    <|> nonRegistry (withoutPeerDepSuffix depVersion)
+toResolvedDependency toEnv pkgs getPkgNameVersion mkPkg depName depVersion =
+  keyed depVersion
+    <|> keyed (withoutPeerDepSuffix depVersion)
     <|> registry depVersion
     <|> registry (withoutPeerDepSuffix depVersion)
   where
-    nonRegistry key = (key,) . toDependency toEnv depName Nothing <$> Map.lookup key pkgs
+    keyed key = do
+      pkg <- Map.lookup key pkgs
+      pure . (key,) $ case getPkgNameVersion key of
+        Just (name, version) -> toDependency toEnv name (Just version) pkg
+        Nothing -> toDependency toEnv depName Nothing pkg
     registry version =
       let key = mkPkg depName version
        in (key,) . toDependency toEnv depName (Just version) <$> Map.lookup key pkgs
@@ -221,7 +228,7 @@ buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgc
             let prodDependencies = Map.toList (directDependencies projectImporters) <> Map.toList (directOptionalDependencies projectImporters)
             for_ prodDependencies $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
-               in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+               in for_ (toResolvedDependency toEnv pkgs getPkgNameVersion mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep
                     case labelingMode of
                       LabelingOn ->
@@ -231,7 +238,7 @@ buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgc
 
             for_ (Map.toList $ directDevDependencies projectImporters) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
-               in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+               in for_ (toResolvedDependency toEnv pkgs getPkgNameVersion mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep
                     case labelingMode of
                       LabelingOn -> label dep (PnpmEnv EnvDevelopment)
@@ -244,7 +251,7 @@ buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgc
             -- parsed at all, so it is never reported.)
             for_ (Map.toList (configDependencies projectImporters)) $ \(depName, ProjectMapDepMetadata depVersion) ->
               let resolvedVersion = resolveCatalogVersion catalogs depName depVersion
-               in for_ (toResolvedDependency toEnv pkgs mkPkgKey depName resolvedVersion) $ \dep -> do
+               in for_ (toResolvedDependency toEnv pkgs getPkgNameVersion mkPkgKey depName resolvedVersion) $ \dep -> do
                     direct dep
                     case labelingMode of
                       LabelingOn -> label dep (PnpmEnv EnvProduction)
@@ -267,7 +274,7 @@ buildGraphCore selection BuildGraphConfig{bgcGetPkgNameVersion, bgcMkPkgKey, bgc
             deep parentDep
 
             for_ deepDependencies $ \(deepName, deepVersion) -> do
-              maybe (pure ()) (edge parentDep) (toResolvedDependency toEnv pkgs mkPkgKey deepName deepVersion)
+              maybe (pure ()) (edge parentDep) (toResolvedDependency toEnv pkgs getPkgNameVersion mkPkgKey deepName deepVersion)
 
 --
 -- Workspace scoping
