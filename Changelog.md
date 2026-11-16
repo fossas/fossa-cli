@@ -3,9 +3,11 @@
 ## Unreleased
 
 - Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
+- Analysis: Libraries reached through a Gradle subproject or a local folder dependency are no longer missing from results. Libraries under a direct subproject, local folder dependency or Googlesource repo now appear as direct dependencies.
 - Swift: Add dynamic Swift strategy which uses`swift package show-dependencies` ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
+- Pnpm: Dependencies installed under an npm alias are no longer reported under the alias name with no version. ([#1837](https://github.com/fossas/fossa-cli/pull/1837))
 
 ## 3.20.10
 
