@@ -4,7 +4,6 @@ import App.Fossa.Analyze.ForkAlias (mkForkAliasMap)
 import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
-import Control.Exception (throw)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
 import Data.Aeson.Key (fromText)
@@ -17,15 +16,9 @@ import Graphing (Graphing)
 import Graphing qualified
 import Path (Abs, Dir, Path, parseAbsDir, toFilePath)
 import Srclib.Types (Locator)
-import Test.Hspec (Spec, describe, it, shouldBe)
+import System.Directory (getTemporaryDirectory)
+import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Types (DiscoveredProjectType (CargoProjectType, GradleProjectType, NpmProjectType), GraphBreadth (Complete, Partial))
-
--- Parses on both Windows and POSIX without CPP (see Ficus.WorkflowSpec).
-mustParse :: (Show e) => (String -> Either e p) -> String -> p
-mustParse f s = either (throw . userError . show) id (f s)
-
-testPath :: Path Abs Dir
-testPath = mustParse parseAbsDir "/repo"
 
 -- | mvn+org.example:a$1.0.0, production-only
 depA :: Dependency
@@ -68,22 +61,6 @@ serdeAliasMap =
         }
     ]
 
--- Mirrors mkResult: 'projectResultGraph' carries the pruned (published) view,
--- so a test asserting on findings would fail if the renderer read that field.
-mkProject :: DiscoveredProjectType -> Graphing Dependency -> GraphBreadth -> ProjectResult
-mkProject projectType unpruned breadth =
-  ProjectResult
-    { projectResultType = projectType
-    , projectResultPath = testPath
-    , projectResultUnprunedGraph = RawGraph unpruned
-    , projectResultGraph = PublishedGraph (Graphing.pruneUnreachable unpruned)
-    , projectResultGraphBreadth = breadth
-    , projectResultManifestFiles = []
-    }
-
-pathText :: Text
-pathText = toText (toFilePath testPath)
-
 nodeObj :: Text -> [Text] -> Aeson.Value
 nodeObj locator environments =
   Aeson.object
@@ -98,20 +75,20 @@ edgeObj fromIndex toIndex =
     , "toIndex" .= toIndex
     ]
 
-occObj :: Bool -> Text -> Aeson.Value
-occObj isDirect scope =
+occObj :: Text -> Bool -> Text -> Aeson.Value
+occObj modulePath isDirect scope =
   Aeson.object
-    [ "module" .= pathText
+    [ "module" .= modulePath
     , "isDirect" .= (isDirect :: Bool)
     , "scope" .= scope
     ]
 
 -- aliasedFrom present only when a fork alias changed the dependency's locator.
-occObjAliased :: Bool -> Text -> Text -> Aeson.Value
-occObjAliased isDirect scope aliasedFrom =
+occObjAliased :: Text -> Bool -> Text -> Text -> Aeson.Value
+occObjAliased modulePath isDirect scope aliasedFrom =
   Aeson.object
     [ "aliasedFrom" .= (aliasedFrom :: Text)
-    , "module" .= pathText
+    , "module" .= modulePath
     , "isDirect" .= (isDirect :: Bool)
     , "scope" .= scope
     ]
@@ -127,11 +104,11 @@ graphObject nodes edges directNodes =
     , "directNodes" .= (directNodes :: [Int])
     ]
 
-projectObj :: Text -> Text -> Aeson.Value -> Aeson.Value -> Aeson.Value
-projectObj projectType breadth dependencies graph =
+projectObj :: Text -> Text -> Text -> Aeson.Value -> Aeson.Value -> Aeson.Value
+projectObj projectPath projectType breadth dependencies graph =
   Aeson.object
     [ "projectType" .= (projectType :: Text)
-    , "path" .= pathText
+    , "path" .= projectPath
     , "breadth" .= breadth
     , "dependencies" .= dependencies
     , "graph" .= graph
@@ -139,16 +116,32 @@ projectObj projectType breadth dependencies graph =
 
 spec :: Spec
 spec = do
+  -- Parsed at runtime so the spec compiles and runs on both Windows and POSIX
+  -- without CPP; the path package rejects the other platform's spellings.
+  testPath <- runIO (getTemporaryDirectory >>= parseAbsDir)
+  let pathText = toText (toFilePath testPath)
+      -- Mirrors mkResult: 'projectResultGraph' carries the pruned (published)
+      -- view, so findings assertions would fail if the renderer read that field.
+      mkProject projectType unpruned breadth =
+        ProjectResult
+          { projectResultType = projectType
+          , projectResultPath = testPath
+          , projectResultUnprunedGraph = RawGraph unpruned
+          , projectResultGraph = PublishedGraph (Graphing.pruneUnreachable unpruned)
+          , projectResultGraphBreadth = breadth
+          , projectResultManifestFiles = []
+          }
   describe "renderProjectFindings" $ do
     it "captures unreachable nodes that pruneUnreachable would delete (pre-prune resolution)" $ do
       let graph = Graphing.directs [depA] <> Graphing.deeps [depLost]
           obj =
             projectObj
+              pathText
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("go+github.com/lost/deep$9.9.9", [occObj False "production"])
-                  , ("mvn+org.example:a$1.0.0", [occObj True "production"])
+                  [ ("go+github.com/lost/deep$9.9.9", [occObj pathText False "production"])
+                  , ("mvn+org.example:a$1.0.0", [occObj pathText True "production"])
                   ]
               )
               (graphObject [nodeObj "go+github.com/lost/deep$9.9.9" ["production"], nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [1])
@@ -163,11 +156,12 @@ spec = do
           obj =
             -- No fork alias applies to these locators: aliasedFrom absent even with a non-empty map.
             projectObj
+              pathText
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("mvn+org.example:b$2.0.0", [occObj True "other:runtimeClasspath", occObj True "production", occObj True "testing"])
-                  , ("npm+c$3.0.0", [occObj False "development"])
+                  [ ("mvn+org.example:b$2.0.0", [occObj pathText True "other:runtimeClasspath", occObj pathText True "production", occObj pathText True "testing"])
+                  , ("npm+c$3.0.0", [occObj pathText False "development"])
                   ]
               )
               (graphObject [nodeObj "mvn+org.example:b$2.0.0" ["other:runtimeClasspath", "production", "testing"], nodeObj "npm+c$3.0.0" ["development"]] [edgeObj 0 1] [0])
@@ -178,11 +172,12 @@ spec = do
       let graph = Graphing.directs [depA, depForked]
           obj =
             projectObj
+              pathText
               "cargo"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("cargo+serde$2.0.0", [occObjAliased True "production" "cargo+my-serde$1.0.0"])
-                  , ("mvn+org.example:a$1.0.0", [occObj True "production"])
+                  [ ("cargo+serde$2.0.0", [occObjAliased pathText True "production" "cargo+my-serde$1.0.0"])
+                  , ("mvn+org.example:a$1.0.0", [occObj pathText True "production"])
                   ]
               )
               (graphObject [nodeObj "cargo+serde$2.0.0" ["production"], nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [0, 1])
@@ -193,9 +188,10 @@ spec = do
       let graph = Graphing.directs [depXPkgProduction, depXPkgTesting]
           obj =
             projectObj
+              pathText
               "npm"
               "GRAPH_BREADTH_COMPLETE"
-              (depsObject [("npm+pkg$1.0.0", [occObj True "production", occObj True "testing"])])
+              (depsObject [("npm+pkg$1.0.0", [occObj pathText True "production", occObj pathText True "testing"])])
               (graphObject [nodeObj "npm+pkg$1.0.0" ["production"], nodeObj "npm+pkg$1.0.0" ["testing"]] [] [0, 1])
           expected = Aeson.object ["projects" .= [obj]]
       renderProjectFindings Map.empty [mkProject NpmProjectType graph Complete] `shouldBe` expected
@@ -204,12 +200,13 @@ spec = do
       let graph = Graphing.directs [depA, depB] <> Graphing.edges [(depA, depC), (depB, depC), (depA, depC)]
           obj1 =
             projectObj
+              pathText
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("mvn+org.example:a$1.0.0", [occObj True "production"])
-                  , ("mvn+org.example:b$2.0.0", [occObj True "other:runtimeClasspath", occObj True "production", occObj True "testing"])
-                  , ("npm+c$3.0.0", [occObj False "development"])
+                  [ ("mvn+org.example:a$1.0.0", [occObj pathText True "production"])
+                  , ("mvn+org.example:b$2.0.0", [occObj pathText True "other:runtimeClasspath", occObj pathText True "production", occObj pathText True "testing"])
+                  , ("npm+c$3.0.0", [occObj pathText False "development"])
                   ]
               )
               ( graphObject
@@ -222,9 +219,10 @@ spec = do
               )
           obj2 =
             projectObj
+              pathText
               "npm"
               "GRAPH_BREADTH_PARTIAL"
-              (depsObject [("mvn+org.example:a$1.0.0", [occObj True "production"])])
+              (depsObject [("mvn+org.example:a$1.0.0", [occObj pathText True "production"])])
               (graphObject [nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [0])
           expected = Aeson.object ["projects" .= [obj1, obj2]]
       renderProjectFindings Map.empty [mkProject GradleProjectType graph Complete, mkProject NpmProjectType (Graphing.directs [depA]) Partial] `shouldBe` expected
@@ -233,6 +231,7 @@ spec = do
       let graph = Graphing.directs [depNoEnv]
           obj =
             projectObj
+              pathText
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               (depsObject [])
