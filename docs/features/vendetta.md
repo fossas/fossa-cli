@@ -73,12 +73,12 @@ vendoredDependencies:
 
 **Important Notes:**
 
-- Path filters use standard glob patterns (e.g., `**/*` for recursive matching,
-  `*` for single-directory matching).
+- Path filters are globs where `*` also matches across directories, so `src/*`
+  covers everything under `src/`.
 - The configuration goes in the `vendoredDependencies.licenseScanPathFilters`
   section.
-- These exclude patterns are passed directly to the Ficus scanning engine as
-  `--exclude` arguments.
+- The same `only` and `exclude` filters also limit license scanning of
+  [vendored dependencies in `fossa-deps.yml`](./vendored-dependencies.md#path-filtering).
 - Default exclusions (hidden files, `.gitignore` patterns) are applied in
   addition to custom excludes.
 
