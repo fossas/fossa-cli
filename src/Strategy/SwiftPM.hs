@@ -30,6 +30,7 @@ import Discovery.Walk (
   mergeWalkSteps,
   walkWithFilters',
  )
+import Effect.Exec (GetDepsEffs)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
