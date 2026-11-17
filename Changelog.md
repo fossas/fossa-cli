@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once.
+- Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
 - Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
 
 ## 3.20.11
