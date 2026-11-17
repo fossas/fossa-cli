@@ -529,11 +529,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       additionalSourceUnits = vsiResults' <> ficusResults' <> mapMaybe (join . resultToMaybe) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   traverse_ (Diag.flushLogs SevError SevDebug) [manualSrcUnits, binarySearchResults, dynamicLinkedResults]
   -- Flush logs using the original Result from VSI.
-  traverse_ (Diag.flushLogs SevError SevDebug) [vsiResults]
+  Diag.flushLogs SevError SevDebug vsiResults
   -- Flush logs from lernie
-  traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
+  Diag.flushLogs SevError SevDebug maybeLernieResults
   -- Flush logs from ficus
-  traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
+  Diag.flushLogs SevError SevDebug maybeFicusResults
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -629,11 +629,11 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (\() -> timedPhase "x-workflow" $ Workflow.analyzeWithWorkflow basedir (Config.debugDir cfg) projectFindings)
           (guard (Config.xWorkflow cfg) :: Maybe ())
     )
-      >>= \r ->
+      >>= \r -> do
         -- Flush logs from the x-workflow run, on the full Result so a failure
         -- caught by errorBoundaryIO is still logged.
-        traverse_ (Diag.flushLogs SevError SevDebug) [r]
-          >> pure (join $ resultToMaybe r)
+        Diag.flushLogs SevError SevDebug r
+        pure (join $ resultToMaybe r)
 
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
