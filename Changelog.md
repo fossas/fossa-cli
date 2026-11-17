@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
+
 ## 3.20.11
 
 - Yarn: local `file:`, `link:` and `portal:` dependencies in a Yarn 2+ `yarn.lock` no longer warn that their package could not be found. ([#1832](https://github.com/fossas/fossa-cli/pull/1832))
