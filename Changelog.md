@@ -8,10 +8,10 @@
 - Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
 - Pnpm: Dependencies installed under an npm alias are no longer reported under the alias name with no version. ([#1837](https://github.com/fossas/fossa-cli/pull/1837))
-- Licensing: the Detection Rule License 1.1, the Bitwarden Software Development Kit License Agreement v1 and the LLNL license (the `LICENSE_YORICK` notice shipped by matplotlib and mayavi) are now detected instead of reported as no license.
-- Licensing: the WebSupergoo ABCpdf license is now reported as a proprietary license.
-- Licensing: the `log4r` license (e.g. in `log4r` 1.1.10) is now reported as Ruby OR GPL-2.0 OR GPL-3.0 instead of no license.
-- Licensing: these license names in package manifests are now recognized: `ASL 1.1`, `Apache Public License Version 2.0`, `Creative Commons Attribution-NonCommercial 3.0 License`, `European Union Public Licence, Version 1.2`, `Gatling Highcharts`, `GNUGPL-v3` and `Lucent Public License Version 1.02`.
+- Licensing: the Detection Rule License 1.1, the Bitwarden Software Development Kit License Agreement v1 and the LLNL license (the `LICENSE_YORICK` notice shipped by matplotlib and mayavi) are now detected instead of reported as no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the WebSupergoo ABCpdf license is now reported as a proprietary license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the `log4r` license (e.g. in `log4r` 1.1.10) is now reported as Ruby OR GPL-2.0 OR GPL-3.0 instead of no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: these license names in package manifests are now recognized: `ASL 1.1`, `Apache Public License Version 2.0`, `Creative Commons Attribution-NonCommercial 3.0 License`, `European Union Public Licence, Version 1.2`, `Gatling Highcharts`, `GNUGPL-v3` and `Lucent Public License Version 1.02`. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
 
 ## 3.20.10
 
