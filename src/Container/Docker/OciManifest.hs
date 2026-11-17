@@ -171,10 +171,20 @@ toDockerManifest (OciManifestV2 config layers) imgSrc =
     repo :: Text
     repo = registryContainerRepository imgSrc
 
--- | Gets image artifacts blobs.
+-- | Gets image artifacts blobs: the config and each distinct layer, in manifest order.
+--
+-- A manifest lists one entry per layer, and an image can contain the same layer more than once:
+-- builders such as kaniko and buildah add the same empty layer for every step that leaves the
+-- filesystem unchanged, and every one of them has the digest of the empty gzipped tar. Each blob
+-- is downloaded by its own task into a file named after its digest, so a repeated layer is listed
+-- once: two tasks writing the same file at the same time fail with
+-- @openBinaryFile: resource busy (file is locked)@.
 blobEntries :: OciManifestV2 -> NonEmpty.NonEmpty (RepoDigest, Bool, Text)
-blobEntries (OciManifestV2 config layers) = configBlobEntry <| (NonEmpty.map layerToBlobEntry layers)
+blobEntries (OciManifestV2 config layers) = NonEmpty.nubBy sameFile $ configBlobEntry <| (NonEmpty.map layerToBlobEntry layers)
   where
+    sameFile :: (RepoDigest, Bool, Text) -> (RepoDigest, Bool, Text) -> Bool
+    sameFile (_, _, file) (_, _, file') = file == file'
+
     configBlobEntry :: (RepoDigest, Bool, Text)
     configBlobEntry =
       ( configDigest config
