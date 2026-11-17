@@ -439,16 +439,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
               (Config.debugDir cfg)
   let ficusResults = join $ resultToMaybe maybeFicusResults
 
-  -- A failed run is loud but does not hold the dependency upload hostage. The
-  -- result itself is uploaded from 'uploadSuccessfulAnalysis', because only the
-  -- locator the server issues there identifies the revision to the consumer.
-  workflowResult <-
-    Diag.errorBoundaryIO . diagToDebug $
-      traverse
-        (\() -> timedPhase "x-workflow" $ Workflow.analyzeWithWorkflow basedir (Config.debugDir cfg))
-        (guard (Config.xWorkflow cfg) :: Maybe ())
-  let workflowData = join $ resultToMaybe workflowResult
-
   maybeLernieResults <-
     Diag.errorBoundaryIO . diagToDebug $
       if filterIsVSIOnly filters
@@ -480,8 +470,6 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeLernieResults]
   -- Flush logs from ficus
   traverse_ (Diag.flushLogs SevError SevDebug) [maybeFicusResults]
-  -- Flush logs from the x-workflow run
-  traverse_ (Diag.flushLogs SevError SevDebug) [workflowResult]
 
   maybeFirstPartyScanResults <-
     Diag.errorBoundaryIO . diagToDebug $
@@ -564,8 +552,24 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
 
-  -- Findings ride the workflow upload; the server's own cap applies.
+  -- Findings ride the workflow upload.
+  -- Rendered here, not at the upload, because the run needs it as a local file.
   let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings basedir forkAliasMap filteredProjects') else Nothing
+
+  -- A failed run is loud but does not hold the dependency upload hostage. The
+  -- result itself is uploaded from 'uploadSuccessfulAnalysis', because only the
+  -- locator the server issues there identifies the revision to the consumer.
+  workflowData <-
+    ( Diag.errorBoundaryIO . diagToDebug $
+        traverse
+          (\() -> timedPhase "x-workflow" $ Workflow.analyzeWithWorkflow basedir (Config.debugDir cfg) projectFindings)
+          (guard (Config.xWorkflow cfg) :: Maybe ())
+    )
+      >>= \r ->
+        -- Flush logs from the x-workflow run, on the full Result so a failure
+        -- caught by errorBoundaryIO is still logged.
+        traverse_ (Diag.flushLogs SevError SevDebug) [r]
+          >> pure (join $ resultToMaybe r)
 
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases

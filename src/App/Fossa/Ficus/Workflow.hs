@@ -1,6 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module App.Fossa.Ficus.Workflow (
   analyzeWithWorkflow,
-  -- Exported for testing: everything except which binary runs the workflow.
+  findingsFileName,
+  writeFindingsDoc,
+  -- Also exported for testing.
   runWorkflowWith,
 ) where
 
@@ -14,27 +18,31 @@ import App.Fossa.Ficus.Types (
   findingToWorkflowEvent,
   workflowResultJson,
  )
+import Control.Carrier.Diagnostics qualified as Diag
 import Control.Effect.Debug (Debug, debugMetadata)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
-import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Effect.Path (withSystemTempDir)
+import Control.Monad (unless)
 import Data.Aeson qualified as Aeson
 import Data.ByteString.Lazy qualified as BL
 import Data.Either (partitionEithers)
 import Data.Foldable (traverse_)
 import Data.Map qualified as Map
-import Data.Maybe (mapMaybe)
+import Data.Maybe (isJust, mapMaybe)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Diag.Result (resultToMaybe)
 import Effect.Exec (AllowErr (Never), Command (..), ExitCode (ExitSuccess))
-import Effect.Logger (Logger, logDebug, logError, logInfo, pretty)
-import Path (Abs, Dir, Path)
+import Effect.Logger (Logger, Severity (SevDebug, SevWarn), logDebug, logError, logInfo, logWarn, pretty)
+import Path (Abs, Dir, File, Path, Rel, mkRelFile, toFilePath, (</>))
 
 -- | Download the workflow analyzer and run it over @target@ through
 -- @ficus x-workflow@, streaming its observations. The result is recorded in
 -- the debug bundle and returned for upload once the server has issued the
--- revision locator; nothing is sent from here.
+-- revision locator; nothing is sent from here. The rendered findings document,
+-- when present, is written into the run's scratch dir for the child to read.
 analyzeWithWorkflow ::
   ( Has Debug sig m
   , Has Diagnostics sig m
@@ -43,10 +51,11 @@ analyzeWithWorkflow ::
   ) =>
   Path Abs Dir ->
   Maybe FilePath ->
+  Maybe Aeson.Value ->
   m Aeson.Value
-analyzeWithWorkflow target maybeDebugDir =
+analyzeWithWorkflow target maybeDebugDir findings =
   withFicusBinary $ \bin ->
-    runWorkflowWith (workflowCommand . toText $ toPath bin) target maybeDebugDir
+    runWorkflowWith (workflowCommand . toText $ toPath bin) target maybeDebugDir findings
 
 -- | @--config -@ puts the run artifact on stdin, so it never lands on the
 -- process table.
@@ -59,6 +68,17 @@ workflowCommand ficus =
     , cmdEnvVars = Map.empty
     }
 
+-- | The child runs with CWD set to the run artifact's @workingDirectory@
+-- (the scratch dir), so a relative file name there is enough for it to find
+-- the findings document.
+findingsFileName :: Path Rel File
+findingsFileName = $(mkRelFile "project-findings.json")
+
+-- | Findings are adjunct data: a failed write degrades to "the file is absent"
+-- (the caller warns about it) and the run continues.
+writeFindingsDoc :: (Has (Lift IO) sig m) => Path Abs Dir -> Maybe Aeson.Value -> m ()
+writeFindingsDoc scratch = traverse_ (sendIO . BL.writeFile (toFilePath (scratch </> findingsFileName)) . Aeson.encode)
+
 runWorkflowWith ::
   ( Has Debug sig m
   , Has Diagnostics sig m
@@ -68,14 +88,19 @@ runWorkflowWith ::
   Command ->
   Path Abs Dir ->
   Maybe FilePath ->
+  Maybe Aeson.Value ->
   m Aeson.Value
-runWorkflowWith cmd target maybeDebugDir =
+runWorkflowWith cmd target maybeDebugDir findings =
   -- The child writes a step cache and a per-run temp directory relative to its
   -- working directory, so it must not be the repository under analysis.
   withSystemTempDir "fossa-workflow" $ \scratch -> do
     let artifact = WorkflowRunArtifact downloadedWorkflowExecutable target scratch
         artifactBytes = BL.toStrict $ Aeson.encode artifact
     logDebug $ "Workflow run artifact: " <> pretty (decodeUtf8 artifactBytes :: Text)
+    writeOutcome <- Diag.errorBoundaryIO $ writeFindingsDoc scratch findings
+    Diag.flushLogs SevWarn SevDebug writeOutcome
+    unless (isJust (resultToMaybe writeOutcome)) $
+      logWarn "Failed to write the findings document into the workflow scratch dir; the workflow will not see it"
 
     (collected, exitCode, stdErrLines) <-
       execFicusStreaming scratch cmd (Just artifactBytes) maybeDebugDir "fossa.ficus-workflow" collectWorkflowEvent []
