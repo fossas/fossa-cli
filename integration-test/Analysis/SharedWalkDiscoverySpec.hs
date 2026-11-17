@@ -115,14 +115,14 @@ collectWalk tmpDir = do
   withWalkBroadcast filters tmpDir consumers
 
   do
-    mixP <- cachedDiscover MixProjectType Mix.mkProject (finalizeSink mixSink)
-    fpmP <- cachedDiscover FpmProjectType Fpm.mkProject (finalizeSink fpmSink)
-    leinP <- cachedDiscover LeiningenProjectType Leiningen.mkProject (finalizeSink leinSink)
-    goP <- cachedDiscover GomodProjectType Gomodules.mkProject (finalizeSink goSink)
-    composerP <- cachedDiscover ComposerProjectType Composer.mkProject (finalizeSink composerSink)
-    cocoapodsP <- cachedDiscover CocoapodsProjectType Cocoapods.mkProject (finalizeSink cocoapodsSink)
-    condaP <- cachedDiscover CondaProjectType Conda.mkProject (finalizeSink condaSink)
-    cabalP <- cachedDiscover CabalProjectType Cabal.mkProject (finalizeSink cabalSink)
+    mixP <- cachedDiscover MixProjectType Mix.mkProject tmpDir (finalizeSink mixSink)
+    fpmP <- cachedDiscover FpmProjectType Fpm.mkProject tmpDir (finalizeSink fpmSink)
+    leinP <- cachedDiscover LeiningenProjectType Leiningen.mkProject tmpDir (finalizeSink leinSink)
+    goP <- cachedDiscover GomodProjectType Gomodules.mkProject tmpDir (finalizeSink goSink)
+    composerP <- cachedDiscover ComposerProjectType Composer.mkProject tmpDir (finalizeSink composerSink)
+    cocoapodsP <- cachedDiscover CocoapodsProjectType Cocoapods.mkProject tmpDir (finalizeSink cocoapodsSink)
+    condaP <- cachedDiscover CondaProjectType Conda.mkProject tmpDir (finalizeSink condaSink)
+    cabalP <- cachedDiscover CabalProjectType Cabal.mkProject tmpDir (finalizeSink cabalSink)
     pure $
       concatMap toEntries mixP
         <> concatMap toEntries fpmP
@@ -253,8 +253,8 @@ spec =
                     mixConsumer = accumulateConsumer MixProjectType (msgFor MixProjectType) mixSink Mix.discoverVisitor
                 -- filters mempty: gating is covered elsewhere (WalkBroadcastSpec).
                 withWalkBroadcast (mempty :: AllFilters) tmp [fpmConsumer, mixConsumer]
-                fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject (finalizeSink fpmSink)
-                mixFinal <- cachedDiscover MixProjectType Mix.mkProject (finalizeSink mixSink)
+                fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject tmp (finalizeSink fpmSink)
+                mixFinal <- cachedDiscover MixProjectType Mix.mkProject tmp (finalizeSink mixSink)
                 pure (fpmFinal, mixFinal)
             )
             LocalEnvironment
