@@ -10,14 +10,17 @@ import App.Fossa.Ficus.Types (
   downloadedWorkflowExecutable,
   findingToWorkflowEvent,
  )
+import App.Fossa.Ficus.Workflow (findingsFileName, writeFindingsDoc)
 import Control.Exception (throw)
 import Data.Aeson qualified as Aeson
 import Data.Either (isLeft)
 import Data.String.Conversion (decodeUtf8)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Path (Abs, Dir, Path, parseAbsDir, toFilePath)
-import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
+import Path (Abs, Dir, Path, parseAbsDir, toFilePath, (</>))
+import Path.IO qualified as PIO
+import System.Directory (doesFileExist)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldReturn, shouldSatisfy)
 
 -- | The fixtures below are valid paths only on the platform they are written
 -- for; a parse failure means the fixture itself is broken, so fail with the
@@ -62,6 +65,25 @@ spec = do
     it "matches the JSON ficus parses" $ do
       let artifact = WorkflowRunArtifact downloadedWorkflowExecutable targetDir workDir
       Just (Aeson.toJSON artifact) `shouldBe` Aeson.decodeStrictText expectedArtifactJson
+
+  describe "findings document" $ do
+    it "uses the conventional file name the workflow reads" $
+      toFilePath findingsFileName `shouldBe` "project-findings.json"
+
+    it "writes the findings document into the scratch dir" $
+      PIO.withSystemTempDir "fossa-workflow-spec" $ \scratchDir -> do
+        let doc = Aeson.object ["schemaVersion" Aeson..= (1 :: Int)]
+        writeFindingsDoc scratchDir (Just doc)
+        let path = scratchDir </> findingsFileName
+        exists <- doesFileExist (toFilePath path)
+        exists `shouldBe` True
+        decoded <- Aeson.eitherDecodeFileStrict' (toFilePath path)
+        decoded `shouldBe` Right doc
+
+    it "leaves no file when there are no findings" $
+      PIO.withSystemTempDir "fossa-workflow-spec" $ \freshDir -> do
+        writeFindingsDoc freshDir Nothing
+        doesFileExist (toFilePath (freshDir </> findingsFileName)) `shouldReturn` False
 
   describe "workflow event decoding" $ do
     it "decodes workflow-started" $
