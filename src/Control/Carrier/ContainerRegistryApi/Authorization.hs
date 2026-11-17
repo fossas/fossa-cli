@@ -35,20 +35,20 @@ import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Maybe (isJust)
-import Data.String.Conversion (ConvertUtf8 (decodeUtf8), encodeUtf8, toString, toText)
-import Data.Text (Text, isInfixOf)
+import Data.String.Conversion (encodeUtf8, toString, toText)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Network.HTTP.Client (
   Manager,
-  Request (host, method, shouldStripHeaderOnRedirect),
+  Request (method, shouldStripHeaderOnRedirect, shouldStripHeaderOnRedirectIfOnDifferentHostOnly),
   Response (responseBody, responseHeaders, responseStatus),
   applyBasicAuth,
   applyBearerAuth,
   parseRequest,
  )
-import Network.HTTP.Types (methodGet, statusCode)
+import Network.HTTP.Types (statusCode)
 import Network.HTTP.Types.Header (
   hAuthorization,
   hWWWAuthenticate,
@@ -97,19 +97,22 @@ applyAuthToken (Just (BasicAuthToken user pass)) r =
 applyAuthToken (Just (BearerAuthToken token)) r =
   stripAuthHeaderOnRedirect $ applyBearerAuth (encodeUtf8 token) r
 
--- If we don't strip auth headers, on redirect, depending on how
--- blobs/manifest are retrieved cloud vendor may throw 'Bad Request' error.
+-- | Only ever send the 'Authorization' header to the registry itself.
+--
+-- A registry may answer a request for a blob or manifest with a redirect to its storage (S3,
+-- Azure Blob Storage, a CDN...), at a URL that carries its own credentials. Following it with the
+-- 'Authorization' header would hand the registry credentials to another host, and S3 answers a
+-- pre-signed URL that also has that header with '400 Bad Request'.
+--
+-- This holds for any registry, not only for the cloud vendors' own (a self-hosted registry may
+-- keep its blobs in S3 too), and for any method: 'getAuthToken' makes HEAD requests. A redirect
+-- that stays on the registry's host keeps the header.
 stripAuthHeaderOnRedirect :: Request -> Request
 stripAuthHeaderOnRedirect r =
-  if ((isAwsECR || isAzure) && method r == methodGet)
-    then r{shouldStripHeaderOnRedirect = (== hAuthorization)}
-    else r
-  where
-    isAwsECR :: Bool
-    isAwsECR = "amazonaws.com" `isInfixOf` decodeUtf8 (host r)
-
-    isAzure :: Bool
-    isAzure = "azurecr.io" `isInfixOf` decodeUtf8 (host r)
+  r
+    { shouldStripHeaderOnRedirect = (== hAuthorization)
+    , shouldStripHeaderOnRedirectIfOnDifferentHostOnly = True
+    }
 
 -- | Get an auth token for a given resource if necessary and update the RegistryCtx.
 --
