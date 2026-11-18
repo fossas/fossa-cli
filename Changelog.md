@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.20.12
 
 - NuGet: Respect path filters in project discovery. ([#1848](https://github.com/fossas/fossa-cli/pull/1848))
 - Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
