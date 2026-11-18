@@ -19,6 +19,7 @@ import Control.Carrier.ContainerRegistryApi.Common (
   getToken,
   logHttp,
   originalReqUri,
+  registryRequest,
   safeReplaceToken,
  )
 import Control.Carrier.ContainerRegistryApi.Errors (
@@ -27,7 +28,7 @@ import Control.Carrier.ContainerRegistryApi.Errors (
   UnknownApiError (UnknownApiError),
  )
 import Control.Effect.Diagnostics (Diagnostics, fatal, fatalText, fromMaybeText)
-import Control.Effect.Lift (Lift, sendIO)
+import Control.Effect.Lift (Lift)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (unless, when)
 import Data.Aeson (FromJSON (parseJSON), decode', eitherDecode, withObject, (.:), (.:?))
@@ -244,9 +245,9 @@ getTokenFromAuthChallenge cred (BearerAuthChallenge (RegistryBearerChallenge url
       pure $ BearerAuthToken $ unToken tokenResponse
   where
     -- \| Authorization Server Endpoint.
-    authTokenEndpoint :: Has (Lift IO) sig m => m (Request)
+    authTokenEndpoint :: (Has (Lift IO) sig m, Has Diagnostics sig m) => m Request
     authTokenEndpoint =
-      sendIO $ parseRequest $ toString url <> "?" <> "service=" <> toString service <> "&scope=" <> toString scope
+      registryRequest $ parseRequest $ toString url <> "?" <> "service=" <> toString service <> "&scope=" <> toString scope
 getTokenFromAuthChallenge cred (BasicAuthChallenge _) _ = do
   (user, pass) <- fromMaybeText "Registry requested basic auth challenge, but no credentials were provided!" cred
   pure $ BasicAuthToken user pass
