@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
+
 ## 3.20.12
 
 - NuGet: Respect path filters in project discovery. ([#1848](https://github.com/fossas/fossa-cli/pull/1848))
