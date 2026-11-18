@@ -168,6 +168,21 @@ spec = do
         ]
         graph
 
+  describe "the workspace's own PyPI package" $
+    it' "is dropped, and the requirements it shares an environment with are direct" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v7-workspace-requirements.lock|]
+      graph <- analyze mempty path
+      let pypi name version = mkDep PipType name (Just version) [EnvProduction]
+          deps =
+            [ condaDep "conda-forge" "linux-64" "python" "3.14.6" [EnvProduction]
+            , pypi "snakemake-interface-common" "1.23.0"
+            , pypi "throttler" "1.2.3"
+            , pypi "pyyaml" "6.0.3"
+            ]
+
+      expectDeps' deps graph
+      expectDirect' deps graph
+
   describe "analyze a v4 lockfile" $
     it' "reads it like v5, which only adds PyPI indexes" $ do
       path <- makeAbsolute [relfile|test/Pixi/testdata/pixi-v4.lock|]
