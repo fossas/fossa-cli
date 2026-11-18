@@ -2,8 +2,37 @@
 
 ## Unreleased
 
-- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
+- Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
+- Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
 - pixi: Added support for pixi projects via `pixi.lock`. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+
+## 3.20.11
+
+- Yarn: local `file:`, `link:` and `portal:` dependencies in a Yarn 2+ `yarn.lock` no longer warn that their package could not be found. ([#1832](https://github.com/fossas/fossa-cli/pull/1832))
+- Analysis: Libraries reached through a Gradle subproject or a local folder dependency are no longer missing from results. Libraries under a direct subproject, local folder dependency or Googlesource repo now appear as direct dependencies. ([#1836](https://github.com/fossas/fossa-cli/pull/1836))
+- Swift: Add dynamic Swift strategy which uses `swift package show-dependencies`. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
+- Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
+- Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
+- Pnpm: Dependencies installed under an npm alias are no longer reported under the alias name with no version. ([#1837](https://github.com/fossas/fossa-cli/pull/1837))
+- Licensing: the Detection Rule License 1.1, the Bitwarden Software Development Kit License Agreement v1 and the LLNL license (the `LICENSE_YORICK` notice shipped by matplotlib and mayavi) are now detected instead of reported as no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the WebSupergoo ABCpdf license is now reported as a proprietary license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the `log4r` license (e.g. in `log4r` 1.1.10) is now reported as Ruby OR GPL-2.0 OR GPL-3.0 instead of no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: these license names in package manifests are now recognized: `ASL 1.1`, `Apache Public License Version 2.0`, `Creative Commons Attribution-NonCommercial 3.0 License`, `European Union Public Licence, Version 1.2`, `Gatling Highcharts`, `GNUGPL-v3` and `Lucent Public License Version 1.02`. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+
+## 3.20.10
+
+- Container scanning: `fossa container analyze` now reports the registry error when an image layer cannot be downloaded, instead of failing with an internal threading error. ([#1827](https://github.com/fossas/fossa-cli/pull/1827))
+- Telemetry: `fossa analyze` now reports how long each of its phases took, alongside the existing per-analyzer timings. ([#1829](https://github.com/fossas/fossa-cli/pull/1829))
+
+## 3.20.9
+
+- Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
+- Npm: `package-lock.json` v3 analysis no longer reports the top-level version of a dependency vendored under a workspace whose directory name recurs in a package name. ([#1826](https://github.com/fossas/fossa-cli/pull/1826))
+
+## 3.20.8
+
+- Conan: The Conan strategy now works with non-standard Conan version numbers. ([#1824](https://github.com/fossas/fossa-cli/pull/1824))
+- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
 
 ## 3.20.7
 

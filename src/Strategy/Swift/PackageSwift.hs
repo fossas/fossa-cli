@@ -21,7 +21,7 @@ import Data.Foldable (asum)
 import Data.Functor (($>))
 import Data.List (foldl')
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, mapMaybe)
+import Data.Maybe (catMaybes, isNothing, mapMaybe)
 import Data.Set (Set, fromList, member)
 import Data.String.Conversion (ToText, toText)
 import Data.Text (Text, intercalate)
@@ -256,6 +256,11 @@ parsePackageDep = try parsePathDep <|> parseGitDep
               , ClosedInterval <$> parseRange "..."
               , RhsHalfOpenInterval <$> parseRange "..<"
               ]
+      -- A requirement written as Swift code the parser can't evaluate, e.g.
+      -- `exact: firebaseSdkVersion` (a `let` declared earlier in the manifest) or
+      -- `.upToNextMajor(from: minimumVersion)`. Skip it: the dependency is still
+      -- recorded by its url, and Package.resolved supplies the version it is pinned to.
+      when (isNothing versionRequirement) $ void $ optional skipExpression
       _ <- maybeComma
       _ <- optional $ parseKeyValue "traits" $ void parseStringArray
       _ <- symbol ")"

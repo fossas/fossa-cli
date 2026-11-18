@@ -13,7 +13,7 @@ module Srclib.Converter (
 import Prelude
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), shouldKeepUnreachableDeps)
 import Control.Applicative ((<|>))
 import Data.Aeson qualified as Aeson
 import Data.Set qualified as Set
@@ -80,12 +80,19 @@ toSourceUnit leaveUnfiltered path dependencies projectType graphBreadth originPa
     }
   where
     filteredGraph :: Graphing Dependency
-    filteredGraph = Graphing.shrinkWithoutPromotionToDirect ff dependencies
+    -- When the CLI removes a subproject or local folder dep, it keeps that
+    -- node's libraries attached to the parent. Only libraries tagged as dev or
+    -- test are dropped.
+    filteredGraph = Graphing.shrink isSupportedType pruned
       where
-        ff =
+        pruned =
+          if null (Graphing.directList dependencies) || null (Graphing.edgesList dependencies) || shouldKeepUnreachableDeps projectType
+            then published
+            else Graphing.pruneUnreachable published
+        published =
           if leaveUnfiltered
-            then isSupportedType
-            else (\d -> shouldPublishDep d && isSupportedType d)
+            then dependencies
+            else Graphing.shrinkWithoutPromotionToDirect shouldPublishDep dependencies
 
     locatorGraph :: Graphing Locator
     locatorGraph = Graphing.gmap toLocator filteredGraph

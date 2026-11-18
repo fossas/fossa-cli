@@ -129,6 +129,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
+import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
@@ -373,7 +374,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping manual source units"
           pure $ ManualDepsResult Nothing []
-        else Diag.context "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
+        else timedPhase "fossa-deps" . runStickyLogger SevInfo $ analyzeFossaDepsFile basedir customFossaDepsFile maybeApiOpts vendoredDepsOptions
   let forkAliases = maybe [] manualDepsResultForkAliases (resultToMaybe manualDepsResult)
       manualSrcUnits = fmap manualDepsResultSourceUnit manualDepsResult
 
@@ -391,7 +392,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       let shouldRunVSI = fromFlag Config.VSIAnalysis $ Config.vsiAnalysisEnabled $ Config.vsiOptions cfg
       case (shouldRunVSI, maybeApiOpts) of
         (True, Just apiOpts') ->
-          runFossaApiClient apiOpts' $
+          trackTimeSpent "phase/analyze-vsi" . runFossaApiClient apiOpts' $
             analyzeVSI basedir revision filters skipResolutionSet
         _ -> pure Nothing
   dynamicLinkedResults <-
@@ -404,7 +405,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     Diag.errorBoundaryIO . diagToDebug $
       Diag.context "discover-binaries" $
         if (fromFlag BinaryDiscovery $ Config.binaryDiscoveryEnabled $ Config.vsiOptions cfg)
-          then analyzeDiscoverBinaries basedir filters
+          then trackTimeSpent "phase/discover-binaries" $ analyzeDiscoverBinaries basedir filters
           else pure Nothing
   let ficusStrategies =
         catMaybes
@@ -417,7 +418,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           pure Nothing
         else
-          Diag.context "ficus-scanning"
+          timedPhase "ficus-scanning"
             . runStickyLogger SevInfo
             $ analyzeWithFicus
               basedir
@@ -435,7 +436,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   workflowResult <-
     Diag.errorBoundaryIO . diagToDebug $
       traverse
-        (\() -> Diag.context "x-workflow" $ Workflow.analyzeWithWorkflow basedir (Config.debugDir cfg))
+        (\() -> timedPhase "x-workflow" $ Workflow.analyzeWithWorkflow basedir (Config.debugDir cfg))
         (guard (Config.xWorkflow cfg) :: Maybe ())
   let workflowData = join $ resultToMaybe workflowResult
 
@@ -445,7 +446,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "Running in VSI only mode, skipping keyword search and custom-license search"
           pure Nothing
-        else Diag.context "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
+        else timedPhase "custom-license & keyword search" . runStickyLogger SevInfo $ analyzeWithLernie basedir maybeApiOpts grepOptions $ Config.licenseScanPathFilters vendoredDepsOptions
   let lernieResults = join . resultToMaybe $ maybeLernieResults
 
   let -- This makes nice with additionalSourceUnits below, but throws out additional Result data.
@@ -479,14 +480,14 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         then do
           logInfo "first party scans forced off by the --experimental-block-first-party-scans flag. Skipping first party scans"
           pure Nothing
-        else Diag.context "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
+        else timedPhase "first-party-scans" . runStickyLogger SevInfo $ runFirstPartyScan basedir maybeApiOpts cfg
   let firstPartyScanResults = join . resultToMaybe $ maybeFirstPartyScanResults
   let strategyCfg =
         (Config.strategyConfig cfg)
           { Config.useGitBackedCargoLocators = Config.UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators orgInfo
           }
   (projectScans, ()) <-
-    Diag.context "discovery/analysis tasks"
+    timedPhase "discovery/analysis tasks"
       . runOutput @DiscoveredProjectScan
       . runStickyLogger SevInfo
       . runFinally
@@ -522,7 +523,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   -- and queue a build for all path+ dependencies
   filteredProjects' <- case (shouldAnalyzePathDependencies, destinationMetadata destination) of
     (True, Just (DestinationMeta (apiOpts, _))) ->
-      Diag.context "path-dependencies"
+      timedPhase "path-dependencies"
         . runFossaApiClient apiOpts
         $ runStickyLogger SevInfo
         $ traverse (enrichPathDependencies includeAll vendoredDepsOptions revision) filteredProjects
@@ -534,7 +535,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
     case orgInfo of
       (Just (Organization{orgSupportsReachability = False})) -> pure []
       _ ->
-        Diag.context "reachability analysis"
+        timedPhase "reachability analysis"
           . runReader (Config.reachabilityConfig cfg)
           . runReader filters
           $ analyzeForReachability projectScans
@@ -572,7 +573,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       (True, FilteredAll) -> Diag.warn ErrOnlyKeywordSearchResultsFound $> emptyScanUnits
       (_, CountedScanUnits scanUnits) -> pure scanUnits
   let doUpload (DestinationMeta (apiOpts, metadata)) =
-        Diag.context "upload-results"
+        timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
             locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults workflowData
@@ -583,6 +584,12 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   where
     emptyScanUnits :: ScanUnits
     emptyScanUnits = SourceUnitOnly []
+
+-- | Runs one phase of 'analyze' under a diagnostic context and records its wall-clock time in telemetry as
+-- @phase/<name>@. The per-analyzer timings from 'runDependencyAnalysis' overlap, since analyzers run in parallel;
+-- the phases run one after another, so their timings break down the command's duration.
+timedPhase :: (Has Diag.Diagnostics sig m, Has Telemetry sig m) => Text -> m a -> m a
+timedPhase name = trackTimeSpent ("phase/" <> name) . Diag.context name
 
 -- | 'OutputStdout' has no API session and no server-issued locator, so nothing
 -- reaches the server from that branch, the workflow result included.
@@ -671,11 +678,13 @@ doAnalyzeDynamicLinkedBinary ::
   , Has ReadFS sig m
   , Has Exec sig m
   , Has (Reader AllFilters) sig m
+  , Has Telemetry sig m
   ) =>
   Path Abs Dir ->
   DynamicLinkInspect ->
   m (Maybe SourceUnit)
-doAnalyzeDynamicLinkedBinary root (DynamicLinkInspect (Just target)) = analyzeDynamicLinkedDeps root target
+doAnalyzeDynamicLinkedBinary root (DynamicLinkInspect (Just target)) =
+  trackTimeSpent "phase/discover-dynamic-linking" $ analyzeDynamicLinkedDeps root target
 doAnalyzeDynamicLinkedBinary _ _ = pure Nothing
 
 data AnalyzeError

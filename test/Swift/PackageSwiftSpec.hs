@@ -190,6 +190,8 @@ spec = do
           , ("a dependency array concatenated with a conditional one", ["dependencies: [" <> argumentParser <> "] + (includeDocC ? [.package(url: \"https://github.com/apple/swift-docc-plugin\", from: \"1.0.0\")] : [])"], expectedArgumentParser <> [SkippedDependencies])
           , ("an empty string argument", ["name: \"\"", "dependencies: [" <> argumentParser <> "]"], expectedArgumentParser)
           , ("a nested block comment", ["name: /* outer /* inner */ , */ \"Example\"", "dependencies: [" <> argumentParser <> "]"], expectedArgumentParser)
+          , ("a version requirement given as an identifier", ["dependencies: [.package(url: \"https://github.com/firebase/firebase-ios-sdk\", exact: firebaseSdkVersion), " <> argumentParser <> "]"], GitSource (gitDepWithoutConstraint "https://github.com/firebase/firebase-ios-sdk") : expectedArgumentParser)
+          , ("a version requirement built from an identifier", ["dependencies: [.package(name: \"Firebase\", url: \"https://github.com/firebase/firebase-ios-sdk\", .upToNextMajor(from: firebaseSdkVersion))]"], [GitSource $ gitDepWithoutConstraint "https://github.com/firebase/firebase-ios-sdk"])
           ,
             ( "a closure argument"
             ,

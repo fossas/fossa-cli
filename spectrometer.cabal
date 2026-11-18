@@ -548,6 +548,7 @@ library
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
+    Strategy.Swift.ShowDependencies
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
@@ -762,6 +763,7 @@ test-suite unit-tests
     Srclib.TypesSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
+    Swift.ShowDependenciesSpec
     Swift.Xcode.PbxprojParserSpec
     Swift.Xcode.PbxprojSpec
     System.ArgsSpec
