@@ -10,6 +10,9 @@ dependencies = [
 [project.optional-dependencies]
 windows = ["colorama; 'win' in sys_platform", "pywin32-ctypes>=0.2"]
 
+[dependency-groups]
+test = ["colorama; 'win' in sys_platform", "pytest>=8"]
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "win-64"]

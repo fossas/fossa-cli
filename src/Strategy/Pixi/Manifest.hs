@@ -152,20 +152,22 @@ instance Toml.Schema.FromValue ProjectRequirements where
       readable = rights . map (parse requirementParser "")
 
 -- | A PEP 508 requirement, or an @{include-group = "..."}@ table naming another group.
-data DependencyGroupEntry = GroupRequirement Req | IncludeGroup Text
+data DependencyGroupEntry = GroupRequirement Text | IncludeGroup Text
 
 instance Toml.Schema.FromValue DependencyGroupEntry where
   fromValue v@(Toml.Table' _ _) = IncludeGroup <$> Toml.Schema.parseTableFromValue (Toml.Schema.reqKey "include-group") v
   fromValue v = GroupRequirement <$> Toml.Schema.fromValue v
 
 -- | A group's requirements, including those of the groups it includes. PEP 735
--- forbids cycles, so a group that's already being expanded is skipped.
+-- forbids cycles, so a group that's already being expanded is skipped. A
+-- requirement that fossa's PEP 508 parser can't read is skipped too, so it
+-- doesn't drop the rest of the manifest.
 groupRequirements :: Map Text [DependencyGroupEntry] -> Text -> [Req]
 groupRequirements groups = expand Set.empty
   where
     expand seen group = foldMap (requirements $ Set.insert group seen) $ Map.findWithDefault [] group groups
     requirements seen = \case
-      GroupRequirement req -> [req]
+      GroupRequirement req -> rights [parse requirementParser "" req]
       IncludeGroup group -> if Set.member group seen then [] else expand seen group
 
 -- | A requirement's name, the extras it requests, and its marker.

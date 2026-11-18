@@ -478,6 +478,7 @@ spec = do
       (manifestCondaDeps <$> declared) `shouldBe'` Just (Set.fromList ["pandas", "python"])
       (Map.keysSet . (`environmentPypiDeps` "default") <$> declared) `shouldBe'` Just (Set.singleton "rich")
       (Map.lookup (Feature "windows") . manifestPypiDeps =<< declared) `shouldBe'` Just (Map.singleton "pywin32-ctypes" mempty)
+      (Map.lookup (Feature "test") . manifestPypiDeps =<< declared) `shouldBe'` Just (Map.singleton "pytest" mempty)
 
     it' "marks the packages it declares as direct" $
       withFixture [reldir|test/Pixi/testdata/pyproject-manifest|] $ \project -> do
