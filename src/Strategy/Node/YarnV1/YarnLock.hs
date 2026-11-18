@@ -11,7 +11,7 @@ import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic, context, rend
 import Control.Monad (when)
 import Data.Foldable (for_, traverse_)
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.MultiKeyedMap qualified as MKM
 import Data.Set (Set)
 import Data.Set qualified as Set
@@ -181,12 +181,25 @@ instance ToDiagnostic MissingResolvedVersion where
     Errata (Just header) [] (Just body)
 
 pairToPackage :: YL.PackageKey -> YL.Package -> YarnV1Package
-pairToPackage key pkg = YarnV1Package (extractFullName key) (YL.version pkg)
+pairToPackage key pkg = YarnV1Package (installedName key) (YL.version pkg)
 
 extractPkgTriple :: (NE.NonEmpty YL.PackageKey, b) -> (Text, [YL.PackageKey], b)
-extractPkgTriple (neList, pkg) = (extractFullName $ NE.head neList, NE.toList neList, pkg)
+extractPkgTriple (neList, pkg) = (installedName $ NE.head neList, NE.toList neList, pkg)
 
 extractFullName :: YL.PackageKey -> Text
 extractFullName key = case YL.name key of
   YL.SimplePackageKey name -> name
   YL.ScopedPackageKey scope name -> "@" <> scope <> "/" <> name
+
+-- | The name of the package a key installs. A key written for an npm alias
+-- (@alias\@npm:name\@range@, what @yarn add alias\@npm:name@ records) names the
+-- alias, while the package it installs is @name@; every other key names its package.
+installedName :: YL.PackageKey -> Text
+installedName key = fromMaybe (extractFullName key) $ do
+  spec <- Text.stripPrefix "npm:" (YL.npmVersionSpec key)
+  -- A scoped target starts with its own @, which is not the range separator.
+  let (scope, rest) = case Text.stripPrefix "@" spec of
+        Just unscoped -> ("@", unscoped)
+        Nothing -> ("", spec)
+      (name, _range) = Text.breakOnEnd "@" rest
+  pure $ scope <> if Text.null name then rest else Text.dropEnd 1 name
