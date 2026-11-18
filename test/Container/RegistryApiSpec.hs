@@ -5,9 +5,10 @@ module Container.RegistryApiSpec (spec) where
 import Container.Docker.OciManifest (OciManifestConfig (configDigest), OciManifestV2 (ociConfig))
 import Container.Docker.SourceParser (RegistryImageSource, RepoDigest (RepoDigest), parseImageUrl)
 import Control.Carrier.ContainerRegistryApi (runTasks)
-import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), parseAuthChallenge)
-import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BearerAuthToken), RegistryCtx (RegistryCtx), getToken, logHttp, registryRequest, safeReplaceToken, updateToken)
+import Control.Carrier.ContainerRegistryApi.Authorization (RegistryAuthChallenge (..), RegistryBearerChallenge (..), mkRequest, parseAuthChallenge)
+import Control.Carrier.ContainerRegistryApi.Common (AuthToken (BasicAuthToken, BearerAuthToken), RegistryCtx (RegistryCtx), getToken, logHttp, registryRequest, safeReplaceToken, updateToken)
 import Control.Carrier.Diagnostics (runDiagnostics)
+import Control.Carrier.Reader (runReader)
 import Control.Carrier.Stack (runStack)
 import Control.Carrier.TaskPool (Progress)
 import Control.Concurrent.STM (newEmptyTMVarIO)
@@ -15,12 +16,16 @@ import Control.Effect.ContainerRegistryApi (ContainerRegistryApi, getImageManife
 import Control.Effect.Diagnostics (Diagnostics, Has, fatalText, fromEitherShow)
 import Control.Effect.Lift (Lift)
 import Control.Exception (throwIO)
+import Data.ByteString (ByteString, isInfixOf)
 import Data.Foldable (for_, traverse_)
+import Data.IORef (atomicModifyIORef', modifyIORef', newIORef, readIORef)
 import Data.Text (Text)
 import Data.Void (Void)
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Effect.Logger (ignoreLogger)
-import Network.HTTP.Client (ManagerSettings (managerRawConnection), Request (method), defaultManagerSettings, newManager, parseRequest)
+import Network.HTTP.Client (ManagerSettings (managerRawConnection), Request (method), Response (responseStatus), defaultManagerSettings, makeConnection, managerSetProxy, newManager, noProxy, parseRequest)
+import Network.HTTP.Client.Internal (Connection)
+import Network.HTTP.Types (ok200)
 import ResultUtil (assertOnSuccess, expectFailure)
 import System.Timeout (timeout)
 import Test.Effect (it', shouldBe')
@@ -58,6 +63,7 @@ spec :: Spec
 spec = do
   registryApiSpec
   parseAuthChallengeSpec
+  redirectSpec
   safeReplaceTokenSpec
   runTasksSpec
   registryRequestSpec
@@ -114,6 +120,46 @@ runTasksSpec =
   where
     noProgress :: Applicative m => Progress -> m ()
     noProgress = const (pure ())
+
+-- A registry may answer a blob request with a redirect to its storage (S3, Azure Blob Storage, a
+-- CDN...), at a URL that carries its own credentials. The 'Authorization' header must not follow
+-- such a redirect: it would hand the registry credentials to another host, and S3 rejects a
+-- pre-signed URL that also has that header with "400 Bad Request". A redirect that stays on the
+-- registry still needs the header.
+redirectSpec :: Spec
+redirectSpec =
+  describe "mkRequest" $
+    for_ [("basic credentials", BasicAuthToken "user" "pass"), ("a bearer token", BearerAuthToken "token")] $ \(tokenDesc, token) ->
+      it ("should send " <> tokenDesc <> " to the registry, but not to the storage host it redirects to") $ do
+        manager <- newManager . managerSetProxy noProxy $ defaultManagerSettings{managerRawConnection = pure (\_ host _ -> connectTo host)}
+        ctx <- RegistryCtx <$> newEmptyTMVarIO
+        updateToken ctx token
+        req <- parseRequest "http://registry.test/v2/some-repo/blobs/sha256:abc"
+        result <- runStack . runDiagnostics . ignoreLogger . runReader ctx $ mkRequest manager Nothing Nothing req
+        -- Without the fix this fails with "Caught unexpected error from: (400) http://storage.test/abc?X-Amz-Signature=abc".
+        assertOnSuccess result $ \_ response -> responseStatus response `shouldBe` ok200
+  where
+    -- An in-memory connection to the host, which answers the one request written to it.
+    connectTo :: String -> IO Connection
+    connectTo host = do
+      request <- newIORef mempty
+      answered <- newIORef False
+      let answer = do
+            alreadyAnswered <- atomicModifyIORef' answered (True,)
+            if alreadyAnswered then pure mempty else respond host <$> readIORef request
+      makeConnection answer (\bytes -> modifyIORef' request (<> bytes)) (pure ())
+
+    -- The registry wants its credentials, and redirects a blob request to itself and from there to
+    -- its storage. The storage answers like S3 does to a pre-signed URL: no other credentials allowed.
+    respond :: String -> ByteString -> ByteString
+    respond host request = "HTTP/1.1 " <> status <> "\r\nConnection: close\r\nContent-Length: 0\r\n\r\n"
+      where
+        status = case (host, "Authorization: " `isInfixOf` request, "/v2/" `isInfixOf` request) of
+          ("storage.test", True, _) -> "400 Bad Request"
+          ("storage.test", False, _) -> "200 OK"
+          (_, False, _) -> "401 Unauthorized"
+          (_, True, True) -> "307 Temporary Redirect\r\nLocation: /blobs/abc"
+          (_, True, False) -> "307 Temporary Redirect\r\nLocation: http://storage.test/abc?X-Amz-Signature=abc"
 
 -- Blob downloads share one 'RegistryCtx' across the task pool's threads, and 'getToken' waits
 -- while another thread is replacing the token. A failed replacement therefore has to put the
