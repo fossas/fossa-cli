@@ -301,6 +301,7 @@ ignoredPaths =
   , "vendor/"
   , "node_modules/"
   , ".venv/" -- python pdm package manager's pkgyard (similar to node_modules/)
+  , ".pixi/" -- pixi's installed environments (similar to .venv/)
   , ".srclib-cache/"
   , "spec/"
   , "Godeps/"
