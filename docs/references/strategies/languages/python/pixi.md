@@ -17,7 +17,7 @@ Local packages are reported as path dependencies. To include them in scans, enab
 
 Direct dependencies are the packages declared in `pixi.toml` or `pyproject.toml`, including conda packages that pixi installs to satisfy declared PyPI requirements. Packages that nothing else depends on are also reported as direct, even with a manifest.
 
-The `default` environment is reported as production, because that's the conservative choice. Environments named `dev` or `development` are reported as development, and `test` or `testing` as testing. As with other strategies' development and test dependencies, packages used only in those environments are left out unless you pass [`--include-unused-deps`](../../../subcommands/analyze.md). Packages in other environments are included.
+The `default` environment is reported as production. Environments named `dev` or `development` are reported as development, and `test` or `testing` as testing. As with other strategies' development and test dependencies, packages used only in those environments are left out unless you pass [`--include-unused-deps`](../../../subcommands/analyze.md). Packages in other environments are included.
 
 Lockfile versions 4 through 7 are supported; 7 is the latest as of October 2026. Versions 1 through 3 use an older layout that pixi stopped writing in early 2024 and aren't supported.
 Packages pixi builds from source are reported as git, URL, or path dependencies, depending on where they're built from.
