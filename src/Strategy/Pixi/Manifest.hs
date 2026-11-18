@@ -20,6 +20,7 @@ module Strategy.Pixi.Manifest (
 ) where
 
 import Control.Monad (join)
+import Data.Either (rights)
 import Data.Foldable (fold)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -27,8 +28,8 @@ import Data.Maybe (mapMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Strategy.Python.Poetry.PyProject (PyProjectMetadata (..))
-import Strategy.Python.Util (Marker, Req (NameReq, UrlReq))
+import Strategy.Python.Util (Marker, Req (NameReq, UrlReq), requirementParser)
+import Text.Megaparsec (parse)
 import Toml qualified
 import Toml.Schema qualified
 
@@ -127,12 +128,28 @@ instance Toml.Schema.FromValue PyprojectPixiDeps where
         let features =
               Map.unionsWith
                 (<>)
-                [ Map.singleton "default" $ foldMap (fold . pyprojectDependencies) project
-                , foldMap (fold . pyprojectOptionalDependencies) project
+                [ Map.singleton "default" $ foldMap projectDependencies project
+                , foldMap projectOptionalDependencies project
                 , Map.mapWithKey (\name _ -> groupRequirements groups name) groups
                 ]
             requested = Map.fromListWith (<>) . map ((\(name, extras, _) -> (name, Set.fromList extras)) . reqParts)
         pure . PyprojectPixiDeps . Just $ pixi <> mempty{manifestCondaDeps = Set.singleton "python", manifestPypiDeps = Map.map requested $ Map.mapKeys Feature features}
+
+-- | @[project]@ requirements. One that fossa's PEP 508 parser can't read is
+-- skipped, so it doesn't drop the rest of the manifest.
+data ProjectRequirements = ProjectRequirements
+  { projectDependencies :: [Req]
+  , projectOptionalDependencies :: Map Text [Req]
+  }
+
+instance Toml.Schema.FromValue ProjectRequirements where
+  fromValue =
+    Toml.Schema.parseTableFromValue $
+      ProjectRequirements . readable . fold
+        <$> Toml.Schema.optKey "dependencies"
+        <*> (Map.map readable . fold <$> Toml.Schema.optKey "optional-dependencies")
+    where
+      readable = rights . map (parse requirementParser "")
 
 -- | A PEP 508 requirement, or an @{include-group = "..."}@ table naming another group.
 data DependencyGroupEntry = GroupRequirement Req | IncludeGroup Text

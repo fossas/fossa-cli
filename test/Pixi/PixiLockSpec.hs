@@ -456,6 +456,14 @@ spec = do
       -- The dev group includes the style group.
       (Map.lookup (Feature "dev") . manifestPypiDeps =<< declared) `shouldBe'` Just (Map.singleton "ruff" mempty)
 
+    it' "skips a requirement it can't read, but keeps the rest" $ do
+      path <- makeAbsolute [relfile|test/Pixi/testdata/pyproject-unparseable-requirement.toml|]
+      PyprojectPixiDeps declared <- readContentsToml path
+
+      (manifestCondaDeps <$> declared) `shouldBe'` Just (Set.fromList ["pandas", "python"])
+      (Map.keysSet . (`environmentPypiDeps` "default") <$> declared) `shouldBe'` Just (Set.singleton "rich")
+      (Map.lookup (Feature "windows") . manifestPypiDeps =<< declared) `shouldBe'` Just (Map.singleton "pywin32-ctypes" mempty)
+
     it' "marks the packages it declares as direct" $
       withFixture [reldir|test/Pixi/testdata/pyproject-manifest|] $ \project -> do
         graph <- dependencyGraph <$> getDeps project
