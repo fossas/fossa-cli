@@ -4,6 +4,8 @@ module NuGet.NuGetSpec (
   spec,
 ) where
 
+import Control.Effect.Reader (local)
+import Discovery.Filters (AllFilters (..), comboExclude)
 import Path (mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.NuGet (NuGetProject (..))
@@ -20,6 +22,8 @@ spec = do
       ingageWeb = projectDir </> $(mkRelFile "IngageWeb.csproj")
       restoredDir = currDir </> $(mkRelDir "test/NuGet/testdata/restored-csproj")
       restoredAssets = restoredDir </> $(mkRelFile "obj/project.assets.json")
+      restoredCsproj = restoredDir </> $(mkRelFile "App.csproj")
+      excludeObj = AllFilters mempty $ comboExclude [] [$(mkRelDir "obj")]
   describe "NuGet discovery" $ do
     it' "discovers every .csproj sibling in a directory (ANE-2523)" $ do
       projects <- NuGet.discover projectDir
@@ -30,3 +34,8 @@ spec = do
       projects <- NuGet.discover restoredDir
       let files = map (nugetProjectFile . projectData) projects
       files `shouldMatchList'` [restoredAssets]
+
+    it' "falls back to the .csproj when path filters exclude obj/ (ANE-3419)" $ do
+      projects <- local (const excludeObj) $ NuGet.discover restoredDir
+      let files = map (nugetProjectFile . projectData) projects
+      files `shouldMatchList'` [restoredCsproj]

@@ -19,6 +19,7 @@ import Data.Aeson (
   ToJSON,
  )
 import Data.List qualified as L
+import Data.Set qualified as Set
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -27,7 +28,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.ReadFS (ReadFS, doesFileExist)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
 import Strategy.NuGet.DirectoryPackagesProps qualified as DirectoryPackagesProps
@@ -49,18 +50,28 @@ discover ::
 discover = simpleDiscover findProjects mkProject NuGetProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
-  case findProjectAssetsJsonFile files of
-    Just file -> pure ([NuGetProject file], WalkContinue)
-    Nothing -> do
-      -- project.assets.json (created by `dotnet restore`) is essentially a lockfile.
-      -- If this is present in an `obj/` subdirectory beside the project file, then
-      -- don't return the project file as well, as this will double-report the project,
-      -- and the project.assets.json is more detailed and accurate.
-      restored <- doesFileExist (dir </> $(mkRelFile "obj/project.assets.json"))
-      let projectFiles = if restored then [] else filter isPackageRefFile files
-      pure (map NuGetProject projectFiles, WalkContinue)
+findProjects root = do
+  found <- walkWithFilters' findInDir root
+  -- project.assets.json (created by `dotnet restore`) is essentially a lockfile.
+  -- If one was discovered in the `obj/` subdirectory beside a project file, then
+  -- don't return the project file as well, as this will double-report the project,
+  -- and the project.assets.json is more detailed and accurate.
+  --
+  -- This is decided from the files the walk discovered rather than by checking the
+  -- filesystem, so that a project file is still reported when path filters keep the
+  -- walk out of `obj/`.
+  let assetsFiles = Set.fromList $ filter isProjectAssetsJsonFile found
+      isRestored file = isPackageRefFile file && Set.member (parent file </> $(mkRelFile "obj/project.assets.json")) assetsFiles
+  pure . map NuGetProject $ filter (not . isRestored) found
   where
+    findInDir _ _ files =
+      case findProjectAssetsJsonFile files of
+        Just assetsFile -> pure ([assetsFile], WalkContinue)
+        Nothing -> pure (filter isPackageRefFile files, WalkContinue)
+
+    isProjectAssetsJsonFile :: Path b File -> Bool
+    isProjectAssetsJsonFile file = fileName file == "project.assets.json"
+
     findProjectAssetsJsonFile :: [Path Abs File] -> Maybe (Path Abs File)
     findProjectAssetsJsonFile = findFileNamed "project.assets.json"
 
