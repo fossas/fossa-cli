@@ -1,0 +1,16 @@
+# No package entries can be read, so analysis fails.
+version: 6
+environments:
+  default:
+    channels:
+    - url: https://conda.anaconda.org/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://example.invalid/nonsense
+packages:
+- some-future-ecosystem: https://example.invalid/from-a-newer-pixi
+  name: not-yet-supported
+  version: 1.0.0
+- another-future-ecosystem: https://example.invalid/also-unknown
+  name: also-not-supported
+  version: 2.0.0

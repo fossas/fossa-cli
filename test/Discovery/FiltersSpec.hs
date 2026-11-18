@@ -24,12 +24,14 @@ import Discovery.Filters (
   comboExcludeWithGlobs,
   comboInclude,
   comboIncludeWithGlobs,
+  isDefaultNonProductionPath,
   partitionPathFilters,
   pathAllowed,
   toolAllowed,
   withToolFilter,
  )
-import Path (Dir, Path, Rel, mkRelDir)
+import Path (Dir, Path, Rel, mkRelDir, (</>))
+import Path.IO (getCurrentDir)
 import Test.Fixtures (excludePath)
 import Test.Hspec (
   Expectation,
@@ -425,6 +427,13 @@ spec = do
           result = run . runReader filters $ withToolFilter CargoProjectType $ pure [True]
       when (null result) $
         expectationFailure "withToolFilter returned non-empty"
+
+  describe "isDefaultNonProductionPath" $
+    it "skips the environments pixi installs under .pixi/, like .venv/" $ do
+      root <- getCurrentDir
+      let skipped dir = isDefaultNonProductionPath root (root </> dir)
+      skipped $(mkRelDir ".pixi/envs/default/lib/python3.12/site-packages/numpy")
+        `shouldBe` skipped $(mkRelDir ".venv/lib/python3.12/site-packages/numpy")
 
 testHarness :: FilterCombination Include -> FilterCombination Exclude -> [((Text.Text, Path Rel Dir), FoundTargets, Maybe FoundTargets)] -> Expectation
 testHarness include exclude = traverse_ testSingle
