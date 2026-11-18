@@ -3,6 +3,9 @@
 module App.Fossa.Analyze.ProjectFindings (
   FindingsLinking (..),
   defaultLinking,
+  linkingUnknownReason,
+  renderLinkingTier,
+  renderLinkingType,
   renderProjectFindings,
 ) where
 
@@ -113,26 +116,37 @@ instance ToJSON FindingsOccurrence where
 
 -- | The rule-tier linking determination for an occurrence. Mirrors
 -- @AnalyzedDependency.linking@ in fossa/workflows/v1beta1/workflow_result.proto:
--- @type@ plus @tier@ plus the
--- evidence that produced it, and @unknownReason@ exactly when the type is
--- @LINKING_TYPE_UNKNOWN@.
+-- @type@ plus @tier@ plus the evidence that produced it, and @unknownReason@
+-- exactly when the type is @LINKING_TYPE_UNKNOWN@.
 data FindingsLinking = LinkingStatic | LinkingDynamic | LinkingUnknown
   deriving stock (Eq, Ord, Show)
 
+-- | Wire spelling of the linking type, mirroring the proto's @LinkingType@ enum.
+renderLinkingType :: FindingsLinking -> Text
+renderLinkingType = \case
+  LinkingStatic -> "LINKING_TYPE_STATIC"
+  LinkingDynamic -> "LINKING_TYPE_DYNAMIC"
+  LinkingUnknown -> "LINKING_TYPE_UNKNOWN"
+
+-- | Wire spelling of the determination tier. Every mapping in this module is a
+-- rule-tier prior, so this is constant until evidence-backed tiers exist.
+renderLinkingTier :: FindingsLinking -> Text
+renderLinkingTier _ = "DETERMINATION_TIER_RULE"
+
+-- | Why the type is @LINKING_TYPE_UNKNOWN@; @Nothing@ for the determined types.
+linkingUnknownReason :: FindingsLinking -> Maybe Text
+linkingUnknownReason LinkingUnknown = Just "UNKNOWN_REASON_NEEDS_ADJUDICATION"
+linkingUnknownReason LinkingStatic = Nothing
+linkingUnknownReason LinkingDynamic = Nothing
+
 instance ToJSON FindingsLinking where
-  toJSON = \case
-    LinkingStatic -> linkingObject "LINKING_TYPE_STATIC" []
-    LinkingDynamic -> linkingObject "LINKING_TYPE_DYNAMIC" []
-    LinkingUnknown ->
-      linkingObject "LINKING_TYPE_UNKNOWN" ["unknownReason" .= ("UNKNOWN_REASON_NEEDS_ADJUDICATION" :: Text)]
-    where
-      linkingObject ty extra =
-        object $
-          [ "type" .= (ty :: Text)
-          , "tier" .= ("DETERMINATION_TIER_RULE" :: Text)
-          , "evidence" .= object ["summary" .= ("Hard-coded per-ecosystem default" :: Text), "references" .= ([] :: [Text])]
-          ]
-            <> extra
+  toJSON l =
+    object $
+      [ "type" .= renderLinkingType l
+      , "tier" .= renderLinkingTier l
+      , "evidence" .= object ["summary" .= ("Hard-coded per-ecosystem default" :: Text), "references" .= ([] :: [Text])]
+      ]
+        <> maybe [] (\reason -> ["unknownReason" .= reason]) (linkingUnknownReason l)
 
 -- | Hard-coded per-ecosystem linking default. STATIC: the dependency's code is
 -- compiled or copied into the built artifact. DYNAMIC: resolved at load or run
