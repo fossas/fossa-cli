@@ -46,3 +46,7 @@ node_modules/
 # Include targets in test
 !test/reachability/testdata/maven-default/target
 !test/reachability/testdata/maven-build-config/dist
+
+.atl/
+.idea/
+tmp/

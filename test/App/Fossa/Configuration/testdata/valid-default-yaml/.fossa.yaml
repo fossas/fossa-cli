@@ -68,6 +68,9 @@ vendoredDependencies:
     exclude:
       - ".git/**"
       - "test/**/*.rb"
+  snippetScan:
+    skipHeaders: true
+    skipHeadersLimit: 20
 
 customLicenseSearch:
    - matchCriteria: (?i)proprietary

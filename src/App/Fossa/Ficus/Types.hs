@@ -14,11 +14,12 @@ module App.Fossa.Ficus.Types (
   FicusWalkFlag (..),
   FicusNoopFlag (..),
   FicusHashFlag (..),
-  FicusSnippetScanFlag,
+  FicusSnippetScanFlag (..),
   FicusSnippetScanResults (..),
   FicusScanStats (..),
   FicusVendettaFlag,
   FicusPerStrategyFlag (..),
+  renderFicusPerStrategyFlag,
   FicusAnalysisResults (..),
   FicusVendoredDependency (..),
   FicusVendoredLocation (..),
@@ -35,7 +36,7 @@ module App.Fossa.Ficus.Types (
 import App.Types (ProjectRevision)
 import Data.Aeson (FromJSON (parseJSON), ToJSON (toJSON), Value (Object), decodeStrictText, object, withObject, withText, (.=))
 import Data.Aeson.Types (Parser, (.:), (.:?))
-import Data.String.Conversion (toString)
+import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Fossa.API.Types
@@ -236,6 +237,9 @@ data FicusConfig = FicusConfig
   , ficusConfigSecret :: Maybe ApiKey
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`
   , ficusConfigFlags :: [FicusPerStrategyFlag]
+  -- ^ Not rendered: 'App.Fossa.Ficus.Analyze.ficusCommand' hard-codes the @all:@ flags this holds.
+  , ficusConfigSnippetScanFlags :: [FicusSnippetScanFlag]
+  -- ^ Rendered as one @--set snippet-scan:<flag>@ per entry, in order.
   , ficusConfigSnippetScanRetentionDays :: Maybe Int
   , ficusConfigStrategies :: [FicusStrategy]
   }
@@ -275,12 +279,46 @@ newtype FicusHashFlag = FicusHashFlag FicusAnalysisFlag deriving (Show, Eq)
 data FicusSnippetScanFlag
   = SnippetScanCommonFlag FicusAnalysisFlag
   | SnippetScanBatchLen Int
+  | -- | Skip license headers, comments and imports at the start of each file,
+    -- like scanoss-py's @--skip-headers@.
+    SnippetScanSkipHeaders
+  | -- | The maximum number of lines 'SnippetScanSkipHeaders' skips; 0 means no limit.
+    SnippetScanSkipHeadersLimit Int
   deriving (Show, Eq)
 
 data FicusVendettaFlag
   = VendettaCommonFlag FicusAnalysisFlag
   | VendettaBatchLen Int
   deriving (Show, Eq)
+
+-- | Render a flag as the value of a ficus @--set@ argument, e.g. @snippet-scan:skip-headers@.
+-- This mirrors the strum/serde serialization of ficus' @PerStrategyFlag@.
+renderFicusPerStrategyFlag :: FicusPerStrategyFlag -> Text
+renderFicusPerStrategyFlag = \case
+  Walk (FicusWalkFlag flag) -> "walk:" <> renderAnalysisFlag flag
+  All (FicusAllFlag flag) -> "all:" <> renderAnalysisFlag flag
+  Noop (FicusNoopFlag flag) -> "noop:" <> renderAnalysisFlag flag
+  Hash (FicusHashFlag flag) -> "hash:" <> renderAnalysisFlag flag
+  SnippetScan flag -> "snippet-scan:" <> renderSnippetScanFlag flag
+  Vendetta flag -> "vendetta:" <> renderVendettaFlag flag
+  where
+    renderAnalysisFlag :: FicusAnalysisFlag -> Text
+    renderAnalysisFlag = \case
+      AllExtensions -> "all-extensions"
+      SkipHiddenFiles -> "skip-hidden-files"
+      Gitignore -> "gitignore"
+
+    renderSnippetScanFlag :: FicusSnippetScanFlag -> Text
+    renderSnippetScanFlag = \case
+      SnippetScanCommonFlag flag -> renderAnalysisFlag flag
+      SnippetScanBatchLen len -> "batch-len=" <> toText (show len)
+      SnippetScanSkipHeaders -> "skip-headers"
+      SnippetScanSkipHeadersLimit limit -> "skip-headers-limit=" <> toText (show limit)
+
+    renderVendettaFlag :: FicusVendettaFlag -> Text
+    renderVendettaFlag = \case
+      VendettaCommonFlag flag -> renderAnalysisFlag flag
+      VendettaBatchLen len -> "batch-len=" <> toText (show len)
 
 -- | The program ficus should run, and the arguments that lead its command line.
 -- ficus appends the target and its own @--output@ after these.
