@@ -2,12 +2,22 @@
 
 ## Unreleased
 
-- Analysis: Libraries reached through a Gradle subproject or a local folder dependency are no longer missing from results. Libraries under a direct subproject, local folder dependency or Googlesource repo now appear as direct dependencies.
-- Swift: Add dynamic Swift strategy which uses`swift package show-dependencies` ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
-- Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831)
+- Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
+- Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
+- Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
+
+## 3.20.11
+
+- Yarn: local `file:`, `link:` and `portal:` dependencies in a Yarn 2+ `yarn.lock` no longer warn that their package could not be found. ([#1832](https://github.com/fossas/fossa-cli/pull/1832))
+- Analysis: Libraries reached through a Gradle subproject or a local folder dependency are no longer missing from results. Libraries under a direct subproject, local folder dependency or Googlesource repo now appear as direct dependencies. ([#1836](https://github.com/fossas/fossa-cli/pull/1836))
+- Swift: Add dynamic Swift strategy which uses `swift package show-dependencies`. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
+- Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
 - Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
 - Pnpm: Dependencies installed under an npm alias are no longer reported under the alias name with no version. ([#1837](https://github.com/fossas/fossa-cli/pull/1837))
-- Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
+- Licensing: the Detection Rule License 1.1, the Bitwarden Software Development Kit License Agreement v1 and the LLNL license (the `LICENSE_YORICK` notice shipped by matplotlib and mayavi) are now detected instead of reported as no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the WebSupergoo ABCpdf license is now reported as a proprietary license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the `log4r` license (e.g. in `log4r` 1.1.10) is now reported as Ruby OR GPL-2.0 OR GPL-3.0 instead of no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: these license names in package manifests are now recognized: `ASL 1.1`, `Apache Public License Version 2.0`, `Creative Commons Attribution-NonCommercial 3.0 License`, `European Union Public Licence, Version 1.2`, `Gatling Highcharts`, `GNUGPL-v3` and `Lucent Public License Version 1.02`. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
 
 ## 3.20.10
 
