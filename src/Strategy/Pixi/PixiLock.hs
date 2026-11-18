@@ -51,7 +51,7 @@ import Data.Either (fromRight, rights)
 import Data.Foldable (fold, for_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe, maybeToList)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.String.Conversion (toString, toText)
@@ -109,6 +109,8 @@ data PixiPackage = PixiPackage
   , pixiPkgRequiresDist :: [Text]
   -- ^ PEP 508 requirements for PyPI packages.
   , pixiPkgBuildSource :: Maybe PixiBuildSource
+  , pixiPkgPurls :: [Text]
+  -- ^ Package URLs, e.g. @pkg:pypi/numpy?source=hash-mapping@ for conda's numpy.
   }
   deriving (Eq, Ord, Show)
 
@@ -223,6 +225,7 @@ instance FromJSON PixiPackage where
           <*> obj .:? "depends" .!= []
           <*> obj .:? "requires_dist" .!= []
           <*> obj .:? "source"
+          <*> obj .:? "purls" .!= []
 
 data CondaArtifact = CondaArtifact
   { condaArtifactChannel :: Text
@@ -311,7 +314,7 @@ buildGraph declared PixiLockFile{..} = do
       depOf locator = (`Map.lookup` deps) =<< Map.lookup locator keyOf
 
       condaKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [condaMatchKey (Map.lookup l packageIndex) l]]
-      pypiKeys = Map.fromList [(l, k) | l <- Map.keys keyOf, Just k <- [pypiMatchKey (Map.lookup l packageIndex) l]]
+      pypiKeys = Map.fromList [(l, pypiMatchKeys (Map.lookup l packageIndex) l) | l <- Map.keys keyOf]
 
       parsedRequirements = Map.map (map (\spec -> first (const spec) $ parse requirementParser "" spec) . pixiPkgRequiresDist) packageIndex
       unparsed = ["pixi: skipping a requirement that could not be read: " <> spec | Left spec <- fold parsedRequirements]
@@ -322,19 +325,19 @@ buildGraph declared PixiLockFile{..} = do
       edgesWithin env entries =
         let installed = map envPackageLocator entries
             condaByName = Map.fromList [(name, l) | l <- installed, Just name <- [Map.lookup l condaKeys]]
-            pypiByName = Map.fromList [(name, l) | l <- installed, Just name <- [Map.lookup l pypiKeys]]
+            pypiByName = Map.fromList [(name, l) | l <- installed, name <- Map.findWithDefault [] l pypiKeys]
             requested =
               Map.fromListWith
                 (<>)
                 [ (name, Set.fromList (map normalizePypiName extras) <> Map.findWithDefault mempty name (declaredExtras env))
                 | PixiEnvPackage l extras <- entries
-                , Just name <- [Map.lookup l pypiKeys]
+                , name <- Map.findWithDefault [] l pypiKeys
                 ]
             extrasOf = installedExtras requested [(name, requirementsOf l) | (name, l) <- Map.toList pypiByName]
             targets locator = case locator of
               PypiLocator{} ->
                 [ target
-                | Just name <- [Map.lookup locator pypiKeys]
+                | name <- Map.findWithDefault [] locator pypiKeys
                 , (dependency, _, marker) <- map reqParts $ requirementsOf locator
                 , all (markerAllows $ Map.findWithDefault mempty name extrasOf) marker
                 , Just target <- [Map.lookup (normalizePypiName dependency) pypiByName]
@@ -361,7 +364,7 @@ buildGraph declared PixiLockFile{..} = do
       declaredKeys =
         Set.fromList . mapMaybe (`Map.lookup` keyOf) $
           [l | (l, name) <- Map.toList condaKeys, Text.toLower name `Set.member` declaredConda]
-            <> [l | (l, name) <- Map.toList pypiKeys, name `Set.member` declaredPypi]
+            <> [l | (l, names) <- Map.toList pypiKeys, any (`Set.member` declaredPypi) names]
   for_ (Set.toList . Set.fromList $ unreadable <> skipped <> unparsed) warn
   -- Packages the manifest declares are direct. Root components are direct
   -- too, including every member of an unreached cycle: analysis drops
@@ -397,10 +400,22 @@ condaMatchKey meta = \case
     Just _ -> pixiPkgName =<< meta
     Nothing -> (pixiPkgName =<< meta) <|> (condaArtifactName <$> parseCondaArtifactUrl url)
 
-pypiMatchKey :: Maybe PixiPackage -> PixiLocator -> Maybe Text
-pypiMatchKey meta = \case
-  PypiLocator{} -> normalizePypiName <$> (pixiPkgName =<< meta)
-  _ -> Nothing
+-- | The PyPI names a package answers to. pixi satisfies PyPI requirements with
+-- conda packages, which name the PyPI packages they provide in package URLs.
+pypiMatchKeys :: Maybe PixiPackage -> PixiLocator -> [Text]
+pypiMatchKeys meta = \case
+  PypiLocator{} -> map normalizePypiName . maybeToList $ pixiPkgName =<< meta
+  _ -> map normalizePypiName . mapMaybe pypiPurlName $ foldMap pixiPkgPurls meta
+
+-- | Reads the name from a PyPI package URL, as purl-spec v1.1.1 defines them:
+-- <https://github.com/package-url/purl-spec/blob/v1.1.1/types/pypi-definition.json>
+--
+-- > pkg:pypi/numpy?source=hash-mapping
+pypiPurlName :: Text -> Maybe Text
+pypiPurlName = either (const Nothing) Just . parse purl ""
+  where
+    purl :: Parsec Void Text Text
+    purl = chunk "pkg:pypi/" *> takeWhile1P (Just "package name") (`notElem` ['@', '?', '#'])
 
 -- | Reads a match spec's package name, after any @channel::@ prefix:
 --

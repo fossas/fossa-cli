@@ -40,4 +40,4 @@ bigwigLoader =
 spec :: Spec
 spec = do
   testSuiteDepResultSummary NonStrict snakemakeSlurm PixiProjectType (DependencyResultsSummary 109 14 161 1 Complete)
-  testSuiteDepResultSummary NonStrict bigwigLoader PixiProjectType (DependencyResultsSummary 336 43 979 1 Complete)
+  testSuiteDepResultSummary NonStrict bigwigLoader PixiProjectType (DependencyResultsSummary 336 53 1030 1 Complete)

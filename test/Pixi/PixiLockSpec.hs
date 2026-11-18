@@ -482,6 +482,22 @@ spec = do
           ]
           graph
 
+  describe "conda packages that satisfy PyPI requirements" $ do
+    let conda name version = condaDep "conda-forge" "linux-64" name version [EnvProduction]
+        numpy = conda "numpy" "1.26.4"
+        matplotlib = mkDep PipType "matplotlib" (Just "3.9.2") [EnvProduction]
+
+    it' "are direct when the manifest requires them from PyPI" $
+      withFixture [reldir|test/Pixi/testdata/conda-satisfies-pypi|] $ \project -> do
+        graph <- dependencyGraph <$> getDeps project
+
+        expectDirect' [conda "python" "3.11.9", conda "scipy" "1.11.4", numpy, matplotlib] graph
+
+    it' "are linked from the PyPI packages that require them" $ do
+      graph <- analyze mempty =<< makeAbsolute [relfile|test/Pixi/testdata/conda-satisfies-pypi/pixi.lock|]
+
+      expectEdge' graph matplotlib numpy
+
   describe "edges within each environment and platform" $ do
     let conda = condaDep "conda-forge" "linux-64"
         pypi name version = mkDep PipType name (Just version)
