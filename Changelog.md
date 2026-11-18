@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Yarn: dependencies installed under an npm alias in a Yarn 1 `yarn.lock` are now reported as the package they install instead of the alias name.
+- Yarn: dependencies installed under an npm alias in a Yarn 1 `yarn.lock` are now reported as the package they install instead of the alias name. ([#1849](https://github.com/fossas/fossa-cli/pull/1849))
 - Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
 - Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
 
