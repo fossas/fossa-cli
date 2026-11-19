@@ -55,6 +55,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Discovery.Simple (withDiscoveryContexts)
 import Discovery.Walk (WalkStep (WalkContinue))
 import Effect.Exec (AllowErr (Never), Command (..), Exec, Has, execJson')
 import Effect.ReadFS (ReadFS, contentIsBinary)
@@ -162,11 +163,9 @@ finalizeProjects ::
   m [Path Abs File] ->
   m [DiscoveredProject GoBinaryProject]
 finalizeProjects dir collect =
-  -- The tool-name and phase contexts 'Discovery.Simple.simpleDiscover' wraps
-  -- around a strategy's discovery.  This finalizer is hand-written (millhone
-  -- runs once over the whole collected batch), so it has to apply them itself
-  -- or its failures lose their tool attribution in the context tree.
-  context (toText GoBinaryProjectType) $ context "Finding Projects" $ do
+  -- This finalizer is hand-written (millhone runs once over the whole collected
+  -- batch), so it applies the shared discovery contexts itself.
+  withDiscoveryContexts GoBinaryProjectType $ do
     enabled <- enableGoBinaryAnalysis <$> ask
     if not enabled
       then pure []
