@@ -1,3 +1,11 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+-- The blocking variants are the point here: 'writeTBMQueue' waiting on a full
+-- queue is the back-pressure, and 'readTBMQueue' waiting on an empty one is how
+-- a consumer idles until the next listing.
+{-# HLINT ignore "Use tryWriteTBMQueue" #-}
+{-# HLINT ignore "Use tryReadTBMQueue" #-}
+
 -- | Broadcast fan-out for the shared discovery walk in "Discovery.Walk.Stream":
 -- one walker thread drains a listing stream into one bounded queue per enabled
 -- consumer, and each consumer thread reads its own queue, so every consumer
@@ -227,7 +235,7 @@ broadcastStream filters listings consumers =
     -- walker wait for the fullest one — i.e. for the slowest consumer — instead
     -- of letting any consumer fall arbitrarily far behind.
     broadcastListing :: [TBMQueue DirListing] -> DirListing -> m ()
-    broadcastListing queues dl = sendIO $ atomically $ traverse_ (\queue -> writeTBMQueue queue dl) queues
+    broadcastListing queues dl = sendIO $ atomically $ traverse_ (`writeTBMQueue` dl) queues
 
     consume :: WalkConsumer o m -> TMVar SomeException -> TBMQueue DirListing -> m ()
     consume c errs queue = do
