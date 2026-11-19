@@ -4,6 +4,7 @@
 
 module App.Fossa.ProjectInference (
   inferProjectFromVCS,
+  inferGitRemote,
   inferProjectCached,
   inferProjectDefault,
   inferProjectDefaultFromFile,
@@ -34,6 +35,7 @@ import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import Data.Time.Clock.POSIX (getCurrentTime)
 import Data.Time.Format.ISO8601 (iso8601Show)
+import Diag.Result (resultToMaybe)
 import Effect.Exec
 import Effect.ReadFS
 import Errata (Errata (..))
@@ -48,7 +50,7 @@ revisionFileName :: Path Rel File
 revisionFileName = $(mkRelFile ".fossa.revision")
 
 mergeOverride :: OverrideProject -> InferredProject -> ProjectRevision
-mergeOverride OverrideProject{..} InferredProject{..} = ProjectRevision name revision branch
+mergeOverride OverrideProject{..} InferredProject{..} = ProjectRevision name revision branch Nothing
   where
     name = fromMaybe inferredName overrideName
     revision = fromMaybe inferredRevision overrideRevision
@@ -182,6 +184,20 @@ inferGit dir = context "Inferring project from git" $ do
       name <- parseGitProjectName gitDir
       (branch, revision) <- parseGitProjectRevision gitDir
       pure (InferredProject name revision branch)
+
+-- | The checkout's @origin@ remote, or 'Nothing' when there's none. It never
+-- fails, and works when 'inferGit' can't read the revision.
+inferGitRemote ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir ->
+  m (Maybe Text)
+inferGitRemote dir = do
+  foundGitDir <- findGitDir dir
+  case foundGitDir of
+    Nothing -> pure Nothing
+    Just gitDir -> resultToMaybe <$> errorBoundary (parseGitProjectName gitDir)
 
 parseGitProjectName ::
   ( Has ReadFS sig m

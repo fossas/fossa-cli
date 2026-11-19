@@ -48,7 +48,7 @@ fixtureContainerScan :: ContainerScan
 fixtureContainerScan = ContainerScan (ContainerScanImage (Just "alpine") (Just "3.1.4") []) "some-digest" "some-tag"
 
 fixtureRevision :: ProjectRevision
-fixtureRevision = ProjectRevision "some-tag" "some-digest" $ Just "master"
+fixtureRevision = ProjectRevision "some-tag" "some-digest" (Just "master") Nothing
 
 fixtureJsonOutput :: Bool -> Flag JsonOutput
 fixtureJsonOutput = toFlag JsonOutput

@@ -48,6 +48,7 @@ extractRevision OverrideProject{..} imageTag imageDigest =
     (fromMaybe imageTag overrideName)
     (fromMaybe imageDigest overrideRevision)
     overrideBranch
+    Nothing
 
 test ::
   ( Has Diagnostics sig m

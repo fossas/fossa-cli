@@ -3,7 +3,7 @@
 module App.Fossa.Config.AnalyzeSpec (spec) where
 
 import App.Fossa.Config.Analyze (
-  AnalyzeConfig (filterSet, xWorkflow),
+  AnalyzeConfig (filterSet, projectRevision, xWorkflow),
   cliParser,
   loadConfig,
   mergeOpts,
@@ -12,16 +12,18 @@ import App.Fossa.Config.ConfigFile (ConfigFile (..), ConfigTargets (..))
 import App.Fossa.Config.EnvironmentVars (EnvVars (..))
 import App.Fossa.Config.Utils (itShouldFailWhenLabelsExceedFive, itShouldLoadFromTheConfiguredBaseDir, parseArgString)
 import App.Fossa.Lernie.Types (OrgWideCustomLicenseConfigPolicy (..))
+import App.Types (ProjectRevision (projectGitRemote, projectName))
 import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
-import Control.Effect.Lift (Has, Lift)
+import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Exception (throw)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Filters (AllFilters (..), combinedTargets)
 import Effect.Logger (renderIt)
-import Path (Abs, File, Path, parseAbsFile)
-import Test.Effect (expectFatal', expectationFailure', it', shouldBe')
+import Path (Abs, File, Path, parseAbsFile, toFilePath)
+import Test.Effect (expectFatal', expectationFailure', it', itWithTempDir', shouldBe')
+import Test.Git (writeGitConfig)
 import Test.Hspec (Spec, describe)
 import Types (DiscoveredProjectType, TargetFilter (TypeTarget))
 
@@ -200,6 +202,14 @@ spec = do
       case failureText of
         Nothing -> expectationFailure' "expected --static-only-analysis with --x-workflow to be fatal"
         Just rendered -> Text.isInfixOf "--static-only-analysis" rendered `shouldBe'` True
+
+  describe "git remote" $ do
+    itWithTempDir' "should keep the checkout's origin remote when --project names the project" $ \dir -> do
+      sendIO . writeGitConfig dir $ "[remote \"origin\"]\n\turl = git@github.com:acme/widgets.git\n"
+      cliOpts <- parseArgString cliParser $ "--project my-project " <> toFilePath dir
+      revision <- projectRevision <$> mergeOpts Nothing Nothing envVars cliOpts
+      projectName revision `shouldBe'` "my-project"
+      projectGitRemote revision `shouldBe'` Just "git@github.com:acme/widgets.git"
 
 -- | 'expectFatal'' only reports that a failure happened; the message is what
 -- distinguishes the flag conflict from an unrelated failure on the same path.
