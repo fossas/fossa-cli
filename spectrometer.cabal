@@ -807,8 +807,8 @@ test-suite integration-tests
     Analysis.ElixirSpec
     Analysis.ErlangSpec
     Analysis.FixtureExpectationUtils
-    Analysis.FixtureUtils
     Analysis.Fixtures.MultiProjectTree
+    Analysis.FixtureUtils
     Analysis.GoSpec
     Analysis.GradleSpec
     Analysis.LicenseScannerSpec
