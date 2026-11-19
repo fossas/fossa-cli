@@ -218,9 +218,10 @@ nodeToolFamily =
 -- except that a member of a 'toolFamilies' entry is allowed when any family
 -- member is.
 consumerAllowed :: AllFilters -> DiscoveredProjectType -> Bool
-consumerAllowed filters tool
-  | Just family_ <- find (elem tool) toolFamilies = any (toolAllowed filters) family_
-  | otherwise = toolAllowed filters tool
+consumerAllowed filters tool =
+  case find (elem tool) toolFamilies of
+    Just family_ -> any (toolAllowed filters) family_
+    Nothing -> toolAllowed filters tool
 
 allowedTools :: AllFilters -> Set DiscoveredProjectType
 allowedTools AllFilters{..} = (fullSet `Set.intersection` includeSet) `Set.difference` excludeSet
