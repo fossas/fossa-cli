@@ -5,6 +5,7 @@ module Strategy.Rebar3 (
   findProjects,
   getDeps,
   mkProject,
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -33,7 +34,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject Rebar3ProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RebarProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RebarProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "rebar.config" files of
     Nothing -> pure ([], WalkContinue)
     Just f -> pure ([RebarProject dir f], WalkSkipAll)

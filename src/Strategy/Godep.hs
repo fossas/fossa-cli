@@ -1,5 +1,7 @@
 module Strategy.Godep (
   discover,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -33,7 +35,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject GodepProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GodepProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GodepProject], WalkStep)
+discoverVisitor dir _ files = do
   let gopkgToml = findFileNamed "Gopkg.toml" files
   let gopkgLock = findFileNamed "Gopkg.lock" files
 

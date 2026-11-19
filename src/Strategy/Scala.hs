@@ -9,6 +9,8 @@
 module Strategy.Scala (
   discover,
   findProjects,
+  discoverVisitor,
+  postDiscover,
   ScalaProject (..),
   analyzeWithPoms,
 ) where
@@ -83,27 +85,6 @@ discover = simpleDiscover findProjects' mkProject ScalaProjectType
   where
     findProjects' dir = concatMap toScalaProjects <$> (findProjects dir)
 
-    toScalaProjects :: SbtTargets -> [ScalaProject]
-    toScalaProjects (SbtTargets maybeSbtDepTree treeJsonPaths closure) =
-      map
-        (mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths closure))
-        closure
-
-    mkScalaProject :: SbtTargets -> MavenProjectClosure -> ScalaProject
-    mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths _) cls =
-      ScalaProject maybeSbtDepTree (findRelevantDependencyTreeJson cls treeJsonPaths) cls
-
-    findRelevantDependencyTreeJson :: MavenProjectClosure -> [Path Abs File] -> Maybe (Path Abs File)
-    findRelevantDependencyTreeJson closure paths = do
-      let clsPath = parent $ closurePath closure
-      -- treeJson are written in /module/target/
-      -- where as makePom may write in /module/target/scala-version/ or /module/target/
-      --
-      -- match closure to treeJson based common parent path /module/target/
-      -- module can only have one pom closure, and one or none tree json file.
-      let matchingPaths = filter (\p -> parent p == clsPath || parent p == parent clsPath) paths
-      listToMaybe matchingPaths
-
 data ScalaProject = ScalaProject
   { rawSbtDepTree :: Maybe ByteString
   , unScalaProjectDepTreeJson :: Maybe (Path Abs File)
@@ -144,6 +125,30 @@ pathToText = toText . toFilePath
 
 data SbtTargets = SbtTargets (Maybe ByteString) [Path Abs File] [MavenProjectClosure]
 
+-- | Turn the accumulated per-directory 'SbtTargets' into discovered projects.
+postDiscover :: Applicative m => [SbtTargets] -> m [DiscoveredProject ScalaProject]
+postDiscover targets = pure (concatMap (map mkProject . toScalaProjects) targets)
+
+-- | Flatten one 'SbtTargets' entry into its member 'ScalaProject's.
+toScalaProjects :: SbtTargets -> [ScalaProject]
+toScalaProjects (SbtTargets maybeSbtDepTree treeJsonPaths closure) =
+  map (mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths closure)) closure
+
+mkScalaProject :: SbtTargets -> MavenProjectClosure -> ScalaProject
+mkScalaProject (SbtTargets maybeSbtDepTree treeJsonPaths _) cls =
+  ScalaProject maybeSbtDepTree (findRelevantDependencyTreeJson cls treeJsonPaths) cls
+
+findRelevantDependencyTreeJson :: MavenProjectClosure -> [Path Abs File] -> Maybe (Path Abs File)
+findRelevantDependencyTreeJson closure paths = do
+  let clsPath = parent $ closurePath closure
+  -- treeJson are written in /module/target/
+  -- where as makePom may write in /module/target/scala-version/ or /module/target/
+  --
+  -- match closure to treeJson based common parent path /module/target/
+  -- module can only have one pom closure, and one or none tree json file.
+  let matchingPaths = filter (\p -> parent p == clsPath || parent p == parent clsPath) paths
+  listToMaybe matchingPaths
+
 findProjects ::
   ( Has Exec sig m
   , Has ReadFS sig m
@@ -152,7 +157,15 @@ findProjects ::
   ) =>
   Path Abs Dir ->
   m [SbtTargets]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor ::
+  ( Has Exec sig m
+  , Has ReadFS sig m
+  , Has Diagnostics sig m
+  ) =>
+  Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SbtTargets], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "build.sbt" files of
     Nothing -> pure ([], WalkContinue)
     Just _ -> do
