@@ -14,7 +14,6 @@ import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky, runStickyLogger)
 import Control.Carrier.Telemetry.Types (CountableCliFeature (SBOMAnalyzeUsage))
-import Control.Effect.Diagnostics (context)
 import Control.Effect.FossaApiClient (FossaApiClient, PackageRevision (PackageRevision), getOrganization, getSignedUploadUrl, queueSBOMBuild, uploadArchive)
 import Control.Effect.Lift
 import Control.Effect.Telemetry (Telemetry, trackUsage)
@@ -82,9 +81,7 @@ analyzeInternal config = do
     ]
 
   when (fromFlag JsonOutput $ sbomOutputJson config) $ do
-    summary <-
-      context "Analysis ran successfully, but the server returned invalid metadata" $
-        buildProjectSummary revision locator buildUrl
+    summary <- buildProjectSummary revision locator buildUrl
     logStdout . decodeUtf8 $ Aeson.encode summary
 
 uploadSBOM ::
