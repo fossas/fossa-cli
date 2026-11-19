@@ -8,14 +8,15 @@ module Discovery.WalkBroadcastSpec (
   spec,
 ) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.MVar (MVar, newEmptyMVar, putMVar, takeMVar)
 import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.Lift (sendIO)
 import Control.Exception (SomeException, fromException, throwIO, try)
 import Control.Monad (unless)
 import Data.Either (isLeft)
 import Data.Foldable (traverse_)
-import Data.Functor (($>))
+import Data.Functor (void, ($>))
 import Data.IORef qualified as IOR
 import Data.Maybe (isJust)
 import Data.Set (Set)
@@ -24,7 +25,7 @@ import Data.Text (Text)
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
 import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, toolAllowed)
 import Discovery.Walk (WalkStep (..), findFileNamed)
-import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, withWalkBroadcast)
+import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, listingCapacity, withWalkBroadcast)
 import Discovery.WalkStream (DirListing (..))
 import Path
 import Path.IO (createDir)
@@ -43,6 +44,8 @@ spec =
     broadcastSpec
     abortSpec
     failureContractSpec
+    backpressureSpec
+    waitSpec
 
 -- The tool-attributed failure message; here a stand-in.
 msg :: Text
@@ -148,7 +151,7 @@ gatingSpec =
 isolationSpec :: Spec
 isolationSpec =
   describe "slow-consumer isolation" $ do
-    it' "a slow consumer does not delay another; each drains its own channel" $
+    it' "a slow consumer does not delay another below the queue bound; each drains its own queue" $
       withTempDir "test-Discovery-WalkBroadcast-slow" $ \tmpDir -> do
         let web = tmpDir </> $(mkRelDir "web")
             webSrc = web </> $(mkRelDir "src")
@@ -160,9 +163,11 @@ isolationSpec =
         bCollected <- sendIO $ IOR.newIORef (Set.empty :: Set (Path Abs Dir))
 
         -- A parks (threadDelay 200ms) on its first listing; B records the
-        -- timestamp of its last listing.  Timing-sensitive but generous:
-        -- B must finish its whole set within A's park window, which only
-        -- fails if the broadcast is serializing consumers behind A.
+        -- timestamp of its last listing.  Timing-sensitive but generous: B
+        -- must finish its whole set within A's park window, which only fails
+        -- if the broadcast is serializing consumers behind A rather than
+        -- bounding how far the walk may outrun it (for the bound itself, see
+        -- 'backpressureSpec').
         let aConsumer =
               WalkConsumer
                 { wcProjectType = NpmProjectType
@@ -325,6 +330,87 @@ failureContractSpec =
           Left _ -> False
 
 -- ---------------------------------------------------------------------------
+-- Back-pressure bound
+-- ---------------------------------------------------------------------------
+
+-- | The walker must not run away from a stalled consumer: once that consumer
+-- has a full queue of unread listings the walker blocks, so the retained
+-- listing set stays bounded.  Below the bound a slow consumer delays nobody —
+-- that is 'isolationSpec'.
+backpressureSpec :: Spec
+backpressureSpec =
+  describe "back-pressure" $ do
+    it' "stops the walk once a stalled consumer falls a queue behind" $
+      withTempDir "test-Discovery-WalkBroadcast-backpressure" $ \tmpDir -> do
+        -- More directories than a queue holds, so an unbounded broadcast would
+        -- let the other consumer see the whole tree while this one stalls.
+        let numDirs = listingCapacity + 64
+        sendIO $
+          traverse_
+            (\i -> parseRelDir ("d" ++ show (i :: Int)) >>= \rel -> createDir (tmpDir </> rel))
+            [1 .. numDirs]
+
+        stalledRef <- sendIO (IOR.newIORef False)
+        started <- sendIO newEmptyMVar
+        release <- sendIO newEmptyMVar
+        seenRef <- sendIO (IOR.newIORef (Set.empty :: Set (Path Abs Dir)))
+
+        let consumers =
+              [ WalkConsumer{wcProjectType = NpmProjectType, wcVisitor = stalledVisitor started release stalledRef}
+              , WalkConsumer{wcProjectType = ComposerProjectType, wcVisitor = recordingVisitor seenRef}
+              ]
+
+        -- The broadcast cannot return while the walk is held back, so run it on
+        -- its own thread and observe the fast consumer from here.
+        done <- sendIO newEmptyMVar
+        sendIO . void . forkIO $ do
+          res <- try @SomeException (runTestEffects (withWalkBroadcast (mempty :: AllFilters) tmpDir consumers))
+          putMVar done (either (const False) (const True) res)
+
+        sendIO (takeMVar started)
+        -- The fast consumer's view stops growing only when the walk is held back
+        -- (or, without back-pressure, once the walk is done) — waiting for that
+        -- makes the assertion below independent of how long the walk takes.
+        mid <- sendIO (waitForStable seenRef)
+        Set.size mid `shouldSatisfy'` (\n -> n > 1 && n < numDirs)
+
+        -- Releasing the stalled consumer must let the walk run to completion.
+        sendIO (putMVar release ())
+        finished <- sendIO (takeMVar done)
+        finished `shouldBe'` True
+        final <- sendIO (IOR.readIORef seenRef)
+        Set.size final `shouldBe'` (numDirs + 1)
+
+-- ---------------------------------------------------------------------------
+-- Wait contract
+-- ---------------------------------------------------------------------------
+
+-- | The broadcast must not return until every consumer has finished: callers
+-- read the strategy sinks immediately after it returns, so returning early
+-- silently truncates a strategy's collection (or leaves the sink at its
+-- initial value).  Guards the registration of consumer handles before the
+-- wait.
+waitSpec :: Spec
+waitSpec =
+  describe "wait contract" $ do
+    it' "waits for a slow consumer before returning" $
+      withTempDir "test-Discovery-WalkBroadcast-wait" $ \tmpDir -> do
+        let sub = tmpDir </> $(mkRelDir "sub")
+        sendIO $ traverse_ createDir [sub]
+        sink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        -- Slow enough that it cannot possibly finish while the walker runs: the
+        -- master channel is unbounded, so a slow consumer never blocks it.
+        let slow dir _ _ = do
+              sendIO (threadDelay 200000)
+              pure ([dir], WalkContinue)
+            consumer = accumulateConsumer NpmProjectType msg sink slow
+        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumer]
+        st <- sendIO (IOR.readIORef sink)
+        st `shouldSatisfy'` \case
+          Right ds -> Set.fromList ds == Set.fromList [tmpDir, sub]
+          Left _ -> False
+
+-- ---------------------------------------------------------------------------
 -- Visitors
 -- ---------------------------------------------------------------------------
 
@@ -396,6 +482,35 @@ slowVisitor startRef parkedRef _dir _subdirs _files = do
     sendIO $ IOR.writeIORef startRef (Just now)
     sendIO (threadDelay 200000)
     sendIO $ IOR.writeIORef parkedRef True
+  pure ((), WalkContinue)
+
+-- | Wait until the recorded set stops growing, returning its last value.
+waitForStable :: IOR.IORef (Set (Path Abs Dir)) -> IO (Set (Path Abs Dir))
+waitForStable ref = go (0 :: Int) =<< IOR.readIORef ref
+  where
+    go stable prev
+      | stable >= 6 = pure prev
+      | otherwise = do
+          threadDelay 50000
+          now <- IOR.readIORef ref
+          go (if Set.size now == Set.size prev then stable + 1 else 0) now
+
+-- | A visitor that parks on its first invocation until released, modelling a
+-- consumer stalled long enough for the walker to hit the queue bound.
+stalledVisitor ::
+  MVar () ->
+  MVar () ->
+  IOR.IORef Bool ->
+  Path Abs Dir ->
+  [Path Abs Dir] ->
+  [Path Abs File] ->
+  EffectStack ((), WalkStep)
+stalledVisitor started release stalledRef _dir _subdirs _files = do
+  already <- sendIO (IOR.readIORef stalledRef)
+  unless already $ do
+    sendIO $ IOR.writeIORef stalledRef True
+    sendIO (putMVar started ())
+    sendIO (takeMVar release)
   pure ((), WalkContinue)
 
 -- | Records every visited directory and the timestamp of its latest visit.

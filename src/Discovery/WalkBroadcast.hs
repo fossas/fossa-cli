@@ -1,15 +1,16 @@
 -- | Broadcast fan-out for the shared discovery walk in "Discovery.WalkStream":
--- one walker thread drains a listing stream into a master 'TChan', and each
--- consumer thread reads its own duplicate of that channel, so every consumer
+-- one walker thread drains a listing stream into one bounded queue per enabled
+-- consumer, and each consumer thread reads its own queue, so every consumer
 -- sees the full listing set while running concurrently.
 --
--- A slow consumer (e.g. an exec-heavy visitor) only stalls its own channel
--- drain — the unbounded 'TChan' buffers the rest — never the walker or any
--- other consumer.  Disabled tools are gated per-consumer: a consumer whose
--- strategy tool is excluded by the filters is never started at all (no thread,
--- no channel, no visitor invocation), mirroring the old
--- "Discovery.Filters.withToolFilter" short-circuit where a disabled tool's
--- discovery did no work whatsoever.
+-- A slow consumer only stalls the walker once it has fallen 'listingCapacity'
+-- listings behind: below that bound it does not delay anyone, and beyond it the
+-- walker waits for it rather than letting it fall arbitrarily behind (which
+-- would pin the whole listing set in memory).  Disabled tools are gated
+-- per-consumer: a consumer whose strategy tool is excluded by the filters is
+-- never started at all (no thread, no queue, no visitor invocation), mirroring
+-- the old "Discovery.Filters.withToolFilter" short-circuit where a disabled
+-- tool's discovery did no work whatsoever.
 --
 -- Failure contract, following "Control.Carrier.TaskPool.withTaskPool": the
 -- first consumer (or walker) exception aborts the run and every still-running
@@ -26,11 +27,15 @@ module Discovery.WalkBroadcast (
   -- * Running the broadcast
   broadcastStream,
   withWalkBroadcast,
+
+  -- * Tuning
+  listingCapacity,
 ) where
 
 import Control.Carrier.Threaded (Handle, fork, handleWait, kill)
 import Control.Concurrent.STM
-import Control.Effect.Diagnostics (Diagnostics, warnThenRecover)
+import Control.Concurrent.STM.TBMQueue (TBMQueue, closeTBMQueue, newTBMQueueIO, readTBMQueue, writeTBMQueue)
+import Control.Effect.Diagnostics (Diagnostics, errorBoundary)
 import Control.Effect.Exception (SomeException, mask, onException, throwIO)
 import Control.Effect.Lift (Has, Lift, sendIO)
 import Control.Exception.Extra (safeTry)
@@ -39,16 +44,32 @@ import Data.Foldable (traverse_)
 import Data.Functor (void, ($>))
 import Data.IORef (IORef, atomicModifyIORef')
 import Data.Kind (Type)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Diag.Result (Result (Failure, Success), renderFailureWithoutWarnings)
 import Discovery.Filters (AllFilters, toolAllowed)
 import Discovery.Walk (WalkStep (WalkContinue))
 import Discovery.WalkStream (DirListing, walkStream)
 import Discovery.WalkVisitor (Visitor, driveVisitor)
+import Effect.Logger (Pretty (pretty), renderIt)
 import Effect.ReadFS (ReadFS)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, Path, toFilePath)
 import Streaming (Of (..), Stream)
 import Streaming.Prelude qualified as S
 import Types (DiscoveredProjectType)
+
+-- | Unread listings each consumer's queue holds before the walker blocks.
+--
+-- This is the bound on how far the walker may outrun the slowest consumer, and
+-- therefore on how much of the listing set is retained: without it a consumer
+-- stalled for long enough pins every listing the walk has produced so far.  The
+-- trade-off is that a consumer stalled beyond the bound also stalls its
+-- siblings until it catches up.  Every queue holds its own pointers to the same
+-- immutable listings, so the retained payload is shared: the per-strategy cost
+-- is one queue cell per listing, not a copy of the listing, which is what makes
+-- a bound this generous (a few MB across the ~40 strategies) affordable.
+listingCapacity :: Int
+listingCapacity = 2048
 
 -- | One broadcast consumer: the strategy tool it serves ('wcProjectType',
 -- gated against the filters) and its per-directory 'Visitor'.
@@ -60,8 +81,8 @@ data WalkConsumer o m = WalkConsumer
 -- | Build a broadcast consumer that accumulates the raw projects its visitor
 -- collects into @sink@, applying the all-or-nothing failure contract:
 --
---   * A failure in any directory records the tool-attributed @msg@ in the sink
---     and keeps the walk going, so the shared walk is not aborted and sibling
+--   * A failure in any directory records a failure message in the sink and
+--     keeps the walk going, so the shared walk is not aborted and sibling
 --     strategies (each with its own consumer + sink) are unaffected.
 --   * Once the sink holds an error, later successful directories are dropped,
 --     so a strategy's whole collection is discarded on any failure.
@@ -73,10 +94,16 @@ data WalkConsumer o m = WalkConsumer
 -- finalizer reads from another task after the broadcast wait, so the recorded
 -- failure is visible to it; the atomicModifyIORef' keeps the read-modify-write
 -- itself from tearing, nothing more.
+--
+-- The recorded message is @msg@ plus the failing directory plus the underlying
+-- diagnostic, because this sink is the /only/ channel back to the finalizer:
+-- warnings emitted in a forked consumer thread are discarded along with that
+-- thread's result, so anything not carried out in the text is lost.
 accumulateConsumer ::
   (Monoid o, Has (Lift IO) sig m, Has Diagnostics sig m) =>
   DiscoveredProjectType ->
-  -- | tool-attributed failure message
+  -- | tool-attributed failure-message prefix; the failing directory and its
+  -- diagnostic are appended to it
   Text ->
   -- | Accumulates the raw projects via '<>' while healthy; 'Left' once any
   -- directory fails.  Read by the strategy finalizer.
@@ -87,14 +114,22 @@ accumulateConsumer projectType msg sink rawVisitor =
   WalkConsumer projectType go
   where
     go dir subdirs files = do
-      found <- warnThenRecover @Text msg (rawVisitor dir subdirs files)
-      case found of
+      -- 'errorBoundary' rather than 'warnThenRecover': the latter turns the
+      -- failure into a warning emitted inside this consumer thread, and a forked
+      -- thread's warnings are discarded with its result.  Capturing the 'Result'
+      -- lets the recorded text carry the failing directory's own diagnostic out
+      -- through the sink, which is the only channel back to the finalizer.
+      res <- errorBoundary (rawVisitor dir subdirs files)
+      case res of
         -- A failing directory fails the whole strategy: record the error (so the
         -- finalizer discards the collection) and keep walking, leaving the shared
         -- walk and sibling strategies running.
-        Nothing ->
-          sendIO (atomicModifyIORef' sink (const (Left msg, ()))) $> ((), WalkContinue)
-        Just (project, step) ->
+        Failure _ errGroup -> do
+          let headerDoc = pretty (msg <> " at " <> toText (toFilePath dir))
+              recorded = renderIt (renderFailureWithoutWarnings errGroup headerDoc)
+          sendIO (atomicModifyIORef' sink (const (Left recorded, ())))
+          pure ((), WalkContinue)
+        Success _ (project, step) ->
           -- Append unless this strategy already failed (all-or-nothing), preserving
           -- the recorded failure message so it is surfaced verbatim by the finalizer.
           sendIO
@@ -112,17 +147,17 @@ broadcastStream filters listings consumers =
     enabled :: [WalkConsumer o m]
     enabled = filter (toolAllowed filters . wcProjectType) consumers
 
-    -- The master channel carries @Just listing@ per visit and a terminal
-    -- @Nothing@ marker once the walk finishes; this is how consumer channels
-    -- end, since stm's TChan has no close.  (On a walker failure no marker is
-    -- written: the recorded error makes the wait below throw, and the cleanup
-    -- kills the consumers blocked on their channels.)
     startAll :: m ()
     startAll = do
-      master <- sendIO newTChanIO
+      -- One bounded queue per enabled consumer, each drained by exactly that
+      -- consumer's thread.  'writeTBMQueue' blocks while a queue is full, so the
+      -- walker cannot get more than 'listingCapacity' listings ahead of the
+      -- slowest consumer; 'closeTBMQueue' ends the stream, since
+      -- 'readTBMQueue' yields 'Nothing' once a closed queue has drained.
+      queues <- traverse (const $ sendIO (newTBMQueueIO listingCapacity)) enabled
       errVar <- sendIO newEmptyTMVarIO
       hsVar <- sendIO $ newTVarIO ([] :: [Handle])
-      runForkWait master errVar hsVar
+      runForkWait queues errVar hsVar
     -- Any failure during the forks or the wait must kill every handle
     -- registered so far before propagating.  A 'safeCatch' handler is not
     -- enough: it skips async exceptions, so a 'throwTo' landing between the
@@ -131,23 +166,22 @@ broadcastStream filters listings consumers =
     -- — the fork sequence and the wait run masked, with an 'onException'
     -- kill of the registered set on both stages, so ANY exception (sync or
     -- async) is preceded by the kill.
-    runForkWait :: TChan (Maybe DirListing) -> TMVar SomeException -> TVar [Handle] -> m ()
-    runForkWait master errVar hsVar =
+    runForkWait :: [TBMQueue DirListing] -> TMVar SomeException -> TVar [Handle] -> m ()
+    runForkWait queues errVar hsVar =
       mask $ \restore -> do
-        forkAll master errVar hsVar `onException` killAll hsVar
+        forkAll queues errVar hsVar `onException` killAll hsVar
         restore (waitAll errVar hsVar) `onException` killAll hsVar
 
-    -- Register every consumer on its own channel duplicate BEFORE forking the
-    -- walker, so no listing can be written before all readers exist (a
-    -- channel written to with no duplicate present loses those messages).
-    forkAll :: TChan (Maybe DirListing) -> TMVar SomeException -> TVar [Handle] -> m ()
-    forkAll master errVar hsVar = do
-      chs <- traverse (const $ sendIO (atomically (dupTChan master))) enabled
-      _walkerH <- register hsVar =<< fork (walkInto master errVar listings)
-      _consumerHS <- traverse (uncurry registerConsumer) (zip enabled chs)
+    -- The queues already exist, so a consumer forked after the walker started
+    -- still sees every listing written before it began; only the handles need
+    -- registering.
+    forkAll :: [TBMQueue DirListing] -> TMVar SomeException -> TVar [Handle] -> m ()
+    forkAll queues errVar hsVar = do
+      _walkerH <- register hsVar =<< fork (walkInto queues errVar listings)
+      _consumerHS <- traverse (uncurry registerConsumer) (zip enabled queues)
       pure ()
       where
-        registerConsumer c ch = register hsVar <$> fork (consume c errVar ch)
+        registerConsumer c queue = register hsVar =<< fork (consume c errVar queue)
 
     -- Wait for the first consumer/walker error or every thread's completion;
     -- the error wins whenever it is present (an errored thread always records
@@ -178,28 +212,25 @@ broadcastStream filters listings consumers =
         go (Left e) _ = Left e
         go _ acc = acc
 
-    walkInto :: TChan (Maybe DirListing) -> TMVar SomeException -> Stream (Of DirListing) m () -> m ()
-    walkInto chan errs ls = do
-      res <- safeTry @SomeException (S.mapM_ (writeAndDrain chan . Just) ls)
+    walkInto :: [TBMQueue DirListing] -> TMVar SomeException -> Stream (Of DirListing) m () -> m ()
+    walkInto queues errs ls = do
+      res <- safeTry @SomeException (S.mapM_ (broadcastListing queues) ls)
       case res of
-        Right () -> writeAndDrain chan Nothing
+        -- On a walker failure the queues are left open on purpose: the recorded
+        -- error makes the wait below throw and the cleanup kills the consumers
+        -- parked on their queues, rather than letting them end as if the walk
+        -- had finished.
+        Right () -> sendIO $ atomically $ traverse_ closeTBMQueue queues
         Left e -> void (recordError errs e)
 
-    -- Write one message to the master channel and immediately read it back,
-    -- discarding it, in the same transaction.  Consumers read dups created
-    -- before the walker started, so nobody else ever reads the master — and
-    -- stm's TChan retains its node chain from each reader's read pointer: an
-    -- undrained master would pin every listing ever broadcast for the whole
-    -- run (O(all listings) retention).  Reading one value back per write
-    -- advances the master's read pointer atomically with the write, releasing
-    -- each node without changing what any dup sees.
-    writeAndDrain :: TChan (Maybe DirListing) -> Maybe DirListing -> m ()
-    writeAndDrain chan msg = sendIO $ atomically $ do
-      writeTChan chan msg
-      void (readTChan chan)
+    -- One transaction for all queues keeps them in lockstep, and makes the
+    -- walker wait for the fullest one — i.e. for the slowest consumer — instead
+    -- of letting any consumer fall arbitrarily far behind.
+    broadcastListing :: [TBMQueue DirListing] -> DirListing -> m ()
+    broadcastListing queues dl = sendIO $ atomically $ traverse_ (\queue -> writeTBMQueue queue dl) queues
 
-    consume :: WalkConsumer o m -> TMVar SomeException -> TChan (Maybe DirListing) -> m ()
-    consume c errs chan = do
+    consume :: WalkConsumer o m -> TMVar SomeException -> TBMQueue DirListing -> m ()
+    consume c errs queue = do
       res <- safeTry @SomeException (driveVisitor (wcVisitor c) next_)
       case res of
         Left e -> void (recordError errs e)
@@ -210,7 +241,7 @@ broadcastStream filters listings consumers =
         -- implicit-parameter resolution (GHC-39999), so 'driveVisitor' does
         -- the per-listing state threading without any stream spine.
         next_ :: m (Maybe DirListing)
-        next_ = sendIO $ atomically $ readTChan chan
+        next_ = sendIO $ atomically $ readTBMQueue queue
 
     register :: TVar [Handle] -> Handle -> m Handle
     register hsVar h = sendIO $ atomically (modifyTVar' hsVar (h :)) $> h
