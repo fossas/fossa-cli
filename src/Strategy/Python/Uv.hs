@@ -22,7 +22,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Reader (Reader, asks)
 import Data.Aeson (ToJSON)
-import Data.Foldable (fold, for_, traverse_)
+import Data.Foldable (fold, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
@@ -151,18 +151,44 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
 
     -- Every package's edges, leaving out the dependency groups named in `excluded`.
     graphOf :: Set Text -> Graphing UvLockPackage
-    graphOf excluded = run . evalGrapher $ traverse_ (mkEdges excluded) packages
+    graphOf excluded = run . evalGrapher $ traverse_ (mkEdges excluded) (virtualRoot : packages)
+
+    -- A workspace root that isn't a project has no package in uv.lock. uv (as of 0.13.9) lists its
+    -- dependency groups under [manifest.dependency-groups] instead.
+    virtualRoot :: UvLockPackage
+    virtualRoot =
+      UvLockPackage
+        { uvlockPackageName = ""
+        , uvlockPackageVersion = Nothing
+        , uvlockPackageSource = SourceVirtual "."
+        , uvlockPackageDependencies = []
+        , uvlockPackageDevDependencies = uvlockManifestDependencyGroups lock
+        , uvlockPackageOptionalDependencies = mempty
+        }
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
     -- A group or extra can install the package itself, e.g. `dev = ["my-project[test]"]`. That
     -- edge is skipped, since it would leave the project with a predecessor and no longer a root.
     mkEdges :: Has (Grapher UvLockPackage) sig m => Set Text -> UvLockPackage -> m ()
-    mkEdges excluded fromPkg@UvLockPackage{..} =
-      for_ (uvlockPackageDependencies <> fold (Map.withoutKeys uvlockPackageDevDependencies excluded) <> fold uvlockPackageOptionalDependencies) $
-        traverse_ (edge fromPkg) . filter (/= fromPkg) . resolveDependency
+    mkEdges excluded fromPkg = do
+      edgesFrom fromPkg (uvlockPackageDependencies fromPkg <> fold (uvlockPackageOptionalDependencies fromPkg))
+      edgesFrom (groupRoot fromPkg) (fold (Map.withoutKeys (uvlockPackageDevDependencies fromPkg) excluded))
+      where
+        edgesFrom from = traverse_ (traverse_ (edge from) . filter (/= fromPkg) . resolveDependency)
 
-    -- The directList currently contains the uv package being scanned. This package lists the
+    -- A package's dependency groups hang off a root of their own, so they're labeled by group name
+    -- rather than by the package's own label. No package can have its name.
+    groupRoot :: UvLockPackage -> UvLockPackage
+    groupRoot pkg =
+      pkg
+        { uvlockPackageName = uvlockPackageName pkg <> " dependency groups"
+        , uvlockPackageSource = SourceVirtual "."
+        , uvlockPackageDependencies = []
+        , uvlockPackageOptionalDependencies = mempty
+        }
+
+    -- The directList currently contains the uv package being scanned and each group root. Each lists its
     -- prod dependencies (under the dependencies field) and its dependency groups (under the dev-dependencies field)
     -- Use this to set the correct environment on each of these packages.
     markRootEnvs :: Graphing UvLockPackage -> Graphing Dependency
@@ -290,8 +316,11 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
 
 ---------- uv.lock
 
-newtype UvLock = UvLock
-  {uvlockPackages :: [UvLockPackage]}
+data UvLock = UvLock
+  { uvlockPackages :: [UvLockPackage]
+  , uvlockManifestDependencyGroups :: Map Text [UvLockPackageDependency]
+  -- ^ The dependency groups of a workspace root that isn't a project, from `[manifest.dependency-groups]`
+  }
   deriving (Eq, Show)
 
 instance Toml.Schema.FromValue UvLock where
@@ -299,6 +328,7 @@ instance Toml.Schema.FromValue UvLock where
     Toml.Schema.parseTableFromValue $
       UvLock
         <$> Toml.Schema.reqKey "package"
+        <*> (foldMap fold <$> Toml.Schema.optKeyOf "manifest" (Toml.Schema.parseTableFromValue (Toml.Schema.optKey "dependency-groups")))
 
 data UvLockPackage = UvLockPackage
   { uvlockPackageName :: Text

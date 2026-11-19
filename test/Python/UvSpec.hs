@@ -88,6 +88,7 @@ lock =
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --     my-project
@@ -132,6 +133,7 @@ lockNewStyleDevDeps =
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --     my-project (editable, no version -- dynamic version project)
@@ -176,6 +178,7 @@ lockEditableNoVersion =
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --     my-project
@@ -210,6 +213,7 @@ lockWithDirectory =
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --       my-project
@@ -254,6 +258,7 @@ lockSplitVersions =
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 mkPackageDep :: Text -> UvLockPackageDependency
@@ -456,12 +461,14 @@ spec = do
         ]
         result
 
-  -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, without the sdist and wheel
+  -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
+  -- uv-workspace-member-groups.lock and uv-virtual-root.lock from 0.13.9, without the sdist and wheel
   -- entries. uv-groups.lock also leaves out the packages these tests don't look at.
   describe "dependency groups" $ do
     let prod = Set.fromList [EnvProduction]
         dev = Set.fromList [EnvDevelopment]
         prodAndDev = Set.fromList [EnvProduction, EnvDevelopment]
+        labels parsed production excluded = environments $ buildGraph (Just UvConfig{uvProductionGroups = production, uvExcludeGroups = excluded}) parsed
 
     it' "labels every dependency group development" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv-groups.lock|]
@@ -512,3 +519,24 @@ spec = do
       result <- buildGraph (Just cfg) <$> readContentsToml path
 
       expectDep' (mkDep "imagesize" "2.0.1" [EnvProduction]) result
+
+    -- The project depends on its workspace member lib, whose docs group installs imagesize.
+    it' "labels a workspace member's groups by group name, like the project's" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-workspace-member-groups.lock|]
+      let docs = Set.singleton "docs"
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("imagesize", dev), ("iniconfig", dev)]
+      labels parsed docs mempty `shouldBe'` Map.fromList [("idna", prod), ("imagesize", prod), ("iniconfig", dev)]
+      labels parsed mempty docs `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
+
+    -- The workspace root has no [project] table, so uv.lock lists its dev group under
+    -- [manifest.dependency-groups]. Its member pkg depends on idna.
+    it' "reads the groups of a workspace root that isn't a project" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-virtual-root.lock|]
+      let pytest = ["pytest", "colorama", "iniconfig", "packaging", "pluggy", "pygments"]
+          devGroup = Set.singleton "dev"
+
+      map dependencyName (directList (buildGraph Nothing parsed)) `shouldMatchList'` ["idna", "pytest"]
+      labels parsed mempty mempty `shouldBe'` Map.fromList (("idna", prod) : map (,dev) pytest)
+      labels parsed devGroup mempty `shouldBe'` Map.fromList (map (,prod) ("idna" : pytest))
+      labels parsed mempty devGroup `shouldBe'` Map.fromList [("idna", prod)]
