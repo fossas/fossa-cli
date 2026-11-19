@@ -420,9 +420,9 @@ spec = do
           approved :: Map.Map DepType FindingsLinking
           approved =
             Map.fromList $
-              [(depType, LinkingStatic) | depType <- staticDefaults]
-                <> [(depType, LinkingDynamic) | depType <- dynamicDefaults]
-                <> [(depType, LinkingUnknown) | depType <- unknownDefaults]
+              map (,LinkingStatic) staticDefaults
+                <> map (,LinkingDynamic) dynamicDefaults
+                <> map (,LinkingUnknown) unknownDefaults
           observed :: Map.Map DepType FindingsLinking
-          observed = Map.fromList [(depType, defaultLinking depType) | depType <- [minBound .. maxBound]]
+          observed = Map.fromList (map (\depType -> (depType, defaultLinking depType)) [minBound .. maxBound])
       observed `shouldBe` approved
