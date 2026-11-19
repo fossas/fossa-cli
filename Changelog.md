@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
 - Analysis: `--unpack-archives` now applies path filters to the archive's path in the scan ([#1745](https://github.com/fossas/fossa-cli/pull/1745))
 
 ## 3.20.13
