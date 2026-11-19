@@ -9,7 +9,7 @@ module App.Fossa.PathDependency (
 ) where
 
 import App.Docs (pathDependencyDocsUrl)
-import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType))
+import App.Fossa.Analyze.Project (ProjectResult (projectResultGraph, projectResultPath, projectResultType, projectResultUnprunedGraph), PublishedGraph (PublishedGraph), RawGraph (RawGraph), unPublishedGraph, unRawGraph)
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions, forceRescans)
 import App.Fossa.LicenseScanner (scanDirectory)
 import App.Fossa.VendoredDependency (hashBs, hashFile)
@@ -82,26 +82,35 @@ enrichPathDependencies ::
 enrichPathDependencies includeAll options projectRevision pr = do
   org <- getOrganization
   let baseDir = projectResultPath pr
-  let graph = projectResultGraph pr
   let includeAll' = (fromFlag IncludeAll includeAll)
   if orgSupportsPathDependencyScans org
     then do
-      graph' <- resolvePaths includeAll' options projectRevision org baseDir graph
-      pure $ pr{projectResultGraph = graph'}
+      replacements <- resolvePathDependencies includeAll' options projectRevision org baseDir (unPublishedGraph (projectResultGraph pr))
+      -- Resolution applies to BOTH views (one effectful pass, pure graph
+      -- rewrites): findings capture what was resolved, disconnected deps
+      -- included. Only mkResult's prune is publication-only.
+      let apply = applyPathReplacements replacements
+      pure $
+        pr
+          { projectResultGraph = PublishedGraph (apply (unPublishedGraph (projectResultGraph pr)))
+          , projectResultUnprunedGraph = RawGraph (apply (unRawGraph (projectResultUnprunedGraph pr)))
+          }
     else pure pr
 
 -- | Updates 'ProjectResult' dependency graph, by updating
 -- unresolved path dependency, without license scan, or endpoint upload.
 enrichPathDependencies' :: ProjectResult -> ProjectResult
-enrichPathDependencies' pr = do
-  let graph = projectResultGraph pr
-  let graph' = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d) graph
-  pr{projectResultGraph = graph'}
+enrichPathDependencies' pr =
+  let relabel = gmap (\d -> if dependencyType d == UnresolvedPathType then d{dependencyType = PathType} else d)
+   in pr
+        { projectResultGraph = PublishedGraph (relabel (unPublishedGraph (projectResultGraph pr)))
+        , projectResultUnprunedGraph = RawGraph (relabel (unRawGraph (projectResultUnprunedGraph pr)))
+        }
 
 withPathDependencyNudge :: Has Logger sig m => Flag IncludeAll -> ProjectResult -> m ProjectResult
 withPathDependencyNudge includeAll pr = do
   let includeAll' = (fromFlag IncludeAll includeAll)
-  let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep includeAll') $ vertexList $ projectResultGraph pr
+  let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep includeAll') $ vertexList $ unPublishedGraph (projectResultGraph pr)
 
   -- Only nudge users, if they have any path dependencies!
   when (isJust maybePathDeps) $ do
@@ -116,8 +125,16 @@ withPathDependencyNudge includeAll pr = do
     projectLabel :: Text
     projectLabel = toText (projectResultType pr) <> " at: " <> toText (projectResultPath pr)
 
--- | Scan and Uploads path dependency from a graph
-resolvePaths ::
+-- | Deps with no replacement (never scanned) pass through unchanged.
+applyPathReplacements :: [(Dependency, Maybe Dependency)] -> Graphing Dependency -> Graphing Dependency
+applyPathReplacements deps = gmap replace
+  where
+    replace dep = case find (\d -> fst d == dep) deps of
+      Nothing -> dep
+      Just (_, maybeDep) -> fromMaybe dep maybeDep
+
+-- | Scan and upload path dependencies from a graph, returning resolved replacements so any view can apply them.
+resolvePathDependencies ::
   ( Has Diagnostics sig m
   , Has (Lift IO) sig m
   , Has StickyLogger sig m
@@ -131,14 +148,14 @@ resolvePaths ::
   Organization ->
   Path Abs Dir ->
   Graphing Dependency ->
-  m (Graphing Dependency)
-resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
+  m [(Dependency, Maybe Dependency)]
+resolvePathDependencies leaveUnfiltered options projectRevision org baseDir graph = do
   let uploadKind = orgFileUpload org
   let maybePathDeps = NE.nonEmpty $ filter (isValidPathDep leaveUnfiltered) $ vertexList graph
   case maybePathDeps of
     -- If there are no resolvable path dependencies
     -- we need to do nothing!
-    Nothing -> pure graph
+    Nothing -> pure []
     Just pathDeps -> do
       -- 1. Get only unique dependencies, since we may have
       -- duplicate dependencies in the graph!
@@ -163,17 +180,8 @@ resolvePaths leaveUnfiltered options projectRevision org baseDir graph = do
       unless (null resolvedLoc) $
         finalizeLicenseScanForPathDependency resolvedLoc False
 
-      -- 6. Finally update the graph with resolved path dependencies!
-      pure $ replaceResolved (scannedDeps ++ alreadyScannedDeps)
+      pure (scannedDeps ++ alreadyScannedDeps)
   where
-    replaceResolved :: [(Dependency, Maybe Dependency)] -> Graphing Dependency
-    replaceResolved deps = gmap (replace deps) graph
-
-    replace :: [(Dependency, Maybe Dependency)] -> Dependency -> Dependency
-    replace deps dep = case find (\d -> fst d == dep) deps of
-      Nothing -> dep
-      Just (_, maybeDep) -> fromMaybe dep maybeDep
-
     resolvedLocators :: [(Dependency, Maybe Dependency)] -> [Locator]
     resolvedLocators deps = map toLocator (mapMaybe snd deps)
 
