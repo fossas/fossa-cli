@@ -27,7 +27,6 @@ import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
-  mergeWalkSteps,
   walkWithFilters',
  )
 import Effect.Exec (GetDepsEffs)
@@ -101,27 +100,34 @@ discoverVisitor ::
 discoverVisitor dir _ files = do
   let packageManifestFile = findFileNamed "Package.swift" files
   let packageResolvedFile = findFileNamed "Package.resolved" files
-  let (swiftProj, swiftStep) =
+  -- The two halves used to be independent walks, each with its own diagnostics
+  -- context; keep those contexts around the per-directory checks so a failure
+  -- still reports which half it came from.
+  swiftProj <-
+    context "Finding swift package projects" $
+      pure $
         case (packageManifestFile, packageResolvedFile) of
-          (Just manifestFile, resolvedFile) ->
-            ([PackageProject $ SwiftPackageProject manifestFile dir resolvedFile], WalkSkipSome [".build"])
-          (Nothing, _) ->
-            ([], WalkContinue)
+          (Just manifestFile, resolvedFile) -> [PackageProject $ SwiftPackageProject manifestFile dir resolvedFile]
+          (Nothing, _) -> []
   let xcodeProjectFile = findFileNamed "project.pbxproj" files
-  (xcodeProj, xcodeStep) <- case xcodeProjectFile of
-    Nothing ->
-      pure ([], WalkContinue)
-    Just projFile -> do
-      resolvedFile <- findFirstResolvedFileRecursively dir
-      xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
-      if xCodeProjWithDependencies
-        then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
-        else debugXCodeWithoutSwiftDeps projFile $> ([], WalkContinue)
+  xcodeProj <-
+    context "Finding xcode projects using swift package manager" $
+      case xcodeProjectFile of
+        Nothing ->
+          pure []
+        Just projFile -> do
+          resolvedFile <- findFirstResolvedFileRecursively dir
+          xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
+          if xCodeProjWithDependencies
+            then pure [XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile]
+            else debugXCodeWithoutSwiftDeps projFile $> []
   pure
     ( swiftProj <> xcodeProj
-    , if not (null swiftProj) || not (null xcodeProj)
+    , -- Both halves skip the same directory set when they match anything, and
+      -- neither produces a step otherwise, so the union is just this condition.
+      if not (null swiftProj) || not (null xcodeProj)
         then WalkSkipSome [".build"]
-        else mergeWalkSteps [swiftStep, xcodeStep]
+        else WalkContinue
     )
 
 findSwiftPackageProjects ::
