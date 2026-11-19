@@ -61,6 +61,36 @@ serdeAliasMap =
         }
     ]
 
+-- Maven dep whose fork alias rewrites it to a git locator (a cross-type alias).
+depMavenAliasedToGit :: Dependency
+depMavenAliasedToGit = Dependency MavenType "org.example:a" (Just (CEq "1.0.0")) [] (Set.fromList [EnvProduction]) Map.empty
+
+-- Cross-type alias map: the fork is Maven, the base is Git.
+mvnToGitAliasMap :: Map.Map Locator ForkAlias
+mvnToGitAliasMap =
+  mkForkAliasMap
+    [ ForkAlias
+        { forkAliasFork = ForkAliasEntry{forkAliasEntryType = MavenType, forkAliasEntryName = "org.example:a", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasBase = ForkAliasEntry{forkAliasEntryType = GitType, forkAliasEntryName = "myorg/lib", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasLabels = []
+        }
+    ]
+
+-- Maven dep whose fork alias keeps the same type (a same-type alias).
+depMavenAliasedSameType :: Dependency
+depMavenAliasedSameType = Dependency MavenType "org.example:a" (Just (CEq "1.0.0")) [] (Set.fromList [EnvProduction]) Map.empty
+
+-- Same-type alias map: both fork and base are Maven, only the name differs.
+mvnToMavenAliasMap :: Map.Map Locator ForkAlias
+mvnToMavenAliasMap =
+  mkForkAliasMap
+    [ ForkAlias
+        { forkAliasFork = ForkAliasEntry{forkAliasEntryType = MavenType, forkAliasEntryName = "org.example:a", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasBase = ForkAliasEntry{forkAliasEntryType = MavenType, forkAliasEntryName = "org.example:a-aliased", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasLabels = []
+        }
+    ]
+
 -- The findings document the CLI contributes to the upload payload.
 findingsDoc :: Aeson.Value
 findingsDoc = Aeson.object ["projects" .= ([] :: [Aeson.Value])]
@@ -228,6 +258,43 @@ spec = do
               (graphObject [nodeObj "cargo+serde$2.0.0" ["production"], nodeObj "cargo+serde$2.0.0" ["production"]] [] [1])
           expected = Aeson.object ["projects" .= [obj]]
       renderProjectFindings testPath serdeAliasMap [mkProject CargoProjectType graph Complete] `shouldBe` expected
+
+    -- The locator is keyed by the aliased (git) locator, but the old code
+    -- classified linking from the dependency's original (maven) type, yielding a
+    -- Maven-derived DYNAMIC on a git row. Classifying from the aliased type now
+    -- yields the git default, UNKNOWN, reproducible from the document's own input.
+    it "classifies a cross-type fork alias's linking from the aliased locator's type (maven -> git)" $ do
+      let graph = Graphing.directs [depMavenAliasedToGit]
+          unknownLinking =
+            Aeson.object
+              [ "type" .= ("LINKING_TYPE_UNKNOWN" :: Text)
+              , "tier" .= ("DETERMINATION_TIER_RULE" :: Text)
+              , "evidence" .= linkingEvidenceObj
+              , "unknownReason" .= ("UNKNOWN_REASON_NEEDS_ADJUDICATION" :: Text)
+              ]
+          obj =
+            projectObj
+              ""
+              "gradle"
+              "GRAPH_BREADTH_COMPLETE"
+              (depsObject [("git+myorg/lib$1.0.0", [occObjAliased "" True "production" "mvn+org.example:a$1.0.0" unknownLinking])])
+              (graphObject [nodeObj "git+myorg/lib$1.0.0" ["production"]] [] [0])
+          expected = Aeson.object ["projects" .= [obj]]
+      renderProjectFindings testPath mvnToGitAliasMap [mkProject GradleProjectType graph Complete] `shouldBe` expected
+
+    -- A same-type alias must behave exactly as today: the aliased locator keeps
+    -- the maven type, so its linking stays the maven default, DYNAMIC.
+    it "keeps a same-type fork alias's linking at the aliased type's default (maven -> maven)" $ do
+      let graph = Graphing.directs [depMavenAliasedSameType]
+          obj =
+            projectObj
+              ""
+              "gradle"
+              "GRAPH_BREADTH_COMPLETE"
+              (depsObject [("mvn+org.example:a-aliased$1.0.0", [occObjAliased "" True "production" "mvn+org.example:a$1.0.0" dynamicLinking])])
+              (graphObject [nodeObj "mvn+org.example:a-aliased$1.0.0" ["production"]] [] [0])
+          expected = Aeson.object ["projects" .= [obj]]
+      renderProjectFindings testPath mvnToMavenAliasMap [mkProject GradleProjectType graph Complete] `shouldBe` expected
 
     it "renders project paths relative to the scan target, empty at the target itself" $ do
       subdir <- parseAbsDir (toFilePath testPath <> "packages/cli/")
