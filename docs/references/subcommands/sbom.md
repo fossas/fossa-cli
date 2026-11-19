@@ -25,6 +25,7 @@ In addition to the [usual FOSSA project flags](#common-fossa-project-flags) supp
 | ------------------------------------- | ----- | ----------------------------------------------------------------------------------- |
 | `--team 'team name'` | `-T` | Specify a team within your FOSSA organization. If you only have team-scoped permissions, you must specify a team of which you are a member. |
 | `--force-rescan`  | | Force the SBOM file to be rescanned, even if this exact revision has been previously uploaded |
+| `--json` | | Print project metadata as JSON after the upload, in the same format as [`fossa analyze --json`](./analyze.md#printing-project-metadata). Its locators start with `sbom+` instead of `custom+`. |
 
 ### Team Permissions
 
