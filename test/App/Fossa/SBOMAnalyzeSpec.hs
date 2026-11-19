@@ -1,18 +1,23 @@
 module App.Fossa.SBOMAnalyzeSpec (spec) where
 
+import App.Fossa.Analyze.Upload (buildProjectSummary)
 import App.Fossa.Config.SBOM.Analyze (JsonOutput (JsonOutput), SBOMAnalyzeConfig (..), SBOMAnalyzeOptions (..), cliParser)
 import App.Fossa.Config.SBOM.Common (SBOMFile (..))
 import App.Fossa.Config.Utils (parseArgString)
 import App.Fossa.SBOM.Analyze (analyzeInternal)
-import App.Types (BaseDir (..), ComponentUploadFileType (..), DependencyRebuild (DependencyRebuildReuseCache), ProjectRevision (ProjectRevision))
+import App.Types (BaseDir (..), ComponentUploadFileType (..), DependencyRebuild (DependencyRebuildReuseCache), ProjectRevision (..))
 import Control.Algebra (Has)
 import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Telemetry (withoutTelemetry)
 import Control.Effect.FossaApiClient (FossaApiClientF (..), PackageRevision (..))
+import Data.Aeson ((.=))
+import Data.Aeson qualified as Aeson
 import Data.Flag (fromFlag, toFlag')
+import Data.Text (Text)
 import Effect.Logger (Severity (SevInfo))
 import Fossa.API.Types (Archive (..))
 import Path.IO (getCurrentDir)
+import Srclib.Types (Locator (..))
 import Test.Effect (it', shouldBe')
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, runIO)
@@ -34,6 +39,23 @@ spec = do
       expectQueueSBOMBuild archive
 
       ignoreDebug . withoutTelemetry . runMockApi $ analyzeInternal config
+
+    -- logStdout writes straight to stdout, so this checks the summary --json prints for
+    -- the locator analyzeInternal builds in org 42.
+    it' "should build the --json summary from the sbom locator" $ do
+      let revision = ProjectRevision{projectName = "somesbom", projectRevision = "1.2.3", projectBranch = Nothing}
+          locator = Locator{locatorFetcher = "sbom", locatorProject = "42/somesbom", locatorRevision = Just "1.2.3"}
+          url = "https://app.fossa.com/projects/sbom%2b42%2fsomesbom/refs/branch/master/1.2.3"
+      summary <- buildProjectSummary revision locator url
+      summary
+        `shouldBe'` Aeson.object
+          [ "project" .= ("42/somesbom" :: Text)
+          , "projectId" .= ("sbom+42/somesbom" :: Text)
+          , "revision" .= ("1.2.3" :: Text)
+          , "branch" .= Aeson.Null
+          , "url" .= url
+          , "id" .= ("sbom+42/somesbom$1.2.3" :: Text)
+          ]
 
   describe "SBOM Analyze cliParser" $ do
     it' "should default --json off" $ do
