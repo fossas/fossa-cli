@@ -25,8 +25,8 @@ import Data.Text (Text)
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
 import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, toolAllowed)
 import Discovery.Walk (WalkStep (..), findFileNamed)
-import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, listingCapacity, withWalkBroadcast)
-import Discovery.Walk.Stream (DirListing (..))
+import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, withWalkBroadcast)
+import Discovery.Walk.Stream (DirListing (..), walkStream)
 import Path
 import Path.IO (createDir)
 import Streaming (Of (..), Stream, lift)
@@ -274,7 +274,7 @@ abortSpec =
         res <-
           sendIO $
             try @SomeException
-              (runTestEffects (broadcastStream (mempty :: AllFilters) (failingWalkerStream tmpDir) [consumer]))
+              (runTestEffects (broadcastStream 1 (mempty :: AllFilters) (failingWalkerStream tmpDir) [consumer]))
         -- The walker's user error propagates out of the run, and the run
         -- returns rather than hanging — the consumer parked on its channel
         -- was killed by the abort path.
@@ -343,8 +343,11 @@ backpressureSpec =
     it' "stops the walk once a stalled consumer falls a queue behind" $
       withTempDir "test-Discovery-WalkBroadcast-backpressure" $ \tmpDir -> do
         -- More directories than a queue holds, so an unbounded broadcast would
-        -- let the other consumer see the whole tree while this one stalls.
-        let numDirs = listingCapacity + 64
+        -- let the other consumer see the whole tree while this one stalls.  The
+        -- capacity is a parameter precisely so this spec can use a handful of
+        -- listings instead of building a tree as large as 'listingCapacity'.
+        let capacity = 8
+            numDirs = capacity + 64
         sendIO $
           traverse_
             (\i -> parseRelDir ("d" ++ show (i :: Int)) >>= \rel -> createDir (tmpDir </> rel))
@@ -364,7 +367,11 @@ backpressureSpec =
         -- its own thread and observe the fast consumer from here.
         done <- sendIO newEmptyMVar
         sendIO . void . forkIO $ do
-          res <- try @SomeException (runTestEffects (withWalkBroadcast (mempty :: AllFilters) tmpDir consumers))
+          res <-
+            try @SomeException
+              ( runTestEffects
+                  (broadcastStream capacity (mempty :: AllFilters) (walkStream (mempty :: AllFilters) tmpDir) consumers)
+              )
           putMVar done (either (const False) (const True) res)
 
         sendIO (takeMVar started)

@@ -66,18 +66,21 @@ import Streaming (Of (..), Stream)
 import Streaming.Prelude qualified as S
 import Types (DiscoveredProjectType)
 
--- | Unread listings each consumer's queue holds before the walker blocks.
+-- | Unread listings each consumer's queue holds before the walker blocks; the
+-- capacity 'withWalkBroadcast' passes to 'broadcastStream'.
 --
--- This is the bound on how far the walker may outrun the slowest consumer, and
--- therefore on how much of the listing set is retained: without it a consumer
--- stalled for long enough pins every listing the walk has produced so far.  The
--- trade-off is that a consumer stalled beyond the bound also stalls its
--- siblings until it catches up.  Every queue holds its own pointers to the same
--- immutable listings, so the retained payload is shared: the per-strategy cost
--- is one queue cell per listing, not a copy of the listing, which is what makes
--- a bound this generous (a few MB across the ~40 strategies) affordable.
+-- This bounds how far the walker may outrun the slowest consumer, and so how
+-- much of the listing set stays retained.  A consumer stalled beyond it also
+-- stalls its siblings until it catches up, which is what costs wall clock:
+-- measured on this repository (22,435 directories, 35 consumers) 2048 ran
+-- 25.4s, 16384 21.9s and 65536 22.4s, so the curve flattens here.
+--
+-- Peak RSS tracks the bound only while the bound binds: 2048 held ~1.74 GB on
+-- every run, whereas 16384 ranged 2.2-2.6 GB, set by the tree and by scheduling
+-- rather than by the constant.  What is retained is the pinned listings' path
+-- lists, not the queue cells, so shortening those paths would buy headroom.
 listingCapacity :: Int
-listingCapacity = 2048
+listingCapacity = 16384
 
 -- | One broadcast consumer: the strategy tool it serves ('wcProjectType',
 -- gated against the filters) and its per-directory 'Visitor'.
@@ -145,11 +148,20 @@ accumulateConsumer projectType msg sink rawVisitor =
             $> ((), step)
 
 -- | Fan out one listing stream to a set of concurrent consumers.
+--
+-- @capacity@ is how many unread listings each consumer's queue holds before the
+-- walker blocks; 'listingCapacity' is what 'withWalkBroadcast' uses.  It is a
+-- parameter so tests can pick a small one instead of building a tree as large
+-- as the production bound.
 broadcastStream ::
   forall sig (m :: Type -> Type) o.
   Has (Lift IO) sig m =>
-  AllFilters -> Stream (Of DirListing) m () -> [WalkConsumer o m] -> m ()
-broadcastStream filters listings consumers =
+  Int ->
+  AllFilters ->
+  Stream (Of DirListing) m () ->
+  [WalkConsumer o m] ->
+  m ()
+broadcastStream capacity filters listings consumers =
   unless (null enabled) startAll
   where
     enabled :: [WalkConsumer o m]
@@ -159,10 +171,10 @@ broadcastStream filters listings consumers =
     startAll = do
       -- One bounded queue per enabled consumer, each drained by exactly that
       -- consumer's thread.  'writeTBMQueue' blocks while a queue is full, so the
-      -- walker cannot get more than 'listingCapacity' listings ahead of the
-      -- slowest consumer; 'closeTBMQueue' ends the stream, since
-      -- 'readTBMQueue' yields 'Nothing' once a closed queue has drained.
-      queues <- traverse (const $ sendIO (newTBMQueueIO listingCapacity)) enabled
+      -- walker cannot get more than @capacity@ listings ahead of the slowest
+      -- consumer; 'closeTBMQueue' ends the stream, since 'readTBMQueue' yields
+      -- 'Nothing' once a closed queue has drained.
+      queues <- traverse (const $ sendIO (newTBMQueueIO capacity)) enabled
       errVar <- sendIO newEmptyTMVarIO
       hsVar <- sendIO $ newTVarIO ([] :: [Handle])
       runForkWait queues errVar hsVar
@@ -273,4 +285,4 @@ withWalkBroadcast ::
   Path Abs Dir ->
   [WalkConsumer o m] ->
   m ()
-withWalkBroadcast filters basedir = broadcastStream filters (walkStream filters basedir)
+withWalkBroadcast filters basedir = broadcastStream listingCapacity filters (walkStream filters basedir)
