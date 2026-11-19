@@ -414,8 +414,8 @@ spec = do
   -- passing silently.
   describe "defaultLinking" $ do
     it "matches the approved per-ecosystem table for every DepType constructor" $ do
-      let staticDefaults = [GoType, CargoType, SwiftType, HackageType, HexType, ConanType, PodType, PathType, UnresolvedPathType, PubType, SubprojectType]
-          dynamicDefaults = [MavenType, NodeJSType, PipType, GemType, NuGetType, ComposerType, CpanType, CranType, CondaType, CarthageType, LinuxAPK, LinuxDEB, LinuxRPM, RPMType, BowerType]
+      let staticDefaults = [GoType, CargoType, SwiftType, HackageType, ConanType, PodType, PathType, UnresolvedPathType, PubType, SubprojectType]
+          dynamicDefaults = [MavenType, NodeJSType, PipType, GemType, NuGetType, ComposerType, CpanType, CranType, CondaType, CarthageType, LinuxAPK, LinuxDEB, LinuxRPM, RPMType, HexType, BowerType]
           unknownDefaults = [GitType, GooglesourceType, URLType, ArchiveType, UserType, CustomType]
           approved :: Map.Map DepType FindingsLinking
           approved =
