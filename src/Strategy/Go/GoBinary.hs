@@ -161,24 +161,29 @@ finalizeProjects ::
   -- | candidate binaries collected by 'discoverVisitor'
   m [Path Abs File] ->
   m [DiscoveredProject GoBinaryProject]
-finalizeProjects dir collect = do
-  enabled <- enableGoBinaryAnalysis <$> ask
-  if not enabled
-    then pure []
-    else do
-      candidates <- collect
-      if null candidates
-        then pure []
-        else do
-          -- A failure here (millhone missing, unparseable output) should not
-          -- sink the whole scan, but it must not pass silently either: the
-          -- user asked for this analysis and would otherwise get zero Go
-          -- dependencies with no explanation.
-          discovered <-
-            warnThenRecover @Text "Error reading Go buildinfo (millhone)" $
-              context "Reading Go buildinfo" $
-                analyzeGoBinaries dir candidates
-          pure . map mkProject . toProjects candidates $ concat discovered
+finalizeProjects dir collect =
+  -- The tool-name and phase contexts 'Discovery.Simple.simpleDiscover' wraps
+  -- around a strategy's discovery.  This finalizer is hand-written (millhone
+  -- runs once over the whole collected batch), so it has to apply them itself
+  -- or its failures lose their tool attribution in the context tree.
+  context (toText GoBinaryProjectType) $ context "Finding Projects" $ do
+    enabled <- enableGoBinaryAnalysis <$> ask
+    if not enabled
+      then pure []
+      else do
+        candidates <- collect
+        if null candidates
+          then pure []
+          else do
+            -- A failure here (millhone missing, unparseable output) should not
+            -- sink the whole scan, but it must not pass silently either: the
+            -- user asked for this analysis and would otherwise get zero Go
+            -- dependencies with no explanation.
+            discovered <-
+              warnThenRecover @Text "Error reading Go buildinfo (millhone)" $
+                context "Reading Go buildinfo" $
+                  analyzeGoBinaries dir candidates
+            pure . map mkProject . toProjects candidates $ concat discovered
 
 -- | Match millhone's results back to the paths we handed it and group them by
 -- containing directory, dropping any binary whose buildinfo yields no usable

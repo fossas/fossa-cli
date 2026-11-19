@@ -5,7 +5,9 @@
 module Go.GoBinarySpec (spec) where
 
 import App.Fossa.Config.Analyze (StrategyConfig (..), UseGitBackedCargoLocators (..))
+import Control.Carrier.Diagnostics (runDiagnostics)
 import Control.Carrier.Reader (runReader)
+import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.Lift (sendIO)
 import Control.Exception (throwIO)
 import Data.Aeson (eitherDecode)
@@ -13,12 +15,15 @@ import Data.ByteString.Char8 qualified as BS
 import Data.ByteString.Lazy (ByteString)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepType (GoType),
   Dependency (..),
   VerConstraint (CEq),
  )
+import Diag.Result (Result (Failure, Success), renderFailure)
 import Discovery.Walk (WalkStep (..))
+import Effect.Logger (renderIt)
 import Path (Abs, Dir, File, Path, mkAbsDir, mkAbsFile, relfile, toFilePath, (</>))
 import Strategy.Go.GoBinary (
   DiscoveredGoBinary (..),
@@ -31,7 +36,7 @@ import Strategy.Go.GoBinary (
   toProjects,
  )
 import Test.Effect (itWithTempDir', shouldBe')
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldSatisfy)
 
 -- Output from @millhone analyze-go-binaries@ for a single Go binary.
 millhoneOutput :: ByteString
@@ -195,3 +200,19 @@ spec = do
           collectMustNotRun = sendIO (throwIO (userError "collect must not run when go-binary analysis is disabled"))
       projects <- runReader offConfig (finalizeProjects dir collectMustNotRun)
       projects `shouldBe'` []
+
+  -- The tool-name and phase contexts are what make a discovery failure
+  -- attributable; 'Discovery.Simple.simpleDiscover' applies them for strategies
+  -- that use it, but this finalizer is hand-written, so nothing else does.
+  describe "finalizeProjects diagnostics contexts" $
+    itWithTempDir' "reports a collection failure under the tool and phase contexts" $ \dir -> do
+      let onConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) True
+          failingCollect = fatalText "collect failed"
+      res <- runReader onConfig $ runDiagnostics $ finalizeProjects dir failingCollect
+      case res of
+        Failure ws eg -> do
+          let rendered = renderIt (renderFailure ws eg "An issue occurred")
+          sendIO $ do
+            rendered `shouldSatisfy` Text.isInfixOf "gobinary"
+            rendered `shouldSatisfy` Text.isInfixOf "Finding Projects"
+        Success{} -> sendIO $ expectationFailure "expected finalizeProjects to fail when collection fails"
