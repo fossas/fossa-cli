@@ -81,8 +81,9 @@ finalizeSink sink = do
     Right projects -> pure projects
 
 -- | Drive every drivable strategy's visitor over the production broadcast path
--- rooted at @tmpDir@, then finalize each sink with 'cachedDiscover'.  Returns
--- the discovered entries across all eight strategies.
+-- rooted at @tmpDir@, then finalize each sink with the strategy's own
+-- production finalizer.  Returns the discovered entries across all nine
+-- strategies.
 collectWalk :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has ReadFS sig m, Has Logger sig m) => Path Abs Dir -> m [Entry]
 collectWalk tmpDir = do
   filters <- ask
@@ -203,7 +204,8 @@ expectedSelfDiscoverEntries tmp =
   ]
 
 -- | The full set of projects across both mechanisms: the shared-walk visitors
--- plus the two self-discovering strategies, each pinned to its manifest dir.
+-- plus Maven, the one self-discovering strategy, each pinned to its manifest
+-- dir.
 expectedFullEntries :: Path Abs Dir -> [Entry]
 expectedFullEntries tmp = expectedEntries tmp <> expectedSelfDiscoverEntries tmp
 
