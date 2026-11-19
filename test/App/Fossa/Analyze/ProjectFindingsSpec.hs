@@ -3,7 +3,7 @@ module App.Fossa.Analyze.ProjectFindingsSpec (spec) where
 import App.Fossa.Analyze (WorkflowUploadPayload (..), clobbersProjectFindings, projectFindingsPayload)
 import App.Fossa.Analyze.ForkAlias (mkForkAliasMap)
 import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
-import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
+import App.Fossa.Analyze.ProjectFindings (FindingsLinking (..), defaultLinking, renderProjectFindings)
 import App.Fossa.ManualDeps (ForkAlias (..), ForkAliasEntry (..))
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -11,7 +11,7 @@ import Data.Aeson.Key (fromText)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
-import DepTypes (DepEnvironment (..), DepType (CargoType, GoType, MavenType, NodeJSType), Dependency (..), VerConstraint (CEq))
+import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (CEq))
 import Graphing qualified
 import Path (parseAbsDir, toFilePath)
 import Srclib.Types (Locator)
@@ -19,7 +19,10 @@ import System.Directory (getTemporaryDirectory)
 import Test.Hspec (Spec, describe, it, runIO, shouldBe)
 import Types (DiscoveredProjectType (CargoProjectType, GradleProjectType, NpmProjectType), GraphBreadth (Complete, Partial))
 
--- | mvn+org.example:a$1.0.0, production-only
+-- | git+myorg/lib$1.0.0, production-only
+depGit :: Dependency
+depGit = Dependency GitType "myorg/lib" (Just (CEq "1.0.0")) [] (Set.fromList [EnvProduction]) Map.empty
+
 depA :: Dependency
 depA = Dependency MavenType "org.example:a" (Just (CEq "1.0.0")) [] (Set.fromList [EnvProduction]) Map.empty
 
@@ -58,6 +61,36 @@ serdeAliasMap =
         }
     ]
 
+-- Maven dep whose fork alias rewrites it to a git locator (a cross-type alias).
+depMavenAliasedToGit :: Dependency
+depMavenAliasedToGit = Dependency MavenType "org.example:a" (Just (CEq "1.0.0")) [] (Set.fromList [EnvProduction]) Map.empty
+
+-- Cross-type alias map: the fork is Maven, the base is Git.
+mvnToGitAliasMap :: Map.Map Locator ForkAlias
+mvnToGitAliasMap =
+  mkForkAliasMap
+    [ ForkAlias
+        { forkAliasFork = ForkAliasEntry{forkAliasEntryType = MavenType, forkAliasEntryName = "org.example:a", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasBase = ForkAliasEntry{forkAliasEntryType = GitType, forkAliasEntryName = "myorg/lib", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasLabels = []
+        }
+    ]
+
+-- Maven dep whose fork alias keeps the same type (a same-type alias).
+depMavenAliasedSameType :: Dependency
+depMavenAliasedSameType = Dependency MavenType "org.example:a" (Just (CEq "1.0.0")) [] (Set.fromList [EnvProduction]) Map.empty
+
+-- Same-type alias map: both fork and base are Maven, only the name differs.
+mvnToMavenAliasMap :: Map.Map Locator ForkAlias
+mvnToMavenAliasMap =
+  mkForkAliasMap
+    [ ForkAlias
+        { forkAliasFork = ForkAliasEntry{forkAliasEntryType = MavenType, forkAliasEntryName = "org.example:a", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasBase = ForkAliasEntry{forkAliasEntryType = MavenType, forkAliasEntryName = "org.example:a-aliased", forkAliasEntryVersion = Just "1.0.0"}
+        , forkAliasLabels = []
+        }
+    ]
+
 -- The findings document the CLI contributes to the upload payload.
 findingsDoc :: Aeson.Value
 findingsDoc = Aeson.object ["projects" .= ([] :: [Aeson.Value])]
@@ -76,22 +109,43 @@ edgeObj fromIndex toIndex =
     , "toIndex" .= toIndex
     ]
 
-occObj :: Text -> Bool -> Text -> Aeson.Value
-occObj modulePath isDirect scope =
+-- The rule-tier linking block every occurrence row carries. Pass whatever type
+-- defaultLinking gives this fixture's dep.
+linkingEvidenceObj :: Aeson.Value
+linkingEvidenceObj = Aeson.object ["summary" .= ("Hard-coded per-ecosystem default" :: Text), "references" .= ([] :: [Text])]
+
+linkingObj :: Text -> Aeson.Value
+linkingObj linkingType =
+  Aeson.object
+    [ "type" .= (linkingType :: Text)
+    , "tier" .= ("DETERMINATION_TIER_RULE" :: Text)
+    , "evidence" .= linkingEvidenceObj
+    ]
+
+dynamicLinking :: Aeson.Value
+dynamicLinking = linkingObj "LINKING_TYPE_DYNAMIC"
+
+staticLinking :: Aeson.Value
+staticLinking = linkingObj "LINKING_TYPE_STATIC"
+
+occObj :: Text -> Bool -> Text -> Aeson.Value -> Aeson.Value
+occObj modulePath isDirect scope linking =
   Aeson.object
     [ "module" .= modulePath
     , "isDirect" .= (isDirect :: Bool)
     , "scope" .= scope
+    , "linking" .= linking
     ]
 
 -- aliasedFrom present only when a fork alias changed the dependency's locator.
-occObjAliased :: Text -> Bool -> Text -> Text -> Aeson.Value
-occObjAliased modulePath isDirect scope aliasedFrom =
+occObjAliased :: Text -> Bool -> Text -> Text -> Aeson.Value -> Aeson.Value
+occObjAliased modulePath isDirect scope aliasedFrom linking =
   Aeson.object
     [ "aliasedFrom" .= (aliasedFrom :: Text)
     , "module" .= modulePath
     , "isDirect" .= (isDirect :: Bool)
     , "scope" .= scope
+    , "linking" .= linking
     ]
 
 depsObject :: [(Text, [Aeson.Value])] -> Aeson.Value
@@ -140,9 +194,7 @@ spec = do
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("go+github.com/lost/deep$9.9.9", [occObj "" False "production"])
-                  , ("mvn+org.example:a$1.0.0", [occObj "" True "production"])
-                  ]
+                  [("go+github.com/lost/deep$9.9.9", [occObj "" False "production" staticLinking]), ("mvn+org.example:a$1.0.0", [occObj "" True "production" dynamicLinking])]
               )
               (graphObject [nodeObj "go+github.com/lost/deep$9.9.9" ["production"], nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [1])
           expected = Aeson.object ["projects" .= [obj]]
@@ -160,9 +212,7 @@ spec = do
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("mvn+org.example:b$2.0.0", [occObj "" True "other:runtimeClasspath", occObj "" True "production", occObj "" True "testing"])
-                  , ("npm+c$3.0.0", [occObj "" False "development"])
-                  ]
+                  [("mvn+org.example:b$2.0.0", [occObj "" True "other:runtimeClasspath" dynamicLinking, occObj "" True "production" dynamicLinking, occObj "" True "testing" dynamicLinking]), ("npm+c$3.0.0", [occObj "" False "development" dynamicLinking])]
               )
               (graphObject [nodeObj "mvn+org.example:b$2.0.0" ["other:runtimeClasspath", "production", "testing"], nodeObj "npm+c$3.0.0" ["development"]] [edgeObj 0 1] [0])
           expected = Aeson.object ["projects" .= [obj]]
@@ -176,9 +226,7 @@ spec = do
               "cargo"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("cargo+serde$2.0.0", [occObjAliased "" True "production" "cargo+my-serde$1.0.0"])
-                  , ("mvn+org.example:a$1.0.0", [occObj "" True "production"])
-                  ]
+                  [("cargo+serde$2.0.0", [occObjAliased "" True "production" "cargo+my-serde$1.0.0" staticLinking]), ("mvn+org.example:a$1.0.0", [occObj "" True "production" dynamicLinking])]
               )
               (graphObject [nodeObj "cargo+serde$2.0.0" ["production"], nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [0, 1])
           expected = Aeson.object ["projects" .= [obj]]
@@ -191,7 +239,7 @@ spec = do
               ""
               "npm"
               "GRAPH_BREADTH_COMPLETE"
-              (depsObject [("npm+pkg$1.0.0", [occObj "" True "production", occObj "" True "testing"])])
+              (depsObject [("npm+pkg$1.0.0", [occObj "" True "production" dynamicLinking, occObj "" True "testing" dynamicLinking])])
               (graphObject [nodeObj "npm+pkg$1.0.0" ["production"], nodeObj "npm+pkg$1.0.0" ["testing"]] [] [0, 1])
           expected = Aeson.object ["projects" .= [obj]]
       renderProjectFindings testPath Map.empty [mkProject NpmProjectType graph Complete] `shouldBe` expected
@@ -206,10 +254,47 @@ spec = do
               ""
               "cargo"
               "GRAPH_BREADTH_COMPLETE"
-              (depsObject [("cargo+serde$2.0.0", [occObjAliased "" True "production" "cargo+my-serde$1.0.0"])])
+              (depsObject [("cargo+serde$2.0.0", [occObjAliased "" True "production" "cargo+my-serde$1.0.0" staticLinking])])
               (graphObject [nodeObj "cargo+serde$2.0.0" ["production"], nodeObj "cargo+serde$2.0.0" ["production"]] [] [1])
           expected = Aeson.object ["projects" .= [obj]]
       renderProjectFindings testPath serdeAliasMap [mkProject CargoProjectType graph Complete] `shouldBe` expected
+
+    -- The locator is keyed by the aliased (git) locator, but the old code
+    -- classified linking from the dependency's original (maven) type, yielding a
+    -- Maven-derived DYNAMIC on a git row. Classifying from the aliased type now
+    -- yields the git default, UNKNOWN, reproducible from the document's own input.
+    it "classifies a cross-type fork alias's linking from the aliased locator's type (maven -> git)" $ do
+      let graph = Graphing.directs [depMavenAliasedToGit]
+          unknownLinking =
+            Aeson.object
+              [ "type" .= ("LINKING_TYPE_UNKNOWN" :: Text)
+              , "tier" .= ("DETERMINATION_TIER_RULE" :: Text)
+              , "evidence" .= linkingEvidenceObj
+              , "unknownReason" .= ("UNKNOWN_REASON_NEEDS_ADJUDICATION" :: Text)
+              ]
+          obj =
+            projectObj
+              ""
+              "gradle"
+              "GRAPH_BREADTH_COMPLETE"
+              (depsObject [("git+myorg/lib$1.0.0", [occObjAliased "" True "production" "mvn+org.example:a$1.0.0" unknownLinking])])
+              (graphObject [nodeObj "git+myorg/lib$1.0.0" ["production"]] [] [0])
+          expected = Aeson.object ["projects" .= [obj]]
+      renderProjectFindings testPath mvnToGitAliasMap [mkProject GradleProjectType graph Complete] `shouldBe` expected
+
+    -- A same-type alias must behave exactly as today: the aliased locator keeps
+    -- the maven type, so its linking stays the maven default, DYNAMIC.
+    it "keeps a same-type fork alias's linking at the aliased type's default (maven -> maven)" $ do
+      let graph = Graphing.directs [depMavenAliasedSameType]
+          obj =
+            projectObj
+              ""
+              "gradle"
+              "GRAPH_BREADTH_COMPLETE"
+              (depsObject [("mvn+org.example:a-aliased$1.0.0", [occObjAliased "" True "production" "mvn+org.example:a$1.0.0" dynamicLinking])])
+              (graphObject [nodeObj "mvn+org.example:a-aliased$1.0.0" ["production"]] [] [0])
+          expected = Aeson.object ["projects" .= [obj]]
+      renderProjectFindings testPath mvnToMavenAliasMap [mkProject GradleProjectType graph Complete] `shouldBe` expected
 
     it "renders project paths relative to the scan target, empty at the target itself" $ do
       subdir <- parseAbsDir (toFilePath testPath <> "packages/cli/")
@@ -219,14 +304,14 @@ spec = do
               "packages/cli"
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
-              (depsObject [("mvn+org.example:a$1.0.0", [occObj "packages/cli" True "production"])])
+              (depsObject [("mvn+org.example:a$1.0.0", [occObj "packages/cli" True "production" dynamicLinking])])
               (graphObject [nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [0])
           atRoot =
             projectObj
               ""
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
-              (depsObject [("mvn+org.example:a$1.0.0", [occObj "" True "production"])])
+              (depsObject [("mvn+org.example:a$1.0.0", [occObj "" True "production" dynamicLinking])])
               (graphObject [nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [0])
           expected = Aeson.object ["projects" .= [obj, atRoot]]
           mkProjectAt path = (mkProject GradleProjectType graph Complete){projectResultPath = path}
@@ -240,10 +325,7 @@ spec = do
               "gradle"
               "GRAPH_BREADTH_COMPLETE"
               ( depsObject
-                  [ ("mvn+org.example:a$1.0.0", [occObj "" True "production"])
-                  , ("mvn+org.example:b$2.0.0", [occObj "" True "other:runtimeClasspath", occObj "" True "production", occObj "" True "testing"])
-                  , ("npm+c$3.0.0", [occObj "" False "development"])
-                  ]
+                  [("mvn+org.example:a$1.0.0", [occObj "" True "production" dynamicLinking]), ("mvn+org.example:b$2.0.0", [occObj "" True "other:runtimeClasspath" dynamicLinking, occObj "" True "production" dynamicLinking, occObj "" True "testing" dynamicLinking]), ("npm+c$3.0.0", [occObj "" False "development" dynamicLinking])]
               )
               ( graphObject
                   [ nodeObj "mvn+org.example:a$1.0.0" ["production"]
@@ -258,7 +340,7 @@ spec = do
               ""
               "npm"
               "GRAPH_BREADTH_PARTIAL"
-              (depsObject [("mvn+org.example:a$1.0.0", [occObj "" True "production"])])
+              (depsObject [("mvn+org.example:a$1.0.0", [occObj "" True "production" dynamicLinking])])
               (graphObject [nodeObj "mvn+org.example:a$1.0.0" ["production"]] [] [0])
           expected = Aeson.object ["projects" .= [obj1, obj2]]
       renderProjectFindings testPath Map.empty [mkProject GradleProjectType graph Complete, mkProject NpmProjectType (Graphing.directs [depA]) Partial] `shouldBe` expected
@@ -272,6 +354,27 @@ spec = do
               "GRAPH_BREADTH_COMPLETE"
               (depsObject [])
               (graphObject [nodeObj "mvn+org.example:none$0.1.0" []] [] [0])
+          expected = Aeson.object ["projects" .= [obj]]
+      renderProjectFindings testPath Map.empty [mkProject GradleProjectType graph Complete] `shouldBe` expected
+
+    -- Git deliveries are model-dependent (source snapshot vs. run-time fetch),
+    -- so the rule tier declines.
+    it "emits LINKING_TYPE_UNKNOWN with its pending reason when the ecosystem has no default" $ do
+      let graph = Graphing.directs [depGit]
+          unknownLinking =
+            Aeson.object
+              [ "type" .= ("LINKING_TYPE_UNKNOWN" :: Text)
+              , "tier" .= ("DETERMINATION_TIER_RULE" :: Text)
+              , "evidence" .= linkingEvidenceObj
+              , "unknownReason" .= ("UNKNOWN_REASON_NEEDS_ADJUDICATION" :: Text)
+              ]
+          obj =
+            projectObj
+              ""
+              "gradle"
+              "GRAPH_BREADTH_COMPLETE"
+              (depsObject [("git+myorg/lib$1.0.0", [occObj "" True "production" unknownLinking])])
+              (graphObject [nodeObj "git+myorg/lib$1.0.0" ["production"]] [] [0])
           expected = Aeson.object ["projects" .= [obj]]
       renderProjectFindings testPath Map.empty [mkProject GradleProjectType graph Complete] `shouldBe` expected
 
@@ -305,3 +408,21 @@ spec = do
 
     it "is False when the workflow payload has no projectFindings key" $
       clobbersProjectFindings (Just findingsDoc) (Just $ Aeson.object [fromText "schemaVersion" .= (1 :: Int)]) `shouldBe` False
+
+  -- Enumerating [minBound .. maxBound] makes a DepType constructor that
+  -- 'defaultLinking' or this table omits fail the comparison instead of
+  -- passing silently.
+  describe "defaultLinking" $ do
+    it "matches the approved per-ecosystem table for every DepType constructor" $ do
+      let staticDefaults = [GoType, CargoType, SwiftType, HackageType, ConanType, PodType, PathType, UnresolvedPathType, PubType, SubprojectType]
+          dynamicDefaults = [MavenType, NodeJSType, PipType, GemType, NuGetType, ComposerType, CpanType, CranType, CondaType, CarthageType, LinuxAPK, LinuxDEB, LinuxRPM, RPMType, HexType, BowerType]
+          unknownDefaults = [GitType, GooglesourceType, URLType, ArchiveType, UserType, CustomType]
+          approved :: Map.Map DepType FindingsLinking
+          approved =
+            Map.fromList $
+              map (,LinkingStatic) staticDefaults
+                <> map (,LinkingDynamic) dynamicDefaults
+                <> map (,LinkingUnknown) unknownDefaults
+          observed :: Map.Map DepType FindingsLinking
+          observed = Map.fromList (map (\depType -> (depType, defaultLinking depType)) [minBound .. maxBound])
+      observed `shouldBe` approved

@@ -1,6 +1,13 @@
 {-# LANGUAGE DerivingStrategies #-}
 
-module App.Fossa.Analyze.ProjectFindings (renderProjectFindings) where
+module App.Fossa.Analyze.ProjectFindings (
+  FindingsLinking (..),
+  defaultLinking,
+  linkingUnknownReason,
+  renderLinkingTier,
+  renderLinkingType,
+  renderProjectFindings,
+) where
 
 import App.Fossa.Analyze.ForkAlias (translateLocatorWithForkAliases)
 import App.Fossa.Analyze.Project (ProjectResult (..), unRawGraph)
@@ -17,12 +24,12 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import DepTypes (DepEnvironment (..), Dependency (..), renderEnvironment)
+import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), renderEnvironment)
 import Graphing qualified
 import Path (Abs, Dir, Path, SomeBase (..), toFilePath)
 import Path.Extra (tryMakeRelative)
-import Srclib.Converter (toLocator)
-import Srclib.Types (Locator, renderLocator)
+import Srclib.Converter (fetcherToDepType, toLocator)
+import Srclib.Types (Locator, locatorFetcher, renderLocator)
 import System.FilePath (dropTrailingPathSeparator)
 import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 
@@ -34,6 +41,9 @@ import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 -- >   "breadth": "GRAPH_BREADTH_COMPLETE",
 -- >   "dependencies": {"mvn+org.example:lib$1.0.0": {"occurrences": [
 -- >     {"module": "packages/cli", "isDirect": true, "scope": "production",
+-- >      "linking": {"type": "LINKING_TYPE_DYNAMIC", "tier": "DETERMINATION_TIER_RULE",
+-- >                  "evidence": {"summary": "Hard-coded per-ecosystem default",
+-- >                                "references": []}},
 -- >      "aliasedFrom": "github+myorg/lib$1.0.0"}]}},
 -- >   "graph": {"nodes": [{"locator": "mvn+org.example:lib$1.0.0",
 -- >                         "environments": ["production"]}],
@@ -42,10 +52,9 @@ import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 -- @aliasedFrom@ is present only when a fork alias changed the locator. Nodes
 -- are identified by index, not locator. Project paths are rendered relative to
 -- the scan target (falling back to the absolute path for projects outside it).
--- Determination fields this producer
--- cannot adjudicate (@rawScope@, @isOptional@, @linking@, @distribution@,
--- @provenance@) are omitted: consumers read absence as "no determination was
--- made".
+-- Determination fields this producer cannot adjudicate (@rawScope@, @isOptional@,
+-- @distribution@ and @provenance@) are omitted; @linking@ is always a rule-tier
+-- ecosystem default, which evidence-backed determinations out-rank.
 renderProjectFindings :: Path Abs Dir -> Map.Map Locator ForkAlias -> [ProjectResult] -> Aeson.Value
 renderProjectFindings basedir forkAliasMap projects =
   toJSON (FindingsDocument (map (renderProject basedir forkAliasMap) projects))
@@ -88,6 +97,8 @@ data FindingsOccurrence = FindingsOccurrence
   { findingsOccurrenceModule :: Text
   , findingsOccurrenceIsDirect :: Bool
   , findingsOccurrenceScope :: DepEnvironment
+  , findingsOccurrenceLinking :: FindingsLinking
+  -- ^ Always emitted: the rule-tier per-ecosystem default, never an adjudication.
   , findingsOccurrenceAliasedFrom :: Maybe Text
   -- ^ Present only when a fork alias actually changed the dependency's locator.
   }
@@ -99,8 +110,87 @@ instance ToJSON FindingsOccurrence where
       [ "module" .= findingsOccurrenceModule o
       , "isDirect" .= findingsOccurrenceIsDirect o
       , "scope" .= findingsOccurrenceScope o
+      , "linking" .= findingsOccurrenceLinking o
       ]
         <> maybe [] (\raw -> [fromText "aliasedFrom" .= raw]) (findingsOccurrenceAliasedFrom o)
+
+-- | The rule-tier linking determination for an occurrence. Mirrors
+-- @AnalyzedDependency.linking@ in fossa/workflows/v1beta1/workflow_result.proto:
+-- @type@ plus @tier@ plus the evidence that produced it, and @unknownReason@
+-- exactly when the type is @LINKING_TYPE_UNKNOWN@.
+data FindingsLinking = LinkingStatic | LinkingDynamic | LinkingUnknown
+  deriving stock (Eq, Ord, Show)
+
+-- | Wire spelling of the linking type, mirroring the proto's @LinkingType@ enum.
+renderLinkingType :: FindingsLinking -> Text
+renderLinkingType = \case
+  LinkingStatic -> "LINKING_TYPE_STATIC"
+  LinkingDynamic -> "LINKING_TYPE_DYNAMIC"
+  LinkingUnknown -> "LINKING_TYPE_UNKNOWN"
+
+-- | Wire spelling of the determination tier. Every mapping in this module is a
+-- rule-tier prior, so this is constant until evidence-backed tiers exist.
+renderLinkingTier :: FindingsLinking -> Text
+renderLinkingTier _ = "DETERMINATION_TIER_RULE"
+
+-- | Why the type is @LINKING_TYPE_UNKNOWN@; @Nothing@ for the determined types.
+linkingUnknownReason :: FindingsLinking -> Maybe Text
+linkingUnknownReason LinkingUnknown = Just "UNKNOWN_REASON_NEEDS_ADJUDICATION"
+linkingUnknownReason LinkingStatic = Nothing
+linkingUnknownReason LinkingDynamic = Nothing
+
+instance ToJSON FindingsLinking where
+  toJSON l =
+    object $
+      [ "type" .= renderLinkingType l
+      , "tier" .= renderLinkingTier l
+      , "evidence" .= object ["summary" .= ("Hard-coded per-ecosystem default" :: Text), "references" .= ([] :: [Text])]
+      ]
+        <> maybe [] (\reason -> ["unknownReason" .= reason]) (linkingUnknownReason l)
+
+-- | Hard-coded per-ecosystem linking default. STATIC: the dependency's code is
+-- compiled or copied into the built artifact. DYNAMIC: resolved at load or run
+-- time from elsewhere (classpath jars, node_modules, shared libs). Coarse by
+-- design -- within-ecosystem exceptions (shaded jars, bundled JS, dynamic
+-- framework builds) are the workflow adjudicator's job; this is the RULE-tier
+-- prior, not a determination.
+defaultLinking :: DepType -> FindingsLinking
+defaultLinking = \case
+  -- statically compiled / copied in
+  GoType -> LinkingStatic
+  CargoType -> LinkingStatic
+  SwiftType -> LinkingStatic
+  HackageType -> LinkingStatic
+  ConanType -> LinkingStatic
+  PodType -> LinkingStatic
+  PathType -> LinkingStatic
+  UnresolvedPathType -> LinkingStatic
+  PubType -> LinkingStatic
+  SubprojectType -> LinkingStatic
+  -- resolved at load / run time
+  MavenType -> LinkingDynamic
+  NodeJSType -> LinkingDynamic
+  PipType -> LinkingDynamic
+  GemType -> LinkingDynamic
+  NuGetType -> LinkingDynamic
+  ComposerType -> LinkingDynamic
+  CpanType -> LinkingDynamic
+  CranType -> LinkingDynamic
+  CondaType -> LinkingDynamic
+  CarthageType -> LinkingDynamic
+  LinuxAPK -> LinkingDynamic
+  LinuxDEB -> LinkingDynamic
+  LinuxRPM -> LinkingDynamic
+  RPMType -> LinkingDynamic
+  HexType -> LinkingDynamic
+  BowerType -> LinkingDynamic
+  -- delivery-model dependent: no per-ecosystem answer exists
+  GitType -> LinkingUnknown
+  GooglesourceType -> LinkingUnknown
+  URLType -> LinkingUnknown
+  ArchiveType -> LinkingUnknown
+  UserType -> LinkingUnknown
+  CustomType -> LinkingUnknown
 
 data IndexedGraph = IndexedGraph
   { indexedGraphNodes :: [FindingsNode]
@@ -174,8 +264,21 @@ renderProject basedir forkAliasMap project =
     rawLocatorText :: Dependency -> Text
     rawLocatorText dep = renderLocator (toLocator dep)
 
+    aliasedLocator :: Dependency -> Locator
+    aliasedLocator dep = translateLocatorWithForkAliases forkAliasMap (toLocator dep)
+
     aliasedLocatorText :: Dependency -> Text
-    aliasedLocatorText dep = renderLocator (translateLocatorWithForkAliases forkAliasMap (toLocator dep))
+    aliasedLocatorText = renderLocator . aliasedLocator
+
+    -- Classify linking from the aliased locator's type, not the dependency's
+    -- original type, so the rule-tier default is reproducible from the
+    -- document's own visible input (the aliased locator). The locator's
+    -- fetcher text is mapped back to a DepType via the same round-trip the
+    -- rest of the codebase uses; only a fetcher that maps to no DepType
+    -- (should never happen for a real dependency) falls back to the original.
+    aliasedLinking :: Dependency -> FindingsLinking
+    aliasedLinking dep =
+      defaultLinking (fromMaybe (dependencyType dep) (fetcherToDepType (locatorFetcher (aliasedLocator dep))))
 
     -- The raw-locator tiebreak keeps indices stable between nodes whose (aliased
     -- locator, environments) pairs are identical.
@@ -211,32 +314,33 @@ renderProject basedir forkAliasMap project =
     renderNode :: Dependency -> FindingsNode
     renderNode dep = FindingsNode (aliasedLocatorText dep) (sortedEnvironments dep)
 
-    -- Per translated locator, per scope: (isDirect, aliasedFrom). Rows are
-    -- unique on scope by contract; when two nodes share a translated locator,
-    -- their rows merge on scope with isDirect ORed and the first-encountered
-    -- aliasedFrom kept (nodes are processed in sorted order).
-    occurrences :: Map.Map Text (Map.Map DepEnvironment (Bool, Maybe Text))
+    -- Per translated locator, per scope: (isDirect, aliasedFrom, linking).
+    -- Linking is classified from the aliased locator's type, not the dependency's
+    -- original type, so the rule-tier default is reproducible from the document.
+    -- Rows are unique on scope by contract; same-locator nodes merge, so row
+    -- order decides the survivor.
+    occurrences :: Map.Map Text (Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking))
     occurrences = foldr addNodeOccurrence Map.empty nodes
 
     addNodeOccurrence dep = Map.insertWith mergeOccurrences (aliasedLocatorText dep) rows
       where
         isDirect = Set.member dep directSet
-        rows = Map.fromList [(env, (isDirect, aliasedFrom dep)) | env <- Set.toList (dependencyEnvironments dep)]
+        rows = Map.fromList [(env, (isDirect, aliasedFrom dep, aliasedLinking dep)) | env <- Set.toList (dependencyEnvironments dep)]
 
-    mergeOccurrences :: Map.Map DepEnvironment (Bool, Maybe Text) -> Map.Map DepEnvironment (Bool, Maybe Text) -> Map.Map DepEnvironment (Bool, Maybe Text)
+    mergeOccurrences :: Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking) -> Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking) -> Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking)
     mergeOccurrences = Map.unionWith combineRow
       where
-        combineRow (isDirect1, aliased1) (isDirect2, aliased2) =
+        combineRow (isDirect1, aliased1, linking1) (isDirect2, aliased2, _) =
           ( isDirect1 || isDirect2
           , case (aliased1, aliased2) of
               (Just t, _) -> Just t
               (_, other) -> other
+          , linking1
           )
 
-    -- Occurrence rows are emitted in wire-spelling order of their scope.
-    occurrenceRows :: Map.Map DepEnvironment (Bool, Maybe Text) -> [FindingsOccurrence]
+    occurrenceRows :: Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking) -> [FindingsOccurrence]
     occurrenceRows scopeMap =
-      [FindingsOccurrence pathText isDirect env aliased | (env, (isDirect, aliased)) <- sortOn (renderEnvironment . fst) (Map.toList scopeMap)]
+      [FindingsOccurrence pathText isDirect env linking aliased | (env, (isDirect, aliased, linking)) <- sortOn (renderEnvironment . fst) (Map.toList scopeMap)]
 
     -- Env-less deps have no rows; they stay visible as graph nodes.
     dependencies :: Map.Map Text FindingsOccurrences
