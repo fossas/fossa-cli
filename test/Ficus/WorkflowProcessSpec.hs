@@ -18,7 +18,7 @@ import App.Fossa.Ficus.Types (
   downloadedWorkflowExecutable,
   workflowResultJson,
  )
-import App.Fossa.Ficus.Workflow (runWorkflowWith)
+import App.Fossa.Ficus.Workflow (findingsFileName, runWorkflowWith)
 import Control.Carrier.Debug (Scope (scopeMetadata), runDebug)
 import Control.Effect.Exception (SomeException, try)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -104,20 +104,39 @@ fakeFicus payloads exitCode =
       <> map (\payload -> "printf '%s\\n' '" <> observationEnvelope payload <> "'") payloads
       <> ["cat >&2", "exit " <> toText (show exitCode)]
 
-writeFakeFicus :: (Has (Lift IO) sig m) => Path Abs Dir -> [Text] -> Int -> m Command
-writeFakeFicus dir payloads exitCode = do
-  let script = dir </> mustParse parseRelFile "fake-ficus.sh"
+-- | A fake ficus that first asserts a shell test (@guard@) about its own
+-- working directory, so a run that reaches its observations proves what the
+-- child found on disk.
+fakeFicusGuarded :: Text -> [Text] -> Text
+fakeFicusGuarded guard payloads =
+  Text.unlines $
+    ["#!/bin/sh", guard]
+      <> map (\payload -> "printf '%s\\n' '" <> observationEnvelope payload <> "'") payloads
+      <> ["exit 0"]
+
+-- | The findings-document check, run in the child: the file's text must match
+-- byte for byte, and a missing file fails the test (exit 7).
+findingsGuard :: Text -> Text
+findingsGuard expected =
+  Text.concat ["[ \"$(cat ./", toText (toFilePath findingsFileName), ")\" = '", expected, "' ] || exit 7"]
+
+writeFakeFicusScript :: (Has (Lift IO) sig m) => Path Abs Dir -> Text -> m Command
+writeFakeFicusScript dir script = do
+  let path = dir </> mustParse parseRelFile "fake-ficus.sh"
   sendIO $ do
-    writeFile (toFilePath script) (toString $ fakeFicus payloads exitCode)
-    permissions <- getPermissions (toFilePath script)
-    setPermissions (toFilePath script) (setOwnerExecutable True permissions)
+    writeFile (toFilePath path) (toString script)
+    permissions <- getPermissions (toFilePath path)
+    setPermissions (toFilePath path) (setOwnerExecutable True permissions)
   pure
     Command
-      { cmdName = toText $ toFilePath script
+      { cmdName = toText $ toFilePath path
       , cmdArgs = []
       , cmdAllowErr = Never
       , cmdEnvVars = Map.empty
       }
+
+writeFakeFicus :: (Has (Lift IO) sig m) => Path Abs Dir -> [Text] -> Int -> m Command
+writeFakeFicus dir payloads exitCode = writeFakeFicusScript dir (fakeFicus payloads exitCode)
 
 runArtifactBytes :: ByteString
 runArtifactBytes =
@@ -180,15 +199,24 @@ workflowSpec :: Spec
 workflowSpec = describe "analyzeWithWorkflow" $ do
   itWithTempDir' "fails when ficus exits non-zero" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 1
-    expectFatal' $ runWorkflowWith cmd tmpDir Nothing
+    expectFatal' $ runWorkflowWith cmd tmpDir Nothing Nothing
 
   itWithTempDir' "fails when ficus exits cleanly without a result" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [stepCompletedPayload] 0
-    expectFatal' $ runWorkflowWith cmd tmpDir Nothing
+    expectFatal' $ runWorkflowWith cmd tmpDir Nothing Nothing
 
   itWithTempDir' "returns the result and records it in the debug bundle on success" $ \tmpDir -> do
     cmd <- writeFakeFicus tmpDir [workflowStartedPayload, stepCompletedPayload, workflowResultPayload] 0
-    (scope, result) <- runDebug $ runWorkflowWith cmd tmpDir Nothing
+    (scope, result) <- runDebug $ runWorkflowWith cmd tmpDir Nothing Nothing
     result `shouldBe'` expectedResult
     Map.lookup workflowResultJson (scopeMetadata scope) `shouldBe'` Just expectedResult
+
+  -- The child's working directory is the scratch dir 'runWorkflowWith' creates,
+  -- not @tmpDir@ where the script lives, so this guard fails (exit 7) unless
+  -- the rendered document was written there before the child started.
+  itWithTempDir' "writes the findings document into the run's scratch dir the child reads" $ \tmpDir -> do
+    let doc = Aeson.object ["schemaVersion" Aeson..= (1 :: Int), "findings" Aeson..= ([] :: [Aeson.Value])]
+    cmd <- writeFakeFicusScript tmpDir (fakeFicusGuarded (findingsGuard (decodeUtf8 $ Aeson.encode doc)) [workflowResultPayload])
+    (_, result) <- runDebug $ runWorkflowWith cmd tmpDir Nothing (Just doc)
+    result `shouldBe'` expectedResult
 #endif
