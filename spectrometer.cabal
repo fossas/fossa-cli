@@ -438,6 +438,7 @@ library
     Strategy.Conda
     Strategy.Conda.CondaEnvCreate
     Strategy.Conda.EnvironmentYml
+    Strategy.Conda.Naming
     Strategy.Dart.Errors
     Strategy.Dart.PubDeps
     Strategy.Dart.PubSpec
@@ -509,6 +510,9 @@ library
     Strategy.NuGet.ProjectAssetsJson
     Strategy.NuGet.ProjectJson
     Strategy.Perl
+    Strategy.Pixi
+    Strategy.Pixi.Manifest
+    Strategy.Pixi.PixiLock
     Strategy.Pub
     Strategy.Python.Errors
     Strategy.Python.PDM.Pdm
@@ -544,6 +548,7 @@ library
     Strategy.Swift.Errors
     Strategy.Swift.PackageResolved
     Strategy.Swift.PackageSwift
+    Strategy.Swift.ShowDependencies
     Strategy.Swift.Xcode.Pbxproj
     Strategy.Swift.Xcode.PbxprojParser
     Strategy.SwiftPM
@@ -723,6 +728,7 @@ test-suite unit-tests
     Pdm.PdmLockSpec
     Pdm.PdmSpec
     Perl.PerlSpec
+    Pixi.PixiLockSpec
     Pnpm.PnpmLockSpec
     Pnpm.TypesSpec
     Python.PipenvSpec
@@ -757,6 +763,7 @@ test-suite unit-tests
     Srclib.TypesSpec
     Swift.PackageResolvedSpec
     Swift.PackageSwiftSpec
+    Swift.ShowDependenciesSpec
     Swift.Xcode.PbxprojParserSpec
     Swift.Xcode.PbxprojSpec
     System.ArgsSpec
@@ -802,6 +809,7 @@ test-suite integration-tests
     Analysis.PnpmSpec
     Analysis.PnpmWorkspaceSpec
     Analysis.Python.PipenvSpec
+    Analysis.Python.PixiSpec
     Analysis.Python.PoetrySpec
     Analysis.Python.SetuptoolsSpec
     Analysis.Python.UvSpec

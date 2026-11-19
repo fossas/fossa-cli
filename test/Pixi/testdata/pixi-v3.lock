@@ -1,0 +1,35 @@
+# Trimmed from rattler's test-data/conda-lock/v3/robostack-turtlesim-conda-lock.yml.
+# Versions before 4 use `metadata` and `package` instead of `environments` and
+# `packages`.
+version: 3
+metadata:
+  content_hash:
+    linux-64: c3966519f924c1bb939575751347ce8bb8bfa39fcad33745cb1d712dd269ee2d
+  channels:
+    - url: https://conda.anaconda.org/conda-forge/
+      used_env_vars: []
+  platforms:
+    - linux-64
+  sources: []
+  time_metadata: null
+  git_metadata: null
+  inputs_metadata: null
+  custom_metadata: null
+package:
+  - platform: linux-64
+    name: _libgcc_mutex
+    version: "0.1"
+    category: main
+    manager: conda
+    dependencies: []
+    url: https://conda.anaconda.org/conda-forge/linux-64/_libgcc_mutex-0.1-conda_forge.tar.bz2
+    hash:
+      md5: d7c89558ba9fa0495403155b64376d81
+      sha256: fe51de6107f9edc7aa4f786a70f4a883943bc9d39b3bb7307c04c41410990726
+    build: conda_forge
+    arch: x86_64
+    subdir: linux-64
+    build_number: 0
+    license: None
+    size: 2562
+    timestamp: 1578324546067

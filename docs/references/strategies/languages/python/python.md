@@ -1,7 +1,7 @@
 # Python Analysis
 
 The python buildtool ecosystem consists of three major toolchains: setuptools
-(requirements.txt, setup.py), pipenv, and conda.
+(requirements.txt, setup.py), pipenv, and conda. pixi supports conda and PyPI packages.
 
 | Strategy                                       | Direct Deps        | Transitive Deps    | Edges              | Container Scanning |
 | ---------------------------------------------- | ------------------ | ------------------ | ------------------ | ------------------ |
@@ -10,6 +10,7 @@ The python buildtool ecosystem consists of three major toolchains: setuptools
 | [requirements.txt & setuptools](setuptools.md) | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark: |
 | [setup.py & setuptools](setuptools.md)         | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark: |
 | [conda](conda.md)                              | :heavy_check_mark: | :white_check_mark: | :x:                | :x:                |
+| [pixi](pixi.md)                                | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :x:                |
 | [poetry](poetry.md)                            | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark: |
 | [pdm](pdm.md)                                  | :heavy_check_mark: | :white_check_mark: | :white_check_mark: | :heavy_check_mark: |
 | [uv](uv.md)                                    | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: | :heavy_check_mark: |

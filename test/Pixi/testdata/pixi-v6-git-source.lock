@@ -1,0 +1,31 @@
+# Trimmed from prefix-dev/pixi's own pixi.lock at ff68a439, which builds
+# rattler-build from a branch of its git repository. Dependency lists are cut
+# to the packages kept here.
+version: 6
+environments:
+  backends-release:
+    channels:
+    - url: https://prefix.dev/conda-forge/
+    packages:
+      linux-64:
+      - conda: https://prefix.dev/conda-forge/linux-64/libgcc-15.2.0-he0feb66_16.conda
+      - conda: git+https://github.com/prefix-dev/rattler-build?branch=refactor#5cf0bbaf1413268dc91fd7f5b51ffc148881cd09
+        build: hb0f4dca_0
+packages:
+- conda: https://prefix.dev/conda-forge/linux-64/libgcc-15.2.0-he0feb66_16.conda
+  sha256: 6eed58051c2e12b804d53ceff5994a350c61baf117ec83f5f10c953a3f311451
+  md5: 6d0363467e6ed84f11435eb309f2ff06
+  license: GPL-3.0-only WITH GCC-exception-3.1
+- conda: git+https://github.com/prefix-dev/rattler-build?branch=refactor#5cf0bbaf1413268dc91fd7f5b51ffc148881cd09
+  name: rattler-build
+  version: 0.0.0dev
+  build: hb0f4dca_0
+  subdir: linux-64
+  variants:
+    target_platform: linux-64
+  depends:
+  - libgcc >=15
+  constrains:
+  - __glibc >=2.17
+  channel: null
+  license: BSD-3-Clause

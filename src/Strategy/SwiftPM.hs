@@ -7,12 +7,14 @@ module Strategy.SwiftPM (
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (..))
+import App.Util (guardStrictMode)
 import Control.Carrier.Simple (Has)
-import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Effect.Reader (Reader)
+import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
+import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Data.Functor (($>))
 import Data.Maybe (listToMaybe)
+import Diag.Common (MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -20,11 +22,13 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
+import Effect.Exec (GetDepsEffs)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, dirname, reldir)
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
+import Strategy.Swift.ShowDependencies (analyzeShowDependencies)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (SwiftProjectType), GraphBreadth (..))
 
@@ -149,10 +153,29 @@ mkProject project =
 
 instance AnalyzeProject SwiftProject where
   analyzeProject _ = getDeps
-  analyzeProjectStaticOnly _ = getDeps
+  analyzeProjectStaticOnly _ = getDepsStatic
 
-getDeps :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
-getDeps project = do
+-- | Swift packages are analyzed by letting SwiftPM resolve the package graph, falling back to
+-- parsing Package.swift and Package.resolved when that fails (no toolchain, no network, ...).
+-- Xcode projects are only analyzed statically, because `swift package` cannot read them.
+getDeps :: GetDepsEffs sig m => SwiftProject -> m DependencyResults
+getDeps project@(XcodeProject _) = getDepsStatic project
+getDeps project@(PackageProject prj) = do
+  mode <- ask
+  context "Swift package" $ warnOnErr MissingEdges dynamicAnalysis <||> guardStrictMode mode (getDepsStatic project)
+  where
+    -- The warning surfaces why the dynamic analysis was skipped; the static fallback never reports edges.
+    dynamicAnalysis = do
+      graph <- context "Dynamic analysis using swift package show-dependencies" $ analyzeShowDependencies (swiftPkgProjectDir prj)
+      pure $
+        DependencyResults
+          { dependencyGraph = graph
+          , dependencyGraphBreadth = Complete
+          , dependencyManifestFiles = [swiftPkgManifest prj]
+          }
+
+getDepsStatic :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
+getDepsStatic project = do
   graph <- case project of
     PackageProject prj -> analyzePackageSwift (swiftPkgManifest prj) (swiftPkgResolved prj)
     XcodeProject prj -> analyzeXcodeProjForSwiftPkg (xCodeProjectFile prj) (xCodeResolvedFile prj)
