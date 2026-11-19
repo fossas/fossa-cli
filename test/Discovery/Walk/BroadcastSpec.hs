@@ -1,10 +1,10 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
--- | Behavioural tests for "Discovery.WalkBroadcast": the broadcast fan-out
+-- | Behavioural tests for "Discovery.Walk.Broadcast": the broadcast fan-out
 -- that drains one shared walk into a master channel and runs one consumer
 -- thread per enabled strategy, each reading its own duplicate.
-module Discovery.WalkBroadcastSpec (
+module Discovery.Walk.BroadcastSpec (
   spec,
 ) where
 
@@ -25,8 +25,8 @@ import Data.Text (Text)
 import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
 import Discovery.Filters (AllFilters (..), comboExclude, comboInclude, toolAllowed)
 import Discovery.Walk (WalkStep (..), findFileNamed)
-import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, listingCapacity, withWalkBroadcast)
-import Discovery.WalkStream (DirListing (..))
+import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, broadcastStream, listingCapacity, withWalkBroadcast)
+import Discovery.Walk.Stream (DirListing (..))
 import Path
 import Path.IO (createDir)
 import Streaming (Of (..), Stream, lift)
@@ -38,7 +38,7 @@ import Types (DiscoveredProjectType (..), TargetFilter (TypeTarget))
 
 spec :: Spec
 spec =
-  describe "Discovery.WalkBroadcast" $ do
+  describe "Discovery.Walk.Broadcast" $ do
     gatingSpec
     isolationSpec
     broadcastSpec

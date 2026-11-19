@@ -1,4 +1,4 @@
--- | Broadcast fan-out for the shared discovery walk in "Discovery.WalkStream":
+-- | Broadcast fan-out for the shared discovery walk in "Discovery.Walk.Stream":
 -- one walker thread drains a listing stream into one bounded queue per enabled
 -- consumer, and each consumer thread reads its own queue, so every consumer
 -- sees the full listing set while running concurrently.
@@ -19,7 +19,7 @@
 --
 -- Safe at '-threaded''s default of one capability: every thread blocks in STM
 -- 'retry' (which yields) or between quick, non-retrying STM writes.
-module Discovery.WalkBroadcast (
+module Discovery.Walk.Broadcast (
   -- * One broadcast consumer
   WalkConsumer (..),
   accumulateConsumer,
@@ -49,8 +49,8 @@ import Data.Text (Text)
 import Diag.Result (Result (Failure, Success), renderFailureWithoutWarnings)
 import Discovery.Filters (AllFilters, toolAllowed)
 import Discovery.Walk (WalkStep (WalkContinue))
-import Discovery.WalkStream (DirListing, walkStream)
-import Discovery.WalkVisitor (Visitor, driveVisitor)
+import Discovery.Walk.Stream (DirListing, walkStream)
+import Discovery.Walk.Visitor (Visitor, driveVisitor)
 import Effect.Logger (Pretty (pretty), renderIt)
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)

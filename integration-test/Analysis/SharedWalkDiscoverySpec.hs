@@ -7,8 +7,8 @@
 --
 -- The shared-walk cases go through the production broadcast path: each
 -- strategy's 'discoverVisitor' is wrapped in a
--- "Discovery.WalkBroadcast.accumulateConsumer" sink, all consumers are fanned
--- out through "Discovery.WalkBroadcast.withWalkBroadcast", and each sink is
+-- "Discovery.Walk.Broadcast.accumulateConsumer" sink, all consumers are fanned
+-- out through "Discovery.Walk.Broadcast.withWalkBroadcast", and each sink is
 -- finalized with "Discovery.Simple.cachedDiscover".  Only strategies that
 -- export a 'discoverVisitor' can be driven this way: of the fixture's ten
 -- ecosystems, Maven ("Strategy.Maven") and Npm ("Strategy.Node") have no
@@ -36,7 +36,7 @@ import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (cachedDiscover)
-import Discovery.WalkBroadcast (accumulateConsumer, withWalkBroadcast)
+import Discovery.Walk.Broadcast (accumulateConsumer, withWalkBroadcast)
 import Effect.ReadFS (ReadFS)
 import Path
 import Path.IO qualified as PIO

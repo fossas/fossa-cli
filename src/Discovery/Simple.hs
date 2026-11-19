@@ -44,7 +44,7 @@ simpleDiscover findProjects mkProject tool dir = withToolFilter tool $
     pure $ map mkProject projects
 
 -- | Like 'simpleDiscover', but for strategies whose raw projects were already
--- collected by a shared filesystem walk (see "Discovery.WalkStream") instead
+-- collected by a shared filesystem walk (see "Discovery.Walk.Stream") instead
 -- of by the strategy walking the tree itself.  Applies the same tool filter
 -- and diagnostics contexts as 'simpleDiscover'.
 cachedDiscover ::

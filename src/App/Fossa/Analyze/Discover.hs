@@ -226,8 +226,8 @@ data DiscoverFunc m where
     (Path Abs Dir -> m [DiscoveredProject a]) ->
     DiscoverFunc m
   -- | Strategy whose per-directory visitor is driven over the shared discovery
-  -- walk ("Discovery.WalkStream.walkStream", fanned out to one consumer per
-  -- strategy by "Discovery.WalkBroadcast.withWalkBroadcast"), so the tree is
+  -- walk ("Discovery.Walk.Stream.walkStream", fanned out to one consumer per
+  -- strategy by "Discovery.Walk.Broadcast.withWalkBroadcast"), so the tree is
   -- traversed once for all strategies instead of once per strategy.  The given
   -- project type gates the consumer against the tool filters; the finalizer
   -- receives an action reading the raw projects the visitor collected during

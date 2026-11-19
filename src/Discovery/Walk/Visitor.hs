@@ -1,5 +1,5 @@
 -- | Per-visitor drivers for running strategies over the shared directory walk
--- from "Discovery.WalkStream".
+-- from "Discovery.Walk.Stream".
 --
 -- The old per-strategy discovery ran one walk per strategy whose callback
 -- returned a 'WalkStep'.  With a single shared listing stream, each visitor
@@ -9,7 +9,7 @@
 -- itself descends into every directory, so one strategy's pruning can never
 -- starve another (see "Discovery.Walk" for the per-strategy semantics these
 -- drivers mirror).
-module Discovery.WalkVisitor (
+module Discovery.Walk.Visitor (
   -- * Per-visitor state
   VisitorState (..),
   initialVisitorState,
@@ -27,7 +27,7 @@ import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toString)
 import Data.Traversable qualified as Trav
 import Discovery.Walk (WalkStep (..))
-import Discovery.WalkStream (DirListing (dlDir, dlFiles, dlSubdirs))
+import Discovery.Walk.Stream (DirListing (dlDir, dlFiles, dlSubdirs))
 import Path (Abs, Dir, File, Path, isProperPrefixOf, parseRelDir, (</>))
 import Streaming (Of (..), Stream, lift)
 import Streaming.Prelude qualified as S
@@ -130,7 +130,7 @@ runVisitor visit = loop initialVisitorState
 -- | Drive a visitor from an effectful next-listing source (e.g. a channel
 -- read) rather than a walk stream; visitor outputs are discarded — callers
 -- collect results through their own effects.  See the GHC-39999 note in
--- "Discovery.WalkBroadcast" for why this takes an action instead of a
+-- "Discovery.Walk.Broadcast" for why this takes an action instead of a
 -- stream; the 'WalkStep' state threading mirrors 'runVisitor'.
 driveVisitor :: Monad m => Visitor o m -> (m (Maybe DirListing)) -> m ()
 driveVisitor visit next = loop initialVisitorState

@@ -139,7 +139,7 @@ import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Discovery.Walk (enumeratePrunedSubtrees)
-import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
+import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,

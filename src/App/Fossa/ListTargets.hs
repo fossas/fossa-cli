@@ -45,9 +45,9 @@ import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..))
 import Discovery.Projects (withDiscoveredProjects)
-import Discovery.WalkBroadcast (WalkConsumer (..), accumulateConsumer)
-import Discovery.WalkStream (walkStream)
-import Discovery.WalkVisitor (runVisitor)
+import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer)
+import Discovery.Walk.Stream (walkStream)
+import Discovery.Walk.Visitor (runVisitor)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Color (Cyan, Green, Yellow),

@@ -15,8 +15,8 @@
 --
 -- The producer has no per-consumer control: 'Discovery.Walk.WalkStop' never
 -- occurs and pruning is purely filter-based, applied once at the root.  A
--- per-visitor policy over this stream lives in "Discovery.WalkVisitor".
-module Discovery.WalkStream (
+-- per-visitor policy over this stream lives in "Discovery.Walk.Visitor".
+module Discovery.Walk.Stream (
   -- * Directory listings
   DirListing (..),
 

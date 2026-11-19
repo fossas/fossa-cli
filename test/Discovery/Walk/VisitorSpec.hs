@@ -1,7 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Discovery.WalkVisitorSpec (
+module Discovery.Walk.VisitorSpec (
   spec,
 ) where
 
@@ -13,8 +13,8 @@ import Data.Maybe (catMaybes, isJust)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import Discovery.Walk (WalkStep (..), findFileNamed, walk')
-import Discovery.WalkStream (walkStreamUnfiltered)
-import Discovery.WalkVisitor (
+import Discovery.Walk.Stream (walkStreamUnfiltered)
+import Discovery.Walk.Visitor (
   VisitorState (..),
   applyVisitorStep,
   initialVisitorState,
@@ -32,7 +32,7 @@ import Test.Hspec
 
 spec :: Spec
 spec =
-  describe "Discovery.WalkVisitor" $ do
+  describe "Discovery.Walk.Visitor" $ do
     it' "does not let one visitor's WalkSkipAll starve another on a shared walk" $
       withTempDir "test-Discovery-WalkVisitor-shared" $ \tmpDir -> do
         let web = tmpDir </> $(mkRelDir "web")

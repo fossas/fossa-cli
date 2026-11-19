@@ -1,7 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wno-incomplete-uni-patterns #-}
 
-module Discovery.WalkStreamSpec (
+module Discovery.Walk.StreamSpec (
   spec,
 ) where
 
@@ -18,8 +18,8 @@ import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (cachedDiscover)
 import Discovery.Walk
-import Discovery.WalkStream
-import Discovery.WalkVisitor (runVisitors)
+import Discovery.Walk.Stream
+import Discovery.Walk.Visitor (runVisitors)
 import Path
 import Path.IO (createDir, createDirLink)
 import Strategy.Cargo qualified as Cargo
@@ -33,7 +33,7 @@ import Types (DiscoveredProject (..), DiscoveredProjectType (CargoProjectType, C
 
 spec :: Spec
 spec =
-  describe "Discovery.WalkStream" $ do
+  describe "Discovery.Walk.Stream" $ do
     it' "emits a listing for every directory the plain walk visits" $
       withTempDir "test-Discovery-WalkStream-basic" $ \tmpDir -> do
         let dirs@[a, ab, b, bc] =
