@@ -161,7 +161,6 @@ defaultLinking = \case
   CargoType -> LinkingStatic
   SwiftType -> LinkingStatic
   HackageType -> LinkingStatic
-  HexType -> LinkingStatic
   ConanType -> LinkingStatic
   PodType -> LinkingStatic
   PathType -> LinkingStatic
@@ -183,6 +182,7 @@ defaultLinking = \case
   LinuxDEB -> LinkingDynamic
   LinuxRPM -> LinkingDynamic
   RPMType -> LinkingDynamic
+  HexType -> LinkingDynamic
   BowerType -> LinkingDynamic
   -- delivery-model dependent: no per-ecosystem answer exists
   GitType -> LinkingUnknown
