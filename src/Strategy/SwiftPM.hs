@@ -100,22 +100,21 @@ discoverVisitor ::
 discoverVisitor dir _ files = do
   let packageManifestFile = findFileNamed "Package.swift" files
   let packageResolvedFile = findFileNamed "Package.resolved" files
-  -- The two halves used to be independent walks, each with its own diagnostics
-  -- context; keep those contexts around the per-directory checks so a failure
-  -- still reports which half it came from.
-  swiftProj <-
-    context "Finding swift package projects" $
-      pure $
+  -- No diagnostics context on this half: the lookup is pure, so nothing inside
+  -- it can fail and a context would only churn the sticky log per directory.
+  let swiftProj =
         case (packageManifestFile, packageResolvedFile) of
           (Just manifestFile, resolvedFile) -> [PackageProject $ SwiftPackageProject manifestFile dir resolvedFile]
           (Nothing, _) -> []
   let xcodeProjectFile = findFileNamed "project.pbxproj" files
   xcodeProj <-
-    context "Finding xcode projects using swift package manager" $
-      case xcodeProjectFile of
-        Nothing ->
-          pure []
-        Just projFile -> do
+    case xcodeProjectFile of
+      Nothing ->
+        pure []
+      -- The context wraps only the work below, so it fires for directories that
+      -- actually hold an Xcode project rather than for every directory walked.
+      Just projFile ->
+        context "Finding xcode projects using swift package manager" $ do
           resolvedFile <- findFirstResolvedFileRecursively dir
           xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
           if xCodeProjWithDependencies
