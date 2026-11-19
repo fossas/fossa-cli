@@ -28,8 +28,8 @@ import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), renderEnvir
 import Graphing qualified
 import Path (Abs, Dir, Path, SomeBase (..), toFilePath)
 import Path.Extra (tryMakeRelative)
-import Srclib.Converter (toLocator)
-import Srclib.Types (Locator, renderLocator)
+import Srclib.Converter (fetcherToDepType, toLocator)
+import Srclib.Types (Locator, locatorFetcher, renderLocator)
 import System.FilePath (dropTrailingPathSeparator)
 import Types (DiscoveredProjectType, GraphBreadth, renderGraphType)
 
@@ -264,8 +264,21 @@ renderProject basedir forkAliasMap project =
     rawLocatorText :: Dependency -> Text
     rawLocatorText dep = renderLocator (toLocator dep)
 
+    aliasedLocator :: Dependency -> Locator
+    aliasedLocator dep = translateLocatorWithForkAliases forkAliasMap (toLocator dep)
+
     aliasedLocatorText :: Dependency -> Text
-    aliasedLocatorText dep = renderLocator (translateLocatorWithForkAliases forkAliasMap (toLocator dep))
+    aliasedLocatorText = renderLocator . aliasedLocator
+
+    -- Classify linking from the aliased locator's type, not the dependency's
+    -- original type, so the rule-tier default is reproducible from the
+    -- document's own visible input (the aliased locator). The locator's
+    -- fetcher text is mapped back to a DepType via the same round-trip the
+    -- rest of the codebase uses; only a fetcher that maps to no DepType
+    -- (should never happen for a real dependency) falls back to the original.
+    aliasedLinking :: Dependency -> FindingsLinking
+    aliasedLinking dep =
+      defaultLinking (fromMaybe (dependencyType dep) (fetcherToDepType (locatorFetcher (aliasedLocator dep))))
 
     -- The raw-locator tiebreak keeps indices stable between nodes whose (aliased
     -- locator, environments) pairs are identical.
@@ -302,6 +315,8 @@ renderProject basedir forkAliasMap project =
     renderNode dep = FindingsNode (aliasedLocatorText dep) (sortedEnvironments dep)
 
     -- Per translated locator, per scope: (isDirect, aliasedFrom, linking).
+    -- Linking is classified from the aliased locator's type, not the dependency's
+    -- original type, so the rule-tier default is reproducible from the document.
     -- Rows are unique on scope by contract; same-locator nodes merge, so row
     -- order decides the survivor.
     occurrences :: Map.Map Text (Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking))
@@ -310,7 +325,7 @@ renderProject basedir forkAliasMap project =
     addNodeOccurrence dep = Map.insertWith mergeOccurrences (aliasedLocatorText dep) rows
       where
         isDirect = Set.member dep directSet
-        rows = Map.fromList [(env, (isDirect, aliasedFrom dep, defaultLinking (dependencyType dep))) | env <- Set.toList (dependencyEnvironments dep)]
+        rows = Map.fromList [(env, (isDirect, aliasedFrom dep, aliasedLinking dep)) | env <- Set.toList (dependencyEnvironments dep)]
 
     mergeOccurrences :: Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking) -> Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking) -> Map.Map DepEnvironment (Bool, Maybe Text, FindingsLinking)
     mergeOccurrences = Map.unionWith combineRow
