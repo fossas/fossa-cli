@@ -6,6 +6,7 @@
   <ItemGroup>
     <PackageReference Include="one" Version="1.0.0" />
     <PackageReference Include="two" />
+    <PackageReference Include="three" VersionOverride="3.1.0" />
     <PackageReference Include="four" />
   </ItemGroup>
 </Project>

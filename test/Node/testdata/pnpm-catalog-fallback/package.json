@@ -1,0 +1,6 @@
+{
+  "name": "catalog-root",
+  "dependencies": {
+    "colorjs": "catalog:default"
+  }
+}

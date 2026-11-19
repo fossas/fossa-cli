@@ -4,7 +4,11 @@ module Maven.PluginTreeSpec (spec) where
 
 import Data.Text (Text)
 import Data.Tree (Tree (..))
-import Strategy.Maven.PluginTree (TextArtifact (..), parseTextArtifact)
+import Strategy.Maven.PluginTree (
+  TextArtifact (..),
+  parseTextArtifact,
+  parseTextArtifacts,
+ )
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Text.Megaparsec (ParseErrorBundle, Parsec, runParser)
 import Text.RawString.QQ (r)
@@ -16,7 +20,9 @@ to :: (Show a1, Show a2, Eq a2) => Either a1 a2 -> a2 -> IO ()
 to parsed expected = either (fail . show) (`shouldBe` expected) parsed
 
 spec :: Spec
-spec = do parseTextArtifactSpec
+spec = do
+  parseTextArtifactSpec
+  parseTextArtifactsSpec
 
 mockArtifactString :: Text
 mockArtifactString = "org.clojure:clojure:1.12.0-master-SNAPSHOT:test"
@@ -68,6 +74,21 @@ optionalTextArtifact =
       , isOptional = True
       }
     []
+
+-- | The @aggregate@ goal emits one top-level tree per reactor module, so real
+-- multi-module output must parse as a list of trees (with trailing newline).
+parseTextArtifactsSpec :: Spec
+parseTextArtifactsSpec = describe "Parsing multi-module maven artifact text" $ do
+  it "Parses one tree per root block, including a trailing newline" $
+    parseTextArtifacts `shouldParse` multiRootString `to` [mockArtifact, optionalTextArtifact]
+  it "Parses a single-root file as a one-element list" $
+    parseTextArtifacts `shouldParse` (mockArtifactString <> "\n") `to` [mockArtifact]
+
+multiRootString :: Text
+multiRootString =
+  [r|org.clojure:clojure:1.12.0-master-SNAPSHOT:test
+jakarta.mail:jakarta.mail-api:2.0.1:compile (optional)
+|]
 
 parseTextArtifactSpec :: Spec
 parseTextArtifactSpec = describe "Parsing maven artifact text" $ do

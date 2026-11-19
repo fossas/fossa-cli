@@ -1,0 +1,7 @@
+# An unknown version with environments as a list instead of a map.
+version: 8
+environments:
+- default
+packages:
+- conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
+  size: 92286

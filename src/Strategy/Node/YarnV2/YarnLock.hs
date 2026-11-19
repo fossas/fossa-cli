@@ -4,7 +4,9 @@ module Strategy.Node.YarnV2.YarnLock (
   analyze,
   stitchLockfile,
   buildGraph,
+  lookupPackage,
   FlatPackages (..),
+  NoPackageForDescriptor (..),
 ) where
 
 import Algebra.Graph.AdjacencyMap qualified as AM
@@ -18,6 +20,7 @@ import Control.Effect.Diagnostics (
   warnLeft,
  )
 import Control.Effect.Diagnostics qualified as Diag (fromMaybe)
+import Data.Char (isAlpha)
 import Data.Either.Combinators (maybeToRight)
 import Data.Foldable (find)
 import Data.Map.Strict (Map)
@@ -25,8 +28,9 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Set (Set)
 import Data.Set qualified as Set
-import Data.String.Conversion (toText)
+import Data.String.Conversion (toString, toText)
 import Data.Tagged (Tagged, applyTag, unTag)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Extra (showT)
 import DepTypes (
@@ -151,6 +155,9 @@ stitchLockfile (YarnLockfile lockfile) = context ("Stitching Lockfile") $
 -- 1. the descriptor, verbatim
 -- 2. the descriptor with its range prefixed by @npm:@
 -- 3. any other descriptor with a matching scope/name and an @npm:@ prefix to its range
+-- 4. any other descriptor with a matching scope/name whose range, minus the
+--    @::locator=...@ binding yarn appends to it, is the descriptor's range
+--    (with a bare path prefixed by @file:@)
 --
 -- For (2), search for "defaultProtocol" in the Resolvers module or in the
 -- yarnv2 devdocs for more context about why this is necessary
@@ -159,14 +166,40 @@ stitchLockfile (YarnLockfile lockfile) = context ("Stitching Lockfile") $
 -- npm dependencies. For example, given dependencies on @package: ^1.0.0@
 -- and @package: ^2.0.0@, only @package@npm:^2.0.0@ will appear as a
 -- descriptor key for a package in the lockfile
+--
+-- For (4), yarn "binds" @file:@, @link:@ and @portal:@ descriptors to the
+-- package depending on them, so @pkg: ./pkg.tgz@ in a package.json (or in a
+-- lockfile dependencies map) is keyed in the lockfile as
+-- @pkg@file:./pkg.tgz::locator=root%40workspace%3A.@
 lookupPackage :: Descriptor -> Map Descriptor PackageDescription -> Either NoPackageForDescriptor PackageDescription
 lookupPackage desc mapping =
   maybeToRight (NoPackageForDescriptor desc) $
-    Map.lookup desc mapping <|> Map.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) mapping <|> lookupAnyNpm desc mapping
+    Map.lookup desc mapping
+      <|> Map.lookup (desc{descriptorRange = "npm:" <> descriptorRange desc}) mapping
+      <|> lookupAnyNpm desc mapping
+      <|> lookupBound desc mapping
   where
     -- find any package with a descriptor with matching scope/name, and an @npm:@ prefix prefix
     lookupAnyNpm :: Descriptor -> Map Descriptor PackageDescription -> Maybe PackageDescription
     lookupAnyNpm desc' mapping' = find (\other -> identMatches desc' other && "npm:" `Text.isPrefixOf` descriptorRange other) (Map.keys mapping') >>= (`Map.lookup` mapping')
+
+    -- find any package with a descriptor with matching scope/name whose unbound range is this descriptor's range
+    lookupBound :: Descriptor -> Map Descriptor PackageDescription -> Maybe PackageDescription
+    lookupBound desc' mapping' = find (\other -> identMatches desc' other && unbind (descriptorRange other) == withFileProtocol (descriptorRange desc')) (Map.keys mapping') >>= (`Map.lookup` mapping')
+
+    unbind :: Text -> Text
+    unbind = fst . Text.breakOn "::"
+
+    -- yarn treats a range starting with @./@, @../@, @/@ or a Windows drive as a @file:@ range
+    withFileProtocol :: Text -> Text
+    withFileProtocol range = if isPath (toString range) then "file:" <> range else range
+
+    isPath :: String -> Bool
+    isPath ('.' : '/' : _) = True
+    isPath ('.' : '.' : '/' : _) = True
+    isPath ('/' : _) = True
+    isPath (drive : ':' : sep : _) = isAlpha drive && (sep == '/' || sep == '\\')
+    isPath _ = False
 
     -- whether the scope and name of the package matches in both descriptors
     identMatches :: Descriptor -> Descriptor -> Bool

@@ -18,6 +18,7 @@ import App.Fossa.Analyze.Types (
  )
 import App.Fossa.Config.Analyze (StrategyConfig (StrategyConfig), UseGitBackedCargoLocators (..), WithoutDefaultFilters (..))
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
+import App.Fossa.Container.Sources.GoBinary (goBinariesToSourceUnits)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
 import App.Types (Mode (..))
 import Codec.Archive.Tar.Index (TarEntryOffset)
@@ -31,7 +32,9 @@ import Container.Types (
   ContainerScan (..),
   ContainerScanImage (ContainerScanImage),
   ContainerScanImageLayer (ContainerScanImageLayer),
+  LayerPath,
   baseLayer,
+  discoveredGoBinaries,
   discoveredJars,
   hasOtherLayers,
   otherLayersSquashed,
@@ -150,20 +153,27 @@ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefault
           , imageTag
           }
 
+  let baseLayerPath = layerPath imageBaseLayer
+      partitionByBaseLayer :: Map.Map LayerPath [a] -> ([a], [a])
+      partitionByBaseLayer =
+        bimap (join . Map.elems) (join . Map.elems)
+          -- If a base layer does not exist, results will appear in "other" layers.
+          . Map.partitionWithKey (\lp _ -> Just lp == baseLayerPath)
+
   (baseObservations, otherObservations) <-
-    case (observations, layerPath imageBaseLayer) of
-      (Just observations', baseLayerPath) ->
-        pure
-          . bimap (join . Map.elems) (join . Map.elems)
-          -- If a base layer does not exist not exist, jar observations will appear in "other" layers.
-          . Map.partitionWithKey (\layerPath _ -> Just layerPath == baseLayerPath)
-          $ (discoveredJars observations')
+    case observations of
+      Just observations' -> pure . partitionByBaseLayer $ discoveredJars observations'
       _ -> do
         logInfo "Failed to run Jar analyzer."
         logInfo "If you were expecting JAR analysis results, run with '--debug' for more info."
         pure ([], [])
 
-  let baseScanImageLayer = ContainerScanImageLayer baseDigest baseUnits baseObservations
+  let (baseGoBinaries, otherGoBinaries) =
+        maybe ([], []) (partitionByBaseLayer . discoveredGoBinaries) observations
+      (baseGoUnits, otherGoUnits) =
+        (goBinariesToSourceUnits baseGoBinaries, goBinariesToSourceUnits otherGoBinaries)
+
+  let baseScanImageLayer = ContainerScanImageLayer baseDigest (baseUnits <> baseGoUnits) baseObservations
 
   case layersFs of
     Nothing -> do
@@ -178,7 +188,7 @@ analyzeFromDockerArchive useGitBackedCargo systemDepsOnly filters withoutDefault
       let scan =
             mkScan
               [ baseScanImageLayer
-              , ContainerScanImageLayer squashedDigest otherUnits otherObservations
+              , ContainerScanImageLayer squashedDigest (otherUnits <> otherGoUnits) otherObservations
               ]
       pure scan
 
@@ -227,6 +237,7 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
         Nothing
         False -- Discovery has no consequence from path dependency analysis config
         useGitBackedCargo
+        False -- Layers get Go binaries from millhone's own layer scan; running the filesystem strategy here would double-report
     toSourceUnit :: [DiscoveredProjectScan] -> [SourceUnit]
     toSourceUnit =
       map (Srclib.projectToSourceUnit False)
@@ -381,6 +392,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
           Nothing
           False -- Targets are not impacted by path dependencies.
           (UseGitBackedCargoLocators True) -- Default to git-backed cargo locators when no org info is available
+          False -- Go binaries in layers come from millhone's layer scan, not this strategy
       )
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader NonStrict

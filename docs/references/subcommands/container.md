@@ -49,6 +49,12 @@ You can provide `--only-system-deps` to only analyze dependencies originating fr
 - rpm
 - alpine
 
+FOSSA CLI also reports Go module dependencies embedded in Go binaries found in the image
+(built with Go >= 1.18). This detects Go dependencies even in images with no package manager
+metadata at all, such as `scratch` or distroless images. See
+[container Go binary analysis](./container/scanner.md#container-go-binary-analysis)
+for details.
+
 You can refer to [scanner](./container/scanner.md) documentation, to learn
 more about how FOSSA CLI performs scan on a container image.
 
@@ -113,6 +119,7 @@ Specifically, `fossa-cli` by default skips any targets found within the followin
 - `third-party/`
 - `Carthage/`
 - `Checkouts/`
+- `.build/`
 
 To disable default filters, provide `--without-default-filters` flag when performing `fossa container analyze`. Currently,
 it is not possible to disable only a subset of default filters. If you would like to only apply a subset of default filters, you can

@@ -105,7 +105,7 @@ testGuava =
     DependencyResultsSummary
       { numDeps = 85
       , numDirectDeps = 17
-      , numEdges = 75
+      , numEdges = 107
       , numManifestFiles = 1
       , graphType = Complete
       }
@@ -119,7 +119,7 @@ testSimplePomFile = do
     DependencyResultsSummary
       { numDeps = 25
       , numDirectDeps = 2
-      , numEdges = 23
+      , numEdges = 36
       , numManifestFiles = 1
       , graphType = Complete
       }
@@ -133,7 +133,7 @@ testBuildDirOverride = do
     DependencyResultsSummary
       { numDeps = 25
       , numDirectDeps = 2
-      , numEdges = 23
+      , numEdges = 36
       , numManifestFiles = 1
       , graphType = Complete
       }

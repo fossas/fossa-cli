@@ -13,9 +13,11 @@ import Strategy.Cargo qualified as Cargo
 import Strategy.Carthage qualified as Carthage
 import Strategy.Cocoapods qualified as Cocoapods
 import Strategy.Composer qualified as Composer
+import Strategy.Conan qualified as Conan
 import Strategy.Conda qualified as Conda
 import Strategy.Fpm qualified as Fpm
 import Strategy.Glide qualified as Glide
+import Strategy.Go.GoBinary qualified as GoBinary
 import Strategy.Godep qualified as Godep
 import Strategy.Gomodules qualified as Gomodules
 import Strategy.Googlesource.RepoManifest qualified as RepoManifest
@@ -33,6 +35,7 @@ import Strategy.NuGet.PackagesConfig qualified as PackagesConfig
 import Strategy.NuGet.Paket qualified as Paket
 import Strategy.NuGet.ProjectJson qualified as ProjectJson
 import Strategy.Perl qualified as Perl
+import Strategy.Pixi qualified as Pixi
 import Strategy.Pub qualified as Pub
 import Strategy.Python.PDM.Pdm qualified as Pdm
 import Strategy.Python.Pipenv qualified as Pipenv
@@ -54,10 +57,12 @@ discoverFuncs =
   , DiscoverFunc Carthage.discover
   , DiscoverFunc Cocoapods.discover
   , DiscoverFunc Composer.discover
+  , DiscoverFunc Conan.discover
   , DiscoverFunc Conda.discover
   , DiscoverFunc Fpm.discover
   , DiscoverFunc Glide.discover
   , DiscoverFunc Godep.discover
+  , DiscoverFunc GoBinary.discover
   , DiscoverFunc Gomodules.discover
   , DiscoverFunc Gradle.discover
   , DiscoverFunc Leiningen.discover
@@ -72,6 +77,7 @@ discoverFuncs =
   , DiscoverFunc Pdm.discover
   , DiscoverFunc Perl.discover
   , DiscoverFunc Pipenv.discover
+  , DiscoverFunc Pixi.discover
   , DiscoverFunc Poetry.discover
   , DiscoverFunc ProjectJson.discover
   , DiscoverFunc Pub.discover

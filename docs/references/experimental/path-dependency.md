@@ -36,6 +36,7 @@ In the event that caching is causing problems, FOSSA can be made to rescan this 
   - `golang` using the [gomod strategy](./../strategies/languages/golang/gomodules.md).
   - PDM (Python) projects via the [pdm strategy](./../strategies/languages/python/pdm.md).
   - Rust projects via the [Cargo strategy](./../strategies/languages/rust/cargo.md).
+  - Swift packages via the [Swift strategy](./../strategies/platforms/ios/swift.md), when `swift package show-dependencies` is used.
 
 ## F.A.Q
 

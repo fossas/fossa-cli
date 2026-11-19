@@ -1,0 +1,22 @@
+{
+    "packages": [
+        {
+            "name": "monolog/monolog",
+            "version": "3.8.1",
+            "require": {
+                "php": ">=8.1",
+                "ext-mbstring": "*",
+                "composer-runtime-api": "^2.2",
+                "psr/log": "^2.0 || ^3.0"
+            }
+        },
+        {
+            "name": "psr/log",
+            "version": "3.0.2",
+            "require": {
+                "php": ">=8.0.0"
+            }
+        }
+    ],
+    "packages-dev": []
+}

@@ -12,6 +12,7 @@ module Strategy.Node.Bun.BunLock (
   BunDepVertex (..),
   BunDepLabel (..),
   parseResolution,
+  splitPackageKey,
 ) where
 
 import Control.Algebra (Has)
@@ -26,7 +27,8 @@ import Data.Aeson (
   (.:),
   (.:?),
  )
-import Data.Foldable (for_)
+import Data.Foldable (asum, for_)
+import Data.List (inits)
 import Data.Map (Map)
 import Data.Map qualified as Map
 import Data.Set qualified as Set
@@ -38,6 +40,7 @@ import DepTypes (
   DepType (GitType, NodeJSType),
   Dependency (..),
   VerConstraint (CEq),
+  hydrateDepEnvs,
   insertEnvironment,
  )
 import Effect.Grapher (LabeledGrapher, deep, direct, edge, label, run, withLabeling)
@@ -186,6 +189,21 @@ parseResolution res
       let (name, rest) = Text.breakOn "@" res
        in (name, Text.drop 1 rest)
 
+-- | Split a package key into the path of package names it is nested under.
+-- A scoped name is a single segment even though it contains a slash.
+--
+-- >>> splitPackageKey "send/ms"
+-- ["send", "ms"]
+--
+-- >>> splitPackageKey "@acme/lib/@babel/code-frame"
+-- ["@acme/lib", "@babel/code-frame"]
+splitPackageKey :: PackageName -> [PackageName]
+splitPackageKey = foldr joinScope [] . filter (not . Text.null) . Text.splitOn "/"
+  where
+    joinScope scope (name : rest)
+      | "@" `Text.isPrefixOf` scope = (scope <> "/" <> name) : rest
+    joinScope segment segments = segment : segments
+
 -- | Analyze a bun.lock file and produce a dependency graph.
 analyze ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
@@ -198,51 +216,54 @@ analyze file = do
 -- | Build a dependency graph from a parsed bun lockfile.
 --
 -- Strategy:
---   1. Collect all dev dependency names across all workspaces.
---   2. For each workspace, mark its declared dependencies as direct
+--   1. For each workspace, mark its declared dependencies as direct
 --      and label them with their environment.
---   3. For each supported package (npm, git), add it as a deep dependency,
---      label it with its inferred environment, and create edges to its
---      transitive dependencies.
+--   2. For each supported package (npm, git), add it as a deep dependency
+--      and create edges to its transitive dependencies.
 --      Unsupported types (workspace, file, link, root, module) are excluded.
+--   3. Propagate the environments of the direct dependencies along the edges,
+--      so a package inherits every environment it can be reached from.
+--
+-- Dependencies are resolved the way node_modules resolution works, because
+-- bun stores extra versions of a package under nested keys
+-- (see 'resolvePackage').
 --
 -- Uses 'LabeledGrapher' so that vertices are environment-agnostic and
 -- environments accumulate as labels, avoiding duplicate vertices when
 -- the same package appears in both prod and dev across workspaces.
 buildGraph :: BunLockfile -> Graphing Dependency
-buildGraph lockfile = run . withLabeling vertexToDependency $ do
-  for_ allWorkspaces $ \workspace -> do
-    markDirectDeps EnvProduction workspace.wsDependencies
-    markDirectDeps EnvDevelopment workspace.wsDevDependencies
-    markDirectDeps EnvProduction workspace.wsOptionalDependencies
+buildGraph lockfile = hydrateDepEnvs . run . withLabeling vertexToDependency $ do
+  for_ (Map.toList $ workspaces lockfile) $ \(wsPath, workspace) -> do
+    -- Bun nests a workspace's own versions under its package name, but the
+    -- root workspace's dependencies are always top-level keys.
+    let parentPath = if Text.null wsPath then [] else splitPackageKey workspace.wsName
+    markDirectDeps parentPath EnvProduction workspace.wsDependencies
+    markDirectDeps parentPath EnvDevelopment workspace.wsDevDependencies
+    markDirectDeps parentPath EnvProduction workspace.wsOptionalDependencies
 
-  for_ (packages lockfile) $ \pkg ->
+  for_ (Map.toList $ packages lockfile) $ \(key, pkg) ->
     for_ (toVertex pkg) $ \parentVertex -> do
-      let (name, _) = parseResolution (pkgResolution pkg)
-          inferredEnv = if Set.member name devDepNames then EnvDevelopment else EnvProduction
       deep parentVertex
-      label parentVertex (BunDepEnv inferredEnv)
       for_ (transitiveDepNames pkg) $ \childName ->
-        case Map.lookup childName (packages lockfile) of
-          Nothing -> pure ()
-          Just childPkg ->
-            for_ (toVertex childPkg) $ \childVertex ->
-              edge parentVertex childVertex
+        for_ (resolvePackage (splitPackageKey key) childName >>= toVertex) $ \childVertex ->
+          edge parentVertex childVertex
   where
-    allWorkspaces :: [BunWorkspace]
-    allWorkspaces = Map.elems $ workspaces lockfile
-
-    devDepNames :: Set.Set PackageName
-    devDepNames = Set.fromList $ concatMap (Map.keys . wsDevDependencies) allWorkspaces
-
-    markDirectDeps :: (Has (LabeledGrapher BunDepVertex BunDepLabel) sig m) => DepEnvironment -> Map PackageName VersionConstraint -> m ()
-    markDirectDeps env deps =
+    markDirectDeps :: (Has (LabeledGrapher BunDepVertex BunDepLabel) sig m) => [PackageName] -> DepEnvironment -> Map PackageName VersionConstraint -> m ()
+    markDirectDeps parentPath env deps =
       for_ (Map.keys deps) $ \depName ->
-        case Map.lookup depName (packages lockfile) of
-          Nothing -> pure ()
-          Just pkg -> for_ (toVertex pkg) $ \vertex -> do
-            direct vertex
-            label vertex (BunDepEnv env)
+        for_ (resolvePackage parentPath depName >>= toVertex) $ \vertex -> do
+          direct vertex
+          label vertex (BunDepEnv env)
+
+    -- \| Find the entry bun resolved for a dependency of the package nested
+    -- at @parentPath@. Bun stores conflicting versions under nested keys such
+    -- as @"express/path-to-regexp"@, so try the parent's own nested key first,
+    -- then each ancestor's, and finally the top-level key.
+    resolvePackage :: [PackageName] -> PackageName -> Maybe BunPackage
+    resolvePackage parentPath childName =
+      asum $ map lookupUnder (reverse $ inits parentPath)
+      where
+        lookupUnder ancestors = Map.lookup (Text.intercalate "/" $ ancestors <> [childName]) (packages lockfile)
 
     transitiveDepNames :: BunPackage -> [PackageName]
     transitiveDepNames pkg =

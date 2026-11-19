@@ -16,6 +16,7 @@ import Strategy.Python.Poetry.PoetryLock (
 import Test.Hspec (
   Spec,
   describe,
+  expectationFailure,
   it,
   runIO,
   shouldBe,
@@ -87,12 +88,12 @@ expectedPoetryLock =
             , poetryLockPackageDependencies =
                 Map.fromList
                   [ ("pkgOneChildofOne", TextVersion "*")
-                  , ("pkgTwoChildofOne", ObjectVersionSpec $ ObjectVersion "5.4")
+                  , ("pkgTwoChildofOne", ObjectVersionSpec $ ObjectVersion (Just "5.4"))
                   ,
                     ( "pkgThreeChildofOne"
                     , MultipleObjectVersionSpec
-                        [ ObjectVersion ">=1.0,<2.0"
-                        , ObjectVersion ">=1.6,<2.0"
+                        [ ObjectVersion (Just ">=1.0,<2.0")
+                        , ObjectVersion (Just ">=1.6,<2.0")
                         ]
                     )
                   ]
@@ -165,3 +166,26 @@ spec = do
           , "83:1: unexpected key: description in package[7]"
           ]
           expectedPoetryLock
+
+  describe "dependency specs without a version" $
+    it "should accept path, git and url dependencies" $ do
+      contents' <- TIO.readFile "test/Python/Poetry/testdata/poetry-no-version-deps.lock"
+      case Toml.decode contents' of
+        Toml.Failure err -> expectationFailure ("decode failed: " <> show err)
+        Toml.Success _ lock ->
+          map (\p -> (poetryLockPackageName p, poetryLockPackageDependencies p)) (poetryLockPackages lock)
+            `shouldBe` [
+                         ( PackageName "lamipy"
+                         , Map.empty
+                         )
+                       ,
+                         ( PackageName "laminar-cloud-utils"
+                         , Map.fromList
+                             [ ("celeriac", ObjectVersionSpec $ ObjectVersion Nothing)
+                             , ("lamipy", ObjectVersionSpec $ ObjectVersion Nothing)
+                             , ("requests", ObjectVersionSpec $ ObjectVersion (Just ">=2.0"))
+                             , ("some-archive", ObjectVersionSpec $ ObjectVersion Nothing)
+                             , ("typing-extensions", TextVersion "^4.0")
+                             ]
+                         )
+                       ]

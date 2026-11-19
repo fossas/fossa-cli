@@ -22,7 +22,7 @@ import GraphUtil (expectDeps', expectDirect', expectEdges')
 import Path
 import Path.IO (getCurrentDir)
 import Strategy.Node.PackageJson (Development, FlatDeps (FlatDeps), NodePackage (NodePackage), Production)
-import Strategy.Node.YarnV1.YarnLock (buildGraph, mangleParseErr)
+import Strategy.Node.YarnV1.YarnLock (buildGraph, mangleParseErr, parseLockfile)
 import Test.Effect (it')
 import Test.Hspec (Spec, describe)
 import Yarn.Lock qualified as YL
@@ -146,11 +146,19 @@ parseFile name = do
   curDir <- sendIO getCurrentDir
   let testFilePath = (curDir </> testdataRoot </> name)
   testFile <- readContentsBS testFilePath
-  let result = YL.parse (toString testFilePath) (decodeUtf8 testFile)
+  let result = parseLockfile (toString testFilePath) (decodeUtf8 testFile)
   tagError (mangleParseErr (toString testFilePath)) result
 
 spec :: Spec
 spec = do
+  describe "parseLockfile" $
+    it' "should accept a lockfile with no package entries" $ do
+      -- What `yarn install` writes for a project without dependencies: only the header comments.
+      yarnLock <- parseFile $(mkRelFile "no-packages.yarn.lock")
+      graph <- buildGraph yarnLock simpleFlatDeps
+      expectDeps' [] graph
+      expectDirect' [] graph
+
   describe "buildGraph without package.json info" $ do
     it' "should produce expected structure" $ do
       yarnLock <- parseFile $(mkRelFile "yarn.lock")

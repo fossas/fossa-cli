@@ -301,6 +301,7 @@ ignoredPaths =
   , "vendor/"
   , "node_modules/"
   , ".venv/" -- python pdm package manager's pkgyard (similar to node_modules/)
+  , ".pixi/" -- pixi's installed environments (similar to .venv/)
   , ".srclib-cache/"
   , "spec/"
   , "Godeps/"
@@ -310,6 +311,7 @@ ignoredPaths =
   , "third-party/"
   , "Carthage/"
   , "Checkouts/"
+  , ".build/" -- SwiftPM build directory; dependency clones under checkouts/ carry their own manifests
   ]
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include

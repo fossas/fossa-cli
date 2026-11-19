@@ -290,15 +290,24 @@ combineErrDetails edoc esupp ehelp ectx = renderErrDocStack edoc <> renderErrSup
 renderErrs :: NonEmpty ErrWithStack -> Doc AnsiStyle -> TracebackStyle -> DiagnosticStyle -> [Doc AnsiStyle]
 renderErrs es errDetails tracebackStyle diagStyle = do
   let errsWithTraceback = map (\x -> renderErrWithStack x tracebackStyle diagStyle) (NE.toList es)
-      errsWithTracebackAndErrDetails = applyToTopOfStack addErrDetails errsWithTraceback
+      errsWithTracebackAndErrDetails = applyToStack addErrDetails addTracebackSeparator errsWithTraceback
   map (uncurry (<>)) errsWithTracebackAndErrDetails
   where
-    applyToTopOfStack :: (a -> a) -> [a] -> [a]
-    applyToTopOfStack _ [] = []
-    applyToTopOfStack f (x : xs) = f x : xs
+    applyToStack :: (a -> a) -> (a -> a) -> [a] -> [a]
+    applyToStack _ _ [] = []
+    applyToStack top rest (x : xs) = top x : map rest xs
 
     addErrDetails :: (Doc AnsiStyle, Doc AnsiStyle) -> (Doc AnsiStyle, Doc AnsiStyle)
     addErrDetails (err, traceback) = (err <> (newlinePreceding . newlineTrailing $ errDetails), traceback)
+
+    -- Only the top error carries errDetails, whose trailing newline separates
+    -- the error text from the traceback header. The remaining errors would
+    -- otherwise have their traceback header glued onto the last line of the
+    -- error text (e.g. "...none passed validationTraceback:").
+    addTracebackSeparator :: (Doc AnsiStyle, Doc AnsiStyle) -> (Doc AnsiStyle, Doc AnsiStyle)
+    addTracebackSeparator (err, traceback) = case tracebackStyle of
+      Default -> (newlineTrailing err, traceback)
+      None -> (err, traceback)
 
 ---------- Rendering individual Result components: ErrCtx, EmittedWarn, SomeWarn, ErrWithStack
 

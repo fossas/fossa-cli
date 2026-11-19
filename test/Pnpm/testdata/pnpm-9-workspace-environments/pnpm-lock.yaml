@@ -1,0 +1,30 @@
+lockfileVersion: '9.0'
+importers:
+  .: {}
+  dev:
+    devDependencies:
+      bridge: {version: 'link:../bridge'}
+  prod:
+    optionalDependencies:
+      shared: {version: 'link:../shared'}
+  bridge:
+    dependencies:
+      shared: {version: 'link:../shared'}
+  shared:
+    dependencies:
+      bridge: {version: 'link:../bridge'}
+      leaf: {version: 1.0.0}
+    devDependencies:
+      tool: {version: 1.0.0}
+packages:
+  leaf@1.0.0:
+    resolution: {integrity: test}
+  tail@1.0.0:
+    resolution: {integrity: test}
+  tool@1.0.0:
+    resolution: {integrity: test}
+snapshots:
+  leaf@1.0.0:
+    dependencies: {tail: 1.0.0}
+  tail@1.0.0: {}
+  tool@1.0.0: {}

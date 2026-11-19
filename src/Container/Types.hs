@@ -18,7 +18,13 @@ module Container.Types (
 
   -- * Jar Analysis Related Types
   JarObservation (..),
-  DiscoveredJars (..),
+  DiscoveredBinaries (..),
+
+  -- * Go Binary Analysis Related Types
+
+  -- Defined alongside the filesystem discovery strategy that shares them.
+  GoModule (..),
+  DiscoveredGoBinary (..),
 
   -- * helpers
   baseLayer,
@@ -29,7 +35,7 @@ module Container.Types (
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (ManifestJson)
 import Control.DeepSeq (NFData)
-import Data.Aeson (FromJSON, FromJSONKey, Value, object, parseJSON, withObject, (.:))
+import Data.Aeson (FromJSON, FromJSONKey, Value, object, parseJSON, withObject, (.!=), (.:), (.:?))
 import Data.Aeson.Types (ToJSON, toJSON, (.=))
 import Data.Foldable (foldl')
 import Data.List.NonEmpty as NonEmpty (NonEmpty, head, tail)
@@ -40,6 +46,7 @@ import Data.String.Conversion (ToText, toText)
 import Data.Text (Text)
 import GHC.Generics (Generic)
 import Srclib.Types (SourceUnit)
+import Strategy.Go.GoBinary (DiscoveredGoBinary (..), GoModule (..))
 
 data ContainerImageRaw = ContainerImageRaw
   { layers :: NonEmpty.NonEmpty ContainerLayer
@@ -145,11 +152,17 @@ newtype JarObservation = JarObservation
   deriving (Eq, Ord, Show, Generic)
   deriving (ToJSON, FromJSON) via Value
 
--- | Output parse type for millhone.
-newtype DiscoveredJars = DiscoveredJars
+-- | Output parse type for millhone: everything (jars and Go binaries) it
+-- discovered per layer.
+data DiscoveredBinaries = DiscoveredBinaries
   { discoveredJars :: Map.Map LayerPath [JarObservation]
+  , discoveredGoBinaries :: Map.Map LayerPath [DiscoveredGoBinary]
   }
   deriving (Eq, Ord, Show)
 
-instance FromJSON DiscoveredJars where
-  parseJSON = withObject "JarInput" $ \o -> DiscoveredJars <$> o .: "discovered_jars"
+instance FromJSON DiscoveredBinaries where
+  parseJSON = withObject "DiscoveredBinaries" $ \o ->
+    DiscoveredBinaries
+      <$> o .: "discovered_jars"
+      -- Tolerate output from millhone versions predating Go binary analysis.
+      <*> o .:? "discovered_go_binaries" .!= Map.empty

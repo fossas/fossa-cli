@@ -53,8 +53,20 @@ There are two form of generated JSON: (1) from resolution API.
 */
 
 allprojects {
-    tasks.register("jsonDeps") {
-        doLast {
+    tasks.register("jsonDeps") { jsonDepsTask ->
+        // Gradle's configuration cache forbids touching `Task.project` (and with it
+        // `project.configurations`) while a task executes, so resolving dependencies
+        // inside `doLast` fails on builds that enable the cache with
+        // "Invocation of 'Task.project' by task ':jsonDeps' at execution time is
+        // unsupported with the configuration cache". Resolve once the task graph is
+        // ready instead (every project is configured by then, nothing has executed
+        // yet) and let the task action print only the finished string, which the
+        // cache can serialize.
+        def jsonDepsResult = [output: null]
+        project.gradle.taskGraph.whenReady { graph ->
+            if (!graph.hasTask(jsonDepsTask)) {
+                return
+            }
 
             def printTrace = { message, scope ->
                 println "TRACE (${scope}): ${message}"
@@ -202,7 +214,10 @@ allprojects {
             // safe for us to print a bunch of other debugging messages
             // everywhere else - the parser in Spectrometer ignores those
             // messages.
-            println "RESOLUTIONAPI_JSONDEPS_${project.path}_${resultWithResolutionApi}"
+            jsonDepsResult.output = "RESOLUTIONAPI_JSONDEPS_${project.path}_${resultWithResolutionApi}".toString()
+        }
+        doLast {
+            println jsonDepsResult.output
         }
     }
 }

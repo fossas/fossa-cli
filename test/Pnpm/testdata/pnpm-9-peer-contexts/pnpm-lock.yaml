@@ -1,0 +1,33 @@
+lockfileVersion: '9.0'
+importers:
+  .: {}
+  a:
+    dependencies:
+      parent:
+        version: 1.0.0(peer@1.0.0)
+  b:
+    devDependencies:
+      parent:
+        version: 1.0.0(peer@2.0.0)
+packages:
+  parent@1.0.0:
+    resolution: {integrity: test}
+  widget@1.0.0:
+    resolution: {integrity: test}
+  peer@1.0.0:
+    resolution: {integrity: test}
+  peer@2.0.0:
+    resolution: {integrity: test}
+snapshots:
+  parent@1.0.0(peer@1.0.0):
+    dependencies:
+      widget: 1.0.0(peer@1.0.0)
+  parent@1.0.0(peer@2.0.0):
+    dependencies:
+      widget: 1.0.0(peer@2.0.0)
+  widget@1.0.0(peer@1.0.0):
+    dependencies: {peer: 1.0.0}
+  widget@1.0.0(peer@2.0.0):
+    dependencies: {peer: 2.0.0}
+  peer@1.0.0: {}
+  peer@2.0.0: {}

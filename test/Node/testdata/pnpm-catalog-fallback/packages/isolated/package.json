@@ -1,0 +1,7 @@
+{
+  "name": "isolated",
+  "dependencies": {
+    "left-pad": "catalog:",
+    "is-odd": "^3.0.1"
+  }
+}

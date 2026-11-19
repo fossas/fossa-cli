@@ -7,6 +7,7 @@ module Strategy.Python.Uv (
   UvProject (..),
   UvLock (..),
   UvLockPackage (..),
+  UvLockPackageDependency (..),
   UvLockPackageSource (..),
 ) where
 
@@ -19,7 +20,7 @@ import Control.Effect.Diagnostics (
  )
 import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Data.Foldable (for_, traverse_)
+import Data.Foldable (fold, for_, traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe)
@@ -121,7 +122,11 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
   traverse_ mkEdges packages
   where
     packages = uvlockPackages lock
-    packagesByName = Map.fromList $ map (\p -> (uvlockPackageName p, p)) packages
+    packagesByName = Map.fromListWith (<>) $ map (\p -> (uvlockPackageName p, [p])) packages
+
+    resolveDependency :: UvLockPackageDependency -> [UvLockPackage]
+    resolveDependency dep =
+      filter (dependencyMatches dep) $ Map.findWithDefault [] (uvlockPackageDependencyName dep) packagesByName
 
     -- Workspace packages (editable/virtual) are the user's own code, not third-party deps.
     -- We include them during graph construction (for edges and env labeling) but remove them
@@ -134,13 +139,9 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
     mkEdges :: Has (Grapher UvLockPackage) sig m => UvLockPackage -> m ()
-    mkEdges fromPkg@UvLockPackage{..} = do
-      for_ uvlockPackageDependencies $ \name ->
-        for_ (Map.lookup name packagesByName) (edge fromPkg)
-      for_ uvlockPackageDevDependencies $ \name ->
-        for_ (Map.lookup name packagesByName) (edge fromPkg)
-      for_ uvlockPackageOptionalDependencies $ traverse_ $ \name ->
-        for_ (Map.lookup name packagesByName) (edge fromPkg)
+    mkEdges fromPkg@UvLockPackage{..} =
+      for_ (uvlockPackageDependencies <> uvlockPackageDevDependencies <> fold uvlockPackageOptionalDependencies) $
+        traverse_ (edge fromPkg) . resolveDependency
 
     -- The directList currently contains the uv package being scanned. This package lists the
     -- prod dependencies (under the dependencies field) and the dev dependencies (under the dev-dependencies field)
@@ -152,15 +153,15 @@ buildGraph lock = removeWorkspacePackages . processGraph $ run . evalGrapher $ d
         applyLabels pkg = toDependency pkg $ newEnvs pkg
 
         newEnvs :: UvLockPackage -> Set DepEnvironment
-        newEnvs UvLockPackage{..} =
+        newEnvs pkg =
           Set.fromList $
             catMaybes
-              [ maybeElem prodDeps EnvProduction uvlockPackageName
-              , maybeElem devDeps EnvDevelopment uvlockPackageName
+              [ referencedBy prodDeps EnvProduction
+              , referencedBy devDeps EnvDevelopment
               ]
-
-        maybeElem :: (Eq a) => [a] -> b -> a -> Maybe b
-        maybeElem list def toFind = if toFind `elem` list then Just def else Nothing
+          where
+            referencedBy :: [UvLockPackageDependency] -> DepEnvironment -> Maybe DepEnvironment
+            referencedBy deps env = if any (`dependencyMatches` pkg) deps then Just env else Nothing
 
         prodDeps = foldMap uvlockPackageDependencies $ directList gr
         -- Legacy format has dev dependencies under the dev-dependencies field
@@ -275,9 +276,9 @@ data UvLockPackage = UvLockPackage
   { uvlockPackageName :: Text
   , uvlockPackageVersion :: Maybe Text
   , uvlockPackageSource :: UvLockPackageSource
-  , uvlockPackageDependencies :: [Text]
-  , uvlockPackageDevDependencies :: [Text]
-  , uvlockPackageOptionalDependencies :: Map Text [Text]
+  , uvlockPackageDependencies :: [UvLockPackageDependency]
+  , uvlockPackageDevDependencies :: [UvLockPackageDependency]
+  , uvlockPackageOptionalDependencies :: Map Text [UvLockPackageDependency]
   }
   deriving (Eq, Ord, Show)
 
@@ -288,17 +289,20 @@ instance Toml.Schema.FromValue UvLockPackage where
         <$> Toml.Schema.reqKey "name"
         <*> Toml.Schema.optKey "version"
         <*> Toml.Schema.reqKey "source"
-        <*> (maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dependencies")
+        <*> (fromMaybe [] <$> Toml.Schema.optKey "dependencies")
         <*> (maybe [] uvlockPackageDevDependenciesInt <$> Toml.Schema.optKey "dev-dependencies")
         <*> Toml.Schema.pickKey
           [ Toml.Schema.Key
               "optional-dependencies"
-              (fmap (Map.map (map uvlockPackageDependencyName)) . Toml.Schema.fromValue)
+              Toml.Schema.fromValue
           , Toml.Schema.Else (pure mempty)
           ]
 
-newtype UvLockPackageDependency = UvLockPackageDependency
-  {uvlockPackageDependencyName :: Text}
+data UvLockPackageDependency = UvLockPackageDependency
+  { uvlockPackageDependencyName :: Text
+  , uvlockPackageDependencyVersion :: Maybe Text
+  , uvlockPackageDependencySource :: Maybe UvLockPackageSource
+  }
   deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageDependency where
@@ -306,6 +310,8 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
     Toml.Schema.parseTableFromValue $
       UvLockPackageDependency
         <$> Toml.Schema.reqKey "name"
+        <*> Toml.Schema.optKey "version"
+        <*> Toml.Schema.optKey "source"
 
 data UvLockPackageSource
   = SourceEditable Text
@@ -330,16 +336,25 @@ instance Toml.Schema.FromValue UvLockPackageSource where
         , Toml.Schema.Key "directory" (fmap SourceDirectory . Toml.Schema.fromValue)
         ]
 
+-- uv only records a dependency's version and source when the lockfile contains more than one
+-- package with that name (e.g. different versions resolved for different Python versions), so
+-- they are only compared when present.
+dependencyMatches :: UvLockPackageDependency -> UvLockPackage -> Bool
+dependencyMatches UvLockPackageDependency{..} UvLockPackage{..} =
+  uvlockPackageDependencyName == uvlockPackageName
+    && all (\v -> uvlockPackageVersion == Just v) uvlockPackageDependencyVersion
+    && all (== uvlockPackageSource) uvlockPackageDependencySource
+
 isWorkspacePackage :: UvLockPackageSource -> Bool
 isWorkspacePackage (SourceEditable _) = True
 isWorkspacePackage (SourceVirtual _) = True
 isWorkspacePackage _ = False
 
 newtype UvLockPackageDevDependencies = UvLockPackageDevDependencies
-  {uvlockPackageDevDependenciesInt :: [Text]}
+  {uvlockPackageDevDependenciesInt :: [UvLockPackageDependency]}
   deriving (Eq, Ord, Show)
 
 instance Toml.Schema.FromValue UvLockPackageDevDependencies where
   fromValue =
     Toml.Schema.parseTableFromValue $
-      UvLockPackageDevDependencies . maybe [] (map uvlockPackageDependencyName) <$> Toml.Schema.optKey "dev"
+      UvLockPackageDevDependencies . fromMaybe [] <$> Toml.Schema.optKey "dev"

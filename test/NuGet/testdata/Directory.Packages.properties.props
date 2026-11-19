@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <TheVersion>10.0.9</TheVersion>
+    <SerilogMajor>4</SerilogMajor>
+    <SerilogVersion>$(SerilogMajor).3.0</SerilogVersion>
+    <Overridden>1.0.0</Overridden>
+    <LoopA>$(LoopB)</LoopA>
+    <LoopB>$(LoopA)</LoopB>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Overridden>2.0.0</Overridden>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Literal" Version="1.2.3" />
+    <PackageVersion Include="Simple" Version="$(TheVersion)" />
+    <PackageVersion Include="CaseInsensitive" Version="$(theversion)" />
+    <PackageVersion Include="Nested" Version="$(SerilogVersion)" />
+    <PackageVersion Include="Composed" Version="$(SerilogMajor).$(TheVersion)-preview" />
+    <PackageVersion Include="LaterGroupWins" Version="$(Overridden)" />
+    <PackageVersion Include="ChildElement">
+      <Version>$(TheVersion)</Version>
+    </PackageVersion>
+    <PackageVersion Include="Undefined" Version="$(NoSuchProperty)" />
+    <PackageVersion Include="Cyclic" Version="$(LoopA)" />
+    <PackageVersion Include="PropertyFunction" Version="$(TheVersion.Trim())" />
+    <PackageVersion Include="Unterminated" Version="$(TheVersion" />
+  </ItemGroup>
+</Project>

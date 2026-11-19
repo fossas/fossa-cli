@@ -64,6 +64,15 @@ jobs:
       run: |
         brew install jq
 
+    # The macOS runner images ship Command Line Tools whose SDK is newer than the
+    # linker in the default Xcode. GHC links through the system `gcc`/`ld` shims, so
+    # the mismatch makes every link fail with "tapi error: malformed file". Selecting
+    # the Command Line Tools makes the SDK and linker come from the same toolchain.
+    # See https://github.com/actions/runner-images/issues/14940
+    - name: Use Command Line Tools toolchain for GHC (MacOS)
+      if: ${{ contains(matrix.os, 'macos') }}
+      run: sudo xcode-select -s /Library/Developer/CommandLineTools
+
     # Set up Haskell.
     - uses: haskell-actions/setup@v2
       id: setup-haskell

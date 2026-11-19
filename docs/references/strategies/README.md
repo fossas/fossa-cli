@@ -46,6 +46,7 @@ See the linked documentation above for details.
 ### go
 
 - [gomodules (`go mod`)](languages/golang/gomodules.md)
+- [gobinary (compiled Go binaries)](languages/golang/gobinary.md)
 - [dep](languages/golang/godep.md)
 - [glide](languages/golang/glide.md)
 
@@ -94,6 +95,7 @@ See the linked documentation above for details.
 - [pipenv](languages/python/pipenv.md)
 - [poetry](languages/python/poetry.md)
 - [pdm](languages/python/pdm.md)
+- [pixi](languages/python/pixi.md)
 - [uv](languages/python/uv.md)
 
 ### r
@@ -176,6 +178,7 @@ Invoke strict analysis with the `--strict` flag when running `fossa analyze`.
 | [Erlang (rebar3)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/erlang/erlang.md)                        | Dynamic                      | ❌                    |
 | [Fortran](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/fortran/fortran.md)                              | Static                       | ❌                    |
 | [Go (dep)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/godep.md)                                | Static                       | ❌                    |
+| [Go (gobinary)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/gobinary.md)                        | Static                       | ❌                    |
 | [Go (glide)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/glide.md)                              | Static                       | ❌                    |
 | [Go (gomodules)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/golang/gomodules.md)                      | Dynamic with static fallback | ❌                    |
 | [Gradle](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/gradle/gradle.md)                                 | Dynamic                      | ❌                    |
@@ -192,6 +195,7 @@ Invoke strict analysis with the `--strict` flag when running `fossa analyze`.
 | [Python (Pipenv)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/pipenv.md)                        | Dynamic with static fallback | ❌                    |
 | [Python (Poetry)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/poetry.md)                        | Static                       | ❌                    |
 | [Python (Pdm)](./languages/python/pdm.md)                                                                                                       | Static                       | ❌                    |
+| [Python (pixi)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/pixi.md)                            | Static                       | ❌                    |
 | [Python (setup.py/requirements.txt)](https://github.com/fossas/fossa-cli/blob/master/docs/references/strategies/languages/python/setuptools.md) | Dynamic with static fallback | ❌                    |
 | [Python (uv)](./languages/python/uv.md)                                                                                                         | Static                       | ❌                    |
 | [R (renv)](./languages/r/renv.md)                                                                                                               | Static                       | ❌                    |

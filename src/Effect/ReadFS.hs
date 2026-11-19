@@ -45,6 +45,7 @@ module Effect.ReadFS (
   readContentsToml,
   readContentsYaml,
   readContentsXML,
+  fileParseErrorSupportMsg,
 
   -- * Reading file contents, redacting the content from logging and diagnostics.
   readRedactedContentsBS,
@@ -90,6 +91,7 @@ import Data.Bifunctor (first)
 import Data.ByteString (ByteString)
 import Data.ByteString qualified as BS
 import Data.Either.Combinators (mapRight)
+import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, encodeUtf8, toString, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
@@ -363,10 +365,15 @@ readContentsParserBS parser file = context ("Parsing file '" <> toText (toString
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsJson file = context ("Parsing JSON file '" <> toText (toString file) <> "'") $ do
-  contents <- readContentsBS file
+  contents <- stripUtf8Bom <$> readContentsBS file
   case eitherDecodeStrict contents of
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
+
+-- | Windows tooling (e.g. Visual Studio) often writes JSON files with a leading
+-- UTF-8 byte order mark, which Aeson rejects; RFC 8259 permits ignoring it.
+stripUtf8Bom :: ByteString -> ByteString
+stripUtf8Bom bs = fromMaybe bs (BS.stripPrefix "\xEF\xBB\xBF" bs)
 
 -- | Read JSONC (JSON with Comments) from a file.
 -- Strips single-line comments, block comments, and trailing commas before parsing as JSON.

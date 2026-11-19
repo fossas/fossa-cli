@@ -79,6 +79,7 @@ data DiscoveredProjectType
   | DpkgDatabaseProjectType
   | FpmProjectType
   | GlideProjectType
+  | GoBinaryProjectType
   | GodepProjectType
   | GomodProjectType
   | GradleProjectType
@@ -96,6 +97,7 @@ data DiscoveredProjectType
   | PdmProjectType
   | PerlProjectType
   | PipenvProjectType
+  | PixiProjectType
   | PnpmProjectType
   | PoetryProjectType
   | ProjectAssetsJsonProjectType
@@ -132,6 +134,7 @@ projectTypeToText = \case
   DpkgDatabaseProjectType -> "dpkgdb"
   FpmProjectType -> "fpm"
   GlideProjectType -> "glide"
+  GoBinaryProjectType -> "gobinary"
   GodepProjectType -> "godep"
   GomodProjectType -> "gomod"
   GradleProjectType -> "gradle"
@@ -149,6 +152,7 @@ projectTypeToText = \case
   PdmProjectType -> "pdm"
   PerlProjectType -> "perl"
   PipenvProjectType -> "pipenv"
+  PixiProjectType -> "pixi"
   PnpmProjectType -> "pnpm"
   PoetryProjectType -> "poetry"
   ProjectAssetsJsonProjectType -> "projectassetsjson"

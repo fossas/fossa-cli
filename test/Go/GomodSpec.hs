@@ -227,10 +227,20 @@ spec_parse = do
     it "fails to parse invalid go.mod" $ do
       runParser gomodParser "" `shouldFailOn` "invalid input"
 
+    -- The module directive may appear anywhere in the file; requiring it first
+    -- used to fail with `unexpected "go 1.2" expecting "module" or end of input`.
+    it "parses a go.mod whose module directive is not the first directive" $ do
+      runParser gomodParser "" goModWithLateModule `shouldParse` gomodWithLateModule
+
     -- Old-style go.mod files use quoted strings for module paths and package names
     -- See https://go.dev/ref/mod#go-mod-file-lexical: "Identifiers and strings are interchangeable"
     it "parses old-style go.mod with quoted package names" $ do
       runParser gomodParser "" goModWithQuotedNames `shouldParse` gomodWithQuotedNames
+
+    -- Module path elements may contain '~' (https://go.dev/ref/mod#go-mod-file-ident),
+    -- as sourcehut paths do; these used to fail with `unexpected '~'`.
+    it "parses module paths containing a tilde" $ do
+      runParser gomodParser "" goModWithTildePaths `shouldParse` gomodWithTildePaths
 
 gomodWithRetract :: Gomod
 gomodWithRetract =
@@ -380,6 +390,77 @@ gomodWithQuotedNames =
             }
         ]
     , modReplaces = mempty
+    , modLocalReplaces = mempty
+    , modExcludes = []
+    }
+
+-- The module directive after the require/replace blocks, with the leading
+-- line being a commented-out module directive.
+goModWithLateModule :: Text
+goModWithLateModule =
+  [r|//module github.com/some/other
+
+go 1.26.0
+
+require (
+	github.com/some/some v1.44.263
+	github.com/some/local v0.1.0
+)
+
+replace github.com/some/local => ../local
+
+module github.com/some/some
+|]
+
+gomodWithLateModule :: Gomod
+gomodWithLateModule =
+  Gomod
+    { modName = "github.com/some/some"
+    , modRequires =
+        [ Require
+            { reqPackage = "github.com/some/some"
+            , reqVersion = Semantic (version 1 44 263 [] [])
+            }
+        , Require
+            { reqPackage = "github.com/some/local"
+            , reqVersion = Semantic (version 0 1 0 [] [])
+            }
+        ]
+    , modReplaces = mempty
+    , modLocalReplaces = Map.fromList [("github.com/some/local", "../local")]
+    , modExcludes = []
+    }
+
+-- sourcehut module paths (`git.sr.ht/~user/repo`) contain a '~' in a path element.
+goModWithTildePaths :: Text
+goModWithTildePaths =
+  [r|module git.sr.ht/~someone/app
+
+go 1.22
+
+require (
+	git.sr.ht/~sbinet/gg v0.7.0 // indirect
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3
+)
+
+replace git.sr.ht/~sbinet/gg => git.sr.ht/~someone/gg v0.7.1
+|]
+
+gomodWithTildePaths :: Gomod
+gomodWithTildePaths =
+  Gomod
+    { modName = "git.sr.ht/~someone/app"
+    , modRequires =
+        [ Require
+            { reqPackage = "git.sr.ht/~sbinet/gg"
+            , reqVersion = Semantic (version 0 7 0 [] [])
+            }
+        , Require
+            { reqPackage = "git.sr.ht/~jackmordaunt/go-toast/v2"
+            , reqVersion = Semantic (version 2 0 3 [] [])
+            }
+        ]
+    , modReplaces = Map.fromList [("git.sr.ht/~sbinet/gg", Require "git.sr.ht/~someone/gg" (Semantic (version 0 7 1 [] [])))]
     , modLocalReplaces = mempty
     , modExcludes = []
     }

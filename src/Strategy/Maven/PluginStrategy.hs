@@ -11,8 +11,8 @@ import Control.Effect.Diagnostics (
   ToDiagnostic (renderDiagnostic),
   context,
   errCtx,
+  recover,
   warnOnErr,
-  (<||>),
  )
 import Control.Effect.Lift (Lift)
 import Control.Effect.Path (withSystemTempDir)
@@ -20,6 +20,8 @@ import Control.Monad (when)
 import Data.Foldable (traverse_)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe qualified as Maybe
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (
@@ -34,25 +36,25 @@ import Effect.Grapher qualified as Grapher
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Graphing (Graphing)
-import Path (Abs, Dir, Path)
+import Path (Abs, Dir, File, Path)
 import Strategy.Maven.Common (MavenDependency (..))
 import Strategy.Maven.Plugin (
   Artifact (..),
   DepGraphPlugin,
   Edge (..),
   PluginOutput (..),
-  ReactorOutput (ReactorOutput),
+  augmentWithDuplicateEdges,
   depGraphPlugin,
   depGraphPluginLegacy,
   execPluginAggregate,
-  execPluginReactor,
+  execPluginVerboseGraph,
   installPlugin,
   parsePluginOutput,
-  parseReactorOutput,
-  reactorArtifactName,
-  reactorArtifacts,
+  parseVerboseGraphs,
   withUnpackedPlugin,
  )
+import Strategy.Maven.Pom.Closure qualified as Closure
+import Strategy.Maven.Pom.PomFile qualified as PomFile
 import Types (GraphBreadth (..))
 
 analyze' ::
@@ -60,51 +62,68 @@ analyze' ::
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze' dir = analyze dir depGraphPlugin
+analyze' closurePoms dir = analyze closurePoms dir depGraphPlugin
 
 analyzeLegacy' ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   m (Graphing MavenDependency, GraphBreadth)
-analyzeLegacy' dir = analyze dir depGraphPluginLegacy
-
-runReactor ::
-  ( CandidateCommandEffs sig m
-  , Has ReadFS sig m
-  , Has (Lift IO) sig m
-  ) =>
-  Path Abs Dir ->
-  DepGraphPlugin ->
-  m ReactorOutput
-runReactor dir plugin =
-  context "Running plugin to get submodule names" $
-    withSystemTempDir "fossa-temp" $ \tempdir -> do
-      warnOnErr MayIncludeSubmodule (execPluginReactor dir tempdir plugin >> parseReactorOutput tempdir)
-        <||> pure (ReactorOutput [])
+analyzeLegacy' closurePoms dir = analyze closurePoms dir depGraphPluginLegacy
 
 analyze ::
   ( CandidateCommandEffs sig m
   , Has (Lift IO) sig m
   , Has ReadFS sig m
   ) =>
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
   Path Abs Dir ->
   DepGraphPlugin ->
   m (Graphing MavenDependency, GraphBreadth)
-analyze dir plugin = do
+analyze closurePoms dir plugin = do
   graph <- withUnpackedPlugin plugin $ \filepath -> do
     context "Installing plugin" $ errCtx MvnPluginInstallFailed $ installPlugin dir filepath plugin
-    reactorOutput <- runReactor dir plugin
-    context "Running plugin to get dependency graph" $
-      errCtx MvnPluginExecFailed $
-        execPluginAggregate dir plugin
-    pluginOutput <- parsePluginOutput dir
-    context "Building dependency graph" $ pure (buildGraph reactorOutput pluginOutput)
+    -- Use a temp output dir so we always read from a known location even when POM overrides build directory
+    withSystemTempDir "fossa-depgraph" $ \tempdir -> do
+      context "Running plugin to get dependency graph" $
+        errCtx MvnPluginExecFailed $
+          execPluginAggregate dir tempdir plugin
+      pluginOutput <- parsePluginOutput tempdir
+      pluginOutput' <- recoverDuplicateEdges closurePoms dir plugin pluginOutput
+      context "Building dependency graph" $ pure (buildGraph (Closure.submodulesFromCoordinate closurePoms) pluginOutput')
   pure (graph, Complete)
+
+-- | Maven's dependency mediation attaches a package shared by several parents
+-- to a single winning parent; the aggregate goal only reports those winning
+-- edges, so a shared transitive dependency looks exclusive to one parent (see
+-- 'Strategy.Maven.Plugin.mavenPluginVerboseGraphCmd'). Recover the omitted
+-- edges with a second plugin run and merge them into the parsed output.
+--
+-- Recovery is best-effort: on any failure the aggregate output is used as-is,
+-- which matches the behavior before this step existed.
+recoverDuplicateEdges ::
+  ( CandidateCommandEffs sig m
+  , Has ReadFS sig m
+  ) =>
+  Map PomFile.MavenCoordinate (Path Abs File, PomFile.Pom) ->
+  Path Abs Dir ->
+  DepGraphPlugin ->
+  PluginOutput ->
+  m PluginOutput
+recoverDuplicateEdges closurePoms dir plugin pluginOutput =
+  context "Running plugin to recover duplicate-resolved edges" $ do
+    recovered <-
+      recover $
+        warnOnErr DuplicateEdgesNotRecovered $ do
+          execPluginVerboseGraph dir plugin
+          augmentWithDuplicateEdges pluginOutput <$> parseVerboseGraphs closurePoms dir
+    pure (Maybe.fromMaybe pluginOutput recovered)
 
 data MvnPluginInstallFailed = MvnPluginInstallFailed
 instance ToDiagnostic MvnPluginInstallFailed where
@@ -118,10 +137,10 @@ instance ToDiagnostic MvnPluginExecFailed where
     let header = "Failed to execute maven plugin for analysis"
     Errata (Just header) [] Nothing
 
-data MayIncludeSubmodule = MayIncludeSubmodule
-instance ToDiagnostic MayIncludeSubmodule where
-  renderDiagnostic MayIncludeSubmodule = do
-    let header = "Failed to run reactor, submodules may be included in the output graph."
+data DuplicateEdgesNotRecovered = DuplicateEdgesNotRecovered
+instance ToDiagnostic DuplicateEdgesNotRecovered where
+  renderDiagnostic DuplicateEdgesNotRecovered = do
+    let header = "Failed to recover duplicate-resolved dependency edges; transitive dependencies shared between multiple parents may be attributed to only one of them."
     Errata (Just header) [] Nothing
 
 -- | The graphs returned by the depgraph plugin look like this:
@@ -147,8 +166,8 @@ instance ToDiagnostic MayIncludeSubmodule where
 -- The multimodule case shows how one submodule can depend on another. In this
 -- case we want to remove the reference to submodule1 in submodule2's dependency
 -- tree and promote submodule1's dependency to be a root (direct) dependency.
-buildGraph :: ReactorOutput -> PluginOutput -> Graphing MavenDependency
-buildGraph reactorOutput PluginOutput{..} =
+buildGraph :: Set Text -> PluginOutput -> Graphing MavenDependency
+buildGraph knownSubmodules PluginOutput{..} =
   run . evalGrapher $ do
     let byNumeric :: Map Int Artifact
         byNumeric = indexBy artifactNumericId outArtifacts
@@ -157,9 +176,6 @@ buildGraph reactorOutput PluginOutput{..} =
 
     traverse_ (visitEdge depsByNumeric) outEdges
   where
-    knownSubmodules :: Set.Set Text
-    knownSubmodules = Set.fromList . map reactorArtifactName . reactorArtifacts $ reactorOutput
-
     toBuildTag :: Text -> DepEnvironment
     toBuildTag = \case
       "compile" -> EnvProduction
@@ -183,8 +199,13 @@ buildGraph reactorOutput PluginOutput{..} =
           dependencyScopes = Set.fromList artifactScopes
           mavenDep = MavenDependency dep dependencyScopes mempty
 
+      -- closureSubmodules uses "groupId:artifactId" coordinate form, so
+      -- matching must build that coordinate from the artifact; bare artifact
+      -- ids are intentionally not matched.
       when
-        (artifactIsDirect || artifactArtifactId `Set.member` knownSubmodules)
+        ( artifactIsDirect
+            || (artifactGroupId <> ":" <> artifactArtifactId) `Set.member` knownSubmodules
+        )
         (Grapher.direct mavenDep)
       pure mavenDep
 

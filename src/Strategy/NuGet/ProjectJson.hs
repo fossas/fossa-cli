@@ -6,12 +6,13 @@ module Strategy.NuGet.ProjectJson (
   getDeps,
   mkProject,
   buildGraph,
+  looksLikeNuGetManifest,
   ProjectJson (..),
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
-import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Diagnostics (Diagnostics, Has, recover)
 import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -20,11 +21,13 @@ import Data.Aeson.Types (
   Value,
   withObject,
   withText,
+  (.!=),
   (.:),
   (.:?),
  )
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set qualified as Set
 import Data.Text (Text)
 import Data.Text qualified as Text
 import DepTypes (
@@ -58,7 +61,26 @@ findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters
 findProjects = walkWithFilters' $ \_ _ files -> do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)
-    Just file -> pure ([ProjectJsonProject file], WalkContinue)
+    Just file -> do
+      isManifest <- isNuGetManifest file
+      if isManifest
+        then pure ([ProjectJsonProject file], WalkContinue)
+        else pure ([], WalkContinue)
+
+-- | Other tools also name their configuration file @project.json@ (e.g. Nx),
+-- so only claim files that look like a NuGet manifest. A file that cannot be
+-- read as a JSON object is still claimed, so that a malformed NuGet manifest
+-- surfaces an analysis error rather than silently disappearing.
+isNuGetManifest :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
+isNuGetManifest file = do
+  probe <- recover $ readContentsJson @(Map Text Value) file
+  pure $ maybe True looksLikeNuGetManifest probe
+
+-- | The legacy NuGet @project.json@ schema has no required key, but a manifest
+-- always declares its packages under a top-level "dependencies" section, a
+-- per-framework one inside "frameworks", or both.
+looksLikeNuGetManifest :: Map Text Value -> Bool
+looksLikeNuGetManifest obj = Map.member "dependencies" obj || Map.member "frameworks" obj
 
 newtype ProjectJsonProject = ProjectJsonProject
   { projectJsonFile :: Path Abs File
@@ -94,7 +116,7 @@ analyze' file = do
       }
 
 newtype ProjectJson = ProjectJson
-  { dependencies :: Map Text DependencyInfo
+  { dependencies :: [(Text, DependencyInfo)]
   }
   deriving (Show)
 
@@ -102,11 +124,30 @@ data DependencyInfo = DependencyInfo
   { depVersion :: Text
   , depType :: Maybe Text
   }
+  deriving (Eq, Ord, Show)
+
+-- | Framework-specific settings from the @frameworks@ section; dependencies may
+-- be declared per-framework instead of (or in addition to) top-level.
+newtype FrameworkInfo = FrameworkInfo
+  { frameworkDependencies :: Map Text DependencyInfo
+  }
   deriving (Show)
 
+-- The "dependencies" key is optional, both top-level and per-framework: a
+-- project.json may declare dependencies in either place, or have none at all.
+-- A package may also appear in several places with different versions (e.g. a
+-- framework-specific override of a top-level entry); rather than picking one
+-- winner, every distinct name/version/type combination is reported.
 instance FromJSON ProjectJson where
-  parseJSON = withObject "ProjectJson" $ \obj ->
-    ProjectJson <$> obj .: "dependencies"
+  parseJSON = withObject "ProjectJson" $ \obj -> do
+    topLevelDeps <- obj .:? "dependencies" .!= Map.empty
+    frameworks :: Map Text FrameworkInfo <- obj .:? "frameworks" .!= Map.empty
+    let frameworkDeps = concatMap (Map.toList . frameworkDependencies) (Map.elems frameworks)
+    pure . ProjectJson . Set.toList . Set.fromList $ Map.toList topLevelDeps <> frameworkDeps
+
+instance FromJSON FrameworkInfo where
+  parseJSON = withObject "FrameworkInfo" $ \obj ->
+    FrameworkInfo <$> obj .:? "dependencies" .!= Map.empty
 
 instance FromJSON DependencyInfo where
   parseJSON val = parseJSONObject val <|> parseJSONText val
@@ -131,7 +172,7 @@ data NuGetDependency = NuGetDependency
 buildGraph :: ProjectJson -> Graphing Dependency
 buildGraph project = Graphing.fromList (map toDependency direct)
   where
-    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> Map.toList (dependencies project)
+    direct = (\(name, dep) -> NuGetDependency name (depVersion dep) (depType dep)) <$> dependencies project
     toDependency NuGetDependency{..} =
       Dependency
         { dependencyType = NuGetType

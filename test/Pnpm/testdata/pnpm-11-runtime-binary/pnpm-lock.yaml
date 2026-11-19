@@ -1,0 +1,36 @@
+# Like pnpm-11-runtime, but the pinned runtime's resolution is a single
+# top-level `type: binary` object (pnpm's BinaryResolution: `integrity`, `url`,
+# `archive`, `bin`) rather than `type: variations` with per-platform variants.
+# It carries an `integrity` key, so it must still be read as a binary and not
+# fall through to the registry resolution. The runtime must not be reported.
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      express:
+        specifier: ^4.18.2
+        version: 4.18.2
+    devDependencies:
+      bun:
+        specifier: runtime:1.2
+        version: runtime:1.2.3
+
+packages:
+  express@4.18.2:
+    resolution: {integrity: sha512-xxxxxxxxxx==}
+
+  bun@runtime:1.2.3:
+    resolution:
+      archive: zip
+      bin:
+        bun: bun
+      integrity: sha256-MjnqyC3Oz46zWh2LvcYxNmz2Ob5dSnBEeqq2j3jTBvA=
+      type: binary
+      url: https://github.com/oven-sh/bun/releases/download/bun-v1.2.3/bun-linux-x64.zip
+    version: 1.2.3
+
+snapshots:
+  express@4.18.2: {}
+
+  bun@runtime:1.2.3: {}

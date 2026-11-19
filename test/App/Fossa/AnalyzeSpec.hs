@@ -3,17 +3,21 @@
 
 module App.Fossa.AnalyzeSpec (spec) where
 
-import App.Fossa.Analyze (applyFiltersToProject)
+import App.Fossa.Analyze (applyFiltersToProject, sendToDestination)
 import App.Fossa.Analyze.Discover (DiscoverFunc, discoverFuncs)
 import App.Fossa.Config.Analyze (StrategyConfig)
+import App.Fossa.Config.Common (DestinationMeta (DestinationMeta), ScanDestination (..))
 import App.Types (Mode, OverrideDynamicAnalysisBinary)
 import App.Util (FileAncestry (FileAncestry), ancestryDerived, ancestryDirect)
 import Control.Carrier.Debug (DebugC)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Reader (ReaderC)
 import Control.Carrier.Stack (StackC)
+import Control.Carrier.State.Strict (runState)
 import Control.Carrier.Telemetry (TelemetryC)
 import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.State (modify)
+import Data.Aeson qualified as Aeson
 import Discovery.Archive (convertArchiveToDir)
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, comboExclude, comboInclude)
 import Effect.Exec (ExecIOC)
@@ -21,6 +25,7 @@ import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
 import Path (Abs, Dir, File, Path, Rel, mkAbsDir, mkRelDir, mkRelFile, (</>))
 import Test.Effect (it', shouldBe')
+import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Type.Operator (type ($))
 import Types (DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (ProjectWithoutTargets))
@@ -31,8 +36,10 @@ spec :: Spec
 spec = do
   -- this test only exists to prevent merging the commented out analyzers
   describe "Discovery function list" $
-    it "should be length 36" $
-      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 36
+    it "should be length 39" $
+      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 39
+
+  sendToDestinationSpec
 
   describe "applyFiltersToProject" $ do
     describe "projects under the scan basedir" $ do
@@ -108,6 +115,26 @@ spec = do
       prefix <- archivePrefix archiveScanRoot outerArchive
       applyFiltersToProject unpackedRoot (ancestry prefix) (excluding $(mkRelDir "third-party")) (project unpackedProject) `shouldBe'` Just ProjectWithoutTargets
       applyFiltersToProject unpackedRoot (ancestry prefix) (excluding $(mkRelDir "user")) (project unpackedProject) `shouldBe'` Just ProjectWithoutTargets
+
+-- | Runs under the mock API with no expectations, so any request the stdout
+-- branch made would fail the test on top of the upload count.
+sendToDestinationSpec :: Spec
+sendToDestinationSpec = describe "sendToDestination" $ do
+  let meta = DestinationMeta (Fixtures.apiOpts, Fixtures.projectMetadata)
+      result = Aeson.object []
+      countUploads destination = runState (0 :: Int) $ sendToDestination (\_ -> modify ((+ 1) :: Int -> Int)) destination result
+
+  it' "uploads nothing when the destination is stdout" $ do
+    (uploads, ()) <- countUploads OutputStdout
+    uploads `shouldBe'` 0
+
+  it' "uploads once for an upload destination" $ do
+    (uploads, ()) <- countUploads (UploadScan meta)
+    uploads `shouldBe'` 1
+
+  it' "uploads once when also writing to stdout" $ do
+    (uploads, ()) <- countUploads (OutputAndUpload meta)
+    uploads `shouldBe'` 1
 
 -- | The prefix 'Discovery.Archive.discover' builds for an archive found
 -- directly under the scan basedir, as assembled at its callsite in

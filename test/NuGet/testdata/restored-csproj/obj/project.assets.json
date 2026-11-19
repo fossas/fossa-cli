@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0": {
+      "one/1.0.0": {
+        "type": "package"
+      }
+    }
+  },
+  "project": {
+    "frameworks": {
+      "net8.0": {
+        "targetAlias": "net8.0",
+        "dependencies": {
+          "one": {}
+        }
+      }
+    }
+  }
+}

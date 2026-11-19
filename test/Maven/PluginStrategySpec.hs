@@ -24,8 +24,6 @@ import Strategy.Maven.Plugin (
   ),
   Edge (Edge, edgeFrom, edgeTo),
   PluginOutput (..),
-  ReactorArtifact (..),
-  ReactorOutput (..),
  )
 import Strategy.Maven.PluginStrategy (buildGraph)
 
@@ -277,32 +275,49 @@ spec :: Spec
 spec = do
   describe "buildGraph" $ do
     it "Should produce expected output, without including submodules in test comparison" $ do
-      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutput
+      let graph = shrinkRoots $ buildGraph Set.empty mavenOutput
 
       expectDeps [packageOne, packageTwo] graph
       expectDirect [] graph
       expectEdges [(packageOne, packageTwo)] graph
 
     it "Should promote children of root dep(s) to direct" $ do
-      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenOutputWithDirects
+      let graph = shrinkRoots $ buildGraph Set.empty mavenOutputWithDirects
       expectDeps [packageTwo] graph
       expectDirect [packageTwo] graph
       expectEdges [] graph
 
     it "Should promote children of root dep(s) to direct in multimodule projects" $ do
-      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultimoduleOutputWithDirects
+      let graph = shrinkRoots $ buildGraph Set.empty mavenMultimoduleOutputWithDirects
       expectDeps [packageTwo, packageFour] graph
       expectDirect [packageTwo, packageFour] graph
       expectEdges [] graph
 
     it "Should parse all scopes, without including submodules in test comparison" $ do
-      let graph = shrinkRoots $ buildGraph (ReactorOutput []) mavenMultiScopeOutput
+      let graph = shrinkRoots $ buildGraph Set.empty mavenMultiScopeOutput
       expectDeps [packageMultiScope] graph
 
-    let graph = shrinkRoots $ buildGraph (ReactorOutput [ReactorArtifact "packageThree"]) mavenCrossDependentSubModules
+    let graph = shrinkRoots $ buildGraph (Set.singleton "mygroup:packageThree") mavenCrossDependentSubModules
     it "Should mark top-level graph artifacts and known submodules as direct, then shrinkRoots" $ do
       expectDirect [packageTwo, packageFour] graph
 
     it "Should remove submodules in projects where submodules depend on eachother" $ do
       expectDeps [packageTwo, packageFour] graph
       expectEdges [(packageFour, packageTwo)] graph
+
+    -- Verifies that the submodules parameter (from closureSubmodules) replaces
+    -- the reactor output. Artifacts matching known submodule names are treated as
+    -- direct dependencies, then shrinkRoots removes them from the final graph.
+    it "Should treat artifacts matching known submodules as direct deps" $ do
+      let directsGraph = shrinkRoots $ buildGraph (Set.fromList ["mygroup:packageOne", "mygroup:packageThree"]) mavenCrossDependentSubModules
+      -- Both packageOne and packageThree are known submodules, so their children
+      -- (packageTwo and packageFour) are promoted to direct after shrinking
+      expectDirect [packageTwo, packageFour] directsGraph
+      expectDeps [packageTwo, packageFour] directsGraph
+
+    -- Documents the intentional strictness: closureSubmodules produces
+    -- "groupId:artifactId" coordinates, so bare artifact ids in
+    -- knownSubmodules match nothing. Keeps a bare-id input as live coverage.
+    let bareIdGraph = shrinkRoots $ buildGraph (Set.singleton "packageThree") mavenCrossDependentSubModules
+    it "Should not treat bare artifactIds as submodules (coordinate matching only)" $ do
+      expectDirect [packageTwo] bareIdGraph

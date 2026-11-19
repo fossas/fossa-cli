@@ -34,7 +34,8 @@ instance Toml.Schema.FromValue GoLock where
   fromValue =
     Toml.Schema.parseTableFromValue $
       GoLock
-        <$> Toml.Schema.reqKey "projects"
+        -- `dep` omits the `[[projects]]` array entirely when the project has no dependencies.
+        <$> Toml.Schema.pickKey [Toml.Schema.Key "projects" Toml.Schema.fromValue, Toml.Schema.Else $ pure []]
 
 data Project = Project
   { projectName :: Text

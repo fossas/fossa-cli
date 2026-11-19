@@ -11,6 +11,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      # The `lzma` package has a manual `pkgconfig` flag that cabal cannot turn
+      # off, so solving the install plan requires `liblzma.pc` to be present.
+      # The Linux build job gets this from its Alpine container; this job runs
+      # on a bare runner, so install it explicitly.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config liblzma-dev
+
       - name: Install and set GHC and Cabal versions
         # The first line works around a ghcup issue:
         # https://github.com/actions/runner-images/issues/7061#issuecomment-1422639889
