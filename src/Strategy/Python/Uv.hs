@@ -168,14 +168,40 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
-    -- A group or extra can install the package itself, e.g. `dev = ["my-project[test]"]`. That
-    -- edge is skipped, since it would leave the project with a predecessor and no longer a root.
+    -- A group or extra can install the package itself, e.g. `dev = ["my-project[test]"]`, and a
+    -- workspace root that isn't a project installs every member whatever its groups say. Those edges
+    -- are skipped, since they would leave the package with a predecessor and no longer a root.
+    -- An extra's packages hang off whatever asks for the extra (see `withExtras`). uv also lists every
+    -- extra of a workspace member, since `uv sync --extra` can install it, so one that nothing asks for
+    -- stays under its package.
     mkEdges :: Has (Grapher UvLockPackage) sig m => Set Text -> UvLockPackage -> m ()
     mkEdges excluded fromPkg = do
-      edgesFrom fromPkg (uvlockPackageDependencies fromPkg <> fold (uvlockPackageOptionalDependencies fromPkg))
+      edgesFrom fromPkg (uvlockPackageDependencies fromPkg <> fold (Map.filterWithKey unrequested (uvlockPackageOptionalDependencies fromPkg)))
       edgesFrom (groupRoot fromPkg) (fold (Map.withoutKeys (uvlockPackageDevDependencies fromPkg) excluded))
       where
-        edgesFrom from = traverse_ (traverse_ (edge from) . filter (/= fromPkg) . resolveDependency)
+        unrequested extra _ = (fromPkg, extra) `Set.notMember` requestedExtras
+        edgesFrom from = traverse_ (traverse_ (edge from) . filter keep . resolveDependency) . foldMap withExtras
+        keep to = to /= fromPkg && not (fromPkg == virtualRoot && isWorkspacePackage (uvlockPackageSource to))
+
+    -- A dependency on `pkg[extra]` installs pkg and what pkg lists for that extra, which can ask for
+    -- another extra, e.g. fastapi[standard] asks for uvicorn[standard]. Those packages hang off
+    -- whatever has the dependency, so they're labeled by it rather than by pkg.
+    withExtras :: UvLockPackageDependency -> [UvLockPackageDependency]
+    withExtras = go Set.empty
+      where
+        go seen dep = dep : foldMap (extraDeps seen) (filter (`Set.notMember` seen) (extrasOf dep))
+        extraDeps seen (pkg, extra) = foldMap (go (Set.insert (pkg, extra) seen)) (Map.findWithDefault [] extra (uvlockPackageOptionalDependencies pkg))
+
+    -- The extras a dependency asks for, by the package that defines them.
+    extrasOf :: UvLockPackageDependency -> [(UvLockPackage, Text)]
+    extrasOf dep = (,) <$> resolveDependency dep <*> uvlockPackageDependencyExtras dep
+
+    -- Every extra something in uv.lock asks for. Excluded groups count, so an extra only they ask for
+    -- is left out with them.
+    requestedExtras :: Set (UvLockPackage, Text)
+    requestedExtras = Set.fromList $ foldMap (foldMap extrasOf . declared) (virtualRoot : packages)
+      where
+        declared pkg = uvlockPackageDependencies pkg <> fold (uvlockPackageDevDependencies pkg) <> fold (uvlockPackageOptionalDependencies pkg)
 
     -- A package's dependency groups hang off a root of their own, so they're labeled by group name
     -- rather than by the package's own label. No package can have its name.
@@ -209,13 +235,15 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
             referencedBy deps env = if any (`dependencyMatches` pkg) deps then Just env else Nothing
 
         prodDeps =
-          foldMap uvlockPackageDependencies (directList gr)
-            <> foldMap (fold . (`Map.restrictKeys` productionGroups) . groups) (directList gr)
+          foldMap withExtras $
+            foldMap uvlockPackageDependencies (directList gr)
+              <> foldMap (fold . (`Map.restrictKeys` productionGroups) . groups) (directList gr)
         -- Every other dependency group is dev. Older projects list dev dependencies as an extra,
         -- under optional-dependencies.dev.
         devDeps =
-          foldMap (fold . (`Map.withoutKeys` productionGroups) . groups) (directList gr)
-            <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
+          foldMap withExtras $
+            foldMap (fold . (`Map.withoutKeys` productionGroups) . groups) (directList gr)
+              <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
 
     -- Locate the root nodes of the graph and mark these as direct dependencies
     -- The root node will be the uv package being scanned, not its dependencies, so we will need to later
@@ -361,6 +389,8 @@ data UvLockPackageDependency = UvLockPackageDependency
   { uvlockPackageDependencyName :: Text
   , uvlockPackageDependencyVersion :: Maybe Text
   , uvlockPackageDependencySource :: Maybe UvLockPackageSource
+  , uvlockPackageDependencyExtras :: [Text]
+  -- ^ The extras it asks for, e.g. `{ name = "requests", extra = ["socks"] }`
   }
   deriving (Eq, Ord, Show)
 
@@ -371,6 +401,7 @@ instance Toml.Schema.FromValue UvLockPackageDependency where
         <$> Toml.Schema.reqKey "name"
         <*> Toml.Schema.optKey "version"
         <*> Toml.Schema.optKey "source"
+        <*> (fromMaybe [] <$> Toml.Schema.optKey "extra")
 
 data UvLockPackageSource
   = SourceEditable Text

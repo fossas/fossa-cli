@@ -229,8 +229,8 @@ lockSplitVersions =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = [UvLockPackageDependency "foo" (Just "1.0.0") Nothing]
-            , uvlockPackageDevDependencies = Map.fromList [("dev", [UvLockPackageDependency "foo" (Just "2.0.0") Nothing])]
+            , uvlockPackageDependencies = [(mkPackageDep "foo"){uvlockPackageDependencyVersion = Just "1.0.0"}]
+            , uvlockPackageDevDependencies = Map.fromList [("dev", [(mkPackageDep "foo"){uvlockPackageDependencyVersion = Just "2.0.0"}])]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -262,7 +262,13 @@ lockSplitVersions =
     }
 
 mkPackageDep :: Text -> UvLockPackageDependency
-mkPackageDep name = UvLockPackageDependency name Nothing Nothing
+mkPackageDep name =
+  UvLockPackageDependency
+    { uvlockPackageDependencyName = name
+    , uvlockPackageDependencyVersion = Nothing
+    , uvlockPackageDependencySource = Nothing
+    , uvlockPackageDependencyExtras = []
+    }
 
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
@@ -462,8 +468,9 @@ spec = do
         result
 
   -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
-  -- uv-workspace-member-groups.lock and uv-virtual-root.lock from 0.13.9, without the sdist and wheel
-  -- entries. uv-groups.lock also leaves out the packages these tests don't look at.
+  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, and uv-extras.lock
+  -- from 0.13.9, without the sdist and wheel entries. uv-groups.lock also leaves out the packages these
+  -- tests don't look at.
   describe "dependency groups" $ do
     let prod = Set.fromList [EnvProduction]
         dev = Set.fromList [EnvDevelopment]
@@ -540,3 +547,27 @@ spec = do
       labels parsed mempty mempty `shouldBe'` Map.fromList (("idna", prod) : map (,dev) pytest)
       labels parsed devGroup mempty `shouldBe'` Map.fromList (map (,prod) ("idna" : pytest))
       labels parsed mempty devGroup `shouldBe'` Map.fromList [("idna", prod)]
+
+    -- The same kind of root lists its member pkg in its dev group, but uv installs every member at
+    -- such a root anyway.
+    it' "keeps a member production when a workspace root that isn't a project lists it in a group" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-virtual-root-member.lock|]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod)]
+
+    -- The dev group installs the project with its test extra, which needs iniconfig.
+    it' "labels the project's own extra by the group that asks for it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-self-reference.lock|]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev), ("imagesize", dev)]
+
+    -- The project needs requests[use-chardet-on-py3], and its dev group asks for requests[socks] and
+    -- requests-oauthlib[rsa], whose rsa extra asks for oauthlib[signedtoken].
+    it' "labels an extra's packages by what asks for the extra" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-extras.lock|]
+      let requests = ["requests", "certifi", "charset-normalizer", "idna", "urllib3"]
+          devOnly = ["pysocks", "requests-oauthlib", "oauthlib", "cryptography", "pyjwt", "cffi", "pycparser"]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList (("chardet", prod) : map (,prodAndDev) requests <> map (,dev) devOnly)
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList (map (,prod) ("chardet" : requests))
