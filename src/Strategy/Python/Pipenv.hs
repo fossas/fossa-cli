@@ -14,6 +14,7 @@ module Strategy.Python.Pipenv (
   PipenvProject (..),
   buildGraph,
   pipfilePackageList,
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -89,13 +90,16 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject PipenvProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PipenvProject], WalkStep)
+discoverVisitor _ _ files = do
   case findPipenvFiles files of
     (Nothing, _) -> pure ([], WalkContinue)
     (_, Nothing) -> pure ([], WalkContinue)
     (Just pipfile, Just lock) -> pure ([PipenvProject pipfile lock], WalkContinue)
   where
-    findPipenvFiles files = join bimap (`findFileNamed` files) ("Pipfile", "Pipfile.lock")
+    findPipenvFiles fs = join bimap (`findFileNamed` fs) ("Pipfile", "Pipfile.lock")
 
 getDeps ::
   ( Has ReadFS sig m

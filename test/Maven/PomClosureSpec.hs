@@ -8,10 +8,12 @@ import Data.List (find, sort)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.Text (Text)
+import Discovery.Walk (walkWithFilters')
 import GraphUtil (expectDeps')
 import Graphing (shrinkRoots)
 import Path (Abs, Dir, Path, reldir, relfile, toFilePath, (</>))
 import Path.IO qualified as PIO
+import Strategy.Maven qualified as Maven
 import Strategy.Maven.Plugin (Artifact (..), Edge (Edge), PluginOutput (..))
 import Strategy.Maven.PluginStrategy (buildGraph)
 import Strategy.Maven.Pom.Closure (
@@ -105,6 +107,18 @@ spec = do
               }
           graph = shrinkRoots $ buildGraph submodules output
       expectDeps' [] graph
+  describe "shared broadcast walk (discoverVisitor + postDiscover)" $
+    itWithTempDir' "discovers the same projects as findProjects" $ \dir -> do
+      createParentlessFixture dir
+      -- Pin the visitor's candidate filters alongside the equivalence: a
+      -- vendored .pom artifact is collected, while target/ outputs are skipped.
+      sendIO $ PIO.createDirIfMissing True (dir </> [reldir|target|])
+      sendIO $ BS.writeFile (toFilePath (dir </> [reldir|target|] </> [relfile|pom.xml|])) rootPom
+      sendIO $ BS.writeFile (toFilePath (dir </> [reldir|child-parented|] </> [relfile|artifact.pom|])) parentedChildPom
+      expected <- map (Maven.mkProject . Maven.MavenProject) <$> findProjects dir
+      pomFiles <- walkWithFilters' Maven.discoverVisitor dir
+      actual <- Maven.postDiscover dir pomFiles
+      actual `shouldBe'` expected
 
 rootCoord :: MavenCoordinate
 rootCoord = MavenCoordinate "com.example" "root-a" "1.0"
