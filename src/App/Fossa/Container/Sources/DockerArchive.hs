@@ -8,7 +8,6 @@ module App.Fossa.Container.Sources.DockerArchive (
 
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
 import App.Fossa.Analyze.Debug (diagToDebug)
-import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc, WalkedFunc))
 import App.Fossa.Analyze.DiscoveryDriver (PreparedEntry (..), entryConsumers, prepare, runDiscovery)
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
