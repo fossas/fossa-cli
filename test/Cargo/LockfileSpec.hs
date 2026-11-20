@@ -28,8 +28,9 @@ import Graphing qualified
 import Path (mkRelDir, toFilePath, (</>))
 import Path.IO (makeAbsolute)
 import Strategy.Cargo
+import Strategy.Cargo.Lock (reqSatisfies)
 import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldNotContain')
-import Test.Hspec (Spec, describe, it)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Test.Hspec qualified as Test
 
 -- | A registry source string, matching real 'cargo metadata' output.
@@ -53,7 +54,9 @@ spec = do
   memberEnumerationSpecs
   kindAnalysisSpecs
   sourceDecisionSpecs
+  reqSatisfiesSpecs
   unresolvableDepsSpecs
+  sourceSuffixSpecs
   goldenConversionSpecs
 
 -- ===========================================================================
@@ -147,11 +150,61 @@ phantomDepLock =
     <> "\n[[package]]\nname = \"serde\"\nversion = \"1.0.100\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"abcd\"\n"
 
 -- ===========================================================================
+-- Cargo version-requirement matching (reqSatisfies)
+
+reqSatisfiesSpecs :: Spec
+reqSatisfiesSpecs =
+  describe "reqSatisfies" $ do
+    it "a bare (caret) requirement uses Cargo caret semantics" $ do
+      reqSatisfies "0.12" "0.12.1" `shouldBe` True
+      reqSatisfies "0.12" "0.13.0" `shouldBe` False
+      -- Cargo's ^0.0.5 is an exact match (=0.0.5), not a range up to 0.0.6.
+      reqSatisfies "0.0.5" "0.0.5" `shouldBe` True
+      reqSatisfies "0.0.5" "0.0.6" `shouldBe` False
+
+    it "a tilde requirement allows patch updates only" $ do
+      reqSatisfies "~1.2" "1.2.9" `shouldBe` True
+      reqSatisfies "~1.2" "1.3.0" `shouldBe` False
+
+    it "= is an exact match with missing components zero-padded" $ do
+      reqSatisfies "=1.2" "1.2.0" `shouldBe` True
+      reqSatisfies "=1.2" "1.2.1" `shouldBe` False
+
+    it ">= and < compare against the zero-padded requirement version" $ do
+      reqSatisfies ">=1.2" "1.9.9" `shouldBe` True
+      reqSatisfies "<2" "1.9.9" `shouldBe` True
+      reqSatisfies "<2" "2.0.0" `shouldBe` False
+
+    it "a comma-joined requirement is an AND of its parts" $ do
+      reqSatisfies "1.2, <1.2.5" "1.2.3" `shouldBe` True
+      reqSatisfies "1.2, <1.2.5" "1.2.9" `shouldBe` False
+
+    it "an unparseable requirement or resolved version is a non-match" $ do
+      reqSatisfies "bogus" "1.0.0" `shouldBe` False
+      -- One bad part of an AND list rejects the whole requirement.
+      reqSatisfies "1.2, nonsense" "1.2.3" `shouldBe` False
+      reqSatisfies "1.0" "not-a-version" `shouldBe` False
+
+    it "a requirement without a prerelease never matches a prerelease resolution" $ do
+      reqSatisfies "=1.2.3" "1.2.3-beta" `shouldBe` False
+      -- Requirement-side prereleases are not parsed, so the conservative
+      -- fallback (False) applies here as well.
+      reqSatisfies "1.2.3-beta" "1.2.3-beta" `shouldBe` False
+
+-- ===========================================================================
 -- Unresolvable dependency references (phantom vertices)
 
 unresolvableDepsSpecs :: Spec
 unresolvableDepsSpecs =
   describe "unresolvable lockfile references" $ do
+    it "a member dep on a crate absent from the lock is reported, others are not" $ do
+      let lockText =
+            "version = 3\n"
+              <> "\n[[package]]\nname = \"solo\"\nversion = \"0.1.0\"\ndependencies = [\"present 1.0.0\", \"missing_crate 2.5.0\"]\n"
+              <> "\n[[package]]\nname = \"present\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"cc\"\n"
+      case parseCargoLock lockText of
+        Left err -> expectationFailure ("parseCargoLock failed: " ++ show err)
+        Right lock -> unresolvableDeps lock `shouldBe` ["missing_crate"]
     it' "a dep matching no [[package]] entry is omitted, not turned into a phantom vertex" $ do
       root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/single_crate")
       members <- enumerateWorkspaceMembers root
@@ -179,6 +232,47 @@ unresolvableDepsSpecs =
           -- ...and no node references a PackageId with an empty source.
           let allDeps = concatMap resolveNodeDeps (resolvedNodes $ metadataResolve meta)
           [nodePkg dep | dep <- allDeps, pkgIdSource (nodePkg dep) == ""] `shouldBe'` []
+
+-- ===========================================================================
+-- Source-suffixed dependency entries
+
+-- | A lockfile whose member references a git package via the parenthesized
+-- source form Cargo uses to disambiguate same name+version from different
+-- sources.
+sourceSuffixLock :: Text
+sourceSuffixLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"foo 1.2.3 (git+https://example.com/repo#abc1234)\"]\n"
+    <> "\n[[package]]\nname = \"foo\"\nversion = \"1.2.3\"\nsource = \"git+https://example.com/repo#abc1234\"\n"
+
+sourceSuffixSpecs :: Spec
+sourceSuffixSpecs =
+  describe "source-suffixed dependencies entries" $ do
+    it "strips a trailing parenthesized source suffix before splitting" $ do
+      parseDependencyString "foo 1.2.3 (git+https://example.com/repo#abc1234)"
+        `shouldBe` CargoDependency "foo" (Just "1.2.3")
+
+    it' "a source-suffixed entry resolves to its [[package]] without omission or phantom" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/source_suffix")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock sourceSuffixLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          unresolvableDeps lock `shouldBe'` []
+          let appPid = PackageId "app" "0.1.0" ("path+file://" <> toText (toFilePath root))
+              -- The PackageId drops the #commit fragment, matching the git-
+              -- source handling in 'lockfileToMetadata'.
+              fooPid = PackageId "foo" "1.2.3" "git+https://example.com/repo"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "app" "0.1.0" appPid Nothing Nothing [] Nothing
+                  , Package "foo" "1.2.3" fooPid Nothing Nothing [] (Just "git+https://example.com/repo#abc1234")
+                  ]
+                  [appPid]
+                  (Resolve [ResolveNode appPid [NodeDependency fooPid [nullKind]], ResolveNode fooPid []])
+          meta `shouldBe'` expected
 
 -- ===========================================================================
 -- Golden lockfile -> CargoMetadata conversions

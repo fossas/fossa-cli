@@ -145,10 +145,13 @@ checkVersion mVersion packages
        in Right (CargoLock version warnings packages)
 
 -- | Split a "dependencies" array entry into name and optional version,
--- splitting on the last space (crate names contain no spaces).
+-- splitting on the last space (crate names contain no spaces). A trailing
+-- parenthesized source suffix -- which Cargo uses to disambiguate the same
+-- name+version resolved from different sources -- is stripped first.
 --
 -- "ansi_term" -> ("ansi_term", Nothing)
 -- "ansi_term 0.12.1" -> ("ansi_term", Just "0.12.1")
+-- "foo 1.2.3 (git+https://example.com/repo#abc1234)" -> ("foo", Just "1.2.3")
 --
 -- Uses the text >=2.0 'Text.breakOnEnd', which returns (the text before the
 -- last space, *including* that space, and the text after it); when there is
@@ -156,10 +159,26 @@ checkVersion mVersion packages
 -- version is present.
 parseDependencyString :: Text -> CargoDependency
 parseDependencyString s =
-  let (prefix, version) = Text.breakOnEnd " " s
+  let plain = stripSourceSuffix s
+      (prefix, version) = Text.breakOnEnd " " plain
    in if Text.null prefix
-        then CargoDependency s Nothing
+        then CargoDependency plain Nothing
         else CargoDependency (Text.stripEnd prefix) (Just version)
+
+-- | Strip a trailing parenthesized source suffix from a "dependencies" entry:
+-- "foo 1.2.3 (git+https://…#abc)" -> "foo 1.2.3", including the space
+-- between the version and the parenthesis. An entry whose stripped form holds
+-- no "(" (no well-formed "(…)" group) is returned unchanged.
+stripSourceSuffix :: Text -> Text
+stripSourceSuffix s =
+  case Text.stripSuffix ")" s of
+    Nothing -> s
+    Just t ->
+      let (beforeParen, _) = Text.breakOnEnd "(" t
+          -- 'breakOnEnd' keeps the needle in its first component: drop the
+          -- " (" that opens the source suffix.
+          nameVer = fromMaybe beforeParen (Text.stripSuffix " (" beforeParen)
+       in if Text.null nameVer then s else nameVer
 
 -- ===========================================================================
 -- Workspace manifest analysis
@@ -453,19 +472,30 @@ data CargoReqOp
 --   * "~" (tilde): bumps the minor when one is given (~1.2 := >=1.2.0 <1.3.0),
 --     otherwise the major (~1 := >=1.0.0 <2.0.0);
 --   * "=", ">=", "<=", ">", "<": applied to the requirement with its missing
---     components padded with zero (=1.2 means =1.2.0, not a 1.2.x range).
+--     components padded with zero (=1.2 means =1.2.0, not a 1.2.x range);
+--   * a comma-joined list ("1.2, <1.2.5") is the conjunction of its parts;
+--   * a requirement without a prerelease component never matches a
+--     prerelease resolution (SemVer rule).
 --
--- An unparseable requirement or resolved version returns @False@, so callers
--- conservatively fall back to the union of all declared kinds.
+-- A requirement part that fails to parse, or an unparseable resolved version,
+-- returns @False@, so callers conservatively fall back to the union of all
+-- declared kinds.
 reqSatisfies :: Text -> Text -> Bool
 reqSatisfies reqText resolvedText =
-  case parseCargoReq (Text.strip reqText) of
-    Nothing -> False
-    Just (op, parts) ->
-      case fromText resolvedText of
-        Left _ -> False
-        Right v -> satisfiesCargoOp op parts (_versionMajor v, _versionMinor v, _versionPatch v)
+  case fromText resolvedText of
+    Left _ -> False
+    Right v ->
+      let ver = (_versionMajor v, _versionMinor v, _versionPatch v)
+          -- A requirement without a prerelease never matches a prerelease resolution.
+          isPreRelease = not (null (_versionRelease v))
+          matchesPart part =
+            case parseCargoReq (Text.strip part) of
+              Nothing -> False
+              Just (op, parts) -> satisfiesCargoOp op parts ver && (not isPreRelease || "-" `Text.isInfixOf` part)
+       in all matchesPart (splitOn "," reqText)
 
+-- | Parse one comma-separated requirement part into its operator and 1 to 3
+-- numeric version components; 'reqSatisfies' splits the conjunction.
 parseCargoReq :: Text -> Maybe (CargoReqOp, [Int])
 parseCargoReq t =
   case parseVersionParts rest of
