@@ -76,11 +76,6 @@ spec = do
             ]
         )
 
-  -- An image can contain the same layer more than once: kaniko and buildah add the same empty
-  -- layer (always the digest of the empty gzipped tar) for every step that leaves the filesystem
-  -- unchanged. Every blob is downloaded by its own task into a file named after its digest, and
-  -- two tasks writing that file at the same time failed the export with
-  -- "openBinaryFile: resource busy (file is locked)".
   describe "blobEntries" $ do
     it "should list a layer that appears several times in the manifest once" $
       blobEntries manifestWithRepeatedLayer
@@ -139,7 +134,8 @@ alpineTag = (RepoReferenceTag . RepoTag $ "alpine")
 latestTag :: RepoReference
 latestTag = (RepoReferenceTag . RepoTag $ "latest")
 
--- | The digest of the empty gzipped tar, which is what every empty layer has.
+-- | The digest of one empty layer, the one the fixture below repeats. Empty layers do not all
+-- share a digest: gzip metadata changes the compressed bytes.
 emptyLayerDigest :: Text
 emptyLayerDigest = "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
 
