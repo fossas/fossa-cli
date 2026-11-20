@@ -370,11 +370,15 @@ gomodParser = do
     -- "Identifiers and strings are interchangeable in the go.mod grammar."
     -- Identifiers are sequences of non-whitespace characters.
     -- Strings are quoted sequences of characters. We parse both.
+    --
+    -- Module path elements may contain ASCII letters, digits and the punctuation
+    -- @-@, @.@, @_@ and @~@ (https://go.dev/ref/mod#go-mod-file-ident); @~@ shows
+    -- up in sourcehut paths such as @git.sr.ht/~sbinet/gg@.
     packageName :: Parser PackageName
     packageName = lexeme $ bareGoModIdentifier <|> between (char '"') (char '"') bareGoModIdentifier
 
     bareGoModIdentifier :: Parser PackageName
-    bareGoModIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=')
+    bareGoModIdentifier = toText <$> some (alphaNumChar <|> char '.' <|> char '/' <|> char '-' <|> char '_' <|> char '=' <|> char '~')
 
     -- goVersion, e.g.:
     --   v0.0.0-20190101000000-abcdefabcdef

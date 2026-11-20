@@ -237,6 +237,11 @@ spec_parse = do
     it "parses old-style go.mod with quoted package names" $ do
       runParser gomodParser "" goModWithQuotedNames `shouldParse` gomodWithQuotedNames
 
+    -- Module path elements may contain '~' (https://go.dev/ref/mod#go-mod-file-ident),
+    -- as sourcehut paths do; these used to fail with `unexpected '~'`.
+    it "parses module paths containing a tilde" $ do
+      runParser gomodParser "" goModWithTildePaths `shouldParse` gomodWithTildePaths
+
 gomodWithRetract :: Gomod
 gomodWithRetract =
   Gomod
@@ -423,5 +428,39 @@ gomodWithLateModule =
         ]
     , modReplaces = mempty
     , modLocalReplaces = Map.fromList [("github.com/some/local", "../local")]
+    , modExcludes = []
+    }
+
+-- sourcehut module paths (`git.sr.ht/~user/repo`) contain a '~' in a path element.
+goModWithTildePaths :: Text
+goModWithTildePaths =
+  [r|module git.sr.ht/~someone/app
+
+go 1.22
+
+require (
+	git.sr.ht/~sbinet/gg v0.7.0 // indirect
+	git.sr.ht/~jackmordaunt/go-toast/v2 v2.0.3
+)
+
+replace git.sr.ht/~sbinet/gg => git.sr.ht/~someone/gg v0.7.1
+|]
+
+gomodWithTildePaths :: Gomod
+gomodWithTildePaths =
+  Gomod
+    { modName = "git.sr.ht/~someone/app"
+    , modRequires =
+        [ Require
+            { reqPackage = "git.sr.ht/~sbinet/gg"
+            , reqVersion = Semantic (version 0 7 0 [] [])
+            }
+        , Require
+            { reqPackage = "git.sr.ht/~jackmordaunt/go-toast/v2"
+            , reqVersion = Semantic (version 2 0 3 [] [])
+            }
+        ]
+    , modReplaces = Map.fromList [("git.sr.ht/~sbinet/gg", Require "git.sr.ht/~someone/gg" (Semantic (version 0 7 1 [] [])))]
+    , modLocalReplaces = mempty
     , modExcludes = []
     }

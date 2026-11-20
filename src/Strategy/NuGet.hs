@@ -6,6 +6,8 @@ module Strategy.NuGet (
   getDeps,
   mkProject,
   NuGetProject (..),
+  discoverVisitor,
+  postDiscover,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -19,6 +21,7 @@ import Data.Aeson (
   ToJSON,
  )
 import Data.List qualified as L
+import Data.Set qualified as Set
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -27,7 +30,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.ReadFS (ReadFS, doesFileExist)
+import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, File, Path, mkRelFile, parent, (</>))
 import Strategy.NuGet.DirectoryPackagesProps qualified as DirectoryPackagesProps
@@ -49,23 +52,45 @@ discover ::
 discover = simpleDiscover findProjects mkProject NuGetProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
-  case findProjectAssetsJsonFile files of
-    Just file -> pure ([NuGetProject file], WalkContinue)
-    Nothing -> do
-      -- project.assets.json (created by `dotnet restore`) is essentially a lockfile.
-      -- If this is present in an `obj/` subdirectory beside the project file, then
-      -- don't return the project file as well, as this will double-report the project,
-      -- and the project.assets.json is more detailed and accurate.
-      restored <- doesFileExist (dir </> $(mkRelFile "obj/project.assets.json"))
-      let projectFiles = if restored then [] else filter isPackageRefFile files
-      pure (map NuGetProject projectFiles, WalkContinue)
-  where
-    findProjectAssetsJsonFile :: [Path Abs File] -> Maybe (Path Abs File)
-    findProjectAssetsJsonFile = findFileNamed "project.assets.json"
+findProjects root = dedupeRestored <$> walkWithFilters' discoverVisitor root
 
-    isPackageRefFile :: Path b File -> Bool
-    isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NuGetProject], WalkStep)
+discoverVisitor _dir _subdirs files =
+  case findProjectAssetsJsonFile files of
+    Just assetsFile -> pure ([NuGetProject assetsFile], WalkContinue)
+    Nothing -> pure (map NuGetProject (filter isPackageRefFile files), WalkContinue)
+
+-- | Finalizer for the shared walk.  The double-report rule below needs
+-- everything the walk found, not just one directory's worth, so it runs over the
+-- whole collection rather than inside the per-directory visitor.  It does not
+-- need the discovery root.
+postDiscover :: Applicative m => Path Abs Dir -> [NuGetProject] -> m [DiscoveredProject NuGetProject]
+postDiscover _dir = pure . map mkProject . dedupeRestored
+
+-- | project.assets.json (created by @dotnet restore@) is essentially a lockfile.
+-- If one was discovered in the @obj/@ subdirectory beside a project file, then
+-- don't return the project file as well, as this will double-report the project,
+-- and the project.assets.json is more detailed and accurate.
+--
+-- This is decided from the files the walk discovered rather than by checking the
+-- filesystem, so that a project file is still reported when path filters keep the
+-- walk out of @obj/@.
+dedupeRestored :: [NuGetProject] -> [NuGetProject]
+dedupeRestored found = filter (not . isRestored) found
+  where
+    assetsFiles = Set.fromList $ map nugetProjectFile $ filter (isProjectAssetsJsonFile . nugetProjectFile) found
+    isRestored project =
+      let file = nugetProjectFile project
+       in isPackageRefFile file && Set.member (parent file </> $(mkRelFile "obj/project.assets.json")) assetsFiles
+
+isProjectAssetsJsonFile :: Path b File -> Bool
+isProjectAssetsJsonFile file = fileName file == "project.assets.json"
+
+findProjectAssetsJsonFile :: [Path Abs File] -> Maybe (Path Abs File)
+findProjectAssetsJsonFile = findFileNamed "project.assets.json"
+
+isPackageRefFile :: Path b File -> Bool
+isPackageRefFile file = any (\x -> x `L.isSuffixOf` fileName file) [".csproj", ".xproj", ".vbproj", ".dbproj", ".fsproj"]
 
 mkProject :: NuGetProject -> DiscoveredProject NuGetProject
 mkProject project =

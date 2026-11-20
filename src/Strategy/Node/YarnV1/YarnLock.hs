@@ -4,6 +4,7 @@ module Strategy.Node.YarnV1.YarnLock (
   analyze,
   buildGraph,
   mangleParseErr,
+  parseLockfile,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics, Has, ToDiagnostic, context, renderDiagnostic, tagError, warn)
@@ -17,6 +18,7 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Tagged (unTag)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
@@ -52,8 +54,28 @@ analyze ::
 analyze yarnFile flatdeps = do
   contents <- context "Reading yarn.lock file" $ readContentsText yarnFile
   let yarnpath = toString yarnFile
-  parsed <- context "Parsing yarn.lock file" . tagError (mangleParseErr yarnpath) $ YL.parse yarnpath contents
+  parsed <- context "Parsing yarn.lock file" . tagError (mangleParseErr yarnpath) $ parseLockfile yarnpath contents
   context "Building yarn.lock package graph" $ buildGraph parsed flatdeps
+
+-- | Parse a @yarn.lock@, accepting one that has no package entries.
+--
+-- @yarn install@ writes a lockfile for a project without dependencies too: just the
+-- @# yarn lockfile v1@ header comments followed by blank lines. The @yarn-lock@ parser
+-- rejects that file (@unexpected end of input, expecting '#', newline, or package entry@),
+-- because once it has consumed the comments and blank lines it requires a package entry
+-- to follow. Such a file is a valid lockfile that simply locks nothing.
+parseLockfile :: FilePath -> Text -> Either YL.LockfileError YL.Lockfile
+parseLockfile path contents
+  | hasNoPackageEntries contents = Right (MKM.mkMKMap YL.lockfileIkProxy)
+  | otherwise = YL.parse path contents
+  where
+    hasNoPackageEntries :: Text -> Bool
+    hasNoPackageEntries = all isCommentOrBlank . Text.lines
+
+    isCommentOrBlank :: Text -> Bool
+    isCommentOrBlank line =
+      let trimmed = Text.strip line
+       in Text.null trimmed || "#" `Text.isPrefixOf` trimmed
 
 mangleParseErr :: FilePath -> YL.LockfileError -> ReadFSErr
 mangleParseErr path err = FileParseError path (YL.prettyLockfileError err)

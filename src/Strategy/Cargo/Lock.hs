@@ -37,7 +37,6 @@ module Strategy.Cargo.Lock (
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
 import Control.Monad (unless)
-import Data.Bifunctor (second)
 import Data.Char qualified as Char
 import Data.Foldable (for_)
 import Data.Function (on)
@@ -514,19 +513,19 @@ satisfiesCargoOp op parts v =
     ReqGt -> v > lower
     ReqLt -> v < lower
   where
-    (maj, min, pat) = padParts parts
-    lower = (maj, min, pat)
+    (maj, mnr, pat) = padParts parts
+    lower = (maj, mnr, pat)
 
     -- Bump the minor when declared, otherwise the major.
     upper =
       case parts of
-        (_ : _ : _) -> (maj, min + 1, 0)
+        (_ : _ : _) -> (maj, mnr + 1, 0)
         _ -> (maj + 1, 0, 0)
 
     -- Cargo caret: bump the leftmost nonzero component; all-zero has no upper bound.
     caretUpper
       | maj > 0 = Just (maj + 1, 0, 0)
-      | min > 0 = Just (0, min + 1, 0)
+      | mnr > 0 = Just (0, mnr + 1, 0)
       | pat > 0 = Just (0, 0, pat + 1)
       | otherwise = Nothing
 

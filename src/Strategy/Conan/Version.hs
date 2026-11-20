@@ -5,9 +5,8 @@ module Strategy.Conan.Version (
 
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
 import Control.Monad (void)
-import Data.Char (isSpace)
 import Data.Map.Strict qualified as Map
-import Data.SemVer (Version, fromText, toText, version)
+import Data.SemVer (Version, toText, version)
 import Data.SemVer.Constraint (Constraint (..), satisfies)
 import Data.Text (Text)
 import Data.Void (Void)
@@ -20,7 +19,6 @@ import Effect.Exec (
  )
 import Path (Abs, Dir, Path)
 import Text.Megaparsec (
-  MonadParsec (takeWhile1P),
   Parsec,
   empty,
   some,
@@ -44,10 +42,10 @@ symbol = Lexer.symbol sc
 conanVersion :: Parser Version
 conanVersion = do
   void $ symbol "Conan" <* symbol "version"
-  version' <- fromText <$> (takeWhile1P (Just "Conan version") (\c -> not (isSpace c) && c /= '-'))
-  case version' of
-    Left err -> fail err
-    Right parsedVersion -> pure parsedVersion
+  major <- Lexer.decimal <* char '.'
+  minor <- Lexer.decimal <* char '.'
+  patch <- Lexer.decimal
+  pure $ version major minor patch [] []
 
 -- | Represents `conan --version`.
 -- Retrieve conan version. This commend is not documented,

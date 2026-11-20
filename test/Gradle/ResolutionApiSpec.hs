@@ -8,6 +8,13 @@ import Data.Text (Text)
 import DepTypes
 import GraphUtil (expectDeps, expectDirect, expectEdges)
 import Graphing (Graphing, empty)
+import Graphing qualified
+import Srclib.Converter (toLocator, toSourceUnit)
+import Srclib.Types (
+  SourceUnit (sourceUnitBuild),
+  SourceUnitBuild (buildDependencies, buildImports),
+  SourceUnitDependency (sourceDepImports, sourceDepLocator),
+ )
 import Strategy.Gradle.Common (
   ConfigName (ConfigName),
   ProjectName (ProjectName),
@@ -19,7 +26,8 @@ import Strategy.Gradle.ResolutionApi (
   ResolvedProject (..),
   buildGraph,
  )
-import Test.Hspec (Spec, describe, it, shouldBe)
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldMatchList)
+import Types (DiscoveredProjectType (GradleProjectType), GraphBreadth (Complete))
 
 projectOne :: Dependency
 projectOne =
@@ -184,3 +192,33 @@ spec = do
         [ (projectFiveCustomEnv, packageFiveCustomEnv)
         ]
         graph
+
+  describe "toSourceUnit" $ do
+    it "should keep dependencies reached through a subproject" $ do
+      let lib = mkProject ":lib" EnvProduction
+          commonsText = mkMavenDep "org.apache.commons:commons-text" EnvProduction
+          commonsLang = mkMavenDep "org.apache.commons:commons-lang3" EnvProduction
+          slf4j = mkMavenDep "org.slf4j:slf4j-api" EnvProduction
+          graph =
+            Graphing.directs [lib, slf4j]
+              <> Graphing.edges [(lib, commonsText), (commonsText, commonsLang)]
+
+      case sourceUnitBuild (toSourceUnit False "test" graph GradleProjectType Complete []) of
+        Nothing -> expectationFailure "expected a build"
+        Just bu -> do
+          buildImports bu `shouldMatchList` map toLocator [commonsText, slf4j]
+          map sourceDepLocator (buildDependencies bu) `shouldMatchList` map toLocator [commonsText, commonsLang, slf4j]
+          map sourceDepImports (filter ((== toLocator commonsText) . sourceDepLocator) (buildDependencies bu))
+            `shouldBe` [[toLocator commonsLang]]
+
+    it "should drop dependencies reached only through a test subproject" $ do
+      let lib = (mkProject ":lib" EnvTesting){dependencyEnvironments = Set.singleton EnvTesting}
+          commonsText = mkMavenDep "org.apache.commons:commons-text" EnvProduction
+          slf4j = mkMavenDep "org.slf4j:slf4j-api" EnvProduction
+          graph = Graphing.directs [lib, slf4j] <> Graphing.edge lib commonsText
+
+      case sourceUnitBuild (toSourceUnit False "test" graph GradleProjectType Complete []) of
+        Nothing -> expectationFailure "expected a build"
+        Just bu -> do
+          buildImports bu `shouldMatchList` [toLocator slf4j]
+          map sourceDepLocator (buildDependencies bu) `shouldMatchList` [toLocator slf4j]

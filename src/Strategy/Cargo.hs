@@ -4,6 +4,7 @@
 module Strategy.Cargo (
   -- * Discovery and project model
   discover,
+  discoverVisitor,
   findProjects,
   mkProject,
   CargoProject (..),
@@ -115,7 +116,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject CargoProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CargoProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "Cargo.toml" files of
     Nothing -> pure ([], WalkContinue)
     Just toml -> do

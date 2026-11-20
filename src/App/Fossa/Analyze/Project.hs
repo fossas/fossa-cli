@@ -1,6 +1,7 @@
 module App.Fossa.Analyze.Project (
   ProjectResult (..),
   mkResult,
+  shouldKeepUnreachableDeps,
 ) where
 
 import App.Util (FileAncestry (..))

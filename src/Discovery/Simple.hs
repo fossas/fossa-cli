@@ -1,4 +1,4 @@
-module Discovery.Simple (simpleDiscover) where
+module Discovery.Simple (cachedDiscover, cachedDiscoverWith, simpleDiscover, withDiscoveryContexts) where
 
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Reader (Reader)
@@ -7,6 +7,14 @@ import Discovery.Filters (AllFilters, withToolFilter)
 import Effect.ReadFS (Has, ReadFS)
 import Path (Abs, Dir, Path)
 import Types (DiscoveredProject, DiscoveredProjectType)
+
+-- | The diagnostics contexts a strategy's discovery runs under: the tool's
+-- own name, then the discovery phase.  'simpleDiscover' and the
+-- @cachedDiscover*@ finalizers apply these, and a hand-written finalizer must
+-- apply them too (see "Strategy.Go.GoBinary") -- a collection path that skips
+-- them loses its tool attribution in the context tree.
+withDiscoveryContexts :: Has Diagnostics sig m => DiscoveredProjectType -> m a -> m a
+withDiscoveryContexts tool = context (toText tool) . context "Finding Projects"
 
 -- | @simpleDiscover findProjects mkProject FooProjectType@ removes the
 -- boilerplate of the /overwhelmingly/ common simple form of the @discover@
@@ -38,7 +46,51 @@ simpleDiscover ::
   -- | directory to start discovery in
   Path Abs Dir ->
   m [DiscoveredProject a]
-simpleDiscover findProjects mkProject tool dir = withToolFilter tool $
-  context (toText tool) $ do
-    projects <- context "Finding Projects" $ findProjects dir
-    pure $ map mkProject projects
+simpleDiscover findProjects mkProject tool dir =
+  withToolFilter tool $
+    withDiscoveryContexts tool $
+      map mkProject <$> findProjects dir
+
+-- | Like 'simpleDiscover', but for strategies whose raw projects were already
+-- collected by a shared filesystem walk (see "Discovery.Walk.Stream") instead
+-- of by the strategy walking the tree itself.  Applies the same tool filter
+-- and diagnostics contexts as 'simpleDiscover'.
+cachedDiscover ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  -- | Passed to 'withToolFilter'
+  DiscoveredProjectType ->
+  -- | @mkProject@
+  (a -> DiscoveredProject a) ->
+  -- | directory discovery started from (unused by this finalizer shape)
+  Path Abs Dir ->
+  -- | raw projects collected by the shared walk
+  m [a] ->
+  m [DiscoveredProject a]
+cachedDiscover tool mkProject _dir collect =
+  withToolFilter tool $
+    withDiscoveryContexts tool $
+      map mkProject <$> collect
+
+-- | Like 'cachedDiscover', but for strategies whose collected raw projects
+-- need a custom conversion step (e.g. one walk-directory entry producing many
+-- projects).
+cachedDiscoverWith ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  -- | Passed to 'withToolFilter'
+  DiscoveredProjectType ->
+  -- | turn the collected raw projects into discovered projects
+  (Path Abs Dir -> [raw] -> m [DiscoveredProject p]) ->
+  -- | directory discovery started from
+  Path Abs Dir ->
+  -- | raw projects collected by the shared walk
+  m [raw] ->
+  m [DiscoveredProject p]
+cachedDiscoverWith tool post dir collect =
+  withToolFilter tool $
+    withDiscoveryContexts tool (post dir =<< collect)

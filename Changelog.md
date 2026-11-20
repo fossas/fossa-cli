@@ -1,5 +1,61 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
+- Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
+- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
+
+## 3.20.13
+
+- Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
+
+## 3.20.12
+
+- NuGet: Respect path filters in project discovery. ([#1848](https://github.com/fossas/fossa-cli/pull/1848))
+- Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
+- Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
+- pixi: Added support for pixi projects via `pixi.lock`. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
+
+## 3.20.11
+
+- Yarn: local `file:`, `link:` and `portal:` dependencies in a Yarn 2+ `yarn.lock` no longer warn that their package could not be found. ([#1832](https://github.com/fossas/fossa-cli/pull/1832))
+- Analysis: Libraries reached through a Gradle subproject or a local folder dependency are no longer missing from results. Libraries under a direct subproject, local folder dependency or Googlesource repo now appear as direct dependencies. ([#1836](https://github.com/fossas/fossa-cli/pull/1836))
+- Swift: Add dynamic Swift strategy which uses `swift package show-dependencies`. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
+- Analysis: Targets under `.build/` (the SwiftPM build directory) are now skipped by the default filters. ([#1831](https://github.com/fossas/fossa-cli/pull/1831))
+- Swift: `Package.swift` dependencies whose version requirement is a Swift expression no longer fail analysis. ([#1825](https://github.com/fossas/fossa-cli/pull/1825))
+- Pnpm: Dependencies installed under an npm alias are no longer reported under the alias name with no version. ([#1837](https://github.com/fossas/fossa-cli/pull/1837))
+- Licensing: the Detection Rule License 1.1, the Bitwarden Software Development Kit License Agreement v1 and the LLNL license (the `LICENSE_YORICK` notice shipped by matplotlib and mayavi) are now detected instead of reported as no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the WebSupergoo ABCpdf license is now reported as a proprietary license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: the `log4r` license (e.g. in `log4r` 1.1.10) is now reported as Ruby OR GPL-2.0 OR GPL-3.0 instead of no license. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+- Licensing: these license names in package manifests are now recognized: `ASL 1.1`, `Apache Public License Version 2.0`, `Creative Commons Attribution-NonCommercial 3.0 License`, `European Union Public Licence, Version 1.2`, `Gatling Highcharts`, `GNUGPL-v3` and `Lucent Public License Version 1.02`. ([#1843](https://github.com/fossas/fossa-cli/pull/1843))
+
+## 3.20.10
+
+- Container scanning: `fossa container analyze` now reports the registry error when an image layer cannot be downloaded, instead of failing with an internal threading error. ([#1827](https://github.com/fossas/fossa-cli/pull/1827))
+- Telemetry: `fossa analyze` now reports how long each of its phases took, alongside the existing per-analyzer timings. ([#1829](https://github.com/fossas/fossa-cli/pull/1829))
+
+## 3.20.9
+
+- Dependencies used only by development dependencies no longer appear in the results of target-scoped scans.
+- Npm: `package-lock.json` v3 analysis no longer reports the top-level version of a dependency vendored under a workspace whose directory name recurs in a package name. ([#1826](https://github.com/fossas/fossa-cli/pull/1826))
+
+## 3.20.8
+
+- Conan: The Conan strategy now works with non-standard Conan version numbers. ([#1824](https://github.com/fossas/fossa-cli/pull/1824))
+- Pnpm: `pnpm-lock.yaml` files that pin a Node.js runtime through `devEngines.runtime` no longer fail analysis. ([#1820](https://github.com/fossas/fossa-cli/pull/1820))
+
+## 3.20.7
+
+- Yarn: `yarn.lock` files with no package entries no longer fail analysis. ([#1817](https://github.com/fossas/fossa-cli/pull/1817))
+- Container scanning: blob digests in an image manifest fetched from a registry are validated against the OCI digest format before they name files in the export directory.
+- Poetry: `poetry.lock` files whose `[package.dependencies]` entries point at a path, git or URL dependency (e.g. `lamipy = {path = "../lamipy", develop = true}`, which have no `version` key) no longer fail analysis with `missing key: version in package[N].dependencies.<name>`. ([#1805](https://github.com/fossas/fossa-cli/pull/1805))
+
+## 3.20.6
+
+- Perl: `META.yml` files without a `meta-spec` section (META spec v1.0, which older `Module::Build` / `ExtUtils::MakeMaker` releases generate) no longer fail analysis with `Error in $: key "meta-spec" not found`; they are read as spec v1.0, as CPAN::Meta does. ([#1795](https://github.com/fossas/fossa-cli/pull/1795))
+- Go: `go.mod` files that require, replace or declare a module whose path contains a `~` (sourcehut paths such as `git.sr.ht/~sbinet/gg`) no longer fail analysis with `unexpected '~'`. ([#1810](https://github.com/fossas/fossa-cli/pull/1810))
+
 ## 3.20.5
 
 - VSI: `paths.only` and path globs now apply to `--detect-vendored`. ([#1812](https://github.com/fossas/fossa-cli/pull/1812))
@@ -10,7 +66,6 @@
 - Pnpm: Union multi-document workspace dependency graphs. ([#1796](https://github.com/fossas/fossa-cli/pull/1796))
 - FOSSA API: name the proxy when a stripped `Authorization` header lands on a sign-in page. ([#1808](https://github.com/fossas/fossa-cli/pull/1808))
 
-
 ## 3.20.3
 
 - Composer: platform requirements in `composer.lock` (`php`, `php-*`, `hhvm`, `ext-*`, `lib-*`, `composer`, `composer-plugin-api` and `composer-runtime-api`) are no longer reported as versionless dependencies such as `comp+ext-mbstring$`. ([#1799](https://github.com/fossas/fossa-cli/pull/1799))
@@ -19,6 +74,7 @@
 
 ## 3.20.2
 
+- Container scanning: `fossa container analyze` and `fossa container list-targets` no longer fail with `An exception occurred:thread blocked indefinitely in an STM transaction` when the registry rejects a token request while image layers are being downloaded in parallel; the error from the registry is reported instead. ([#1804](https://github.com/fossas/fossa-cli/pull/1804))
 - Bun: when `bun.lock` installs a package at more than one version, the extra versions (stored under nested keys like `"express/path-to-regexp"`) are now reported, and their parents link to the correct version instead of the top-level one. ([#1802](https://github.com/fossas/fossa-cli/pull/1802))
 - Pnpm: preserve distinct peer-resolution snapshots during graph construction so all resolved peer versions and their dependency edges are retained, without mixing production and development environments between resolutions. ([#1776](https://github.com/fossas/fossa-cli/pull/1776))
 - Pnpm: `optionalDependencies` are now read from the lockfile. A project's own optional dependencies are reported as direct dependencies instead of transitive ones, and a package's optional dependencies are connected to it in the graph instead of appearing as unrelated transitive dependencies. Platform packages such as `fsevents`, `sharp`'s `@img/*` libraries, and the `@esbuild/*` binaries are the usual cases. ([#1766](https://github.com/fossas/fossa-cli/pull/1766))

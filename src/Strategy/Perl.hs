@@ -5,6 +5,8 @@ module Strategy.Perl (
   PackageName (..),
   PerlMeta (..),
   buildGraph,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -52,7 +54,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject PerlProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PerlProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PerlProject], WalkStep)
+discoverVisitor dir _ files = do
   -- We prefer MYMETA over META.
   -- Reference: https://metacpan.org/dist/App-mymeta_requires/view/bin/mymeta-requires
   case asum $ map (`findFileNamed` files) ["MYMETA.json", "MYMETA.yml", "META.json", "META.yml"] of
@@ -124,25 +129,27 @@ instance FromJSON PackageName where
 
 instance FromJSON PerlMeta where
   parseJSON = withObject "meta content" $ \o -> do
-    -- spec_version can be either be string or number
-    -- in yaml, version is provided as string, where as in json, it is numeric
-    specVersion :: Double <-
-      (o .: "meta-spec" |> "version")
-        <|> ( do
-                v <- o .: "meta-spec" |> "version"
-                case readMaybe v of
-                  Nothing -> fail ("Expected numeric value for version field, but got: " <> show v)
-                  Just x -> pure x
-            )
+    -- `meta-spec` was only introduced in spec v1.1, so a v1.0 META.yml (which older
+    -- Module::Build / ExtUtils::MakeMaker releases still generate) doesn't have it.
+    -- CPAN::Meta treats a missing `meta-spec` as v1.0, so do the same.
+    metaSpec <- o .:? "meta-spec"
+    specVersion :: Double <- maybe (pure 1.0) parseSpecVersion metaSpec
 
     if specVersion > 1.4
       then parseAboveV1_4 o specVersion
       else parseBelowV1_5 o specVersion
     where
-      (|>) :: FromJSON a => Parser Object -> Key -> Parser a
-      (|>) parser key = do
-        obj <- parser
-        obj .: key
+      -- spec_version can be either be string or number
+      -- in yaml, version is provided as string, where as in json, it is numeric
+      parseSpecVersion :: Object -> Parser Double
+      parseSpecVersion metaSpec =
+        (metaSpec .: "version")
+          <|> ( do
+                  v <- metaSpec .: "version"
+                  case readMaybe v of
+                    Nothing -> fail ("Expected numeric value for version field, but got: " <> show v)
+                    Just x -> pure x
+              )
 
       (|?>) :: FromJSON a => Parser (Maybe Object) -> Key -> Parser (Maybe a)
       (|?>) parser key = do

@@ -1,5 +1,6 @@
 module Control.Carrier.ContainerRegistryApi.Common (
   logHttp,
+  registryRequest,
   fromResponse,
   originalReqUri,
   getHeaderValue,
@@ -15,20 +16,23 @@ module Control.Carrier.ContainerRegistryApi.Common (
 import Control.Algebra (Has)
 import Control.Carrier.ContainerRegistryApi.Errors (
   ContainerRegistryApiErrorBody,
+  RegistryRequestFailed (RegistryRequestFailed),
   UnknownApiError (UnknownApiError),
  )
 import Control.Concurrent.STM (STM, TMVar, atomically, retry, tryReadTMVar, tryTakeTMVar, writeTMVar)
-import Control.Effect.Diagnostics (Diagnostics, fatal)
-import Control.Effect.Exception (onException)
+import Control.Effect.Diagnostics (Diagnostics, errorBoundary, fatal, fatalText, rethrow)
+import Control.Effect.Exception (onException, try)
 import Control.Effect.Lift (Lift, sendIO)
 import Data.Aeson (decode')
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.Functor (void)
 import Data.List (find)
-import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8)
+import Data.String.Conversion (ConvertUtf8 (encodeUtf8), decodeUtf8, toText)
 import Data.Text (Text)
+import Diag.Result (Result (Failure, Success))
 import Effect.Logger (AnsiStyle, Doc, Logger, Pretty (pretty), logDebug)
 import Network.HTTP.Client (
+  HttpException (HttpExceptionRequest, InvalidUrlException),
   Manager,
   Request (method, requestHeaders),
   Response (responseBody, responseHeaders, responseStatus),
@@ -41,10 +45,10 @@ import Network.HTTP.Types.Header (HeaderName)
 import Network.URI (URI)
 
 -- | Makes request, and logs request uri and responses with debug severity.
-logHttp :: (Has (Lift IO) sig m, Has Logger sig m) => Request -> Manager -> m (Response ByteStringLazy.ByteString)
+logHttp :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has Logger sig m) => Request -> Manager -> m (Response ByteStringLazy.ByteString)
 logHttp req manager = do
   logDebug summarizeRequest
-  resp <- sendIO $ httpLbs req manager
+  resp <- registryRequest $ httpLbs req manager
   logDebug $ summarizeResponse resp
   pure resp
   where
@@ -66,6 +70,19 @@ logHttp req manager = do
       if (responseStatus r == status400 || responseStatus r == status404)
         then " Content: " <> show (responseBody r)
         else ""
+
+-- | Runs a registry request, reporting an 'HttpException' through 'Diagnostics' instead of letting
+-- it escape. http-client throws one when no response arrives at all (the host cannot be resolved,
+-- the connection is refused or times out, the TLS handshake fails); left uncaught, it fails the
+-- scan with "An exception occurred: HttpExceptionRequest ..." and no context about which registry
+-- request fossa was making.
+registryRequest :: (Has (Lift IO) sig m, Has Diagnostics sig m) => IO a -> m a
+registryRequest request = do
+  result <- try $ sendIO request
+  case result of
+    Right response -> pure response
+    Left (HttpExceptionRequest req content) -> fatal $ RegistryRequestFailed req content
+    Left (InvalidUrlException url reason) -> fatalText $ "Invalid registry url " <> toText url <> ": " <> toText reason
 
 -- | Throws Diagnostics Error for Api Errors, and unexpected responses.
 fromResponse :: Has Diagnostics sig m => Response ByteStringLazy.ByteString -> m (Response ByteStringLazy.ByteString)
@@ -129,11 +146,11 @@ updateToken token newVal = do
 -- | Try to replace the token in ctx after retrieving it using the given action.
 -- If another thread is trying to replace the token, then do nothing.
 -- Returns True when successfully written, or False otherwise.
-safeReplaceToken :: Has (Lift IO) sig m => RegistryCtx -> m AuthToken -> m Bool
+safeReplaceToken :: (Has (Lift IO) sig m, Has Diagnostics sig m) => RegistryCtx -> m AuthToken -> m Bool
 safeReplaceToken ctx getNewToken = do
   let tokVar = registryAccessToken ctx
 
-  (shouldUpdate, exceptionCleanupAction) <- sendSTM $ do
+  (shouldUpdate, restorePreviousToken) <- sendSTM $ do
     m <- tryReadTMVar (registryAccessToken ctx)
 
     case m of
@@ -145,9 +162,18 @@ safeReplaceToken ctx getNewToken = do
 
   if shouldUpdate
     then do
-      -- If there's some new exception, clean up by putting the old token back.
+      -- If fetching the new token fails, clean up by putting the old token back.
       -- This gives other threads the opportunity to try to fetch a new token and exit gracefully.
-      newToken <- getNewToken `onException` (sendSTM exceptionCleanupAction)
+      --
+      -- The failure is usually a Diagnostics failure rather than an exception (e.g. the registry
+      -- answering the token request with an error), so both have to restore the token: leaving
+      -- it as 'Updating' makes every other thread waiting in 'getToken' block forever, and the
+      -- run dies with "thread blocked indefinitely in an STM transaction".
+      result <- errorBoundary getNewToken `onException` sendSTM restorePreviousToken
+      case result of
+        Failure _ _ -> sendSTM restorePreviousToken
+        Success _ _ -> pure ()
+      newToken <- rethrow result
       updateToken ctx newToken
       pure True
     else pure False

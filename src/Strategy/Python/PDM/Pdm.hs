@@ -1,6 +1,8 @@
 module Strategy.Python.PDM.Pdm (
   discover,
   analyze,
+  discoverVisitor,
+  mkProject,
 ) where
 
 import Control.Effect.Diagnostics (Diagnostics)
@@ -46,17 +48,21 @@ discover ::
 discover = simpleDiscover findProjects mkProject PdmProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PdmProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PdmProject], WalkStep)
+discoverVisitor dir _ files = do
   let pyprojectFile = findFileNamed "pyproject.toml" files
   let pdmlockFile = findFileNamed "pdm.lock" files
 
   -- TODO: The existence if a pyproject.toml should not be enough to conclude this is a PDM project.
-  -- uv/poetry projects also use a pyproject.toml, and we don't want to incorrectly report them as PDM projects
+  -- uv/poetry/pixi projects also use a pyproject.toml, and we don't want to incorrectly report them as PDM projects
   -- See https://fossa.atlassian.net/browse/ANE-2316
   let uvlockFile = findFileNamed "uv.lock" files
   let poetrylockFile = findFileNamed "poetry.lock" files
-  case (uvlockFile, poetrylockFile) of
-    (Nothing, Nothing) -> case pyprojectFile of
+  let pixilockFile = findFileNamed "pixi.lock" files
+  case (uvlockFile, poetrylockFile, pixilockFile) of
+    (Nothing, Nothing, Nothing) -> case pyprojectFile of
       Just pyprojectToml -> pure ([PdmProject pyprojectToml pdmlockFile dir], WalkSkipSome [".venv"])
       Nothing -> pure ([], WalkContinue)
     _ -> pure ([], WalkContinue)

@@ -1,0 +1,14 @@
+# Requires numpy from PyPI, which pixi satisfies with conda's numpy, installed
+# for scipy.
+[project]
+name = "pypi-example"
+version = "0.1.0"
+requires-python = "~=3.11.0"
+dependencies = ["numpy>=1.26", "matplotlib>=3.9"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tool.pixi.dependencies]
+scipy = "~=1.11.4"
