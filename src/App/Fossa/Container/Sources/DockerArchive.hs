@@ -9,10 +9,11 @@ module App.Fossa.Container.Sources.DockerArchive (
 import App.Fossa.Analyze (applyFiltersToProject, toProjectResult, updateProgress)
 import App.Fossa.Analyze.Debug (diagToDebug)
 import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc, WalkedFunc))
+import App.Fossa.Analyze.DiscoveryDriver (PreparedEntry (..), entryConsumers, prepare, runDiscovery)
 import App.Fossa.Analyze.Project (mkResult)
 import App.Fossa.Analyze.Types (
   AnalyzeProject (analyzeProjectStaticOnly),
-  AnalyzeStaticTaskEffs,
+  AnalyzeTaskEffs,
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
  )
@@ -20,7 +21,7 @@ import App.Fossa.Config.Analyze (StrategyConfig (StrategyConfig), UseGitBackedCa
 import App.Fossa.Container.Sources.Discovery (layerAnalyzers, renderLayerTarget)
 import App.Fossa.Container.Sources.GoBinary (goBinariesToSourceUnits)
 import App.Fossa.Container.Sources.JarAnalysis (analyzeContainerJars)
-import App.Types (Mode (..))
+import App.Types (Mode (..), OverrideDynamicAnalysisBinary (..))
 import Codec.Archive.Tar.Index (TarEntryOffset)
 import Container.Docker.Manifest (getImageDigest, getRepoTags)
 import Container.OsRelease (OsInfo (nameId, version), getOsInfo)
@@ -72,6 +73,7 @@ import Data.Text (Text)
 import Data.Text.Extra (breakOnEndAndRemove, showT)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..), isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
+import Discovery.Walk.Broadcast (withWalkBroadcast)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Has,
@@ -218,6 +220,9 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
               . runReader noStrategyConfig
               . runReader noMavenScopeFilters
               . runReader NonStrict
+              -- prepare (the shared discovery driver) needs this reader; layers run
+              -- no dynamic strategies, so an empty override map is the right default.
+              . runReader (mempty :: OverrideDynamicAnalysisBinary)
               . Diag.context "discovery/analysis tasks"
               . runOutput @DiscoveredProjectScan
               . runStickyLogger SevInfo
@@ -244,7 +249,7 @@ analyzeLayer useGitBackedCargo systemDepsOnly filters withoutDefaultFilters capa
         . mapMaybe toProjectResult
 
 runAnalyzers ::
-  ( AnalyzeStaticTaskEffs sig m
+  ( AnalyzeTaskEffs sig m
   , Has (Output DiscoveredProjectScan) sig m
   , Has TaskPool sig m
   , Has AtomicCounter sig m
@@ -255,15 +260,22 @@ runAnalyzers ::
   Flag WithoutDefaultFilters ->
   m ()
 runAnalyzers systemDepsOnly osInfo filters withoutDefaultFilters = do
-  traverse_
-    single
-    $ layerAnalyzers osInfo systemDepsOnly
+  entriesResult <-
+    runDiscovery $ do
+      entries <-
+        traverse prepare (layerAnalyzers osInfo systemDepsOnly)
+      withWalkBroadcast filters basedir (concatMap entryConsumers entries)
+      pure entries
+  Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
-    single (DiscoverFunc f) = withDiscoveredProjects f basedir (runDependencyAnalysis basedir filters withoutDefaultFilters)
-    -- Container layers support only the simple per-strategy discoveries above;
-    -- 'WalkedFunc' strategies are never listed in 'layerAnalyzers', so this
-    -- case is statically unreachable and skipped.
-    single WalkedFunc{} = pure ()
+    -- Finalize each prepared entry in its own forked task, exactly as
+    -- 'App.Fossa.Analyze.runAnalyzers' does. 'withDiscoveredProjects' runs the
+    -- entry's discovery action under the same Diagnostics/Debug/StickyLog/Stack
+    -- carrier stack every strategy fork receives, then forks one task per
+    -- discovered project. The broadcast above already ran every entry's
+    -- consumers over the tree once, so this only reads the collected results.
+    single (PreparedEntry _ discover) =
+      withDiscoveredProjects discover basedir (runDependencyAnalysis basedir filters withoutDefaultFilters)
     basedir = Path $ toString fixedVfsRoot
 
 runDependencyAnalysis ::
