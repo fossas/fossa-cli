@@ -404,15 +404,25 @@ buildGraph deps depsResolved = unfold deps subDeps toDependency
           Git url _ -> url
           _ -> unPackageName $ depName m
 
-    -- Favors in order of locked reference, resolved version, and requirement constraint
+    -- Favors the resolved version, then the locked reference, then the requirement constraint.
+    -- A git dependency is the exception: its locator names a revision of the repository, so the
+    -- locked commit comes before the package version that `mix deps` prints once it is compiled.
     dVersion :: MixDep -> Map PackageName MixDepResolved -> Maybe VerConstraint
     dVersion m dr =
-      asum
-        [ Map.lookup (depName m) dr >>= depResolvedVersion
-        , Map.lookup (depName m) dr >>= depResolvedRef
-        , rawVersion
-        ]
+      asum $ case dType m of
+        GitType -> [lockedRef, resolvedVersion, rawVersion]
+        _ -> [resolvedVersion, lockedRef, rawVersion]
       where
+        resolved :: Maybe MixDepResolved
+        resolved = Map.lookup (depName m) dr
+
+        resolvedVersion :: Maybe VerConstraint
+        resolvedVersion = resolved >>= depResolvedVersion
+
+        lockedRef :: Maybe VerConstraint
+        lockedRef = resolved >>= depResolvedRef
+
+        rawVersion :: Maybe VerConstraint
         rawVersion = case (depSCM m) of
           Git _ (Just ref) -> Just $ CEq ref
           _ -> depVersion m
