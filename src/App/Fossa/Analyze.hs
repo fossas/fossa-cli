@@ -273,14 +273,8 @@ runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTa
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project pathPrefix <$> graphResult)
 
--- | Decide which of a discovered project's build targets survive the user's filters.
---
--- @basedir@ is the root the project was discovered under. For projects found
--- inside an archive unpacked by @--unpack-archives@ that root is the temp
--- directory the archive was extracted to, which no filter can name; the
--- @pathPrefix@ carries the archive's own path relative to the scan root (e.g.
--- @third-party/foo.zip/@), so prepending it evaluates filters against the path
--- the user actually wrote.
+-- | Apply the user's path filters to a project's build targets.
+-- @pathPrefix@ is the path of the archive the project was unpacked from, if any.
 applyFiltersToProject :: Path Abs Dir -> Maybe FileAncestry -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
 applyFiltersToProject basedir pathPrefix filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
