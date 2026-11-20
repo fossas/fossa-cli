@@ -269,13 +269,19 @@ parseDepSCM = try parseDepHex <|> parseDepSCMGit <|> parseDepSCMOther
     parseDepSCMGit :: Parser DepSCM
     parseDepSCMGit = do
       uriScheme <- chunk "http://" <|> chunk "https://" <|> chunk "git://"
-      uriRest <- takeWhileP (Just "git address") (\c -> c /= ' ' && c /= ')')
+      uriRest <- takeWhileP (Just "git address") isSourceChar
 
+      -- The reference is the tag, branch or commit the dependency is pinned to. Tags and
+      -- branches are not limited to alphanumerics and dots (e.g. @v1.4.5-rc.1@, @release/2.0@),
+      -- so it runs until the space or closing parenthesis that ends the source.
       reference <- optional . try $ do
         _ <- chunk " - "
-        toText <$> some (alphaNumChar <|> char '.')
+        takeWhile1P (Just "git reference") isSourceChar
 
       pure $ Git (uriScheme <> uriRest) reference
+
+    isSourceChar :: Char -> Bool
+    isSourceChar c = c /= ' ' && c /= ')'
 
     parseDepSCMOther :: Parser DepSCM
     parseDepSCMOther = Other <$> takeWhileP (Just "OtherSCM") (/= ')')
