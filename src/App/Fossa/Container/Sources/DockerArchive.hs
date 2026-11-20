@@ -413,12 +413,25 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader NonStrict
     . runReader (mempty :: AllFilters)
+    -- prepare (the shared discovery driver) needs this reader; list-targets runs
+    -- no dynamic strategies, so an empty override map is the right default.
+    . runReader (mempty :: OverrideDynamicAnalysisBinary)
     $ run
   where
-    run = traverse_ findTargets $ layerAnalyzers osInfo False
-    findTargets (DiscoverFunc f) = withDiscoveredProjects f basedir (renderLayerTarget basedir layerType)
-    -- See 'single' above: 'WalkedFunc' strategies never appear in 'layerAnalyzers'.
-    findTargets WalkedFunc{} = pure ()
+    -- Mirror 'runAnalyzers': prepare each entry, run one broadcast walk over all
+    -- their consumers (with no filters, since list-targets applies none), then
+    -- finalize each entry by rendering its layer target. The finalizer here
+    -- renders the target (unlike 'runAnalyzers', which analyzes it).
+    run = do
+      entriesResult <-
+        runDiscovery $ do
+          entries <-
+            traverse prepare (layerAnalyzers osInfo False)
+          withWalkBroadcast (mempty :: AllFilters) basedir (concatMap entryConsumers entries)
+          pure entries
+      Diag.withResult SevError SevWarn entriesResult (traverse_ findTargets)
+    findTargets (PreparedEntry _ discover) =
+      withDiscoveredProjects discover basedir (renderLayerTarget basedir layerType)
     basedir = Path $ toString fixedVfsRoot
 
 -- | Retrieves OS information from the layers of a Docker image.
