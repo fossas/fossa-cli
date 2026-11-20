@@ -3,7 +3,19 @@
 ## Unreleased
 
 - Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
+- Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
+- SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
+
+## 3.20.13
+
+- Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
+
+## 3.20.12
+
+- NuGet: Respect path filters in project discovery. ([#1848](https://github.com/fossas/fossa-cli/pull/1848))
+- Container scanning: `fossa container analyze` now reports a registry it cannot reach as a registry error instead of failing with an internal exception. ([#1834](https://github.com/fossas/fossa-cli/pull/1834))
 - Container scanning: `fossa container analyze` no longer fails on registries that redirect layer downloads to external storage such as S3. ([#1844](https://github.com/fossas/fossa-cli/pull/1844))
+- pixi: Added support for pixi projects via `pixi.lock`. ([#1794](https://github.com/fossas/fossa-cli/pull/1794))
 
 ## 3.20.11
 

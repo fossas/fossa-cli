@@ -15,10 +15,10 @@ import DepTypes (
   VerConstraint (..),
  )
 import GraphUtil (expectDeps', expectDirect', expectEdges')
-import Path (mkRelFile, (</>))
-import Path.IO (getCurrentDir)
-import Strategy.Python.PDM.Pdm (analyze)
-import Test.Effect (it')
+import Path (mkRelFile, reldir, (</>))
+import Path.IO (getCurrentDir, makeAbsolute)
+import Strategy.Python.PDM.Pdm (analyze, discover)
+import Test.Effect (it', shouldBe')
 import Test.Hspec (
   Spec,
   describe,
@@ -50,6 +50,11 @@ spec = do
   let basicLockFile = currentDir </> $(mkRelFile "test/Pdm/testdata/basic/pdm.lock")
   let basicPyprojectFile = currentDir </> $(mkRelFile "test/Pdm/testdata/basic/pyproject.toml")
   let woLockfilePyprojectFile = currentDir </> $(mkRelFile "test/Pdm/testdata/basic/pyproject.toml")
+
+  describe "discover" $
+    it' "leaves a pyproject.toml next to a pixi.lock to pixi" $ do
+      projects <- discover =<< makeAbsolute [reldir|test/Pixi/testdata/pyproject-manifest|]
+      length projects `shouldBe'` 0
 
   describe "basic graph" $ do
     it' "should graph accurately, when lockfile is NOT present" $ do
