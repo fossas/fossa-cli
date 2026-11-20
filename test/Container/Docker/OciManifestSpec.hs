@@ -5,10 +5,11 @@ import Container.Docker.Manifest (
   ManifestJsonImageEntry (ManifestJsonImageEntry),
  )
 import Container.Docker.OciManifest (
-  LayerKind (LayerDockerRootFsDiffTarGz),
+  LayerKind (LayerDockerRootFsDiffTarGz, LayerOCITarGz),
   OciManifestConfig (OciManifestConfig),
   OciManifestLayer (OciManifestLayer),
   OciManifestV2 (OciManifestV2),
+  blobEntries,
   toDockerManifest,
  )
 import Container.Docker.SourceParser (RegistryImageSource (..), RepoDigest (RepoDigest), RepoReference (RepoReferenceTag), RepoTag (RepoTag), defaultHttpScheme, defaultRegistry)
@@ -75,6 +76,35 @@ spec = do
             ]
         )
 
+  describe "blobEntries" $ do
+    it "should list a layer that appears several times in the manifest once" $
+      blobEntries manifestWithRepeatedLayer
+        `shouldBe` NonEmpty.fromList
+          [ (RepoDigest "sha256:config", False, "config.json")
+          , (RepoDigest "sha256:base", True, "base.tar")
+          , (RepoDigest emptyLayerDigest, True, "4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.tar")
+          , (RepoDigest "sha256:app", True, "app.tar")
+          ]
+
+    -- The tarball reader pairs the docker manifest's layer files with the image config's
+    -- diff_ids by position, so the docker manifest has to keep listing every layer.
+    it "should still list every layer, repeated ones included, in the docker manifest" $
+      toDockerManifest manifestWithRepeatedLayer (defaultRegistrySrc "org/img" latestTag)
+        `shouldBe` ManifestJson
+          ( NonEmpty.fromList
+              [ ManifestJsonImageEntry
+                  "config.json"
+                  ["org/img:latest"]
+                  $ NonEmpty.fromList
+                    [ "base.tar"
+                    , "4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.tar"
+                    , "4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.tar"
+                    , "app.tar"
+                    , "4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1.tar"
+                    ]
+              ]
+          )
+
 -- | A manifest in the registry's own format, with the given config and layer digests.
 decodeManifest :: Text -> Text -> Either String OciManifestV2
 decodeManifest configDigest layerDigest =
@@ -103,6 +133,22 @@ alpineTag = (RepoReferenceTag . RepoTag $ "alpine")
 
 latestTag :: RepoReference
 latestTag = (RepoReferenceTag . RepoTag $ "latest")
+
+-- | The digest of one empty layer, the one the fixture below repeats. Empty layers do not all
+-- share a digest: gzip metadata changes the compressed bytes.
+emptyLayerDigest :: Text
+emptyLayerDigest = "sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1"
+
+-- | A kaniko-style manifest: an empty layer wherever a build step changed nothing.
+manifestWithRepeatedLayer :: OciManifestV2
+manifestWithRepeatedLayer =
+  OciManifestV2
+    (OciManifestConfig $ RepoDigest "sha256:config")
+    (NonEmpty.fromList [baseLayer, emptyLayer, emptyLayer, appLayer, emptyLayer])
+  where
+    baseLayer = OciManifestLayer (RepoDigest "sha256:base") LayerOCITarGz
+    emptyLayer = OciManifestLayer (RepoDigest emptyLayerDigest) LayerOCITarGz
+    appLayer = OciManifestLayer (RepoDigest "sha256:app") LayerOCITarGz
 
 expectedOciManifest :: OciManifestV2
 expectedOciManifest =
