@@ -27,6 +27,7 @@ import App.Fossa.Analyze.Discover (
   DiscoverFunc (..),
   discoverFuncs,
  )
+import App.Fossa.Analyze.DiscoveryDriver (DiscoveryM, PreparedEntry (..), entryConsumers, prepare, runDiscovery)
 import App.Fossa.Analyze.Filter (
   CountedResult (..),
   checkForEmptyUpload,
@@ -294,39 +295,6 @@ runAnalyzers ::
   Path Abs Dir ->
   Maybe FileAncestry ->
   m ()
-
--- | The monad strategy discovery runs in: the base effects wrapped in the
--- same carrier stack 'Discovery.Projects.withDiscoveredProjects' uses per
--- strategy fork.
-type DiscoveryM m = StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m))
-
--- | Run a 'DiscoveryM' computation to a 'Result' — one Diagnostics scope
--- around a whole discovery phase.  Carrier choice happens here and in the
--- top-level effect stack: this installs the interpreters
--- 'Discovery.Projects.withDiscoveredProjects' applies per strategy fork, so
--- discovery failures get the same context-stacked rendering everywhere.
-runDiscovery ::
-  ( Has (Lift IO) sig m
-  , Has AtomicCounter sig m
-  , Has Debug sig m
-  , Has Logger sig m
-  , Has Stack sig m
-  ) =>
-  DiscoveryM m a -> m (Result a)
-runDiscovery = Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack
-
--- | A 'DiscoverFunc' prepared for the shared discovery walk: its broadcast
--- consumer(s) (empty for strategies that still discover themselves) and a
--- discovery action that reads the strategy's collected projects.
-data PreparedEntry d where
-  PreparedEntry ::
-    ( AnalyzeProject p
-    , Aeson.ToJSON p
-    ) =>
-    [WalkConsumer () d] ->
-    (Path Abs Dir -> d [DiscoveredProject p]) ->
-    PreparedEntry d
-
 runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = do
   if filterIsVSIOnly filters
     then do
@@ -340,29 +308,6 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
           pure entries
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
-    prepare ::
-      (AnalyzeTaskEffs sig m) =>
-      DiscoverFunc (DiscoveryM m) ->
-      DiscoveryM m (PreparedEntry (DiscoveryM m))
-    prepare dscover = case dscover of
-      DiscoverFunc f -> pure (PreparedEntry [] f)
-      WalkedFunc projectType visitor finalize -> do
-        sink <- sendIO (newIORef (Right ([] :: [raw])))
-        let msg = "Error discovering projects for " <> projectTypeToText projectType
-            -- Read the sink in the strategy finalizer: a failure recorded during
-            -- the walk makes this throw (see 'accumulateConsumer'), so
-            -- 'withDiscoveredProjects' renders it at ERROR severity and discards
-            -- the whole strategy — the pre-broadcast all-or-nothing contract.
-            collect = do
-              state <- sendIO (readIORef sink)
-              case state of
-                Left e -> fatalText e
-                Right projects -> pure projects
-        pure
-          (PreparedEntry [accumulateConsumer projectType msg sink visitor] $ \dir -> finalize dir collect)
-
-    entryConsumers (PreparedEntry cs _) = cs
-
     single (PreparedEntry _ discover) = withDiscoveredProjects discover basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
 -- | Walk the tree once at startup and surface every directory the path
