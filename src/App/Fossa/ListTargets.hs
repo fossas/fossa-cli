@@ -90,11 +90,10 @@ listTargetsMain ListTargetsConfig{..} = do
     . withTaskPool capabilities updateProgress
     . runAtomicCounter
     . runReader strategyConfig
-    -- `fossa list-targets` does not support maven scope filters.
     . runReader (MavenScopeIncludeFilters mempty)
     . runReader (NonStrict)
-    -- The current version of `fossa list-targets` does not support filters.
-    -- TODO: support both discovery and post-discovery filtering.
+    -- list-targets has no filter support yet (TODO: discovery and post-discovery
+    -- filtering).
     . runReader (mempty :: AllFilters)
     $ runAll listTargetOutputFormat (unBaseDir baseDir)
 
@@ -117,14 +116,10 @@ runAll ::
   Path Abs Dir ->
   m ()
 
--- | The discovery phase's carrier stack: the same one 'App.Fossa.Analyze' uses
--- (see its 'DiscoveryM'), and exactly the monad 'withDiscoveredProjects' hands
--- to a strategy's discovery action.
+-- | Deliberately mirrors 'App.Fossa.Analyze''s 'DiscoveryM' — keep the two in sync.
 type DiscoveryM m = StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m))
 
--- | Run a discovery phase in 'DiscoveryM' — the same carriers
--- 'App.Fossa.Analyze' uses, so a strategy's failure renders the same way
--- whether it is discovered here or by @fossa analyze@.
+-- | A strategy's failure here renders the same way it would under @fossa analyze@.
 runDiscovery ::
   ( Has (Lift IO) sig m
   , Has AtomicCounter sig m
@@ -136,9 +131,8 @@ runDiscovery ::
   m (Result a)
 runDiscovery = Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack
 
--- | A 'DiscoverFunc' prepared for the shared discovery walk: its broadcast
--- consumer(s) (empty for strategies that still discover themselves) and a
--- discovery action that reads the strategy's collected projects.
+-- | A 'DiscoverFunc' readied for the shared walk; consumers are empty for
+-- strategies that still discover themselves.
 data PreparedEntry d where
   PreparedEntry ::
     ( AnalyzeProject p
@@ -157,8 +151,8 @@ runAll outputFmt basedir = do
   Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
     -- No Diagnostics clause: the phase monad's innermost layer provides it.
-    -- The four clauses are the outer effects GHC needs to derive the phase
-    -- monad's constraints for 'discoverFuncs'; 'runAll' supplies all of them.
+    -- These clauses are the outer effects GHC needs to derive the constraints
+    -- for 'discoverFuncs'; 'runAll' supplies all of them.
     prepare ::
       ( Has (Lift IO) sig m
       , Has Logger sig m
@@ -172,10 +166,10 @@ runAll outputFmt basedir = do
       WalkedFunc projectType visitor finalize -> do
         sink <- sendIO (newIORef (Right ([] :: [raw])))
         let msg = "Error discovering projects for " <> projectTypeToText projectType
-            -- Read the sink in the strategy finalizer: a failure recorded during
-            -- the walk makes this throw (see 'accumulateConsumer'), so
-            -- 'withDiscoveredProjects' renders it at ERROR severity and discards
-            -- the whole strategy — the pre-broadcast all-or-nothing contract.
+            -- Reading the sink in the finalizer turns a failure recorded during the
+            -- walk into a throw (see 'accumulateConsumer'), so
+            -- 'withDiscoveredProjects' discards the whole strategy — preserving
+            -- list-targets' all-or-nothing contract.
             collect = do
               state <- sendIO (readIORef sink)
               case state of
