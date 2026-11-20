@@ -8,7 +8,7 @@ module App.Fossa.VSI.DynLinked.Internal.Resolve (
   parseLinuxDistro,
 ) where
 
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.BinaryDeps (analyzeSingleBinary, isAdditionalDep)
 import App.Fossa.VSI.DynLinked.Types (DynamicDependency (..), LinuxDistro (..), LinuxPackageManager (..), LinuxPackageMetadata (..), ResolvedLinuxPackage (..))
 import App.Fossa.VSI.DynLinked.Util (fsRoot, runningLinux)
@@ -62,7 +62,7 @@ toSourceUnit root distro dependencies = do
     updatedDesc :: SourceUserDefDep -> SourceUserDefDep
     updatedDesc d = d{srcUserDepDescription = Just "Unmanaged dynamically linked dependency"}
     toProject :: Path Abs Dir -> Graphing Dependency -> ProjectResult
-    toProject dir graph = ProjectResult VsiProjectType dir graph Complete []
+    toProject dir graph = ProjectResult VsiProjectType dir (RawGraph graph) (PublishedGraph graph) Complete []
 
 toDependency :: LinuxDistro -> ResolvedLinuxPackage -> Dependency
 toDependency distro ResolvedLinuxPackage{..} = case resolvedLinuxPackageManager of

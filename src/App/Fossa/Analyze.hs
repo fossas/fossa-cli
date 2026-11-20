@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module App.Fossa.Analyze (
@@ -11,6 +12,11 @@ module App.Fossa.Analyze (
   toProjectResult,
   applyFiltersToProject,
   sendToDestination,
+
+  -- * Upload payload merge (for testing)
+  WorkflowUploadPayload (..),
+  clobbersProjectFindings,
+  projectFindingsPayload,
 
   -- * Fork alias translation (for testing)
 
@@ -41,6 +47,7 @@ import App.Fossa.Analyze.ForkAlias (
   translateLocatorWithForkAliases,
  )
 import App.Fossa.Analyze.Project (ProjectResult (..), mkResult)
+import App.Fossa.Analyze.ProjectFindings (renderProjectFindings)
 import App.Fossa.Analyze.ScanSummary (renderScanSummary)
 import App.Fossa.Analyze.Types (
   AnalysisScanResult (AnalysisScanResult),
@@ -120,6 +127,8 @@ import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
 import Control.Monad (guard, join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
+import Data.Aeson.Key (fromText)
+import Data.Aeson.KeyMap qualified as KeyMap
 import Data.ByteString.Lazy qualified as BL
 import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
@@ -618,6 +627,10 @@ analyze cfg = Diag.context "fossa-analyze" $ do
           (Just firstParty, Nothing) -> Just firstParty
   let keywordSearchResultsFound = (maybe False (not . null . lernieResultsKeywordSearches) lernieResults)
   let forkAliasMap = mkForkAliasMap forkAliases
+
+  -- Findings ride the workflow upload; the server's own cap applies.
+  let projectFindings = if Config.xWorkflow cfg then Just (renderProjectFindings basedir forkAliasMap filteredProjects') else Nothing
+
   -- Collect labels from fork aliases to merge into source units
   let forkAliasLabels = collectForkAliasLabels forkAliases
 
@@ -627,7 +640,7 @@ analyze cfg = Diag.context "fossa-analyze" $ do
   let translatedScannedSourceUnits = map (translateSourceUnitLocators (translateLocatorWithForkAliases forkAliasMap)) scannedSourceUnits
   let allTranslatedSourceUnits = map (mergeForkAliasLabels forkAliasLabels) (translatedAdditionalSourceUnits ++ translatedScannedSourceUnits)
 
-  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap
+  let outputResult = buildResult allTranslatedSourceUnits filteredProjects' licenseSourceUnits forkAliasMap projectFindings
 
   scanUnits <-
     case (keywordSearchResultsFound, checkForEmptyUpload projectScans filteredProjects' allTranslatedSourceUnits licenseSourceUnits) of
@@ -640,7 +653,9 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         timedPhase "upload-results"
           . runFossaApiClient apiOpts
           $ do
-            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults workflowData
+            when (clobbersProjectFindings projectFindings workflowData) $
+              logDebug "ficus workflow payload already contains \"projectFindings\"; overwriting it with the analysis findings"
+            locator <- uploadSuccessfulAnalysis (BaseDir basedir) metadata jsonOutput revision scanUnits reachabilityUnits ficusResults (unWorkflowUploadPayload <$> (fmap WorkflowUploadPayload workflowData <> fmap projectFindingsPayload projectFindings))
             doAssertRevisionBinaries iatAssertion locator
   sendToDestination doUpload destination outputResult
 
@@ -785,12 +800,40 @@ instance Diag.ToDiagnostic AnalyzeError where
               ]
     Errata (Just "Only keyword search results found") [] (Just body)
 
-buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Aeson.Value
-buildResult srcUnits projects licenseSourceUnits forkAliasMap =
-  Aeson.object
+-- | True when the workflow payload already carries a @projectFindings@ key.
+clobbersProjectFindings :: Maybe Aeson.Value -> Maybe Aeson.Value -> Bool
+clobbersProjectFindings (Just _) (Just (Aeson.Object obj)) = KeyMap.member (fromText "projectFindings") obj
+clobbersProjectFindings _ _ = False
+
+-- | The JSON payload uploaded to the analysis-workflows endpoint.
+newtype WorkflowUploadPayload = WorkflowUploadPayload {unWorkflowUploadPayload :: Aeson.Value}
+  deriving stock (Eq, Show)
+
+-- | Object key-union with the RIGHT operand winning, so the CLI-owned
+-- @projectFindings@ key (from 'projectFindingsPayload') replaces any key a
+-- workflow payload carries. The workflow payload is always a JSON object per
+-- the WorkflowResult contract; the non-object branch is defensive only.
+instance Semigroup WorkflowUploadPayload where
+  WorkflowUploadPayload left <> WorkflowUploadPayload right = case (left, right) of
+    (Aeson.Object ka, Aeson.Object kb) -> WorkflowUploadPayload (Aeson.Object (KeyMap.union kb ka))
+    (_, right') -> WorkflowUploadPayload right'
+
+instance Monoid WorkflowUploadPayload where
+  mempty = WorkflowUploadPayload (Aeson.Object KeyMap.empty)
+
+-- | The findings' contribution to the upload payload.
+projectFindingsPayload :: Aeson.Value -> WorkflowUploadPayload
+projectFindingsPayload doc = WorkflowUploadPayload (Aeson.object [fromText "projectFindings" .= doc])
+
+buildResult :: [SourceUnit] -> [ProjectResult] -> Maybe LicenseSourceUnit -> Map.Map Locator ForkAlias -> Maybe Aeson.Value -> Aeson.Value
+buildResult srcUnits projects licenseSourceUnits forkAliasMap projectFindings =
+  Aeson.object $
     [ "projects" .= map (buildProject forkAliasMap) projects
     , "sourceUnits" .= mergedUnits
     ]
+      <> case projectFindings of
+        Nothing -> []
+        Just findings -> [("projectFindings", findings)]
   where
     mergedUnits = case licenseSourceUnits of
       Nothing -> map sourceUnitToFullSourceUnit srcUnits

@@ -3,7 +3,7 @@ module App.Fossa.PathDependencySpec (
 )
 where
 
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph, unPublishedGraph), RawGraph (RawGraph, unRawGraph))
 import App.Fossa.Config.Analyze (IncludeAll (..), VendoredDependencyOptions (VendoredDependencyOptions))
 import App.Fossa.PathDependency
 import App.Types (FileUpload (..))
@@ -19,7 +19,7 @@ import DepTypes (
   Dependency (..),
  )
 import Fossa.API.Types (AnalyzedPathDependency (AnalyzedPathDependency), Organization (..), PathDependencyUpload (..), UploadedPathDependencyLocator (..))
-import Graphing (Graphing, direct)
+import Graphing (Graphing, deep, direct, hasVertex)
 import Path
 import Path.Extra (SomeResolvedPath (..))
 import Path.IO qualified as PIO
@@ -117,6 +117,38 @@ enrichPathDependenciesSpec = describe "enrichPathDependencies" $ do
     let result = mkProjectResult cwd graphWithUnPathDep
     result' <- enrichPathDependencies includeAll noRescanOption pr result
     result' `shouldBe'` result
+
+  it' "should resolve path dependencies in both graph views when enrichment resolves the published graph" $ do
+    expectGetApiOpts
+    expectOrg orgSupportPathDeps
+    expectPathDependencyMatchData
+    expectLicenseScanUpload
+    expectPathDependencyFinalize
+    expectNoAnalyzedPathRevisions
+
+    -- A disconnected dependency unreachable from the direct set: it would be
+    -- deleted by mkResult's prune, so it can only exist in the unpruned view.
+    -- Path dependency resolution is analysis, not publication filtering: the
+    -- replacements (driven by the published graph) are applied to BOTH views
+    -- via one effectful pass, so the unpruned view stays joinable to the
+    -- published one. Deps present only in the unpruned view were never
+    -- scanned, so they stay as declared; only mkResult's prune drops them.
+    let unpruned = graphWithUnPathDep <> deep nonProdUPathDepOnly
+        result = (mkProjectResult cwd graphWithUnPathDep){projectResultUnprunedGraph = RawGraph unpruned}
+
+    result' <- enrichPathDependencies includeAll noRescanOption pr result
+    unRawGraph (projectResultUnprunedGraph result') `shouldBe'` (direct resolvedPathDep <> deep nonProdUPathDepOnly)
+    hasVertex nonProdUPathDepOnly (unRawGraph (projectResultUnprunedGraph result')) `shouldBe'` True
+
+  it' "should relabel both graph views when path dependency relabeling rewrites unresolved deps" $ do
+    let unpruned = graphWithUnPathDep <> deep nonProdUPathDepOnly
+        result = (mkProjectResult cwd graphWithUnPathDep){projectResultUnprunedGraph = RawGraph unpruned}
+        relabeledUnpruned = direct (mkDep PathType) <> deep (mkDep PathType){dependencyEnvironments = Set.singleton EnvTesting}
+
+    let result' = enrichPathDependencies' result
+    unRawGraph (projectResultUnprunedGraph result') `shouldBe'` relabeledUnpruned
+    unPublishedGraph (projectResultGraph result') `shouldBe'` direct (mkDep PathType)
+    hasVertex (mkDep PathType){dependencyEnvironments = Set.singleton EnvTesting} (unRawGraph (projectResultUnprunedGraph result')) `shouldBe'` True
 
   it' "should not perform path dependency enrichment, if result has no unresolved deps" $ do
     expectGetApiOpts
@@ -255,7 +287,8 @@ mkProjectResult path deps =
   ProjectResult
     { projectResultType = YarnProjectType
     , projectResultPath = path
-    , projectResultGraph = deps
+    , projectResultUnprunedGraph = RawGraph deps
+    , projectResultGraph = PublishedGraph deps
     , projectResultGraphBreadth = Partial
     , projectResultManifestFiles = mempty
     }

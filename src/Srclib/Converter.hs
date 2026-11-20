@@ -13,7 +13,7 @@ module Srclib.Converter (
 import Prelude
 
 import Algebra.Graph.AdjacencyMap qualified as AM
-import App.Fossa.Analyze.Project (ProjectResult (..), shouldKeepUnreachableDeps)
+import App.Fossa.Analyze.Project (ProjectResult (..), shouldKeepUnreachableDeps, unPublishedGraph)
 import Control.Applicative ((<|>))
 import Data.Aeson qualified as Aeson
 import Data.Set qualified as Set
@@ -53,7 +53,7 @@ import Types (DiscoveredProjectType, GraphBreadth (..))
 
 projectToSourceUnit :: Bool -> ProjectResult -> SourceUnit
 projectToSourceUnit leaveUnfiltered ProjectResult{..} =
-  toSourceUnit leaveUnfiltered renderedPath projectResultGraph projectResultType projectResultGraphBreadth originPaths
+  toSourceUnit leaveUnfiltered renderedPath (unPublishedGraph projectResultGraph) projectResultType projectResultGraphBreadth originPaths
   where
     renderedPath = toText (toFilePath projectResultPath)
     originPaths = map somePathToOriginPath projectResultManifestFiles

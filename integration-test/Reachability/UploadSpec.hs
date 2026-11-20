@@ -4,7 +4,7 @@
 module Reachability.UploadSpec (spec) where
 
 import Analysis.FixtureUtils (FixtureEnvironment (..), TestC, testRunner, withResult)
-import App.Fossa.Analyze.Project (ProjectResult (..))
+import App.Fossa.Analyze.Project (ProjectResult (..), PublishedGraph (PublishedGraph), RawGraph (RawGraph))
 import App.Fossa.Analyze.Types (
   DiscoveredProjectIdentifier (..),
   DiscoveredProjectScan (..),
@@ -31,7 +31,6 @@ import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text.Encoding qualified as TL
 import Diag.Result (Result (..))
-import Graphing (empty)
 import Path (
   Abs,
   Dir,
@@ -154,7 +153,7 @@ mkDiscoveredProjectScan projectType dir breadth =
       dpi
       ( Success
           []
-          (ProjectResult projectType dir empty breadth mempty)
+          (ProjectResult projectType dir (RawGraph mempty) (PublishedGraph mempty) breadth mempty)
       )
   )
   where
