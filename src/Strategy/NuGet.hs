@@ -62,9 +62,10 @@ discoverVisitor _dir _subdirs files =
 
 -- | Finalizer for the shared walk.  The double-report rule below needs
 -- everything the walk found, not just one directory's worth, so it runs over the
--- whole collection rather than inside the per-directory visitor.
-postDiscover :: Applicative m => [NuGetProject] -> m [DiscoveredProject NuGetProject]
-postDiscover = pure . map mkProject . dedupeRestored
+-- whole collection rather than inside the per-directory visitor.  It does not
+-- need the discovery root.
+postDiscover :: Applicative m => Path Abs Dir -> [NuGetProject] -> m [DiscoveredProject NuGetProject]
+postDiscover _dir = pure . map mkProject . dedupeRestored
 
 -- | project.assets.json (created by @dotnet restore@) is essentially a lockfile.
 -- If one was discovered in the @obj/@ subdirectory beside a project file, then

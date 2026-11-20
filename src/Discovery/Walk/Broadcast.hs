@@ -55,7 +55,7 @@ import Data.Kind (Type)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Diag.Result (Result (Failure, Success), renderFailureWithoutWarnings)
-import Discovery.Filters (AllFilters, toolAllowed)
+import Discovery.Filters (AllFilters, consumerAllowed)
 import Discovery.Walk (WalkStep (WalkContinue))
 import Discovery.Walk.Stream (DirListing, walkStream)
 import Discovery.Walk.Visitor (Visitor, driveVisitor)
@@ -165,7 +165,7 @@ broadcastStream capacity filters listings consumers =
   unless (null enabled) startAll
   where
     enabled :: [WalkConsumer o m]
-    enabled = filter (toolAllowed filters . wcProjectType) consumers
+    enabled = filter (consumerAllowed filters . wcProjectType) consumers
 
     startAll :: m ()
     startAll = do

@@ -4,6 +4,8 @@
 
 module Strategy.Node (
   discover,
+  discoverVisitor,
+  finalizeProjects,
   pkgGraph,
   NodeProject (..),
   getDeps,
@@ -50,7 +52,7 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters, withMultiToolFilter)
+import Discovery.Filters (AllFilters, nodeToolFamily, withMultiToolFilter)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
@@ -130,9 +132,52 @@ discover ::
   ) =>
   Path Abs Dir ->
   m [DiscoveredProject NodeProject]
-discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProjectType, BunProjectType] $
+discover dir = withMultiToolFilter nodeToolFamily $ finishProjects (collectManifests dir)
+
+collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Manifest]
+collectManifests = walkWithFilters' discoverVisitor
+
+-- | Per-directory collector for the shared discovery walk: gather package.json
+-- paths, skipping JS dependency subtrees — the same candidate set
+-- 'collectManifests' collects.
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([Manifest], WalkStep)
+discoverVisitor _ _ files =
+  case findFileNamed "package.json" files of
+    Nothing -> pure ([], skipJsFolders)
+    Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)
+
+-- | Batch phase for the shared discovery walk: read the manifests the visitor
+-- collected and turn them into projects (the same graph build/split that
+-- 'discover' runs).  'withMultiToolFilter' still gates the whole strategy: the
+-- shared walk's own consumer gate keys on a single project type, so the
+-- finalizer re-applies the any-of-all-Node-tools gate to guarantee no projects
+-- are produced when it is off.
+finalizeProjects ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir ->
+  -- | manifests collected by 'discoverVisitor'
+  m [Manifest] ->
+  m [DiscoveredProject NodeProject]
+finalizeProjects _ collect = withMultiToolFilter nodeToolFamily $ finishProjects collect
+
+-- | The post-collection pipeline both collection paths share: read the
+-- collected manifests, build the workspace graph, split it into chunks, and
+-- convert each chunk to a project.  Extracted so that a change to one
+-- collection path cannot change the results of the other.
+finishProjects ::
+  ( Has Diagnostics sig m
+  , Has Logger sig m
+  , Has ReadFS sig m
+  ) =>
+  m [Manifest] ->
+  m [DiscoveredProject NodeProject]
+finishProjects collect =
   context "NodeJS" $ do
-    manifestList <- context "Finding nodejs/pnpm projects" $ collectManifests dir
+    manifestList <- context "Finding nodejs/pnpm projects" collect
     manifestMap <- context "Reading manifest files" $ (Map.fromList . catMaybes) <$> traverse loadPackage manifestList
     if Map.null manifestMap
       then -- If the map is empty, we found no JS projects, we return early.
@@ -142,12 +187,6 @@ discover dir = withMultiToolFilter [YarnProjectType, NpmProjectType, PnpmProject
         -- TODO: refactor splitGraph to report which cycle we hit, not just report some unknown cycle
         graphs <- context "Splitting global graph into chunks" $ fromMaybe CyclicPackageJson $ splitGraph globalGraph
         context "Converting graphs to analysis targets" $ traverse (mkProject <=< identifyProjectType) graphs
-
-collectManifests :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [Manifest]
-collectManifests = walkWithFilters' $ \_ _ files ->
-  case findFileNamed "package.json" files of
-    Nothing -> pure ([], skipJsFolders)
-    Just jsonFile -> pure ([Manifest jsonFile], skipJsFolders)
 
 mkProject ::
   (Has Diagnostics sig m, Has Logger sig m) =>

@@ -97,7 +97,10 @@ discoverFuncs =
       GodepProjectType
       Godep.discoverVisitor
       (cachedDiscover GodepProjectType Godep.mkProject)
-  , DiscoverFunc GoBinary.discover
+  , WalkedFunc
+      GoBinaryProjectType
+      GoBinary.discoverVisitor
+      GoBinary.finalizeProjects
   , WalkedFunc
       GomodProjectType
       Gomodules.discoverVisitor
@@ -110,7 +113,10 @@ discoverFuncs =
       LeiningenProjectType
       Leiningen.discoverVisitor
       (cachedDiscover LeiningenProjectType Leiningen.mkProject)
-  , DiscoverFunc Maven.discover
+  , WalkedFunc
+      MavenProjectType
+      Maven.discoverVisitor
+      (cachedDiscoverWith MavenProjectType Maven.postDiscover)
   , WalkedFunc
       MixProjectType
       Mix.discoverVisitor
@@ -119,7 +125,10 @@ discoverFuncs =
       NimbleProjectType
       Nim.discoverVisitor
       (cachedDiscover NimbleProjectType Nim.mkProject)
-  , DiscoverFunc Node.discover
+  , WalkedFunc
+      NpmProjectType
+      Node.discoverVisitor
+      Node.finalizeProjects
   , WalkedFunc
       NuGetProjectType
       NuGet.discoverVisitor
@@ -230,8 +239,9 @@ data DiscoverFunc m where
   -- strategy by "Discovery.Walk.Broadcast.withWalkBroadcast"), so the tree is
   -- traversed once for all strategies instead of once per strategy.  The given
   -- project type gates the consumer against the tool filters; the finalizer
-  -- receives an action reading the raw projects the visitor collected during
-  -- that walk, and turns them into 'DiscoveredProject's.
+  -- receives the strategy's discovery root and an action reading the raw
+  -- projects the visitor collected during that walk, and turns them into
+  -- 'DiscoveredProject's.
   WalkedFunc ::
     ( AnalyzeProject p
     , Aeson.ToJSON p
@@ -239,6 +249,8 @@ data DiscoverFunc m where
     DiscoveredProjectType ->
     -- | visitor, called once per directory by the shared walk
     (Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([raw], WalkStep)) ->
-    -- | finalize the raw projects collected by the visitor
-    (m [raw] -> m [DiscoveredProject p]) ->
+    -- | finalize the raw projects collected by the visitor, e.g. a batch
+    -- phase over the whole collection (the discovery root is the directory
+    -- discovery started from)
+    (Path Abs Dir -> m [raw] -> m [DiscoveredProject p]) ->
     DiscoverFunc m

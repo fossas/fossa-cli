@@ -9,14 +9,15 @@
 -- strategy's 'discoverVisitor' is wrapped in a
 -- "Discovery.Walk.Broadcast.accumulateConsumer" sink, all consumers are fanned
 -- out through "Discovery.Walk.Broadcast.withWalkBroadcast", and each sink is
--- finalized with "Discovery.Simple.cachedDiscover".  Only strategies that
--- export a 'discoverVisitor' can be driven this way: of the fixture's ten
--- ecosystems, Maven ("Strategy.Maven") and Npm ("Strategy.Node") have no
--- visitor, so the eight drivable strategies are exercised here.
+-- finalized with the strategy's own production finalizer (mostly
+-- "Discovery.Simple.cachedDiscover").  Only strategies that export a
+-- 'discoverVisitor' can be driven this way: of the fixture's ten ecosystems
+-- only Maven ("Strategy.Maven") has no visitor, so the nine drivable strategies
+-- are exercised here.
 --
--- A second describe runs the two self-discovering strategies directly through
--- their own 'discover' entry points on the same tree, under
--- "Analysis.FixtureUtils.testRunner".
+-- A second describe runs Maven through its own 'discover' entry point on the
+-- same tree, under "Analysis.FixtureUtils.testRunner", and a third pins Node's
+-- container-scan 'discover' entry point, which the shared walk does not serve.
 module Analysis.SharedWalkDiscoverySpec (
   spec,
 ) where
@@ -37,6 +38,7 @@ import Data.Text (Text)
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (cachedDiscover)
 import Discovery.Walk.Broadcast (accumulateConsumer, withWalkBroadcast)
+import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
 import Path
 import Path.IO qualified as PIO
@@ -79,9 +81,10 @@ finalizeSink sink = do
     Right projects -> pure projects
 
 -- | Drive every drivable strategy's visitor over the production broadcast path
--- rooted at @tmpDir@, then finalize each sink with 'cachedDiscover'.  Returns
--- the discovered entries across all eight strategies.
-collectWalk :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has ReadFS sig m) => Path Abs Dir -> m [Entry]
+-- rooted at @tmpDir@, then finalize each sink with the strategy's own
+-- production finalizer.  Returns the discovered entries across all nine
+-- strategies.
+collectWalk :: (Has (Lift IO) sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m, Has ReadFS sig m, Has Logger sig m) => Path Abs Dir -> m [Entry]
 collectWalk tmpDir = do
   filters <- ask
 
@@ -97,6 +100,7 @@ collectWalk tmpDir = do
   cocoapodsSink <- sendIO (newIORef (Right ([])))
   condaSink <- sendIO (newIORef (Right ([])))
   cabalSink <- sendIO (newIORef (Right ([])))
+  npmSink <- sendIO (newIORef (Right ([])))
 
   let -- One broadcast consumer per strategy, built exactly like production.
       consumers =
@@ -108,6 +112,7 @@ collectWalk tmpDir = do
         , accumulateConsumer CocoapodsProjectType (msgFor CocoapodsProjectType) cocoapodsSink Cocoapods.discoverVisitor
         , accumulateConsumer CondaProjectType (msgFor CondaProjectType) condaSink Conda.discoverVisitor
         , accumulateConsumer CabalProjectType (msgFor CabalProjectType) cabalSink Cabal.discoverVisitor
+        , accumulateConsumer NpmProjectType (msgFor NpmProjectType) npmSink Node.discoverVisitor
         ]
 
   -- filters is mempty (supplied by testRunner); its gating/interplay is
@@ -115,14 +120,17 @@ collectWalk tmpDir = do
   withWalkBroadcast filters tmpDir consumers
 
   do
-    mixP <- cachedDiscover MixProjectType Mix.mkProject (finalizeSink mixSink)
-    fpmP <- cachedDiscover FpmProjectType Fpm.mkProject (finalizeSink fpmSink)
-    leinP <- cachedDiscover LeiningenProjectType Leiningen.mkProject (finalizeSink leinSink)
-    goP <- cachedDiscover GomodProjectType Gomodules.mkProject (finalizeSink goSink)
-    composerP <- cachedDiscover ComposerProjectType Composer.mkProject (finalizeSink composerSink)
-    cocoapodsP <- cachedDiscover CocoapodsProjectType Cocoapods.mkProject (finalizeSink cocoapodsSink)
-    condaP <- cachedDiscover CondaProjectType Conda.mkProject (finalizeSink condaSink)
-    cabalP <- cachedDiscover CabalProjectType Cabal.mkProject (finalizeSink cabalSink)
+    mixP <- cachedDiscover MixProjectType Mix.mkProject tmpDir (finalizeSink mixSink)
+    fpmP <- cachedDiscover FpmProjectType Fpm.mkProject tmpDir (finalizeSink fpmSink)
+    leinP <- cachedDiscover LeiningenProjectType Leiningen.mkProject tmpDir (finalizeSink leinSink)
+    goP <- cachedDiscover GomodProjectType Gomodules.mkProject tmpDir (finalizeSink goSink)
+    composerP <- cachedDiscover ComposerProjectType Composer.mkProject tmpDir (finalizeSink composerSink)
+    cocoapodsP <- cachedDiscover CocoapodsProjectType Cocoapods.mkProject tmpDir (finalizeSink cocoapodsSink)
+    condaP <- cachedDiscover CondaProjectType Conda.mkProject tmpDir (finalizeSink condaSink)
+    cabalP <- cachedDiscover CabalProjectType Cabal.mkProject tmpDir (finalizeSink cabalSink)
+    -- Node's production finalizer is not 'cachedDiscover': it batches the whole
+    -- collected manifest set through its workspace graph, so drive it directly.
+    npmP <- Node.finalizeProjects tmpDir (finalizeSink npmSink)
     pure $
       concatMap toEntries mixP
         <> concatMap toEntries fpmP
@@ -132,8 +140,9 @@ collectWalk tmpDir = do
         <> concatMap toEntries cocoapodsP
         <> concatMap toEntries condaP
         <> concatMap toEntries cabalP
+        <> concatMap toEntries npmP
 
--- | The exact set of entries the eight drivable strategies must discover, each
+-- | The exact set of entries the nine drivable strategies must discover, each
 -- pinned to the absolute directory containing its manifest.  Computed relative
 -- to @tmpDir@ so the assertion is independent of the (non-deterministic) temp
 -- path.
@@ -149,6 +158,7 @@ expectedEntries tmp =
   , ("cocoapods", tmp </> [reldir|cocoapods|])
   , ("conda", tmp </> [reldir|conda|])
   , ("cabal", tmp </> [reldir|cabal|])
+  , ("npm", tmp </> [reldir|apps|])
   ]
 
 -- | Materialize the checked-in fixture tree under @tmp@, creating every parent
@@ -169,30 +179,33 @@ runDiscovery tmp = do
   res <- testRunner (collectWalk tmp) LocalEnvironment
   withResult res $ \_ projects -> pure projects
 
--- | Drive Maven and Node through their own 'discover' entry points (they have
--- no 'discoverVisitor') over the same materialized tree.
+-- | Drive Maven through its own 'discover' entry point (it has no
+-- 'discoverVisitor') over the same materialized tree.
 runMavenDiscover :: Path Abs Dir -> IO [Entry]
 runMavenDiscover tmp = do
   materialize tmp
   res <- testRunner (Maven.discover tmp) LocalEnvironment
   withResult res $ \_ projects -> pure (concatMap toEntries projects)
 
+-- | Drive Node through its own 'discover' entry point: that is still the
+-- container-scan path ("App.Fossa.Container.Sources.Discovery"), which the
+-- shared walk does not serve.
 runNodeDiscover :: Path Abs Dir -> IO [Entry]
 runNodeDiscover tmp = do
   materialize tmp
   res <- testRunner (Node.discover tmp) LocalEnvironment
   withResult res $ \_ projects -> pure (concatMap toEntries projects)
 
--- | The entries the two self-discovering strategies must return, pinned to the
--- absolute directory containing each manifest.
+-- | The entries Maven, the one strategy with no 'discoverVisitor', must
+-- return, pinned to the absolute directory containing its manifest.
 expectedSelfDiscoverEntries :: Path Abs Dir -> [Entry]
 expectedSelfDiscoverEntries tmp =
   [ ("maven", tmp)
-  , ("npm", tmp </> [reldir|apps|])
   ]
 
 -- | The full set of projects across both mechanisms: the shared-walk visitors
--- plus the two self-discovering strategies, each pinned to its manifest dir.
+-- plus Maven, the one self-discovering strategy, each pinned to its manifest
+-- dir.
 expectedFullEntries :: Path Abs Dir -> [Entry]
 expectedFullEntries tmp = expectedEntries tmp <> expectedSelfDiscoverEntries tmp
 
@@ -219,7 +232,7 @@ spec =
         entries <- runDiscovery tmp
         let apps = tmp </> [reldir|apps|]
             inApps = Set.fromList (filter ((== apps) . snd) entries)
-        inApps `shouldBe` Set.fromList [("mix", apps), ("fpm", apps)]
+        inApps `shouldBe` Set.fromList [("mix", apps), ("fpm", apps), ("npm", apps)]
 
     it "finds a project nested behind empty directories" $
       withTempDir "integration-SharedWalkDiscovery" $ \tmp -> do
@@ -253,8 +266,8 @@ spec =
                     mixConsumer = accumulateConsumer MixProjectType (msgFor MixProjectType) mixSink Mix.discoverVisitor
                 -- filters mempty: gating is covered elsewhere (WalkBroadcastSpec).
                 withWalkBroadcast (mempty :: AllFilters) tmp [fpmConsumer, mixConsumer]
-                fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject (finalizeSink fpmSink)
-                mixFinal <- cachedDiscover MixProjectType Mix.mkProject (finalizeSink mixSink)
+                fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject tmp (finalizeSink fpmSink)
+                mixFinal <- cachedDiscover MixProjectType Mix.mkProject tmp (finalizeSink mixSink)
                 pure (fpmFinal, mixFinal)
             )
             LocalEnvironment
@@ -270,13 +283,17 @@ spec =
         Set.member apps mixDirs `shouldBe` True
         Set.member build mixDirs `shouldBe` True
 
-    it "discovers all 11 projects across both shared-walk and self-discovering mechanisms" $
+    it "discovers every fixture project across both mechanisms" $
       withTempDir "integration-FullSet" $ \tmp -> do
         walkEntries <- runDiscovery tmp
         mavenEntries <- runMavenDiscover tmp
-        nodeEntries <- runNodeDiscover tmp
-        let full = walkEntries <> mavenEntries <> nodeEntries
+        let full = walkEntries <> mavenEntries
         Set.fromList full `shouldBe` Set.fromList (expectedFullEntries tmp)
         -- No visitor fired twice: the raw (pre-dedup) list has no duplicate
         -- entries, so Set.fromList above is not hiding a doubled project.
         length full `shouldBe` Set.size (Set.fromList full)
+
+    it "finds the same Node project through the container-scan entry point" $
+      withTempDir "integration-NodeContainerPath" $ \tmp -> do
+        nodeEntries <- runNodeDiscover tmp
+        Set.fromList nodeEntries `shouldBe` Set.fromList [("npm", tmp </> [reldir|apps|])]
