@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
 - SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
 
