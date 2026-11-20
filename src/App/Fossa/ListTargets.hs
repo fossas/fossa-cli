@@ -5,9 +5,8 @@ module App.Fossa.ListTargets (
   listSubCommand,
 ) where
 
-import App.Fossa.Analyze.Debug (DiagDebugC, diagToDebug)
-import App.Fossa.Analyze.Discover (DiscoverFunc (..), discoverFuncs)
-import App.Fossa.Analyze.Types (AnalyzeProject)
+import App.Fossa.Analyze.Discover (discoverFuncs)
+import App.Fossa.Analyze.DiscoveryDriver (PreparedEntry (..), entryConsumers, prepare, runDiscovery)
 import App.Fossa.Config.Analyze (StrategyConfig)
 import App.Fossa.Config.ListTargets (
   ListTargetOutputFormat (..),
@@ -26,7 +25,6 @@ import Control.Carrier.Debug (ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (runFinally)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Carrier.Stack.StickyLog (StickyLogStackC, stickyLogStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -35,21 +33,18 @@ import Control.Carrier.TaskPool (
  )
 import Control.Concurrent (getNumCapabilities)
 import Control.Effect.Debug (Debug)
-import Control.Effect.Diagnostics (fatalText)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (ask)
-import Control.Effect.Stack (Stack, withEmptyStack)
+import Control.Effect.Stack (Stack)
 import Control.Effect.Telemetry (Telemetry)
 import Data.Aeson (ToJSON, encode, object, (.=))
 import Data.Aeson.Extra (encodeJSONToText)
 import Data.Foldable (for_, traverse_)
-import Data.IORef (newIORef, readIORef)
 import Data.Set.NonEmpty (toSet)
 import Data.String.Conversion (decodeUtf8, toText)
-import Diag.Result (Result)
 import Discovery.Filters (AllFilters, MavenScopeFilters (..))
 import Discovery.Projects (withDiscoveredProjects)
-import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
+import Discovery.Walk.Broadcast (withWalkBroadcast)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Color (Cyan, Green, Yellow),
@@ -66,7 +61,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
-import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..), projectTypeToText)
+import Types (BuildTarget (..), DiscoveredProject (..), FoundTargets (..))
 
 listSubCommand :: SubCommand ListTargetsCliOpts ListTargetsConfig
 listSubCommand = mkSubCommand listTargetsMain
@@ -115,33 +110,6 @@ runAll ::
   ListTargetOutputFormat ->
   Path Abs Dir ->
   m ()
-
--- | Deliberately mirrors 'App.Fossa.Analyze''s 'DiscoveryM' — keep the two in sync.
-type DiscoveryM m = StickyLogStackC (DiagDebugC (Diag.DiagnosticsC m))
-
--- | A strategy's failure here renders the same way it would under @fossa analyze@.
-runDiscovery ::
-  ( Has (Lift IO) sig m
-  , Has AtomicCounter sig m
-  , Has Debug sig m
-  , Has Logger sig m
-  , Has Stack sig m
-  ) =>
-  DiscoveryM m a ->
-  m (Result a)
-runDiscovery = Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack
-
--- | A 'DiscoverFunc' readied for the shared walk; consumers are empty for
--- strategies that still discover themselves.
-data PreparedEntry d where
-  PreparedEntry ::
-    ( AnalyzeProject p
-    , ToJSON p
-    ) =>
-    [WalkConsumer () d] ->
-    (Path Abs Dir -> d [DiscoveredProject p]) ->
-    PreparedEntry d
-
 runAll outputFmt basedir = do
   filters <- ask @AllFilters
   entriesResult <- runDiscovery $ do
@@ -150,34 +118,6 @@ runAll outputFmt basedir = do
     pure entries
   Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
-    -- No Diagnostics clause: the phase monad's innermost layer provides it.
-    -- These clauses are the outer effects GHC needs to derive the constraints
-    -- for 'discoverFuncs'; 'runAll' supplies all of them.
-    prepare ::
-      ( Has (Lift IO) sig m
-      , Has Logger sig m
-      , Has Debug sig m
-      , Has Stack sig m
-      ) =>
-      DiscoverFunc (DiscoveryM m) ->
-      DiscoveryM m (PreparedEntry (DiscoveryM m))
-    prepare dscover = case dscover of
-      DiscoverFunc f -> pure (PreparedEntry [] f)
-      WalkedFunc projectType visitor finalize -> do
-        sink <- sendIO (newIORef (Right ([] :: [raw])))
-        let msg = "Error discovering projects for " <> projectTypeToText projectType
-            -- Reading the sink in the finalizer turns a failure recorded during the
-            -- walk into a throw (see 'accumulateConsumer'), so
-            -- 'withDiscoveredProjects' discards the whole strategy — preserving
-            -- list-targets' all-or-nothing contract.
-            collect = do
-              state <- sendIO (readIORef sink)
-              case state of
-                Left e -> fatalText e
-                Right projects -> pure projects
-        pure (PreparedEntry [accumulateConsumer projectType msg sink visitor] $ \dir -> finalize dir collect)
-
-    entryConsumers (PreparedEntry cs _) = cs
     single (PreparedEntry _ discover) = withDiscoveredProjects discover basedir formatter
     formatter proj = case outputFmt of
       Legacy -> renderLegacyFmt basedir proj

@@ -22,12 +22,11 @@ module App.Fossa.Analyze (
 ) where
 
 import App.Docs (userGuideUrl)
-import App.Fossa.Analyze.Debug (DiagDebugC, collectDebugBundle, diagToDebug)
+import App.Fossa.Analyze.Debug (collectDebugBundle, diagToDebug)
 import App.Fossa.Analyze.Discover (
-  DiscoverFunc (..),
   discoverFuncs,
  )
-import App.Fossa.Analyze.DiscoveryDriver (DiscoveryM, PreparedEntry (..), entryConsumers, prepare, runDiscovery)
+import App.Fossa.Analyze.DiscoveryDriver (PreparedEntry (..), entryConsumers, prepare, runDiscovery)
 import App.Fossa.Analyze.Filter (
   CountedResult (..),
   checkForEmptyUpload,
@@ -102,7 +101,7 @@ import Control.Carrier.Finally (Finally, Has, runFinally)
 import Control.Carrier.FossaApiClient (runFossaApiClient)
 import Control.Carrier.Output.IO (Output, output, runOutput)
 import Control.Carrier.Reader (Reader, runReader)
-import Control.Carrier.Stack.StickyLog (StickyLogStackC, stickyLogStack)
+import Control.Carrier.Stack.StickyLog (stickyLogStack)
 import Control.Carrier.StickyLogger (StickyLogger, logSticky', runStickyLogger)
 import Control.Carrier.TaskPool (
   Progress (..),
@@ -111,7 +110,7 @@ import Control.Carrier.TaskPool (
   withTaskPool,
  )
 import Control.Concurrent (getNumCapabilities)
-import Control.Effect.Diagnostics (fatalText, recover)
+import Control.Effect.Diagnostics (recover)
 import Control.Effect.Exception (Lift)
 import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
@@ -126,7 +125,6 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
-import Data.IORef (newIORef, readIORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
@@ -135,12 +133,12 @@ import Data.Text (Text)
 import Data.Text.Extra (showT)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
-import Diag.Result (Result, resultToMaybe)
+import Diag.Result (resultToMaybe)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
 import Discovery.Projects (withDiscoveredProjects)
 import Discovery.Walk (enumeratePrunedSubtrees)
-import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
+import Discovery.Walk.Broadcast (withWalkBroadcast)
 import Effect.Exec (Exec)
 import Effect.Logger (
   Logger,
@@ -174,7 +172,7 @@ import Srclib.Types (
   translateSourceUnitLocators,
  )
 import System.FilePath ((</>))
-import Types (DiscoveredProject (..), FoundTargets, projectTypeToText)
+import Types (DiscoveredProject (..), FoundTargets)
 
 analyzeSubCommand :: SubCommand AnalyzeCliOpts AnalyzeConfig
 analyzeSubCommand = Config.mkSubCommand dispatch
