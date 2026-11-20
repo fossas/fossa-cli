@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
 - Elixir: git dependencies pinned to a tag or branch containing a hyphen, slash or underscore no longer fail analysis. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
 - Elixir: compiled git dependencies are now reported at the commit they are locked to instead of their package version. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
