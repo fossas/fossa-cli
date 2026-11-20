@@ -187,6 +187,7 @@ library
     App.Fossa.Analyze
     App.Fossa.Analyze.Debug
     App.Fossa.Analyze.Discover
+    App.Fossa.Analyze.DiscoveryDriver
     App.Fossa.Analyze.Filter
     App.Fossa.Analyze.ForkAlias
     App.Fossa.Analyze.Graph
