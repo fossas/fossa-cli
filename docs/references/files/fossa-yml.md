@@ -473,6 +473,30 @@ maven:
     - test
 ```
 
+### uv dependency groups
+
+uv can split a project's development dependencies into [dependency groups](https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-groups), like `dev`, `test`, or `docs`. FOSSA reports the packages in every group as development dependencies, so they're left out of `fossa analyze` results unless you pass `--include-unused-deps`. Use the `uv` section to report some groups as production, or to leave some out entirely.
+
+#### production-groups:
+
+The groups to report as production dependencies, so they're always in the results.
+
+#### exclude-groups:
+
+The groups to leave out of the results, even with `--include-unused-deps`. A package in one of these groups is still reported if your project or another group also depends on it.
+
+If a group is in both lists, it's left out. Group names match the way uv matches them: case doesn't matter, and `-`, `_`, and `.` are interchangeable.
+
+```yaml
+version: 3
+
+uv:
+  production-groups:
+    - server
+  exclude-groups:
+    - lint
+```
+
 ## FAQ
 
 ### Why are some configuration settings (name, team, policy, etc.) ignored by the FOSSA API after a project has already been created?

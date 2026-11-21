@@ -66,6 +66,7 @@ import App.Fossa.Config.ConfigFile (
   ExperimentalGradleConfigs (..),
   OrgWideCustomLicenseConfigPolicy (..),
   ReachabilityConfigFile (..),
+  UvConfig,
   VendoredDependencyConfigs (..),
   mergeFileCmdMetadata,
   resolveConfigFile,
@@ -317,6 +318,7 @@ data StrategyConfig = StrategyConfig
   -- ^ Read Go module lists from the buildinfo embedded in compiled Go
   -- binaries. Opt-in: @fossa analyze@ otherwise reports only what package
   -- managers declare.
+  , uvConfig :: Maybe UvConfig
   }
   deriving (Eq, Ord, Show, Generic)
 
@@ -716,6 +718,7 @@ collectStrategyConfig maybeCfg AnalyzeCliOpts{analyzePathDependencies = shouldAn
     shouldAnalyzePathDependencies
     (UseGitBackedCargoLocators True)
     analyzeGoBinaryAnalysis
+    (maybeCfg >>= configUv)
 
 collectVendoredDeps ::
   (Has Diagnostics sig m) =>

@@ -4,12 +4,16 @@ module Python.UvSpec (
   spec,
 ) where
 
+import App.Fossa.Config.ConfigFile (UvConfig (..))
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
 import Effect.ReadFS (readContentsToml)
 import GraphUtil
+import Graphing (Graphing, directList, vertexList)
 import Path (relfile)
 import Path.IO (makeAbsolute)
 import Strategy.Python.Uv
@@ -32,7 +36,7 @@ lock =
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
             , uvlockPackageDependencies = map mkPackageDep ["dep1", "dep2"]
-            , uvlockPackageDevDependencies = map mkPackageDep ["dep3", "dep4"]
+            , uvlockPackageDevDependencies = Map.fromList [("dev", map mkPackageDep ["dep3", "dep4"])]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -40,7 +44,7 @@ lock =
             , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = [mkPackageDep "dep4"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -48,7 +52,7 @@ lock =
             , uvlockPackageVersion = Just "2.1.2"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -56,7 +60,7 @@ lock =
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = [mkPackageDep "dep6"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -64,7 +68,7 @@ lock =
             , uvlockPackageVersion = Just "1.0.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = [mkPackageDep "dep5"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -72,7 +76,7 @@ lock =
             , uvlockPackageVersion = Just "3.0.1"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -80,10 +84,11 @@ lock =
             , uvlockPackageVersion = Just "1.1.1"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --     my-project
@@ -100,7 +105,7 @@ lockNewStyleDevDeps =
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
             , uvlockPackageDependencies = map mkPackageDep ["dep1", "dep2"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = Map.fromList [("dev", [mkPackageDep "dep3"])]
             }
         , UvLockPackage
@@ -108,7 +113,7 @@ lockNewStyleDevDeps =
             , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -116,7 +121,7 @@ lockNewStyleDevDeps =
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = [mkPackageDep "dep6"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -124,10 +129,11 @@ lockNewStyleDevDeps =
             , uvlockPackageVersion = Just "1.1.1"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --     my-project (editable, no version -- dynamic version project)
@@ -144,7 +150,7 @@ lockEditableNoVersion =
             , uvlockPackageVersion = Nothing
             , uvlockPackageSource = SourceEditable "."
             , uvlockPackageDependencies = [mkPackageDep "dep1"]
-            , uvlockPackageDevDependencies = [mkPackageDep "dep3"]
+            , uvlockPackageDevDependencies = Map.fromList [("dev", [mkPackageDep "dep3"])]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -152,7 +158,7 @@ lockEditableNoVersion =
             , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -160,7 +166,7 @@ lockEditableNoVersion =
             , uvlockPackageVersion = Just "0.9.9"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = [mkPackageDep "dep6"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -168,10 +174,11 @@ lockEditableNoVersion =
             , uvlockPackageVersion = Just "1.1.1"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --     my-project
@@ -186,7 +193,7 @@ lockWithDirectory =
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
             , uvlockPackageDependencies = map mkPackageDep ["dep1", "local-lib"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -194,7 +201,7 @@ lockWithDirectory =
             , uvlockPackageVersion = Just "1.1.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -202,10 +209,11 @@ lockWithDirectory =
             , uvlockPackageVersion = Just "0.2.0"
             , uvlockPackageSource = SourceDirectory "../local-lib"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 --       my-project
@@ -221,8 +229,8 @@ lockSplitVersions =
             { uvlockPackageName = "my-project"
             , uvlockPackageVersion = Just "0.1.0"
             , uvlockPackageSource = SourceVirtual "."
-            , uvlockPackageDependencies = [UvLockPackageDependency "foo" (Just "1.0.0") Nothing]
-            , uvlockPackageDevDependencies = [UvLockPackageDependency "foo" (Just "2.0.0") Nothing]
+            , uvlockPackageDependencies = [(mkPackageDep "foo"){uvlockPackageDependencyVersion = Just "1.0.0"}]
+            , uvlockPackageDevDependencies = Map.fromList [("dev", [(mkPackageDep "foo"){uvlockPackageDependencyVersion = Just "2.0.0"}])]
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -230,7 +238,7 @@ lockSplitVersions =
             , uvlockPackageVersion = Just "1.0.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -238,7 +246,7 @@ lockSplitVersions =
             , uvlockPackageVersion = Just "2.0.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = [mkPackageDep "bar"]
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         , UvLockPackage
@@ -246,14 +254,21 @@ lockSplitVersions =
             , uvlockPackageVersion = Just "1.0.0"
             , uvlockPackageSource = SourceRegistry "https://pypi.org/simple"
             , uvlockPackageDependencies = []
-            , uvlockPackageDevDependencies = []
+            , uvlockPackageDevDependencies = mempty
             , uvlockPackageOptionalDependencies = mempty
             }
         ]
+    , uvlockManifestDependencyGroups = mempty
     }
 
 mkPackageDep :: Text -> UvLockPackageDependency
-mkPackageDep name = UvLockPackageDependency name Nothing Nothing
+mkPackageDep name =
+  UvLockPackageDependency
+    { uvlockPackageDependencyName = name
+    , uvlockPackageDependencyVersion = Nothing
+    , uvlockPackageDependencySource = Nothing
+    , uvlockPackageDependencyExtras = []
+    }
 
 mkDep :: Text -> Text -> [DepEnvironment] -> Dependency
 mkDep name version envs =
@@ -265,6 +280,10 @@ mkDep name version envs =
     , dependencyEnvironments = Set.fromList envs
     , dependencyTags = mempty
     }
+
+-- Each package in the graph, by name, with its environments.
+environments :: Graphing Dependency -> Map Text (Set DepEnvironment)
+environments = Map.fromList . map (\dep -> (dependencyName dep, dependencyEnvironments dep)) . vertexList
 
 dep1 :: Dependency
 dep1 = mkDep "dep1" "1.1.0" [EnvProduction]
@@ -323,35 +342,35 @@ spec :: Spec
 spec = do
   describe "buildGraph" $ do
     it "should build correct graph" $ do
-      let result = buildGraph lock
+      let result = buildGraph Nothing lock
 
       expectDirect [dep1, dep2, dep3, dep4] result
       expectDeps [dep1, dep2, dep3, dep4, dep5, dep6] result
       expectEdges [(dep1, dep4), (dep3, dep6), (dep4, dep5)] result
 
     it "should build correct graph using new style dev deps" $ do
-      let result = buildGraph lockNewStyleDevDeps
+      let result = buildGraph Nothing lockNewStyleDevDeps
 
       expectDirect [dep1, dep3] result
       expectDeps [dep1, dep3, dep6] result
       expectEdges [(dep3, dep6)] result
 
     it "should skip editable packages without a version" $ do
-      let result = buildGraph lockEditableNoVersion
+      let result = buildGraph Nothing lockEditableNoVersion
 
       expectDirect [dep1, dep3] result
       expectDeps [dep1, dep3, dep6] result
       expectEdges [(dep3, dep6)] result
 
     it "should handle directory source dependencies" $ do
-      let result = buildGraph lockWithDirectory
+      let result = buildGraph Nothing lockWithDirectory
 
       expectDirect [dep1, localLib] result
       expectDeps [dep1, localLib] result
       expectEdges [] result
 
     it "should label each locked version with the environment that references it" $ do
-      let result = buildGraph lockSplitVersions
+      let result = buildGraph Nothing lockSplitVersions
       let fooProd = mkDep "foo" "1.0.0" [EnvProduction]
       let fooDev = mkDep "foo" "2.0.0" [EnvDevelopment]
       let bar = mkDep "bar" "1.0.0" [EnvDevelopment]
@@ -364,7 +383,7 @@ spec = do
     it' "correctly parse and interpret uv.lock" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv.lock|]
       uvlock <- readContentsToml path
-      let result = buildGraph uvlock
+      let result = buildGraph Nothing uvlock
 
       expectDirect' [httpx, starlette] result
       expectDeps'
@@ -386,7 +405,7 @@ spec = do
     it' "correctly parse uv.lock with editable package missing version" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv-editable.lock|]
       uvlock <- readContentsToml path
-      let result = buildGraph uvlock
+      let result = buildGraph Nothing uvlock
       -- In the editable lockfile, anyio and idna are only reachable via httpx (prod),
       -- so they should only have EnvProduction (unlike the main test where starlette
       -- provides a dev path to anyio).
@@ -408,7 +427,7 @@ spec = do
     it' "correctly parse uv.lock with directory source dependency" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv-directory.lock|]
       uvlock <- readContentsToml path
-      let result = buildGraph uvlock
+      let result = buildGraph Nothing uvlock
       let anyio' = mkDep "anyio" "4.11.0" [EnvProduction]
       let idna' = mkDep "idna" "3.11" [EnvProduction]
       let sniffio' = mkDep "sniffio" "1.3.1" [EnvProduction]
@@ -426,7 +445,7 @@ spec = do
     it' "resolves dependencies on packages with multiple locked versions" $ do
       path <- makeAbsolute [relfile|test/Python/testdata/uv-multiple-versions.lock|]
       uvlock <- readContentsToml path
-      let result = buildGraph uvlock
+      let result = buildGraph Nothing uvlock
       let numpyOld = mkDep "numpy" "2.2.6" [EnvProduction]
       let numpyNew = mkDep "numpy" "2.4.6" [EnvProduction]
       let pandasOld = mkDep "pandas" "2.3.3" [EnvProduction]
@@ -447,3 +466,108 @@ spec = do
         , (pytestOld, tomli)
         ]
         result
+
+  -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
+  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, and uv-extras.lock
+  -- from 0.13.9, without the sdist and wheel entries. uv-groups.lock also leaves out the packages these
+  -- tests don't look at.
+  describe "dependency groups" $ do
+    let prod = Set.fromList [EnvProduction]
+        dev = Set.fromList [EnvDevelopment]
+        prodAndDev = Set.fromList [EnvProduction, EnvDevelopment]
+        labels parsed production excluded = environments $ buildGraph (Just UvConfig{uvProductionGroups = production, uvExcludeGroups = excluded}) parsed
+
+    it' "labels every dependency group development" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-groups.lock|]
+      result <- buildGraph Nothing <$> readContentsToml path
+
+      map dependencyName (directList result) `shouldMatchList'` ["requests", "pytest", "sphinx", "ruff"]
+      environments result
+        `shouldBe'` Map.fromList
+          ( map (,prodAndDev) ["requests", "certifi", "charset-normalizer", "idna", "urllib3"]
+              <> map (,dev) ["pytest", "iniconfig", "pygments", "sphinx", "docutils", "jinja2", "markupsafe", "ruff"]
+          )
+
+    it' "labels production-groups production" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-groups.lock|]
+      let cfg = UvConfig{uvProductionGroups = Set.fromList ["docs"], uvExcludeGroups = mempty}
+      result <- buildGraph (Just cfg) <$> readContentsToml path
+
+      environments result
+        `shouldBe'` Map.fromList
+          ( map (,prod) ["requests", "certifi", "charset-normalizer", "idna", "urllib3", "sphinx", "docutils", "jinja2", "markupsafe"]
+              <> [("pygments", prodAndDev)]
+              <> map (,dev) ["pytest", "iniconfig", "ruff"]
+          )
+
+    it' "leaves out exclude-groups, keeping packages that production or another group reaches" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-groups.lock|]
+      -- docs is in both lists, so it's left out.
+      let cfg = UvConfig{uvProductionGroups = Set.fromList ["docs"], uvExcludeGroups = Set.fromList ["docs", "lint"]}
+      result <- buildGraph (Just cfg) <$> readContentsToml path
+
+      map dependencyName (directList result) `shouldMatchList'` ["requests", "pytest"]
+      environments result
+        `shouldBe'` Map.fromList
+          ( map (,prod) ["requests", "certifi", "charset-normalizer", "idna", "urllib3"]
+              <> map (,dev) ["pytest", "iniconfig", "pygments"]
+          )
+
+    it' "finds the project when one of its groups installs it" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-self-reference.lock|]
+      result <- buildGraph Nothing <$> readContentsToml path
+
+      expectDep' (mkDep "idna" "3.20" [EnvProduction]) result
+      expectDep' (mkDep "imagesize" "2.0.1" [EnvDevelopment]) result
+
+    it' "matches configured group names after PEP 503 normalization" $ do
+      path <- makeAbsolute [relfile|test/Python/testdata/uv-self-reference.lock|]
+      let cfg = UvConfig{uvProductionGroups = Set.fromList ["Docs_Build"], uvExcludeGroups = mempty}
+      result <- buildGraph (Just cfg) <$> readContentsToml path
+
+      expectDep' (mkDep "imagesize" "2.0.1" [EnvProduction]) result
+
+    -- The project depends on its workspace member lib, whose docs group installs imagesize.
+    it' "labels a workspace member's groups by group name, like the project's" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-workspace-member-groups.lock|]
+      let docs = Set.singleton "docs"
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("imagesize", dev), ("iniconfig", dev)]
+      labels parsed docs mempty `shouldBe'` Map.fromList [("idna", prod), ("imagesize", prod), ("iniconfig", dev)]
+      labels parsed mempty docs `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
+
+    -- The workspace root has no [project] table, so uv.lock lists its dev group under
+    -- [manifest.dependency-groups]. Its member pkg depends on idna.
+    it' "reads the groups of a workspace root that isn't a project" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-virtual-root.lock|]
+      let pytest = ["pytest", "colorama", "iniconfig", "packaging", "pluggy", "pygments"]
+          devGroup = Set.singleton "dev"
+
+      map dependencyName (directList (buildGraph Nothing parsed)) `shouldMatchList'` ["idna", "pytest"]
+      labels parsed mempty mempty `shouldBe'` Map.fromList (("idna", prod) : map (,dev) pytest)
+      labels parsed devGroup mempty `shouldBe'` Map.fromList (map (,prod) ("idna" : pytest))
+      labels parsed mempty devGroup `shouldBe'` Map.fromList [("idna", prod)]
+
+    -- The same kind of root lists its member pkg in its dev group, but uv installs every member at
+    -- such a root anyway.
+    it' "keeps a member production when a workspace root that isn't a project lists it in a group" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-virtual-root-member.lock|]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod)]
+
+    -- The dev group installs the project with its test extra, which needs iniconfig.
+    it' "labels the project's own extra by the group that asks for it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-self-reference.lock|]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev), ("imagesize", dev)]
+
+    -- The project needs requests[use-chardet-on-py3], and its dev group asks for requests[socks] and
+    -- requests-oauthlib[rsa], whose rsa extra asks for oauthlib[signedtoken].
+    it' "labels an extra's packages by what asks for the extra" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-extras.lock|]
+      let requests = ["requests", "certifi", "charset-normalizer", "idna", "urllib3"]
+          devOnly = ["pysocks", "requests-oauthlib", "oauthlib", "cryptography", "pyjwt", "cffi", "pycparser"]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList (("chardet", prod) : map (,prodAndDev) requests <> map (,dev) devOnly)
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList (map (,prod) ("chardet" : requests))

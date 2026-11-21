@@ -11,6 +11,7 @@
 ## 3.20.13
 
 - Snippet scanning and Vendetta: `licenseScanPathFilters.only` now limits which files are scanned. ([#1840](https://github.com/fossas/fossa-cli/pull/1840))
+- uv: Every dependency group is reported as development unless `.fossa.yml` makes it production or excludes it. ([#1830](https://github.com/fossas/fossa-cli/pull/1830))
 
 ## 3.20.12
 
