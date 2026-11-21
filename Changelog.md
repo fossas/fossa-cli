@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rust: `fossa analyze` now prefers parsing `Cargo.lock` directly instead of invoking `cargo metadata`, falling back to `cargo metadata` when the lockfile is missing or unparseable. ([#1855](https://github.com/fossas/fossa-cli/pull/1855))
+
 - Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
 - Elixir: git dependencies pinned to a tag or branch containing a hyphen, slash or underscore no longer fail analysis. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
 - Elixir: compiled git dependencies are now reported at the commit they are locked to instead of their package version. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))

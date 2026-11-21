@@ -1,0 +1,7 @@
+[package]
+name = "alpha"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+shared_reg = "1"

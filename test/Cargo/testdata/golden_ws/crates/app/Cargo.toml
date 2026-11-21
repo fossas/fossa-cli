@@ -1,0 +1,12 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+mylib = { path = "../lib" }
+dual = "1.0"
+serde = "1.0"
+
+[build-dependencies]
+dual = "1.0"

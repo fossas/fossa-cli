@@ -1,0 +1,34 @@
+version = 4
+
+[[package]]
+name = "my_project"
+version = "0.1.0"
+dependencies = [
+ "clap 2.33.0",
+ "git_dep_a",
+ "git_dep_b",
+]
+
+[[package]]
+name = "clap"
+version = "2.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f5388f38ba8b63a4c1c94a0f11945f67330b630664e38827200af0852c104a"
+dependencies = [
+ "ansi_term 0.12.1",
+]
+
+[[package]]
+name = "ansi_term"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5079b84978794566068f994c4061d92d0f3e33f98475a0681a9b8a7d2e99c99d"
+
+[[package]]
+name = "git_dep_a"
+version = "1.0.0"
+source = "git+https://github.com/example/git_dep_a?tag=v1.0.0#abc123def456789012345678901234567890abcd"
+
+[[package]]
+name = "git_dep_b"
+source = "git+https://github.com/example/git_dep_b#def456abc7890123456789012345678901234abcd"

@@ -1,0 +1,37 @@
+version = 3
+
+[[package]]
+name = "my_project"
+version = "0.1.0"
+dependencies = [
+ "clap 2.33.0",
+ "my_local_lib",
+]
+
+[[package]]
+name = "clap"
+version = "2.33.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f5388f38ba8b63a4c1c94a0f11945f67330b630664e38827200af0852c104a"
+dependencies = [
+ "ansi_term 0.11.0",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "winapi"
+version = "0.3.8"
+source = "sparse+https://index.crates.io/"
+checksum = "10429ff5b272cb971f0d6376d2aa6691cb76d6cd1601980bd2893f432c117bc0"
+
+[[package]]
+name = "git_dep"
+version = "0.5.0"
+source = "git+https://github.com/example/git_dep?tag=v0.5.0#7e0838891c303123082d623f9d0a5a3b05b0e9c8"
+
+[[package]]
+name = "my_local_lib"
+version = "0.1.0"
+dependencies = [
+ "clap 2.33.0",
+]

@@ -1,0 +1,10 @@
+[package]
+name = "disambig"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ansi_term = "0.12"
+
+[build-dependencies]
+ansi_term = "0.11"

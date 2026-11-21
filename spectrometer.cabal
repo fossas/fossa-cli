@@ -430,6 +430,9 @@ library
     Strategy.BerkeleyDB.Internal
     Strategy.Bundler
     Strategy.Cargo
+    Strategy.Cargo.Lock
+    Strategy.Cargo.MetadataCmd
+    Strategy.Cargo.Types
     Strategy.Carthage
     Strategy.Cocoapods
     Strategy.Cocoapods.Errors
@@ -638,7 +641,10 @@ test-suite unit-tests
     BerkeleyDB.BerkeleyDBSpec
     Bun.BunLockSpec
     BundlerSpec
+    Cargo.CargoLockSpec
     Cargo.CargoTomlSpec
+    Cargo.AnalyzeSpec
+    Cargo.LockfileSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
     Clojure.ClojureSpec
