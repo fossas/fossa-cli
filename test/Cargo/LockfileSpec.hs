@@ -99,6 +99,40 @@ memberEnumerationSpecs =
       ms <- enumerateWorkspaceMembers root
       ms `shouldBe'` [WorkspaceMember "rootee" root]
 
+    -- An exclude entry prunes the manifest search, so the excluded directory
+    -- is never discovered (even though its manifest exists and a member glob
+    -- would match it); the non-excluded sibling is found normally.
+    it' "a workspace exclude entry prunes the manifest search" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/exclude_ws")
+      ms <- enumerateWorkspaceMembers root
+      let appDir = root </> $(mkRelDir "crates/app")
+      -- "crates/legacy" has a valid manifest but is excluded from the search,
+      -- so it must not appear as a member.
+      ms `shouldBe'` [WorkspaceMember "app" appDir]
+
+    -- House policy: an explicitly listed member (no glob) is always included,
+    -- even when the same path is also named in exclude.
+    it' "an explicitly listed member beats an exclude entry naming the same path" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/excluded_member_ws")
+      ms <- enumerateWorkspaceMembers root
+      let legacyDir = root </> $(mkRelDir "crates/legacy")
+      ms `shouldBe'` [WorkspaceMember "legacy" legacyDir]
+
+    -- The manifest walk never leaves the workspace root, so an out-of-tree
+    -- member ("../sibling") is resolved directly from the root instead.
+    it' "an out-of-tree member entry is resolved from the workspace root" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/out_of_tree/ws")
+      siblingRoot <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/out_of_tree/sibling")
+      ms <- enumerateWorkspaceMembers root
+      ms `shouldBe'` [WorkspaceMember "sibling" siblingRoot]
+
+    it' "a '**' member glob matches nested directories" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/starstar_ws")
+      ms <- enumerateWorkspaceMembers root
+      let alphaDir = root </> $(mkRelDir "crates/alpha")
+          betaDir = root </> $(mkRelDir "crates/nested/beta")
+      ms `shouldBe'` [WorkspaceMember "alpha" alphaDir, WorkspaceMember "beta" betaDir]
+
 -- ===========================================================================
 -- Per-member dependency-kind derivation
 

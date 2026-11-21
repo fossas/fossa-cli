@@ -40,7 +40,6 @@ import Control.Monad (unless)
 import Data.Char qualified as Char
 import Data.Foldable (for_)
 import Data.Function (on)
-import Data.Glob qualified
 import Data.List (foldl', intercalate, isPrefixOf, nub, nubBy, sortBy, unsnoc)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe)
@@ -55,9 +54,10 @@ import Discovery.Walk (WalkStep (WalkSkipSome), walk')
 import Effect.ReadFS (ReadFS, ReadFSErr (..), doesFileExist, readContentsText', readContentsToml)
 import Errata (Errata (..))
 import Graphing (Graphing)
-import Path (Abs, Dir, File, Path, Rel, dirname, filename, mkRelFile, parseAbsDir, parseRelFile, stripProperPrefix, toFilePath, (</>))
+import Path (Abs, Dir, File, Path, dirname, filename, mkRelFile, parseAbsDir, stripProperPrefix, toFilePath, (</>))
 import Strategy.Cargo.MetadataCmd (buildGraph)
 import Strategy.Cargo.Types (CargoMetadata (..), NodeDepKind (..), NodeDependency (..), Package (..), PackageId (..), Resolve (..), ResolveNode (..))
+import System.FilePattern qualified as FilePattern
 import Toml (Result (Failure, Success), Table' (MkTable), Value, Value' (..), decode)
 import Toml.Schema qualified
 import Types (Dependency (..), GraphBreadth (Complete))
@@ -252,7 +252,10 @@ data ManifestAnalysis = ManifestAnalysis
 -- A project without a @\[workspace\]@ table is treated as a single-crate
 -- project whose own directory is the sole member. A workspace (virtual or
 -- not) is expanded from the union of its @members@ and @default-members@
--- globs; only directories that actually contain a @Cargo.toml@ are kept.
+-- entries; directories matching an @exclude@ entry are not searched, and an
+-- explicit (non-glob) entry is resolved directly from the root so that
+-- out-of-tree members such as @"../shared-lib"@ are reachable. Only
+-- directories that actually contain a @[Cargo.toml]@ are kept.
 enumerateWorkspaceMembers ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
   Path Abs Dir ->
@@ -266,12 +269,14 @@ enumerateWorkspaceMembers rootDir = do
         Nothing -> pure []
     Just ws -> do
       let globs = wsGlobs ws
-      allDirs <- findManifestDirs rootDir
-      candidates <- traverse (memberFor globs) allDirs
-      let members = concat candidates
+          excludes = wsExcludes ws
+      allDirs <- findManifestDirs rootDir excludes
+      walkedMembers <- concat <$> traverse (memberFor globs) allDirs
+      explicitMembers <- concat <$> traverse (explicitMember rootDir) (filter (not . hasGlobChars) globs)
+      let members = walkedMembers ++ explicitMembers
           -- A root manifest with a [package] table always contributes the
-          -- root package as a workspace member, even when no glob matches
-          -- the root directory; a glob that does match it ("." for example)
+          -- root package as a workspace member, even when no entry names the
+          -- root directory; an entry that does match it ("." for example)
           -- must not add a duplicate.
           rootMember =
             case rootPackage rootM of
@@ -281,12 +286,18 @@ enumerateWorkspaceMembers rootDir = do
       -- stable member ordering keeps downstream list output reproducible).
       pure (sortBy (compare `on` memberDir) (nubBy ((==) `on` memberDir) (rootMember ++ members)))
   where
-    memberFor globs d = do
-      let rel = stripProperPrefix rootDir d
-      case rel of
+    memberFor globs d =
+      case relPathStr rootDir d of
         Nothing -> pure []
-        Just relDir ->
-          if any (globMatches relDir) globs
+        Just relStr ->
+          -- Membership is decided by the member entries alone. Deliberate
+          -- divergence from 'cargo metadata', which also drops a directory a
+          -- member entry matches when its path is named in 'exclude': per
+          -- house policy, exclusions prune only the search above (so such a
+          -- directory is not discovered there), and a validly discovered
+          -- manifest is always a member. An explicitly listed member is
+          -- therefore included even when also excluded.
+          if any (globMatches relStr) globs
             then do
               m <- readContentsToml @(Map.Map Text Value) (d </> $(mkRelFile "Cargo.toml"))
               case rootPackage m of
@@ -294,17 +305,24 @@ enumerateWorkspaceMembers rootDir = do
                 Nothing -> pure []
             else pure []
 
-    -- Glob matching works on the path without a trailing slash: a Dir carries
-    -- one, and FilePattern's '*' would not match it. Stripping it lets
-    -- "crates/*" match "crates/alpha" exactly as Cargo does.
-    globMatches :: Path Rel Dir -> Text -> Bool
-    globMatches relDir glob =
-      case parseRelFile (toString (stripTrailingSlash (toText relDir))) of
-        Just f -> Data.Glob.matches f (Data.Glob.unsafeGlobRel (toString glob))
-        Nothing -> False
-      where
-        stripTrailingSlash :: Text -> Text
-        stripTrailingSlash s = fromMaybe s (Text.stripSuffix "/" s)
+    -- An explicit (non-glob) entry names one specific directory; it is
+    -- resolved from the workspace root directly rather than relying on the
+    -- manifest walk to reach it, so out-of-tree entries ("../sibling") work
+    -- even though the walk never leaves 'rootDir'. A missing directory or a
+    -- manifest without a [package] table is skipped silently.
+    explicitMember dir entry =
+      case resolveMemberEntry dir entry of
+        Nothing -> pure []
+        Just d -> do
+          let manifest = d </> $(mkRelFile "Cargo.toml")
+          exists <- doesFileExist manifest
+          if exists
+            then do
+              m <- readContentsToml @(Map.Map Text Value) manifest
+              case rootPackage m of
+                Just name -> pure [WorkspaceMember name d]
+                Nothing -> pure []
+            else pure []
 
 -- | Analyze every member manifest (plus the root's @\[workspace.dependencies\]@)
 -- to derive the dependency-kind map and the non-member path-dependency map.
@@ -580,6 +598,12 @@ topTable m key = m .!? key >>= vMap
 rootPackage :: Map.Map Text Value -> Maybe Text
 rootPackage m = topTable m "package" >>= (\p -> p .!? "name" >>= vText)
 
+-- | The @[workspace]@ 'exclude' entries, if any. House policy: exclusions
+-- prune the *search* for member manifests ('findManifestDirs') but never
+-- remove a validly discovered manifest from membership.
+wsExcludes :: Map.Map Text Value -> [Text]
+wsExcludes ws = fromMaybe [] (ws .!? "exclude" >>= vStringList)
+
 wsGlobs :: Map.Map Text Value -> [Text]
 wsGlobs ws = nub (concat (catMaybes [ws .!? "members" >>= vStringList, ws .!? "default-members" >>= vStringList]))
 
@@ -607,6 +631,14 @@ resolvePathDep base raw =
   if Text.isPrefixOf "/" raw
     then parseAbsDir (toString raw)
     else parseAbsDir (normalizePathStr (toFilePath base <> toString raw))
+
+-- | Resolve an explicit (non-glob) workspace-member entry to an absolute
+-- directory. The entry is relative to 'root'; lexical '.'/'..' segments are
+-- normalized (via 'normalizePathStr'), so an out-of-tree member such as
+-- "../shared-lib" resolves outside the walked tree -- which the manifest walk
+-- never reaches -- while "./x" and "x" resolve inside it.
+resolveMemberEntry :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
+resolveMemberEntry root raw = parseAbsDir (normalizePathStr (toFilePath root <> "/" <> toString raw))
 
 -- | Resolve "." and ".." segments in a slash-separated path string.
 normalizePathStr :: String -> String
@@ -637,11 +669,41 @@ splitSlash xs
       let (pre, rest) = break (== '/') xs
        in pre : splitSlash (drop 1 rest)
 
+-- | Match a relative directory path (as a string without trailing slash)
+-- against a workspace @members@/@exclude@ entry with 'System.FilePattern'
+-- semantics: '*' and '?' match within one segment, '**' across segments,
+-- and literal '.'/'..' components are allowed. String-based matching --
+-- rather than matching a parsed 'Path Rel', which rejects '..' -- keeps
+-- out-of-tree entries such as "../sibling" expressible, the same primitives
+-- the filter machinery in "Discovery.Filters" matches with.
+globMatches :: Text -> Text -> Bool
+globMatches relStr glob = toString glob FilePattern.?== toString relStr
+
+-- | Whether a workspace entry is a glob (contains a wildcard character)
+-- rather than a plain path.
+hasGlobChars :: Text -> Bool
+hasGlobChars e = any (`elem` toString e) ['*', '?', '[']
+
+-- | The relative path of 'dir' below 'root', as a string without the trailing
+-- slash a Dir carries (a FilePattern '*' would not match it; stripping it
+-- lets "crates/*" match "crates/alpha" exactly as Cargo does), or Nothing if
+-- 'dir' is not properly contained in 'root' -- in particular, for 'root'
+-- itself.
+relPathStr :: Path Abs Dir -> Path Abs Dir -> Maybe Text
+relPathStr root dir =
+  case stripProperPrefix root dir of
+    Nothing -> Nothing
+    Just d -> Just (fromMaybe (toText d) (Text.stripSuffix "/" (toText d)))
+
 -- | Recursively collect every directory under @root@ that contains a
--- @Cargo.toml@, skipping @target/@, hidden directories, and @node_modules/@.
+-- @Cargo.toml@, skipping @target/@, hidden directories, and @node_modules/@,
+-- plus any directory whose path relative to @root@ matches one of the
+-- workspace's @exclude@ entries. Excluded directories are not searched, hence
+-- not discovered; membership itself never consults them (house policy -- see
+-- 'enumerateWorkspaceMembers').
 --
 -- Implemented with 'Discovery.Walk.walk'': the handler collects a directory
--- when it holds a @Cargo.toml@ and prunes @target@/@node_modules@/hidden
+-- when it holds a @Cargo.toml@ and prunes @target@/@node_modules@/hidden/excluded
 -- subdirectories via 'WalkStep.WalkSkipSome'. As @walk'@ visits the root before
 -- descending and prunes only subdirectories, this matches a plain recursive
 -- descent that always enters the root. The pre-order traversal of @walk'@
@@ -649,15 +711,23 @@ splitSlash xs
 findManifestDirs ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
   Path Abs Dir ->
+  [Text] ->
   m [Path Abs Dir]
-findManifestDirs = walk' visit
+findManifestDirs rootDir excludes = walk' visit rootDir
   where
     visit dir subdirs files =
       let hasToml = any ((== "Cargo.toml") . toString . filename) files
           -- 'WalkSkipSome' with an empty list is equivalent to 'WalkContinue',
           -- so this always prunes the unwanted subdirs when there are any.
-          prune = map (toText . toFilePath . dirname) $ filter (not . shouldDescendDir) subdirs
+          prune = map (toText . toFilePath . dirname) $ filter (\sd -> not (shouldDescendDir sd) || isExcluded excludes sd) subdirs
        in pure (if hasToml then [dir] else [], WalkSkipSome prune)
+
+    -- A subdir matching a workspace @exclude@ entry is pruned from the search.
+    isExcluded :: [Text] -> Path Abs Dir -> Bool
+    isExcluded excludes' sd =
+      case relPathStr rootDir sd of
+        Nothing -> False
+        Just relStr -> any (globMatches relStr) excludes'
 
     shouldDescendDir :: Path Abs Dir -> Bool
     shouldDescendDir d =
