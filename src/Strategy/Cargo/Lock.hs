@@ -36,13 +36,13 @@ module Strategy.Cargo.Lock (
 
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, context, warn)
-import Control.Monad (unless)
+import Control.Monad (guard, unless)
 import Data.Char qualified as Char
 import Data.Foldable (for_)
 import Data.Function (on)
 import Data.List (foldl', intercalate, isPrefixOf, nub, nubBy, sortBy, unsnoc)
 import Data.Map.Strict qualified as Map
-import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe)
+import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe, maybeToList)
 import Data.SemVer (fromText)
 import Data.SemVer.Internal (Version (..))
 import Data.Set qualified as Set
@@ -347,24 +347,38 @@ analyzeManifests rootDir members = do
 -- combined 'ManifestAnalysis'.
 combineMembers :: Maybe (Map.Map Text Value) -> [(Text, Path Abs Dir, Map.Map Text Value)] -> ManifestAnalysis
 combineMembers wsDeps perMember =
-  let triples = [collectMemberDeps name dir m wsDeps | (name, dir, m) <- perMember]
+  let triples = map (\(name, dir, m) -> collectMemberDeps name dir m wsDeps) perMember
       (ks, paths, warns) = unzip3 triples
       kindMap =
-        Map.unionsWith
-          Set.union
-          [ Map.fromListWith Set.union [(k, Set.singleton knd) | (k, _, knd) <- klist]
-          | klist <- ks
-          ]
+        Map.unionsWith Set.union $
+          map
+            ( \klist ->
+                Map.fromListWith Set.union $ do
+                  (k, _, knd) <- klist
+                  pure (k, Set.singleton knd)
+            )
+            ks
       reqKinds =
         let byReq :: Map.Map (Text, Text) (Map.Map Text (Set.Set DepKind))
             byReq =
               Map.unionsWith
                 (Map.unionWith Set.union)
-                [ Map.fromListWith (Map.unionWith Set.union) [(k, Map.singleton r (Set.singleton knd)) | (k, Just r, knd) <- klist]
-                | klist <- ks
-                ]
-         in Map.map (\(m :: Map.Map Text (Set.Set DepKind)) -> [(r, kd) | (r, set) <- Map.toList m, kd <- Set.toList set]) byReq
-      pathDeps = Map.unions [Map.fromList plist | plist <- paths]
+                ( map
+                    ( \klist ->
+                        Map.fromListWith (Map.unionWith Set.union) $ do
+                          (k, Just r, knd) <- klist
+                          pure (k, Map.singleton r (Set.singleton knd))
+                    )
+                    ks
+                )
+         in Map.map
+              ( \(m :: Map.Map Text (Set.Set DepKind)) -> do
+                  (r, set) <- Map.toList m
+                  kd <- Set.toList set
+                  pure (r, kd)
+              )
+              byReq
+      pathDeps = Map.unions (map Map.fromList paths)
       warnings = nub (concat warns)
    in ManifestAnalysis kindMap reqKinds pathDeps warnings
 
@@ -898,8 +912,8 @@ lockfileToDeps emitGitBackedLocators manifestDir lock =
 unresolvableDeps :: CargoLock -> [Text]
 unresolvableDeps lock =
   let packages = lockPackages lock
-      nameVers = Set.fromList [(packageName p, fromMaybe "*" (packageVersion p)) | p <- packages]
-      names = Set.fromList [packageName p | p <- packages]
+      nameVers = Set.fromList (map (\p -> (packageName p, fromMaybe "*" (packageVersion p))) packages)
+      names = Set.fromList (map packageName packages)
       resolves dep = Set.member (depName dep, fromMaybe "*" (depVersion dep)) nameVers || Set.member (depName dep) names
    in nub (map depName (concatMap (filter (not . resolves) . packageDependencies) packages))
 
@@ -940,7 +954,7 @@ lockfileToMetadata lock members analysis =
     , metadataResolve = Resolve resolveNodes
     }
   where
-    memberDirs = Map.fromList [(memberName m, memberDir m) | m <- members]
+    memberDirs = Map.fromList (map (\m -> (memberName m, memberDir m)) members)
 
     isMemberPath p = isNothing (packageSource p) && isJust (Map.lookup (packageName p) memberDirs)
 
@@ -968,42 +982,41 @@ lockfileToMetadata lock members analysis =
                    in (PackageId name version base, Just src)
               | otherwise -> (PackageId name version src, Just src)
 
-    labeled = [(p, pkgIdentity p) | p <- lockPackages lock]
+    labeled = map (\p -> (p, pkgIdentity p)) (lockPackages lock)
 
     -- (name, version) -> PackageId, for resolving "name version" dep strings.
-    pidByNameVer = Map.fromList [((packageName p, fromMaybe "*" (packageVersion p)), pid) | (p, (pid, _)) <- labeled]
+    pidByNameVer =
+      Map.fromList
+        (map (\(p, (pid, _)) -> ((packageName p, fromMaybe "*" (packageVersion p)), pid)) labeled)
 
     -- name -> [PackageId], a fallback for references that don't pin a version.
-    pidByName = Map.fromListWith (++) [(packageName p, [pid]) | (p, (pid, _)) <- labeled]
+    pidByName = Map.fromListWith (++) (map (\(p, (pid, _)) -> (packageName p, [pid])) labeled)
 
     packages =
-      [ Package (pkgIdName pid) (pkgIdVersion pid) pid Nothing Nothing [] srcUrl
-      | (_, (pid, srcUrl)) <- labeled
-      ]
+      map
+        (\(_, (pid, srcUrl)) -> Package (pkgIdName pid) (pkgIdVersion pid) pid Nothing Nothing [] srcUrl)
+        labeled
 
-    memberIds = [pid | (p, (pid, _)) <- labeled, isMemberPath p]
+    memberIds = map (fst . snd) (filter (isMemberPath . fst) labeled)
 
     -- Adjacency: each lockfile package id -> the package ids it depends on,
     -- restricted to references that resolve to a real [[package]] entry.
     childMap =
-      Map.fromListWith
-        (++)
-        [ (pid, catMaybes [resolveTarget dep | dep <- packageDependencies p])
-        | (p, (pid, _)) <- labeled
-        ]
+      Map.fromListWith (++) $
+        map
+          (\(p, (pid, _)) -> (pid, mapMaybe resolveTarget (packageDependencies p)))
+          labeled
 
     -- Seed the propagation: each member (root) edge pushes its declared kinds
     -- onto its child. A package is reachable from a root under a given kind
     -- iff some member declares it under that kind.
     initialKinds =
-      Map.fromListWith
-        Set.union
-        [ (child, nodeDepKindsSet p dep)
-        | (p, (_, _)) <- labeled
-        , isMemberPath p
-        , dep <- packageDependencies p
-        , Just child <- [resolveTarget dep]
-        ]
+      Map.fromListWith Set.union $ do
+        (p, _) <- labeled
+        guard (isMemberPath p)
+        dep <- packageDependencies p
+        child <- maybeToList (resolveTarget dep)
+        pure (child, nodeDepKindsSet p dep)
 
     -- Per-package propagation of dependency kinds over the lockfile graph.
     -- A package's set is the union of every kind under which it is reachable
@@ -1017,23 +1030,17 @@ lockfileToMetadata lock members analysis =
           | acc == next acc = acc
           | otherwise = go (next acc)
         next acc =
-          Map.unionWith
-            Set.union
-            acc
-            ( Map.fromListWith
-                Set.union
-                [ (child, set)
-                | pid <- Map.keys acc
-                , set <- [Map.findWithDefault Set.empty pid acc]
-                , not (Set.null set)
-                , child <- Map.findWithDefault [] pid childMap
-                ]
-            )
+          Map.unionWith Set.union acc $
+            Map.fromListWith Set.union $ do
+              pid <- Map.keys acc
+              let set = Map.findWithDefault Set.empty pid acc
+              child <- Map.findWithDefault [] pid childMap
+              pure (child, set)
 
     resolveNodes =
-      [ ResolveNode pid (mapMaybe (nodeDepFor p) (packageDependencies p))
-      | (p, (pid, _)) <- labeled
-      ]
+      map
+        (\(p, (pid, _)) -> ResolveNode pid (mapMaybe (nodeDepFor p) (packageDependencies p)))
+        labeled
 
     -- 'Nothing' for a reference matching no [[package]] entry: it is omitted
     -- from the graph rather than rendered as a phantom vertex with an empty
@@ -1080,7 +1087,10 @@ lockfileToMetadata lock members analysis =
        in if isMemberPath p
             then
               let perVersionKinds =
-                    Set.fromList [knd | (req, knd) <- fromMaybe [] (Map.lookup (parentName, depName dep) (depKindReqs analysis)), reqSatisfies req resolvedVer]
+                    Set.fromList $ do
+                      (req, knd) <- fromMaybe [] (Map.lookup (parentName, depName dep) (depKindReqs analysis))
+                      guard (reqSatisfies req resolvedVer)
+                      pure knd
                in if Set.null perVersionKinds
                     then unionKinds
                     else perVersionKinds

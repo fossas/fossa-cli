@@ -268,7 +268,7 @@ unresolvableDepsSpecs =
               )
           -- ...and no node references a PackageId with an empty source.
           let allDeps = concatMap resolveNodeDeps (resolvedNodes $ metadataResolve meta)
-          [nodePkg dep | dep <- allDeps, pkgIdSource (nodePkg dep) == ""] `shouldBe'` []
+          filter ((== "") . pkgIdSource . nodePkg) allDeps `shouldBe'` []
 
 -- ===========================================================================
 -- Source-suffixed dependency entries
