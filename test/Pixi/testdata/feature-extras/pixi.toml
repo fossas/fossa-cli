@@ -1,0 +1,22 @@
+# Tests the oldest requests it supports in an environment that leaves out the
+# default feature, and with it the socks extra.
+[workspace]
+channels = ["conda-forge"]
+name = "proxy-client"
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.11.*"
+
+[pypi-dependencies]
+requests = { version = ">=2.31", extras = ["socks"] }
+
+[feature.minimum.dependencies]
+python = "3.11.*"
+
+[feature.minimum.pypi-dependencies]
+requests = "==2.31.0"
+pysocks = "==1.7.1"
+
+[environments]
+minimum = { features = ["minimum"], no-default-feature = true }

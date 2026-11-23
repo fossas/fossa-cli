@@ -5,6 +5,8 @@ module Strategy.Composer (
   ComposerLock (..),
   CompDep (..),
   ComposerProject (..),
+  discoverVisitor,
+  mkProject,
 ) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
@@ -72,7 +74,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject ComposerProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ComposerProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ComposerProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "composer.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lock -> do

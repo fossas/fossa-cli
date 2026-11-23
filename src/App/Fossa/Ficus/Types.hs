@@ -232,6 +232,7 @@ instance FromJSON FicusMessage where
 data FicusConfig = FicusConfig
   { ficusConfigRootDir :: Path Abs Dir
   , ficusConfigExclude :: [GlobFilter]
+  , ficusConfigOnly :: [GlobFilter]
   , ficusConfigEndpoint :: Maybe URI
   , ficusConfigSecret :: Maybe ApiKey
   , ficusConfigRevision :: ProjectRevision -- TODO: get this from `projectRevision AnalyzeConfig`

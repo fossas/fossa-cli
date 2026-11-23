@@ -26,6 +26,7 @@ import Data.Void (Void)
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Graphing (Graphing, fromList)
 import Path (Abs, Dir, File, Path)
+import Strategy.Conda.Naming (condaDependencyName)
 import Text.Megaparsec (Parsec, chunk, errorBundlePretty, parse, single, takeWhile1P, try)
 import Types (
   DepType (CondaType),
@@ -80,7 +81,7 @@ buildGraph deps = Graphing.fromList (map toDependency deps)
     toDependency CondaEnvDep{..} =
       Dependency
         { dependencyType = CondaType
-        , dependencyName = "'" <> channel <> "':" <> platform <> ":" <> name
+        , dependencyName = condaDependencyName channel platform name
         , dependencyVersion = Just $ CEq version
         , dependencyLocations = []
         , dependencyEnvironments = mempty
