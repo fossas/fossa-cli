@@ -131,6 +131,8 @@ spec = do
     it' "prunes a folder inside an archive matching an exclusion glob" $ do
       found <- scanArchive $(mkRelDir "bundles") (excludingGlob "**/vendor")
       found `shouldBe'` [($(mkRelDir "app"), "scanned")]
+      foundByPathInScan <- scanArchive $(mkRelDir "bundles") (excludingGlob "bundles/*.zip/vendor")
+      foundByPathInScan `shouldBe'` [($(mkRelDir "app"), "scanned")]
 
   -- The tests above hand 'applyFiltersToProject' an already-correct prefix.
   -- These pin down the code that derives it, so that a regression there is not
