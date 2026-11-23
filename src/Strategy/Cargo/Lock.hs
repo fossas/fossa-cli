@@ -1010,32 +1010,31 @@ lockfileToMetadata lock members analysis =
     -- Seed the propagation: each member (root) edge pushes its declared kinds
     -- onto its child. A package is reachable from a root under a given kind
     -- iff some member declares it under that kind.
-    initialKinds =
-      Map.fromListWith Set.union $ do
-        (p, _) <- labeled
-        guard (isMemberPath p)
-        dep <- packageDependencies p
-        child <- maybeToList (resolveTarget dep)
-        pure (child, nodeDepKindsSet p dep)
+    seedEdges = do
+      (p, _) <- labeled
+      guard (isMemberPath p)
+      dep <- packageDependencies p
+      child <- maybeToList (resolveTarget dep)
+      pure (child, nodeDepKindsSet p dep)
 
-    -- Per-package propagation of dependency kinds over the lockfile graph.
-    -- A package's set is the union of every kind under which it is reachable
-    -- from a member edge. Seed with each member edge's declared kinds, then
-    -- repeatedly union each non-empty set into its children until stable.
-    -- A package left with an empty set is unreachable from any member (stale
-    -- lockfile residue) and is relabelled Production by 'nodeDepFor'.
-    propagated = go initialKinds
-      where
-        go acc
-          | acc == next acc = acc
-          | otherwise = go (next acc)
-        next acc =
-          Map.unionWith Set.union acc $
-            Map.fromListWith Set.union $ do
-              pid <- Map.keys acc
-              let set = Map.findWithDefault Set.empty pid acc
-              child <- Map.findWithDefault [] pid childMap
-              pure (child, set)
+    -- Per-package propagation of dependency kinds over the lockfile graph:
+    -- a depth-first walk from the seeded roots. A package's set is the union
+    -- of every kind under which it is reachable from a member edge. The
+    -- subset guard prunes revisits, so the walk terminates even on the
+    -- cyclic lockfiles cargo permits (dev-dependency cycles) while still
+    -- unioning every reaching kind. A package left with no set is
+    -- unreachable from any member (stale lockfile residue) and is
+    -- relabelled Production by 'nodeDepFor'.
+    propagated =
+      foldl' (\acc (child, ks) -> propagateFrom acc child ks) Map.empty seedEdges
+
+    propagateFrom acc pid ks
+      | maybe False (Set.isSubsetOf ks) (Map.lookup pid acc) = acc
+      | otherwise =
+          foldl'
+            (\acc' child -> propagateFrom acc' child ks)
+            (Map.insertWith Set.union pid ks acc)
+            (Map.findWithDefault [] pid childMap)
 
     resolveNodes =
       map
