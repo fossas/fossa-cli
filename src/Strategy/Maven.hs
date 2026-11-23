@@ -1,5 +1,4 @@
 module Strategy.Maven (
-  discover,
   discoverVisitor,
   postDiscover,
   mkProject,
@@ -24,8 +23,7 @@ import Data.Set.NonEmpty (nonEmpty, toSet)
 import Data.Text hiding (filter, group, isSuffixOf, map)
 import DepTypes (Dependency)
 import Diag.Common (MissingDeepDeps (MissingDeepDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters, MavenScopeFilters, mavenScopeFilterSet)
-import Discovery.Simple (simpleDiscover)
+import Discovery.Filters (MavenScopeFilters, mavenScopeFilterSet)
 import Discovery.Walk (WalkStep (WalkSkipSome), fileName)
 import Effect.Exec (CandidateCommandEffs, GetDepsEffs)
 import Effect.ReadFS (ReadFS)
@@ -40,19 +38,6 @@ import Strategy.Maven.Pom.Closure (MavenProjectClosure (..))
 import Strategy.Maven.Pom.Closure qualified as PomClosure
 import Strategy.Maven.Pom.Resolver (buildGlobalClosure)
 import Types (BuildTarget (..), DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (MavenProjectType), FoundTargets (..), GraphBreadth (..))
-
-discover ::
-  ( Has (Lift IO) sig m
-  , Has Diagnostics sig m
-  , Has ReadFS sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject MavenProject]
-discover = do
-  simpleDiscover findProjects mkProject MavenProjectType
-  where
-    findProjects dir = map MavenProject <$> PomClosure.findProjects dir
 
 -- | Per-directory collector for the shared discovery walk: gather @pom.xml@
 -- and @.pom@ paths, skipping @target/@ subtrees — the same candidate set the

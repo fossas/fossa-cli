@@ -6,6 +6,8 @@ module Analysis.ErlangSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Rebar3 qualified as Rebar3
 import Test.Hspec
@@ -18,7 +20,7 @@ emqx :: AnalysisTestFixture (Rebar3.RebarProject)
 emqx =
   AnalysisTestFixture
     "emqx"
-    Rebar3.discover
+    (\dir -> cachedDiscover Rebar3ProjectType Rebar3.mkProject dir (walkWithFilters' Rebar3.discoverVisitor dir))
     erlangEnv
     Nothing
     $ FixtureArtifact

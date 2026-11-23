@@ -1,8 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.PackagesConfig (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   buildGraph,
@@ -13,7 +11,6 @@ module Strategy.NuGet.PackagesConfig (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.Map.Strict qualified as Map
@@ -23,12 +20,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   fileName,
-  walkWithFilters',
  )
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
@@ -42,12 +36,6 @@ import Types (
   DiscoveredProjectType (PackagesConfigProjectType),
   GraphBreadth (Partial),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PackagesConfigProject]
-discover = simpleDiscover findProjects mkProject PackagesConfigProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PackagesConfigProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PackagesConfigProject], WalkStep)
 discoverVisitor _ _ files = do

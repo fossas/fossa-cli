@@ -6,6 +6,8 @@ module Analysis.Python.UvSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Python.Uv qualified as Uv
 import Test.Hspec
@@ -15,7 +17,7 @@ uv :: AnalysisTestFixture (Uv.UvProject)
 uv =
   AnalysisTestFixture
     "uv"
-    Uv.discover
+    (\dir -> cachedDiscover UvProjectType Uv.mkProject dir (walkWithFilters' Uv.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

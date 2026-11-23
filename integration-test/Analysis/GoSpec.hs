@@ -6,6 +6,8 @@ module Analysis.GoSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Gomodules qualified as Gomodules
 import Test.Hspec
@@ -18,7 +20,7 @@ vault :: AnalysisTestFixture (Gomodules.GomodulesProject)
 vault =
   AnalysisTestFixture
     "vault"
-    Gomodules.discover
+    (\dir -> cachedDiscover GomodProjectType Gomodules.mkProject dir (walkWithFilters' Gomodules.discoverVisitor dir))
     goEnv
     Nothing
     $ FixtureArtifact

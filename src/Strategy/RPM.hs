@@ -2,7 +2,6 @@
 
 module Strategy.RPM (
   buildGraph,
-  discover,
   getSpecDeps,
   getTypeFromLine,
   toDependency,
@@ -15,7 +14,6 @@ module Strategy.RPM (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.List (isSuffixOf)
 import Data.Map.Strict qualified as Map
@@ -29,12 +27,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq, CGreater, CGreaterOrEq, CLess, CLessOrEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   fileName,
-  walkWithFilters',
  )
 import Effect.ReadFS (ReadFS, readContentsText)
 import GHC.Generics (Generic)
@@ -68,12 +63,6 @@ data Dependencies = Dependencies
   , depRuntimeRequires :: [RPMDependency]
   }
   deriving (Eq, Ord, Show)
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RpmProject]
-discover = simpleDiscover findProjects mkProject RpmProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RpmProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RpmProject], WalkStep)
 discoverVisitor dir _ files = do

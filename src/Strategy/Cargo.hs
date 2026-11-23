@@ -2,7 +2,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Cargo (
-  discover,
   CargoMetadata (..),
   CargoProject (..),
   NodeDependency (..),
@@ -13,7 +12,6 @@ module Strategy.Cargo (
   buildGraph,
   getDeps,
   mkProject,
-  findProjects,
   discoverVisitor,
 
   -- * for testing
@@ -61,12 +59,9 @@ import Data.Text (Text, breakOn)
 import Data.Text qualified as Text
 import Data.Void (Void)
 import Diag.Diagnostic (renderDiagnostic)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (
   AllowErr (Never),
@@ -220,12 +215,6 @@ instance FromJSON CargoMetadata where
       <$> obj .: "packages"
       <*> (obj .: "workspace_members" >>= traverse parsePkgId)
       <*> obj .: "resolve"
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CargoProject]
-discover = simpleDiscover findProjects mkProject CargoProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CargoProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CargoProject], WalkStep)
 discoverVisitor dir _ files = do

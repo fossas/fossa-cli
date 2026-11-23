@@ -1,5 +1,4 @@
 module Strategy.Composer (
-  discover,
   buildGraph,
   isPlatformPackage,
   ComposerLock (..),
@@ -17,7 +16,6 @@ import Control.Effect.Diagnostics (
   context,
   run,
  )
-import Control.Effect.Reader (Reader)
 import Control.Monad (unless)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -42,12 +40,9 @@ import DepTypes (
   VerConstraint (CEq),
   insertEnvironment,
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Grapher (
   LabeledGrapher,
@@ -69,12 +64,6 @@ import Types (
   LicenseResult (LicenseResult),
   LicenseType (LicenseSPDX),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ComposerProject]
-discover = simpleDiscover findProjects mkProject ComposerProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ComposerProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ComposerProject], WalkStep)
 discoverVisitor dir _ files = do

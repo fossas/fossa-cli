@@ -6,6 +6,8 @@ module Analysis.Python.PoetrySpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Python.Poetry qualified as Poetry
 import Test.Hspec
@@ -15,7 +17,7 @@ poetry :: AnalysisTestFixture (Poetry.PoetryProject)
 poetry =
   AnalysisTestFixture
     "poetry"
-    Poetry.discover
+    (\dir -> cachedDiscover PoetryProjectType Poetry.mkProject dir (walkWithFilters' Poetry.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

@@ -7,6 +7,8 @@ import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
 import Data.Map.Strict qualified as Map
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Effect.Exec (AllowErr (Never), Command (Command))
 import Path
 import Strategy.Mix qualified as Mix
@@ -40,7 +42,7 @@ absinthe :: AnalysisTestFixture (Mix.MixProject)
 absinthe =
   AnalysisTestFixture
     "absinthe"
-    Mix.discover
+    (\dir -> cachedDiscover MixProjectType Mix.mkProject dir (walkWithFilters' Mix.discoverVisitor dir))
     elixirEnv
     (Just mixBuildProjectCmd)
     $ FixtureArtifact
@@ -59,7 +61,7 @@ commanded :: AnalysisTestFixture (Mix.MixProject)
 commanded =
   AnalysisTestFixture
     "commanded"
-    Mix.discover
+    (\dir -> cachedDiscover MixProjectType Mix.mkProject dir (walkWithFilters' Mix.discoverVisitor dir))
     elixirEnv
     (Just mixBuildProjectCmd)
     $ FixtureArtifact

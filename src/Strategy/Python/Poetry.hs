@@ -1,8 +1,5 @@
 module Strategy.Python.Poetry (
-  discover,
-
   -- * for testing only
-  findProjects,
   analyze,
   graphFromPyProjectAndLockFile,
   PoetryProject (..),
@@ -17,7 +14,6 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analy
 import Control.Algebra (Has)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, recover, warnOnErr)
-import Control.Effect.Reader (Reader)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Data.Map (Map)
@@ -31,12 +27,9 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS, readContentsToml)
@@ -74,16 +67,6 @@ instance AnalyzeProject PoetryProject where
   analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ = getDeps
 
-discover ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has Logger sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject PoetryProject]
-discover = simpleDiscover findProjects mkProject PoetryProjectType
-
 -- | Poetry build backend identifier required in [pyproject.toml](https://python-poetry.org/docs/pyproject/#poetry-and-pep-517).
 usesPoetryBackend :: Text -> Bool
 usesPoetryBackend backend =
@@ -102,18 +85,6 @@ warnIncorrectBuildBackend currentBackend =
       <> currentBackend
       <> "\n"
       <> poetryBuildBackendIdentifierHelpText
-
--- | Finds poetry project by searching for pyproject.toml.
--- If poetry.lock file is also discovered, it is used as a supplement.
-findProjects ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has Logger sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [PoetryProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PoetryProject], WalkStep)
 discoverVisitor dir _ files = do

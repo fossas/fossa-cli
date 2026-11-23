@@ -6,6 +6,8 @@ module Analysis.CarthageSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Carthage qualified as Carthage
 import Test.Hspec
@@ -15,7 +17,7 @@ swiftQueue :: AnalysisTestFixture (Carthage.CarthageProject)
 swiftQueue =
   AnalysisTestFixture
     "SwiftQueue"
-    Carthage.discover
+    (\dir -> cachedDiscover CarthageProjectType Carthage.mkProject dir (walkWithFilters' Carthage.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

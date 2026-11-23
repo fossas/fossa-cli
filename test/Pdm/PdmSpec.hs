@@ -14,16 +14,19 @@ import DepTypes (
   Dependency (..),
   VerConstraint (..),
  )
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import GraphUtil (expectDeps', expectDirect', expectEdges')
 import Path (mkRelFile, reldir, (</>))
 import Path.IO (getCurrentDir, makeAbsolute)
-import Strategy.Python.PDM.Pdm (analyze, discover)
+import Strategy.Python.PDM.Pdm (analyze, discoverVisitor, mkProject)
 import Test.Effect (it', shouldBe')
 import Test.Hspec (
   Spec,
   describe,
   runIO,
  )
+import Types (DiscoveredProjectType (PdmProjectType))
 
 mkPipProdDep :: Text -> Dependency
 mkPipProdDep nameAtVersion = mkDep PipType nameAtVersion (Just EnvProduction)
@@ -53,7 +56,8 @@ spec = do
 
   describe "discover" $
     it' "leaves a pyproject.toml next to a pixi.lock to pixi" $ do
-      projects <- discover =<< makeAbsolute [reldir|test/Pixi/testdata/pyproject-manifest|]
+      dir <- makeAbsolute [reldir|test/Pixi/testdata/pyproject-manifest|]
+      projects <- cachedDiscover PdmProjectType mkProject dir (walkWithFilters' discoverVisitor dir)
       length projects `shouldBe'` 0
 
   describe "basic graph" $ do

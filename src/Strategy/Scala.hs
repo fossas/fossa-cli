@@ -7,8 +7,6 @@
 -- between poms in the maven "global closure", before building the individual
 -- multi-project closures.
 module Strategy.Scala (
-  discover,
-  findProjects,
   discoverVisitor,
   postDiscover,
   ScalaProject (..),
@@ -19,7 +17,7 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analy
 import App.Types (Mode (..))
 import Control.Carrier.Diagnostics (errDoc)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, errHelp, fatalText, fromMaybeText, recover, warnOnErr, (<||>))
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Control.Effect.Stack (context)
 import Data.Aeson (KeyValue ((.=)), ToJSON (toJSON), object)
 import Data.ByteString.Lazy (ByteString)
@@ -29,12 +27,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Diag.Common (MissingDeepDeps (MissingDeepDeps))
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (
   Command (..),
@@ -72,18 +67,6 @@ import Types (
   DiscoveredProjectType (ScalaProjectType),
   GraphBreadth (Complete, Partial),
  )
-
-discover ::
-  ( Has Exec sig m
-  , Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject ScalaProject]
-discover = simpleDiscover findProjects' mkProject ScalaProjectType
-  where
-    findProjects' dir = concatMap toScalaProjects <$> (findProjects dir)
 
 data ScalaProject = ScalaProject
   { rawSbtDepTree :: Maybe ByteString
@@ -148,16 +131,6 @@ findRelevantDependencyTreeJson closure paths = do
   -- module can only have one pom closure, and one or none tree json file.
   let matchingPaths = filter (\p -> parent p == clsPath || parent p == parent clsPath) paths
   listToMaybe matchingPaths
-
-findProjects ::
-  ( Has Exec sig m
-  , Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [SbtTargets]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor ::
   ( Has Exec sig m

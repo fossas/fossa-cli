@@ -9,7 +9,8 @@ import App.Types (Mode (NonStrict))
 import Data.Foldable (find)
 import Data.Set (member)
 import Data.Set qualified as Set
-import Discovery.Walk (fileName)
+import Discovery.Simple (cachedDiscover, cachedDiscoverWith)
+import Discovery.Walk (fileName, walkWithFilters')
 import Graphing qualified
 import Path
 import Strategy.NuGet qualified as NuGet
@@ -43,21 +44,21 @@ dotnetCoreTwoExample discoveryFunc =
 
 testServiceStackForPkgReferences :: Spec
 testServiceStackForPkgReferences =
-  aroundAll (withAnalysisOf NonStrict $ serviceStack NuGet.discover) $ do
+  aroundAll (withAnalysisOf NonStrict $ serviceStack (\dir -> cachedDiscoverWith NuGetProjectType NuGet.postDiscover dir (walkWithFilters' NuGet.discoverVisitor dir))) $ do
     describe "ServiceStack" $ do
       it "should find targets" $ \(result, _) -> do
         length result `shouldBe` 92
 
 testServiceStackForPkgConfig :: Spec
 testServiceStackForPkgConfig =
-  aroundAll (withAnalysisOf NonStrict $ serviceStack PackagesConfig.discover) $ do
+  aroundAll (withAnalysisOf NonStrict $ serviceStack (\dir -> cachedDiscover PackagesConfigProjectType PackagesConfig.mkProject dir (walkWithFilters' PackagesConfig.discoverVisitor dir))) $ do
     describe "ServiceStack" $ do
       it "should find targets" $ \(result, _) -> do
         length result `shouldBe` 4
 
 testDotnetCoreTwoExampleForProjectAssetsJson :: Spec
 testDotnetCoreTwoExampleForProjectAssetsJson =
-  aroundAll (withAnalysisOf NonStrict $ dotnetCoreTwoExample NuGet.discover) $ do
+  aroundAll (withAnalysisOf NonStrict $ dotnetCoreTwoExample (\dir -> cachedDiscoverWith NuGetProjectType NuGet.postDiscover dir (walkWithFilters' NuGet.discoverVisitor dir))) $ do
     describe "dotnet-core-2.0-example" $ do
       -- example.csproj has been restored (obj/project.assets.json exists beside it),
       -- so only the assets file is reported to avoid analyzing the project twice.
@@ -76,7 +77,7 @@ dapperAOT :: AnalysisTestFixture NuGet.NuGetProject
 dapperAOT =
   AnalysisTestFixture
     "DapperAOT-CPM"
-    NuGet.discover
+    (\dir -> cachedDiscoverWith NuGetProjectType NuGet.postDiscover dir (walkWithFilters' NuGet.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

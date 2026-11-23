@@ -1,8 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.Nuspec (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   buildGraph,
@@ -17,7 +15,6 @@ import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject, licenseAnalyzePr
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative (optional)
 import Control.Effect.Diagnostics (Diagnostics, Has, context)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (find)
 import Data.List qualified as L
@@ -29,12 +26,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   fileName,
-  walkWithFilters',
  )
 import Effect.ReadFS (ReadFS, readContentsXML)
 import GHC.Generics (Generic)
@@ -58,12 +52,6 @@ import Types (
   LicenseResult (LicenseResult),
   LicenseType (..),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NuspecProject]
-discover = simpleDiscover findProjects mkProject NuspecProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuspecProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NuspecProject], WalkStep)
 discoverVisitor _ _ files = do

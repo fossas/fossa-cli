@@ -6,6 +6,8 @@ module Analysis.ClojureSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Leiningen qualified as Leiningen
 import Test.Hspec
@@ -18,7 +20,7 @@ cljHttp :: AnalysisTestFixture (Leiningen.LeiningenProject)
 cljHttp =
   AnalysisTestFixture
     "clj-http"
-    Leiningen.discover
+    (\dir -> cachedDiscover LeiningenProjectType Leiningen.mkProject dir (walkWithFilters' Leiningen.discoverVisitor dir))
     clojureEnv
     Nothing
     $ FixtureArtifact
@@ -30,7 +32,7 @@ ring :: AnalysisTestFixture (Leiningen.LeiningenProject)
 ring =
   AnalysisTestFixture
     "ring"
-    Leiningen.discover
+    (\dir -> cachedDiscover LeiningenProjectType Leiningen.mkProject dir (walkWithFilters' Leiningen.discoverVisitor dir))
     clojureEnv
     Nothing
     $ FixtureArtifact

@@ -2,7 +2,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Googlesource.RepoManifest (
-  discover,
   buildGraph,
   validateProject,
   validateProjects,
@@ -27,7 +26,6 @@ import Control.Effect.Diagnostics (
   fatalText,
   tagError,
  )
-import Control.Effect.Reader (Reader)
 import Control.Monad (unless)
 import Data.Aeson (ToJSON)
 import Data.Either.Combinators (maybeToRight)
@@ -43,12 +41,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   fileName,
-  walkWithFilters',
  )
 import Effect.ReadFS (
   ReadFS,
@@ -82,13 +77,7 @@ import Types (
   GraphBreadth (Partial),
  )
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RepoManifestProject]
-discover = simpleDiscover findProjects mkProject RepoManifestProjectType
-
 -- We're looking for a file called "manifest.xml" in a directory called ".repo"
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RepoManifestProject]
-findProjects = walkWithFilters' discoverVisitor
-
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RepoManifestProject], WalkStep)
 discoverVisitor _ _ files = do
   case find (\f -> "manifest.xml" == fileName f) files of

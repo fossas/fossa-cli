@@ -107,16 +107,14 @@ spec =
         Set.member (tmpDir </> $(mkRelDir "lib/pg/lib")) visited `shouldBe'` False
         Set.member (tmpDir </> $(mkRelDir "lib/sqlite/lib")) visited `shouldBe'` False
 
-    -- End-to-end parity on the production wiring seam: one shared
+    -- End-to-end coverage of the production wiring seam: one shared
     -- 'walkStream' feeding each strategy's visitor through 'runVisitors',
     -- with per-strategy sinks and 'cachedDiscover' finalizers (mirroring
     -- "App.Fossa.Analyze.runAnalyzers", whose full effect stack cannot run in
-    -- tests), versus the old per-strategy 'walkWithFilters'' path each
-    -- strategy's 'discover' uses.  Cargo matches at the root and skips its
-    -- whole subtree, so web/sub/Cargo.toml must stay invisible to it; Composer
-    -- keeps walking, so it picks up both composer roots unless a filter prunes
-    -- web/.
-    it' "shared-walk wiring finds the same projects per strategy as the old per-strategy walks" $
+    -- tests).  Cargo matches at the root and skips its whole subtree, so
+    -- web/sub/Cargo.toml must stay invisible to it; Composer keeps walking, so
+    -- it picks up every filter-permitted composer root.
+    it' "shared-walk wiring finds the expected projects per strategy" $
       withTempDir "test-Discovery-WalkStream-parity" $ \tmpDir -> do
         let web = tmpDir </> $(mkRelDir "web")
             webSub = web </> $(mkRelDir "sub")
@@ -134,10 +132,10 @@ spec =
         let noFilters = (mempty :: AllFilters)
             webExcluded = excludePath $(mkRelDir "web")
 
-        for_ [(noFilters, 2), (webExcluded, 1)] $ \(filters, expectedComposerProjects) -> do
-          -- New path: the production wiring.  One filesystem walk feeds both
-          -- strategies' visitors; each accumulates into its own sink and is
-          -- finalized exactly like runAnalyzers does.
+        for_ [(noFilters, [web, vendor]), (webExcluded, [vendor])] $ \(filters, expectedComposerDirs) -> do
+          -- The production wiring: one filesystem walk feeds both strategies'
+          -- visitors; each accumulates into its own sink and is finalized
+          -- exactly like runAnalyzers does.
           cargoSink <- sendIO $ newIORef ([] :: [Cargo.CargoProject])
           composerSink <- sendIO $ newIORef ([] :: [Composer.ComposerProject])
           let visitC dir subdirs files = accumulate cargoSink (Cargo.discoverVisitor dir subdirs files)
@@ -149,22 +147,12 @@ spec =
                 cargoNew <- cachedDiscover CargoProjectType Cargo.mkProject tmpDir (sendIO $ readIORef cargoSink)
                 composerNew <- cachedDiscover ComposerProjectType Composer.mkProject tmpDir (sendIO $ readIORef composerSink)
                 pure (cargoNew, composerNew)
-          -- Old path: each strategy walks the tree itself (walkWithFilters')
-          -- under the same filters.
-          oldResult <-
-            runReader filters $
-              do
-                cargoOld <- Cargo.discover tmpDir
-                composerOld <- Composer.discover tmpDir
-                pure (cargoOld, composerOld)
 
-          sort (map projectTag $ fst newResult) `shouldBe'` sort (map projectTag $ fst oldResult)
-          sort (map projectTag $ snd newResult) `shouldBe'` sort (map projectTag $ snd oldResult)
-          -- The comparison is not vacuous: cargo sees only the root manifest
-          -- on both paths, and composer sees every filter-permitted root.
+          -- Cargo matches at the root and skips its whole subtree, so
+          -- web/sub/Cargo.toml stays invisible to it; Composer keeps walking,
+          -- so it picks up every filter-permitted composer root.
           sort (map projectTag $ fst newResult) `shouldBe'` [(show CargoProjectType, tmpDir)]
-          length (snd newResult) `shouldBe'` expectedComposerProjects
-          length (snd oldResult) `shouldBe'` expectedComposerProjects
+          sort (map projectTag $ snd newResult) `shouldBe'` sort [(show ComposerProjectType, d) | d <- expectedComposerDirs]
 
 -- | Mirrors the per-strategy 'prepare' of "App.Fossa.Analyze.runAnalyzers":
 -- a shared-walk visitor that accumulates its strategy's raw projects into the

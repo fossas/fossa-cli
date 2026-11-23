@@ -1,6 +1,4 @@
 module Strategy.Bundler (
-  discover,
-  findProjects,
   discoverVisitor,
   findLicenses,
   mkProject,
@@ -24,18 +22,15 @@ import Control.Effect.Diagnostics (
   (<||>),
  )
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Data.Aeson (ToJSON)
 import Data.Glob as Glob (toGlob, (</>))
 import Data.Text (isSuffixOf)
 import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
   findFilesMatchingGlob,
-  walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS, readContentsParser)
@@ -58,12 +53,6 @@ import Types (
   LicenseResult (LicenseResult),
   LicenseType (UnknownType),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject BundlerProject]
-discover = simpleDiscover findProjects mkProject BundlerProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [BundlerProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([BundlerProject], WalkStep)
 discoverVisitor dir _ files = do

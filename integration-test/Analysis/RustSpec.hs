@@ -11,6 +11,8 @@ import Analysis.FixtureUtils (
   FixtureArtifact (FixtureArtifact),
   FixtureEnvironment (NixEnv),
  )
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path (reldir)
 import Strategy.Cargo qualified as Cargo
 import Test.Hspec (Spec)
@@ -23,7 +25,7 @@ bat :: AnalysisTestFixture (Cargo.CargoProject)
 bat =
   AnalysisTestFixture
     "bat"
-    Cargo.discover
+    (\dir -> cachedDiscover CargoProjectType Cargo.mkProject dir (walkWithFilters' Cargo.discoverVisitor dir))
     rustEnv
     Nothing
     $ FixtureArtifact
@@ -35,7 +37,7 @@ fd :: AnalysisTestFixture (Cargo.CargoProject)
 fd =
   AnalysisTestFixture
     "fd"
-    Cargo.discover
+    (\dir -> cachedDiscover CargoProjectType Cargo.mkProject dir (walkWithFilters' Cargo.discoverVisitor dir))
     rustEnv
     Nothing
     $ FixtureArtifact

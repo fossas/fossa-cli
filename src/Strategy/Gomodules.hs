@@ -1,6 +1,4 @@
 module Strategy.Gomodules (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   GomodulesProject (..),
@@ -11,14 +9,11 @@ where
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Util (guardStrictMode)
 import Control.Effect.Diagnostics (Diagnostics, context, recover, (<||>))
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Data.Aeson (ToJSON)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS)
@@ -35,12 +30,6 @@ import Types (
   DiscoveredProjectType (GomodProjectType),
   GraphBreadth,
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GomodulesProject]
-discover = simpleDiscover findProjects mkProject GomodProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GomodulesProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GomodulesProject], WalkStep)
 discoverVisitor dir _ files = do

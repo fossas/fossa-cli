@@ -4,6 +4,8 @@ module Cocoapods.CocoapodsSpec (spec) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
 import Data.Text (Text)
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
 import Strategy.Cocoapods (CocoapodsProject (..))
@@ -12,6 +14,7 @@ import Test.Effect (it', shouldBe', shouldMatchList')
 import Test.Hspec (Spec, describe, runIO)
 import Types (
   DiscoveredProject (projectData),
+  DiscoveredProjectType (CocoapodsProjectType),
   License (License),
   LicenseResult (..),
   LicenseType (UnknownType),
@@ -64,7 +67,7 @@ podspecDiscoverySpec = do
       dictLicense = projectDir </> dictLicensePodspec
   describe "Cocoapods podspec discovery" $
     it' "Finds podspec files during discovery" $ do
-      specFiles <- foldMap (cocoapodsSpecFiles . projectData) <$> Cocoapods.discover projectDir
+      specFiles <- foldMap (cocoapodsSpecFiles . projectData) <$> cachedDiscover CocoapodsProjectType Cocoapods.mkProject projectDir (walkWithFilters' Cocoapods.discoverVisitor projectDir)
       specFiles
         `shouldMatchList'` [ strLicense
                            , dictLicense

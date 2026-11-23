@@ -1,8 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.NuGet (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   NuGetProject (..),
@@ -16,19 +14,15 @@ import Control.Effect.Diagnostics (
   Has,
   context,
  )
-import Control.Effect.Reader (Reader)
 import Data.Aeson (
   ToJSON,
  )
 import Data.List qualified as L
 import Data.Set qualified as Set
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   fileName,
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
@@ -41,18 +35,6 @@ import Types (
   DiscoveredProject (..),
   DiscoveredProjectType (NuGetProjectType),
  )
-
-discover ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject NuGetProject]
-discover = simpleDiscover findProjects mkProject NuGetProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NuGetProject]
-findProjects root = dedupeRestored <$> walkWithFilters' discoverVisitor root
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NuGetProject], WalkStep)
 discoverVisitor _dir _subdirs files =

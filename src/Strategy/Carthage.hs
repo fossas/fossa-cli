@@ -1,8 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Carthage (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   analyze,
@@ -23,7 +21,6 @@ import Control.Effect.Diagnostics (
   recover,
   warnOnErr,
  )
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Char (isSpace)
 import Data.Foldable (for_, traverse_)
@@ -39,12 +36,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Grapher (Grapher, direct, edge, evalGrapher)
 import Effect.ReadFS (ReadFS, readContentsParser)
@@ -81,12 +75,6 @@ import Types (
   DiscoveredProjectType (CarthageProjectType),
   GraphBreadth (Complete),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CarthageProject]
-discover = simpleDiscover findProjects mkProject CarthageProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CarthageProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CarthageProject], WalkStep)
 discoverVisitor dir _ files = do

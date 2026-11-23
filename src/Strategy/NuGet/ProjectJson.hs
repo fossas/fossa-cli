@@ -1,8 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.NuGet.ProjectJson (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   buildGraph,
@@ -14,7 +12,6 @@ module Strategy.NuGet.ProjectJson (
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, Has, recover)
-import Control.Effect.Reader (Reader)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
   Parser,
@@ -36,12 +33,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CCompatible, CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.ReadFS (ReadFS, readContentsJson)
 import GHC.Generics (Generic)
@@ -54,12 +48,6 @@ import Types (
   DiscoveredProjectType (ProjectJsonProjectType),
   GraphBreadth (Partial),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ProjectJsonProject]
-discover = simpleDiscover findProjects mkProject ProjectJsonProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectJsonProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ProjectJsonProject], WalkStep)
 discoverVisitor _ _ files = do

@@ -1,5 +1,4 @@
 module Strategy.Godep (
-  discover,
   discoverVisitor,
   mkProject,
 ) where
@@ -9,14 +8,11 @@ import App.Util (guardStrictMode)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context, fatalText, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Data.Aeson (ToJSON)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkSkipSome),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs, Has)
 import Effect.ReadFS (ReadFS)
@@ -30,12 +26,6 @@ import Types (
   DiscoveredProjectType (GodepProjectType),
   GraphBreadth (Complete),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GodepProject]
-discover = simpleDiscover findProjects mkProject GodepProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GodepProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GodepProject], WalkStep)
 discoverVisitor dir _ files = do

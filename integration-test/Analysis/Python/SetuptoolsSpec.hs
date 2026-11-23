@@ -6,6 +6,8 @@ module Analysis.Python.SetuptoolsSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Python.Setuptools qualified as Setuptools
 import Test.Hspec
@@ -15,7 +17,7 @@ theFuck :: AnalysisTestFixture (Setuptools.SetuptoolsProject)
 theFuck =
   AnalysisTestFixture
     "theFuck"
-    Setuptools.discover
+    (\dir -> cachedDiscover SetuptoolsProjectType Setuptools.mkProject dir (walkWithFilters' Setuptools.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact
@@ -27,7 +29,7 @@ flask :: AnalysisTestFixture (Setuptools.SetuptoolsProject)
 flask =
   AnalysisTestFixture
     "flask"
-    Setuptools.discover
+    (\dir -> cachedDiscover SetuptoolsProjectType Setuptools.mkProject dir (walkWithFilters' Setuptools.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

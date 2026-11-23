@@ -22,6 +22,8 @@ import Analysis.FixtureUtils (
   FixtureEnvironment (NixEnv),
  )
 import App.Types (Mode (..))
+import Discovery.Simple (cachedDiscoverWith)
+import Discovery.Walk (walkWithFilters')
 
 import Path (reldir)
 import Strategy.Maven qualified as Maven
@@ -38,7 +40,7 @@ keycloak :: AnalysisTestFixture (Maven.MavenProject)
 keycloak =
   AnalysisTestFixture
     "keycloak"
-    Maven.discover
+    (\dir -> cachedDiscoverWith MavenProjectType Maven.postDiscover dir (walkWithFilters' Maven.discoverVisitor dir))
     mavenEnv
     Nothing
     $ FixtureArtifact
@@ -50,7 +52,7 @@ guava :: AnalysisTestFixture Maven.MavenProject
 guava =
   AnalysisTestFixture
     "guava"
-    Maven.discover
+    (\dir -> cachedDiscoverWith MavenProjectType Maven.postDiscover dir (walkWithFilters' Maven.discoverVisitor dir))
     mavenEnv
     Nothing
     $ FixtureArtifact
@@ -62,7 +64,7 @@ simplePomFile :: AnalysisTestFixture Maven.MavenProject
 simplePomFile =
   AnalysisTestFixture
     "simple-pom-file"
-    Maven.discover
+    (\dir -> cachedDiscoverWith MavenProjectType Maven.postDiscover dir (walkWithFilters' Maven.discoverVisitor dir))
     mavenEnv
     Nothing
     $ FixtureArtifact
@@ -74,7 +76,7 @@ pomFileWithBuildDirOverride :: AnalysisTestFixture Maven.MavenProject
 pomFileWithBuildDirOverride =
   AnalysisTestFixture
     "build-dir-override"
-    Maven.discover
+    (\dir -> cachedDiscoverWith MavenProjectType Maven.postDiscover dir (walkWithFilters' Maven.discoverVisitor dir))
     mavenEnv
     Nothing
     $ FixtureArtifact

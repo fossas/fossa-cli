@@ -1,6 +1,4 @@
 module Strategy.Perl (
-  discover,
-
   -- * for testing
   PackageName (..),
   PerlMeta (..),
@@ -12,7 +10,6 @@ module Strategy.Perl (
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative ((<|>))
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (Key, Object, ToJSON)
 import Data.Aeson.Extra (TextLike (unTextLike))
 import Data.Aeson.Types (FromJSONKey, Parser, withObject)
@@ -30,12 +27,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.ReadFS (Has, ReadFS, readContentsJson, readContentsYaml)
 import GHC.Generics (Generic)
@@ -49,12 +43,6 @@ import Types (
   DiscoveredProjectType (PerlProjectType),
   GraphBreadth (Partial),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PerlProject]
-discover = simpleDiscover findProjects mkProject PerlProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PerlProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PerlProject], WalkStep)
 discoverVisitor dir _ files = do

@@ -3,8 +3,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Strategy.Haskell.Cabal (
-  discover,
-
   -- * Testing
   BuildPlan (..),
   PlanId (..),
@@ -26,7 +24,6 @@ import Control.Effect.Diagnostics (
   fatal,
   fatalText,
  )
-import Control.Effect.Reader (Reader)
 import Control.Monad (when)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -45,12 +42,9 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   fileName,
-  walkWithFilters',
  )
 import Effect.Exec (
   AllowErr (Never),
@@ -158,18 +152,12 @@ cabalGenPlanCmd =
 cabalPlanFilePath :: Path Rel File
 cabalPlanFilePath = $(mkRelFile "dist-newstyle/cache/plan.json")
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CabalProject]
-discover = simpleDiscover findProjects mkProject CabalProjectType
-
 isCabalFile :: Path Abs File -> Bool
 isCabalFile file = isDotCabal || isCabalDotProject
   where
     name = fileName file
     isDotCabal = ".cabal" `isSuffixOf` name
     isCabalDotProject = "cabal.project" == name
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CabalProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CabalProject], WalkStep)
 discoverVisitor dir _ files = do

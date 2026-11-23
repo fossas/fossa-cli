@@ -10,14 +10,13 @@
 -- "Discovery.Walk.Broadcast.accumulateConsumer" sink, all consumers are fanned
 -- out through "Discovery.Walk.Broadcast.withWalkBroadcast", and each sink is
 -- finalized with the strategy's own production finalizer (mostly
--- "Discovery.Simple.cachedDiscover").  Only strategies that export a
--- 'discoverVisitor' can be driven this way: of the fixture's ten ecosystems
--- only Maven ("Strategy.Maven") has no visitor, so the nine drivable strategies
--- are exercised here.
+-- "Discovery.Simple.cachedDiscover").  Nine of the fixture's ten ecosystems are
+-- exercised here: mix, fpm, leiningen, gomod, composer, cocoapods, conda, cabal
+-- and npm.  Maven is driven by its own case below.
 --
--- A second describe runs Maven through its own 'discover' entry point on the
--- same tree, under "Analysis.FixtureUtils.testRunner", and a third pins Node's
--- container-scan 'discover' entry point, which the shared walk does not serve.
+-- A second describe drives Maven through its production shared-walk finalizer on
+-- the same tree, under "Analysis.FixtureUtils.testRunner", and a third drives
+-- Node through its production finalizer, pinning its workspace batching.
 module Analysis.SharedWalkDiscoverySpec (
   spec,
 ) where
@@ -36,7 +35,8 @@ import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Discovery.Filters (AllFilters)
-import Discovery.Simple (cachedDiscover)
+import Discovery.Simple (cachedDiscover, cachedDiscoverWith)
+import Discovery.Walk (walkWithFilters')
 import Discovery.Walk.Broadcast (accumulateConsumer, withWalkBroadcast)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
@@ -179,35 +179,34 @@ runDiscovery tmp = do
   res <- testRunner (collectWalk tmp) LocalEnvironment
   withResult res $ \_ projects -> pure projects
 
--- | Drive Maven through its own 'discover' entry point (it has no
--- 'discoverVisitor') over the same materialized tree.
+-- | Drive Maven through its production shared-walk finalizer (visitor plus
+-- 'postDiscover') over the same materialized tree.
 runMavenDiscover :: Path Abs Dir -> IO [Entry]
 runMavenDiscover tmp = do
   materialize tmp
-  res <- testRunner (Maven.discover tmp) LocalEnvironment
+  res <- testRunner (cachedDiscoverWith MavenProjectType Maven.postDiscover tmp (walkWithFilters' Maven.discoverVisitor tmp)) LocalEnvironment
   withResult res $ \_ projects -> pure (concatMap toEntries projects)
 
--- | Drive Node through its own 'discover' entry point: that is still the
--- container-scan path ("App.Fossa.Container.Sources.Discovery"), which the
--- shared walk does not serve.
+-- | Drive Node through its production finalizer ('finalizeProjects' over the
+-- visitor) on the same materialized tree.
 runNodeDiscover :: Path Abs Dir -> IO [Entry]
 runNodeDiscover tmp = do
   materialize tmp
-  res <- testRunner (Node.discover tmp) LocalEnvironment
+  res <- testRunner (Node.finalizeProjects tmp (walkWithFilters' Node.discoverVisitor tmp)) LocalEnvironment
   withResult res $ \_ projects -> pure (concatMap toEntries projects)
 
--- | The entries Maven, the one strategy with no 'discoverVisitor', must
--- return, pinned to the absolute directory containing its manifest.
-expectedSelfDiscoverEntries :: Path Abs Dir -> [Entry]
-expectedSelfDiscoverEntries tmp =
+-- | The entries Maven must return, pinned to the absolute directory containing
+-- its manifest.  Maven is driven separately from the consumers above only
+-- because its finalizer is the custom 'Maven.postDiscover' shape.
+expectedMavenEntries :: Path Abs Dir -> [Entry]
+expectedMavenEntries tmp =
   [ ("maven", tmp)
   ]
 
 -- | The full set of projects across both mechanisms: the shared-walk visitors
--- plus Maven, the one self-discovering strategy, each pinned to its manifest
--- dir.
+-- plus Maven, each pinned to its manifest dir.
 expectedFullEntries :: Path Abs Dir -> [Entry]
-expectedFullEntries tmp = expectedEntries tmp <> expectedSelfDiscoverEntries tmp
+expectedFullEntries tmp = expectedEntries tmp <> expectedMavenEntries tmp
 
 -- | Create a uniquely named temp dir and run @act@ inside it.  'bracket'
 -- guarantees cleanup even when @act@ throws (e.g. a failing assertion).
@@ -293,7 +292,7 @@ spec =
         -- entries, so Set.fromList above is not hiding a doubled project.
         length full `shouldBe` Set.size (Set.fromList full)
 
-    it "finds the same Node project through the container-scan entry point" $
+    it "finds the same Node project through Node's production finalizer" $
       withTempDir "integration-NodeContainerPath" $ \tmp -> do
         nodeEntries <- runNodeDiscover tmp
         Set.fromList nodeEntries `shouldBe` Set.fromList [("npm", tmp </> [reldir|apps|])]

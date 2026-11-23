@@ -16,6 +16,7 @@ import Data.Set qualified as Set
 import Data.Set.NonEmpty qualified as NonEmptySet
 import Data.Text (Text)
 import DepTypes (Dependency (dependencyName))
+import Discovery.Walk (walkWithFilters')
 import Graphing (Graphing)
 import Graphing qualified
 import Path (Dir, Path, Rel, mkRelDir, (</>))
@@ -65,7 +66,7 @@ analyzeFixture :: IO FixtureGraphs
 analyzeFixture = do
   currentDir <- PIO.getCurrentDir
   let scanDir = currentDir </> fixtureDir
-  discovered <- testRunner (Node.discover scanDir) LocalEnvironment
+  discovered <- testRunner (Node.finalizeProjects scanDir (walkWithFilters' Node.discoverVisitor scanDir)) LocalEnvironment
   withResult discovered $ \_ projects -> case projects of
     [project] -> do
       projectType project `shouldBe` PnpmProjectType

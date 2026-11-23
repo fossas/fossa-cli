@@ -1,7 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Conan (
-  discover,
   discoverVisitor,
   mkProject,
 )
@@ -10,20 +9,15 @@ where
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Applicative
 import Control.Effect.Diagnostics (
-  Diagnostics,
   Has,
   ToDiagnostic (..),
   fatalText,
  )
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Maybe (catMaybes)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (GetDepsEffs)
 import Effect.ReadFS (ReadFS)
@@ -43,12 +37,6 @@ data DynamicAnalysisFailed = DynamicAnalysisFailed
 instance ToDiagnostic DynamicAnalysisFailed where
   renderDiagnostic DynamicAnalysisFailed =
     Errata (Just "Dynamic analysis via 'conan graph info' failed") [] Nothing
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject ConanProject]
-discover = simpleDiscover findProjects mkProject ConanProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ConanProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ConanProject], WalkStep)
 discoverVisitor dir _ files = do

@@ -1,7 +1,6 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 module Strategy.SwiftPM (
-  discover,
   mkProject,
   discoverVisitor,
   SwiftProject (..),
@@ -23,7 +22,6 @@ import Data.Maybe (listToMaybe)
 import DepTypes (Dependency)
 import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
@@ -71,22 +69,6 @@ instance ToJSON SwiftPackageProject
 instance ToJSON XcodeProjectUsingSwiftPm
 instance ToJSON SwiftProject
 
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has Logger sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SwiftProject]
-discover = simpleDiscover findProjects mkProject SwiftProjectType
-
-findProjects ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has Logger sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [SwiftProject]
-findProjects dir = do
-  swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
-  xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
-  pure (swiftPackageProjects <> xCodeProjects)
-
 -- | Combined per-directory collector for the shared discovery walk.  SwiftPM
 -- looks for both Swift package manifests and Xcode projects in the same
 -- directory, so this runs both checks once and merges their skip decisions.
@@ -128,42 +110,6 @@ discoverVisitor dir _ files = do
         then WalkSkipSome [".build"]
         else WalkContinue
     )
-
-findSwiftPackageProjects ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [SwiftProject]
-findSwiftPackageProjects = walkWithFilters' $ \dir _ files -> do
-  let packageManifestFile = findFileNamed "Package.swift" files
-  let packageResolvedFile = findFileNamed "Package.resolved" files
-  case (packageManifestFile, packageResolvedFile) of
-    -- If the Package.swift exists, than it is swift package project.
-    -- Use Package.swift as primary source of truth.
-    (Just manifestFile, resolvedFile) -> pure ([PackageProject $ SwiftPackageProject manifestFile dir resolvedFile], WalkSkipSome [".build"])
-    -- Package.resolved without Package.swift or Xcode project file is not a valid swift project.
-    (Nothing, _) -> pure ([], WalkContinue)
-
-findXcodeProjects ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has Logger sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [SwiftProject]
-findXcodeProjects = walkWithFilters' $ \dir _ files -> do
-  let xcodeProjectFile = findFileNamed "project.pbxproj" files
-  case xcodeProjectFile of
-    Nothing -> pure ([], WalkContinue)
-    Just projFile -> do
-      resolvedFile <- findFirstResolvedFileRecursively dir
-      xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
-      if xCodeProjWithDependencies
-        then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
-        else debugXCodeWithoutSwiftDeps projFile $> ([], WalkContinue)
 
 -- | Walks directory and finds first file named 'Package.resolved'.
 -- XCode projects using swift package manager retain Package.resolved,
