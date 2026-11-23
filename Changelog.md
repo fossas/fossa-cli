@@ -9,6 +9,7 @@
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
 - SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
 - Discovery: Performance optimizations (PRs [#1819](https://github.com/fossas/fossa-cli/pull/1819), [#1821](https://github.com/fossas/fossa-cli/pull/1821), [#1852](https://github.com/fossas/fossa-cli/pull/1852))
+- NuGet: `project.json` files that contain comments or trailing commas no longer fail analysis. ([#1835](https://github.com/fossas/fossa-cli/pull/1835))
 
 ## 3.20.13
 

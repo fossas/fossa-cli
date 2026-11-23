@@ -8,7 +8,7 @@ import Data.ByteString qualified as BS
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Text (Text)
-import Effect.ReadFS (readContentsBS, readContentsJson)
+import Effect.ReadFS (readContentsBS, readContentsJson, readContentsJsonc)
 import Path (mkRelFile, (</>))
 import Path.IO (getCurrentDir)
 import Test.Effect (it', shouldBe')
@@ -38,3 +38,8 @@ spec = do
     it' "fixture actually begins with a UTF-8 BOM" $ do
       raw <- readContentsBS testdataBom
       BS.take 3 raw `shouldBe'` "\xEF\xBB\xBF"
+
+  describe "readContentsJsonc" $ do
+    it' "parses a JSON file with a leading UTF-8 byte order mark" $ do
+      contents <- readContentsJsonc testdataBom
+      contents `shouldBe'` expectedContents
