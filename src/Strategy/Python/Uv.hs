@@ -206,12 +206,14 @@ buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markD
     extrasOf :: UvLockPackageDependency -> [(UvLockPackage, Text)]
     extrasOf dep = (,) <$> resolveDependency dep <*> uvlockPackageDependencyExtras dep
 
-    -- Every extra something in uv.lock asks for. Excluded groups count, so an extra only they ask for
-    -- is left out with them.
+    -- Every extra a dependency or a dependency group asks for, and every extra those extras ask for.
+    -- Excluded groups count, so an extra only they ask for is left out with them. An extra only the
+    -- project's own extras ask for, like `requests[socks]` in a legacy `dev` extra, stays under its package.
     requestedExtras :: Set (UvLockPackage, Text)
-    requestedExtras = Set.fromList $ foldMap (foldMap extrasOf . declared) (virtualRoot : packages)
+    requestedExtras = Set.fromList $ foldMap (foldMap extrasOf . foldMap (withExtras everyExtra) . declared) (virtualRoot : packages)
       where
-        declared pkg = uvlockPackageDependencies pkg <> fold (uvlockPackageDevDependencies pkg) <> fold (uvlockPackageOptionalDependencies pkg)
+        declared pkg = uvlockPackageDependencies pkg <> fold (uvlockPackageDevDependencies pkg)
+        everyExtra = foldMap (\pkg -> Set.map (pkg,) (Map.keysSet (uvlockPackageOptionalDependencies pkg))) packages
 
     -- A package's dependency groups hang off a root of their own, so they're labeled by group name
     -- rather than by the package's own label. No package can have its name.

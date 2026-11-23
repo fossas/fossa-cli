@@ -468,9 +468,9 @@ spec = do
         result
 
   -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
-  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, and uv-extras.lock
-  -- from 0.13.9, without the sdist and wheel entries. uv-groups.lock also leaves out the packages these
-  -- tests don't look at.
+  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, uv-extras.lock, and
+  -- uv-dev-extra.lock from 0.13.9, without the sdist and wheel entries. uv-groups.lock also leaves out the
+  -- packages these tests don't look at.
   describe "dependency groups" $ do
     let prod = Set.fromList [EnvProduction]
         dev = Set.fromList [EnvDevelopment]
@@ -595,3 +595,12 @@ spec = do
         , ("cffi", "pycparser")
         ]
         names
+
+    -- The project needs requests and oauthlib, and its legacy dev extra asks for requests[socks] and
+    -- requests-oauthlib[rsa], whose rsa extra asks for oauthlib[signedtoken].
+    it' "labels an extra's packages by the package that defines it when only the project's own extras ask for it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-dev-extra.lock|]
+      let requests = ["requests", "certifi", "charset-normalizer", "idna", "urllib3", "pysocks"]
+          oauthlib = ["oauthlib", "cryptography", "pyjwt", "cffi", "pycparser"]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList (("requests-oauthlib", dev) : map (,prodAndDev) (requests <> oauthlib))
