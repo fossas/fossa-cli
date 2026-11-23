@@ -1,6 +1,6 @@
 # FOSSA CLI Changelog
 
-## 3.20.14
+## 3.21.0
 
 - Yarn: dependencies installed under an npm alias in a Yarn 1 `yarn.lock` are now reported as the package they install instead of the alias name. ([#1849](https://github.com/fossas/fossa-cli/pull/1849))
 - Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
