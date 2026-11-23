@@ -10,9 +10,7 @@
 -- >  {[org.clojure/core.specs.alpha "0.2.44"] nil,
 -- >   [org.clojure/spec.alpha "0.2.176"] nil}}
 module Strategy.Leiningen (
-  discover,
   buildGraph,
-  findProjects,
   getDeps,
   mkProject,
   Deps (..),
@@ -33,7 +31,6 @@ import Control.Effect.Diagnostics (
   fatalText,
   run,
  )
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.EDN qualified as EDN
 import Data.EDN.Class.Parser (Parser)
@@ -47,12 +44,9 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Lazy qualified as TL
 import Data.Vector qualified as V
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (
   AllowErr (Always, Never),
@@ -103,12 +97,6 @@ leinVersionCmd =
     , cmdAllowErr = Always
     , cmdEnvVars = Map.empty
     }
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject LeiningenProject]
-discover = simpleDiscover findProjects mkProject LeiningenProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [LeiningenProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([LeiningenProject], WalkStep)
 discoverVisitor dir _ files = do

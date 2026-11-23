@@ -3,12 +3,14 @@
 module BundlerSpec (spec) where
 
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, toFilePath, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Bundler (BundlerProject (..), discover, findLicenses)
+import Strategy.Bundler (BundlerProject (..), discoverVisitor, findLicenses, mkProject)
 import Test.Effect (it', shouldBe', shouldMatchList')
 import Test.Hspec (Spec, describe, runIO)
-import Types (DiscoveredProject (projectData), License (License), LicenseResult (LicenseResult), LicenseType (UnknownType))
+import Types (DiscoveredProject (projectData), DiscoveredProjectType (BundlerProjectType), License (License), LicenseResult (LicenseResult), LicenseType (UnknownType))
 
 specFilenames :: [Path Rel File]
 specFilenames =
@@ -109,7 +111,7 @@ gemspecDiscovery =
       let absSpecDir = currDir </> $(mkRelDir "test/Ruby/testdata/gemspecs")
           expectedSpecFiles = map (absSpecDir </>) specFilenames
       it' "Finds all *.gemspec files in a dir" $ do
-        projects <- map projectData <$> discover absSpecDir
+        projects <- map projectData <$> cachedDiscover BundlerProjectType mkProject absSpecDir (walkWithFilters' discoverVisitor absSpecDir)
         let specFiles = mconcat $ map bundlerGemSpec projects
         specFiles `shouldMatchList'` expectedSpecFiles
 

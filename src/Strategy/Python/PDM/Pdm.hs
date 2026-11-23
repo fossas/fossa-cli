@@ -1,5 +1,4 @@
 module Strategy.Python.PDM.Pdm (
-  discover,
   analyze,
   discoverVisitor,
   mkProject,
@@ -24,12 +23,9 @@ import Strategy.Python.Util (Req (..), toConstraint)
 import Text.URI qualified as URI
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Maybe (isNothing)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed, walkWithFilters')
+import Discovery.Walk (WalkStep (WalkContinue, WalkSkipSome), findFileNamed)
 import GHC.Generics (Generic)
 import Types (
   DependencyResults (..),
@@ -37,18 +33,6 @@ import Types (
   DiscoveredProjectType (PdmProjectType),
   GraphBreadth (Complete, Partial),
  )
-
-discover ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject PdmProject]
-discover = simpleDiscover findProjects mkProject PdmProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PdmProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PdmProject], WalkStep)
 discoverVisitor dir _ files = do

@@ -1,8 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Python.Pipenv (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   PipenvGraphDep (..),
@@ -28,7 +26,6 @@ import Control.Effect.Diagnostics (
   run,
   warnOnErr,
  )
-import Control.Effect.Reader (Reader)
 import Control.Monad (join)
 import Data.Aeson (
   FromJSON (parseJSON),
@@ -57,12 +54,9 @@ import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
@@ -85,12 +79,6 @@ import Types (
   DiscoveredProjectType (PipenvProjectType),
   GraphBreadth (Complete),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PipenvProject]
-discover = simpleDiscover findProjects mkProject PipenvProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PipenvProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PipenvProject], WalkStep)
 discoverVisitor _ _ files = do

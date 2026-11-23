@@ -6,6 +6,8 @@ module Analysis.CocoapodsSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (..))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Cocoapods qualified as Cocoapods
 import Test.Hspec
@@ -15,7 +17,7 @@ shadowsocksXNG :: AnalysisTestFixture (Cocoapods.CocoapodsProject)
 shadowsocksXNG =
   AnalysisTestFixture
     "ShadowsocksX-NG"
-    Cocoapods.discover
+    (\dir -> cachedDiscover CocoapodsProjectType Cocoapods.mkProject dir (walkWithFilters' Cocoapods.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact
@@ -27,7 +29,7 @@ sDWebImage :: AnalysisTestFixture (Cocoapods.CocoapodsProject)
 sDWebImage =
   AnalysisTestFixture
     "SDWebImage"
-    Cocoapods.discover
+    (\dir -> cachedDiscover CocoapodsProjectType Cocoapods.mkProject dir (walkWithFilters' Cocoapods.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

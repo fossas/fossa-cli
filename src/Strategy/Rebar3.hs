@@ -1,8 +1,6 @@
 -- | Rebar, the Erlang dependency manager.
 module Strategy.Rebar3 (
   RebarProject (..),
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   discoverVisitor,
@@ -10,14 +8,10 @@ module Strategy.Rebar3 (
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, fatalText)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (Exec, Has)
 import Effect.ReadFS (ReadFS)
@@ -29,12 +23,6 @@ import Types (
   DiscoveredProject (..),
   DiscoveredProjectType (Rebar3ProjectType),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject RebarProject]
-discover = simpleDiscover findProjects mkProject Rebar3ProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [RebarProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RebarProject], WalkStep)
 discoverVisitor dir _ files = do

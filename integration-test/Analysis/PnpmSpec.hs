@@ -19,6 +19,7 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
+import Discovery.Walk (walkWithFilters')
 import Graphing (vertexList)
 import Path (reldir)
 import Strategy.Node qualified as Node
@@ -29,7 +30,7 @@ elementPlus :: AnalysisTestFixture (Node.NodeProject)
 elementPlus =
   AnalysisTestFixture
     "element-plus"
-    Node.discover
+    (\dir -> Node.finalizeProjects dir (walkWithFilters' Node.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact
@@ -43,7 +44,7 @@ jotaiEager :: AnalysisTestFixture (Node.NodeProject)
 jotaiEager =
   AnalysisTestFixture
     "jotai-eager"
-    Node.discover
+    (\dir -> Node.finalizeProjects dir (walkWithFilters' Node.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

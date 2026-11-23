@@ -1,6 +1,4 @@
 module Strategy.Python.Setuptools (
-  discover,
-  findProjects,
   getDeps,
   getDepsStatically,
   mkProject,
@@ -11,18 +9,14 @@ module Strategy.Python.Setuptools (
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.List (isInfixOf, isSuffixOf)
 import Data.Maybe (maybeToList)
 import Data.Text (Text)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   fileName,
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
@@ -39,12 +33,6 @@ import Types (
   DiscoveredProjectType (SetuptoolsProjectType),
   GraphBreadth (Partial),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject SetuptoolsProject]
-discover = simpleDiscover findProjects mkProject SetuptoolsProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [SetuptoolsProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SetuptoolsProject], WalkStep)
 discoverVisitor dir _ files = do

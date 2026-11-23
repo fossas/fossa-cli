@@ -6,6 +6,8 @@ module Analysis.Python.PipenvSpec (spec) where
 import Analysis.FixtureExpectationUtils
 import Analysis.FixtureUtils
 import App.Types (Mode (NonStrict))
+import Discovery.Simple (cachedDiscover)
+import Discovery.Walk (walkWithFilters')
 import Path
 import Strategy.Python.Pipenv qualified as Pipenv
 import Test.Hspec
@@ -15,7 +17,7 @@ pipenv :: AnalysisTestFixture (Pipenv.PipenvProject)
 pipenv =
   AnalysisTestFixture
     "pipenv"
-    Pipenv.discover
+    (\dir -> cachedDiscover PipenvProjectType Pipenv.mkProject dir (walkWithFilters' Pipenv.discoverVisitor dir))
     LocalEnvironment
     Nothing
     $ FixtureArtifact

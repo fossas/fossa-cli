@@ -1,8 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Python.Uv (
-  discover,
-  findProjects,
   buildGraph,
   UvProject (..),
   UvLock (..),
@@ -20,7 +18,6 @@ import Control.Effect.Diagnostics (
   context,
   run,
  )
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
 import Data.Foldable (fold, for_, traverse_)
 import Data.Map.Strict (Map)
@@ -36,12 +33,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (..),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Grapher (
   Grapher,
@@ -65,21 +59,9 @@ import Toml.Schema qualified
 import Types (
   DependencyResults (..),
   DiscoveredProject (..),
-  DiscoveredProjectType (PipenvProjectType, UvProjectType),
+  DiscoveredProjectType (UvProjectType),
   GraphBreadth (Complete),
  )
-
-discover ::
-  (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
-  Path Abs Dir ->
-  m [DiscoveredProject UvProject]
-discover = simpleDiscover findProjects mkProject PipenvProjectType
-
-findProjects ::
-  (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) =>
-  Path Abs Dir ->
-  m [UvProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([UvProject], WalkStep)
 discoverVisitor _ _ files = do

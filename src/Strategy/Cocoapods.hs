@@ -1,6 +1,4 @@
 module Strategy.Cocoapods (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   CocoapodsProject (..),
@@ -15,20 +13,17 @@ import Control.Applicative ((<|>))
 import Control.Carrier.Diagnostics (errHelp)
 import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, warnOnErr, (<||>))
 import Control.Effect.Diagnostics qualified as Diag
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Data.Aeson (ToJSON)
 import Data.Glob qualified as Glob
 import Data.List (find)
 import Data.List.Extra (singleton)
 import Data.Text (isSuffixOf)
 import Diag.Common (MissingDeepDeps (..), MissingEdges (..))
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
   findFilesMatchingGlob,
-  walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs)
 import Effect.Logger (Logger)
@@ -48,12 +43,6 @@ import Types (
   LicenseResult (LicenseResult, licenseFile, licensesFound),
   LicenseType (UnknownType),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CocoapodsProject]
-discover = simpleDiscover findProjects mkProject CocoapodsProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CocoapodsProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CocoapodsProject], WalkStep)
 discoverVisitor dir _ files = do

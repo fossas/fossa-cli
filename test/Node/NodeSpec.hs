@@ -17,7 +17,7 @@ import Discovery.Walk (walkWithFilters')
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelDir, mkRelFile, (</>))
 import Path.IO (getCurrentDir)
-import Strategy.Node (NodeProject (NPMLock), discover, discoverVisitor, extractDepListsForTargets, finalizeProjects, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
+import Strategy.Node (NodeProject (NPMLock), discoverVisitor, extractDepListsForTargets, finalizeProjects, findWorkspaceBuildTargets, getDeps, pkgGraph, resolveNpmV3WorkspacePaths, resolvePnpmImporterKeys)
 import Strategy.Node.PackageJson (
   FlatDeps (..),
   Manifest (..),
@@ -70,17 +70,16 @@ spec = do
   unnamedWorkspaceRootSpec currDir
   sharedWalkSpec currDir
 
--- | Pin the shared broadcast walk wiring ('discoverVisitor' collecting over
--- "Discovery.Walk.walkWithFilters'", 'finalizeProjects' batching) against the
--- pre-broadcast 'discover' path: both must find the same projects.
+-- | Pin the production shared broadcast walk wiring ('discoverVisitor'
+-- collecting over "Discovery.Walk.walkWithFilters'", 'finalizeProjects'
+-- batching) against an explicit expectation of the projects it must find.
 sharedWalkSpec :: Path Abs Dir -> Spec
 sharedWalkSpec currDir = describe "shared broadcast walk (discoverVisitor + finalizeProjects)" $ do
-  it' "discovers the same projects as discover" $
+  it' "discovers the workspace root project" $
     do
       let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
-      oldProjects <- discover workspaceDir
       newProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
-      newProjects `shouldBe'` oldProjects
+      newProjects `shouldBe'` [discoveredWorkSpaceProj currDir]
 
   it' "produces projects under a yarn-only allow-list (any-of family gate)" $
     do
@@ -89,9 +88,8 @@ sharedWalkSpec currDir = describe "shared broadcast walk (discoverVisitor + fina
       -- yarn-only include list must therefore still produce projects.
       let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
           yarnOnly = (mempty :: AllFilters){includeFilters = comboInclude [TypeTarget "yarn"] []}
-      oldProjects <- runReader yarnOnly (discover workspaceDir)
       newProjects <- runReader yarnOnly (finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir))
-      newProjects `shouldBe'` oldProjects
+      newProjects `shouldBe'` [discoveredWorkSpaceProj currDir]
       null newProjects `shouldBe'` False
 
   it' "produces nothing when no node-family tool is allow-listed" $
@@ -195,14 +193,14 @@ pkgJsonWorkspaceSpec :: Path Abs Dir -> Spec
 pkgJsonWorkspaceSpec currDir = describe "NPM workspace detection" $ do
   let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-test")
   it' "Discovers workspace projects for workspaces " $ do
-    discoveredProjects <- discover workspaceDir
+    discoveredProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
     discoveredProjects `shouldBe'` [discoveredWorkSpaceProj currDir]
 
 dotslashWorkspaceSpec :: Path Abs Dir -> Spec
 dotslashWorkspaceSpec currDir = describe "Workspace globs with a leading ./" $ do
   let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-dotslash")
   it' "Links a ./-prefixed workspace member to its root" $ do
-    discoveredProjects <- discover workspaceDir
+    discoveredProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
     case discoveredProjects of
       [DiscoveredProject{..}] ->
         findWorkspaceBuildTargets (pkgGraph projectData)
@@ -216,7 +214,7 @@ dotslashWorkspaceSpec currDir = describe "Workspace globs with a leading ./" $ d
   -- the dev tool, so it loses its production environment and the default filter
   -- drops it.
   it' "Keeps a ./-linked member's production transitive in the production environment" $ do
-    discoveredProjects <- discover workspaceDir
+    discoveredProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
     graphs <- traverse (\DiscoveredProject{..} -> dependencyGraph <$> getDeps projectBuildTargets projectData) discoveredProjects
     let sharedEnvs =
           foldMap (foldMap dependencyEnvironments . filter ((== "shared") . dependencyName) . Graphing.vertexList) graphs
@@ -226,7 +224,7 @@ selfLoopWorkspaceSpec :: Path Abs Dir -> Spec
 selfLoopWorkspaceSpec currDir = describe "Whole-root workspace globs" $ do
   let workspaceDir = currDir </> $(mkRelDir "test/Node/testdata/workspace-selfloop")
   it' "Does not treat a '.' workspace glob as a cycle" $ do
-    discoveredProjects <- discover workspaceDir
+    discoveredProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
     case discoveredProjects of
       [DiscoveredProject{..}] ->
         findWorkspaceBuildTargets (pkgGraph projectData)
@@ -244,7 +242,7 @@ npmLockAnalysisSpec currDir = do
 
   describe "NPM Lock analysis" $ do
     it' "Ignores workspace packages in discovery/analysis of an NPMLock project" $ do
-      discoveredProjects <- discover workspaceDir
+      discoveredProjects <- finalizeProjects workspaceDir (walkWithFilters' discoverVisitor workspaceDir)
       for_ discoveredProjects $
         \DiscoveredProject{..} ->
           do
@@ -480,7 +478,7 @@ catalogFallbackSpec currDir = describe "pnpm catalog fallback" $ do
           ]
       summarize = Set.fromList . map (\dep -> (dependencyName dep, dependencyVersion dep, dependencyEnvironments dep)) . Graphing.vertexList . dependencyGraph
       analyzeDir dir = do
-        projects <- discover dir
+        projects <- finalizeProjects dir (walkWithFilters' discoverVisitor dir)
         length projects `shouldBe'` 1
         traverse (\DiscoveredProject{..} -> getDeps projectBuildTargets projectData) projects
 

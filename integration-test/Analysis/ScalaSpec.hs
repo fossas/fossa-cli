@@ -13,6 +13,8 @@ import Analysis.FixtureUtils (
   FixtureEnvironment (NixEnv),
  )
 import App.Types (Mode (..))
+import Discovery.Simple (cachedDiscoverWith)
+import Discovery.Walk (walkWithFilters')
 import Path (reldir)
 import Strategy.Scala qualified as Scala
 import Test.Hspec (Spec)
@@ -25,7 +27,7 @@ scalaExampleProject :: AnalysisTestFixture (Scala.ScalaProject)
 scalaExampleProject =
   AnalysisTestFixture
     "scalaExampleProject"
-    Scala.discover
+    (\dir -> cachedDiscoverWith ScalaProjectType Scala.postDiscover dir (walkWithFilters' Scala.discoverVisitor dir))
     scalaEnv
     Nothing
     $ FixtureArtifact
