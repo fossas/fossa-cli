@@ -125,9 +125,12 @@ analyze project = context "uv" $ do
       }
 
 buildGraph :: Maybe UvConfig -> UvLock -> Graphing Dependency
-buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedGroups
+buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markDirectDeps $ graphOf mempty excludedGroups
   where
-    packages = uvlockPackages lock
+    -- A group can install its own package with an extra, e.g. `dev = ["my-project[test]"]`. That's
+    -- dropped, so the extra is reported like the package's other extras, since anyone who installs the
+    -- package with that extra gets its packages too.
+    packages = map (\pkg -> pkg{uvlockPackageDevDependencies = Map.map (filter (not . (`dependencyMatches` pkg))) (uvlockPackageDevDependencies pkg)}) (uvlockPackages lock)
     packagesByName = Map.fromListWith (<>) $ map (\p -> (uvlockPackageName p, [p])) packages
 
     resolveDependency :: UvLockPackageDependency -> [UvLockPackage]
@@ -150,8 +153,16 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
     groups pkg = Map.withoutKeys (uvlockPackageDevDependencies pkg) excludedGroups
 
     -- Every package's edges, leaving out the dependency groups named in `excluded`.
-    graphOf :: Set Text -> Graphing UvLockPackage
-    graphOf excluded = run . evalGrapher $ traverse_ (mkEdges excluded) (virtualRoot : packages)
+    graphOf :: Set (UvLockPackage, Text) -> Set Text -> Graphing UvLockPackage
+    graphOf requested excluded = run . evalGrapher $ traverse_ (mkEdges requested excluded) (virtualRoot : packages)
+
+    -- Each extra is reported under the package that defines it, the way `uv tree` shows it, but its
+    -- packages are labeled by what asks for the extra, using a graph where they hang off that instead.
+    -- Packages that graph leaves out, like an extra only an excluded group asks for, are left out here too.
+    withLabels :: Graphing UvLockPackage -> Graphing Dependency
+    withLabels = gmap (\dep -> dep{dependencyEnvironments = Map.findWithDefault mempty dep labels}) . induce (`Map.member` labels) . gmap (`toDependency` mempty)
+      where
+        labels = Map.fromListWith (<>) . map (\dep -> (dep{dependencyEnvironments = mempty}, dependencyEnvironments dep)) . vertexList . processGraph $ graphOf requestedExtras excludedGroups
 
     -- A workspace root that isn't a project has no package in uv.lock. uv (as of 0.13.9) lists its
     -- dependency groups under [manifest.dependency-groups] instead.
@@ -168,29 +179,28 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
-    -- A group or extra can install the package itself, e.g. `dev = ["my-project[test]"]`, and a
-    -- workspace root that isn't a project installs every member whatever its groups say. Those edges
-    -- are skipped, since they would leave the package with a predecessor and no longer a root.
-    -- An extra's packages hang off whatever asks for the extra (see `withExtras`). uv also lists every
-    -- extra of a workspace member, since `uv sync --extra` can install it, so one that nothing asks for
-    -- stays under its package.
-    mkEdges :: Has (Grapher UvLockPackage) sig m => Set Text -> UvLockPackage -> m ()
-    mkEdges excluded fromPkg = do
+    -- An edge from a package to itself is skipped, and so is one from a workspace root that isn't a
+    -- project to a member, since uv installs every member there whatever its groups say. Either would
+    -- leave the package with a predecessor and no longer a root.
+    -- The packages of an extra in `requested` hang off whatever asks for the extra (see `withExtras`).
+    -- Any other extra stays under its package, like one of a workspace member that nothing asks for,
+    -- which uv lists since `uv sync --extra` can install it.
+    mkEdges :: Has (Grapher UvLockPackage) sig m => Set (UvLockPackage, Text) -> Set Text -> UvLockPackage -> m ()
+    mkEdges requested excluded fromPkg = do
       edgesFrom fromPkg (uvlockPackageDependencies fromPkg <> fold (Map.filterWithKey unrequested (uvlockPackageOptionalDependencies fromPkg)))
       edgesFrom (groupRoot fromPkg) (fold (Map.withoutKeys (uvlockPackageDevDependencies fromPkg) excluded))
       where
-        unrequested extra _ = (fromPkg, extra) `Set.notMember` requestedExtras
-        edgesFrom from = traverse_ (traverse_ (edge from) . filter keep . resolveDependency) . foldMap withExtras
+        unrequested extra _ = (fromPkg, extra) `Set.notMember` requested
+        edgesFrom from = traverse_ (traverse_ (edge from) . filter keep . resolveDependency) . foldMap (withExtras requested)
         keep to = to /= fromPkg && not (fromPkg == virtualRoot && isWorkspacePackage (uvlockPackageSource to))
 
     -- A dependency on `pkg[extra]` installs pkg and what pkg lists for that extra, which can ask for
-    -- another extra, e.g. fastapi[standard] asks for uvicorn[standard]. Those packages hang off
-    -- whatever has the dependency, so they're labeled by it rather than by pkg.
-    withExtras :: UvLockPackageDependency -> [UvLockPackageDependency]
-    withExtras = go Set.empty
+    -- another extra, e.g. fastapi[standard] asks for uvicorn[standard]. For the extras in `requested`,
+    -- those packages hang off whatever has the dependency, so they're labeled by it rather than by pkg.
+    withExtras :: Set (UvLockPackage, Text) -> UvLockPackageDependency -> [UvLockPackageDependency]
+    withExtras requested dep = dep : foldMap extraDeps (filter (`Set.member` requested) (extrasOf dep))
       where
-        go seen dep = dep : foldMap (extraDeps seen) (filter (`Set.notMember` seen) (extrasOf dep))
-        extraDeps seen (pkg, extra) = foldMap (go (Set.insert (pkg, extra) seen)) (Map.findWithDefault [] extra (uvlockPackageOptionalDependencies pkg))
+        extraDeps (pkg, extra) = foldMap (withExtras (Set.delete (pkg, extra) requested)) (Map.findWithDefault [] extra (uvlockPackageOptionalDependencies pkg))
 
     -- The extras a dependency asks for, by the package that defines them.
     extrasOf :: UvLockPackageDependency -> [(UvLockPackage, Text)]
@@ -235,13 +245,13 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
             referencedBy deps env = if any (`dependencyMatches` pkg) deps then Just env else Nothing
 
         prodDeps =
-          foldMap withExtras $
+          foldMap (withExtras requestedExtras) $
             foldMap uvlockPackageDependencies (directList gr)
               <> foldMap (fold . (`Map.restrictKeys` productionGroups) . groups) (directList gr)
         -- Every other dependency group is dev. Older projects list dev dependencies as an extra,
         -- under optional-dependencies.dev.
         devDeps =
-          foldMap withExtras $
+          foldMap (withExtras requestedExtras) $
             foldMap (fold . (`Map.withoutKeys` productionGroups) . groups) (directList gr)
               <> foldMap (fromMaybe [] . Map.lookup "dev" . uvlockPackageOptionalDependencies) (directList gr)
 
@@ -250,10 +260,11 @@ buildGraph cfg lock = removeWorkspacePackages . processGraph $ graphOf excludedG
     -- call `shrinkRoots` to remove this package and promote its dependencies to direct dependencies
     -- Roots are found with every group's edges drawn, since an excluded group's packages lose their edge
     -- from the project but aren't roots. Packages that only an excluded group reaches are dropped.
+    -- Both graphs in `withLabels` get their roots from the same graph, so they agree on them.
     markDirectDeps :: Graphing UvLockPackage -> Graphing UvLockPackage
     markDirectDeps gr = induce (`Set.notMember` excludedOnly) (promoteToDirect isRoot gr)
       where
-        withEveryGroup = graphOf mempty
+        withEveryGroup = graphOf requestedExtras mempty
         isRoot = not . hasPredecessors withEveryGroup
         reachable = Set.fromList . vertexList . pruneUnreachable . promoteToDirect isRoot
         excludedOnly = reachable withEveryGroup `Set.difference` reachable gr

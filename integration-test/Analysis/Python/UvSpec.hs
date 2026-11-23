@@ -25,4 +25,4 @@ uv =
 
 spec :: Spec
 spec = do
-  testSuiteDepResultSummary NonStrict uv UvProjectType (DependencyResultsSummary 72 13 121 1 Complete)
+  testSuiteDepResultSummary NonStrict uv UvProjectType (DependencyResultsSummary 72 12 122 1 Complete)

@@ -13,7 +13,7 @@ import Data.Text (Text)
 import DepTypes (DepEnvironment (..), DepType (..), Dependency (..), VerConstraint (..))
 import Effect.ReadFS (readContentsToml)
 import GraphUtil
-import Graphing (Graphing, directList, vertexList)
+import Graphing (Graphing, directList, gmap, vertexList)
 import Path (relfile)
 import Path.IO (makeAbsolute)
 import Strategy.Python.Uv
@@ -557,10 +557,12 @@ spec = do
       labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod)]
 
     -- The dev group installs the project with its test extra, which needs iniconfig.
-    it' "labels the project's own extra by the group that asks for it" $ do
+    it' "reports the project's own extra like its other extras when a group asks for it" $ do
       parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-self-reference.lock|]
 
-      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev), ("imagesize", dev)]
+      map dependencyName (directList (buildGraph Nothing parsed)) `shouldMatchList'` ["idna", "iniconfig", "imagesize"]
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", mempty), ("imagesize", dev)]
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", mempty), ("imagesize", dev)]
 
     -- The project needs requests[use-chardet-on-py3], and its dev group asks for requests[socks] and
     -- requests-oauthlib[rsa], whose rsa extra asks for oauthlib[signedtoken].
@@ -571,3 +573,25 @@ spec = do
 
       labels parsed mempty mempty `shouldBe'` Map.fromList (("chardet", prod) : map (,prodAndDev) requests <> map (,dev) devOnly)
       labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList (map (,prod) ("chardet" : requests))
+
+    -- Same lockfile. `uv tree` shows each extra under the package that defines it.
+    it' "reports an extra's packages under the package that defines it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-extras.lock|]
+      let names = gmap dependencyName (buildGraph Nothing parsed)
+
+      expectDirect' ["requests", "requests-oauthlib"] names
+      expectEdges'
+        [ ("requests", "certifi")
+        , ("requests", "charset-normalizer")
+        , ("requests", "idna")
+        , ("requests", "urllib3")
+        , ("requests", "chardet")
+        , ("requests", "pysocks")
+        , ("requests-oauthlib", "oauthlib")
+        , ("requests-oauthlib", "requests")
+        , ("oauthlib", "cryptography")
+        , ("oauthlib", "pyjwt")
+        , ("cryptography", "cffi")
+        , ("cffi", "pycparser")
+        ]
+        names
