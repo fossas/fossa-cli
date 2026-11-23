@@ -24,7 +24,12 @@ git config --global --add safe.directory "$GITHUB_WORKSPACE"
 # During the tag build, cabal/GHC may not realize that they have to rebuild the Version.hs file because the tag is invisible to it.
 # This line adds a comment to our version source file to prompt cabal/GHC to rebuild Version.hs.
 echo "{- $GITHUB_RUN_ID -}" >> src/App/Version.hs
-cabal update
+
+# `cabal update` intermittently fails with
+# "Unexpected response 403 for http://objects-us-east-1.dream.io/hackage-mirror/timestamp.json"
+# (a Hackage mirror), which fails the job before anything is built and cancels the rest of the
+# matrix. A later attempt succeeds, so retry before giving up.
+cabal update || { sleep 15; cabal update; } || { sleep 45; cabal update; }
 cabal build --project-file="$PROJECT_FILE" all
 cabal test --project-file="$PROJECT_FILE" unit-tests
 
