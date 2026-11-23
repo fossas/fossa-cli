@@ -983,6 +983,53 @@ lockfileToMetadata lock members analysis =
 
     memberIds = [pid | (p, (pid, _)) <- labeled, isMemberPath p]
 
+    -- Adjacency: each lockfile package id -> the package ids it depends on,
+    -- restricted to references that resolve to a real [[package]] entry.
+    childMap =
+      Map.fromListWith
+        (++)
+        [ (pid, catMaybes [resolveTarget dep | dep <- packageDependencies p])
+        | (p, (pid, _)) <- labeled
+        ]
+
+    -- Seed the propagation: each member (root) edge pushes its declared kinds
+    -- onto its child. A package is reachable from a root under a given kind
+    -- iff some member declares it under that kind.
+    initialKinds =
+      Map.fromListWith
+        Set.union
+        [ (child, nodeDepKindsSet p dep)
+        | (p, (_, _)) <- labeled
+        , isMemberPath p
+        , dep <- packageDependencies p
+        , Just child <- [resolveTarget dep]
+        ]
+
+    -- Per-package propagation of dependency kinds over the lockfile graph.
+    -- A package's set is the union of every kind under which it is reachable
+    -- from a member edge. Seed with each member edge's declared kinds, then
+    -- repeatedly union each non-empty set into its children until stable.
+    -- A package left with an empty set is unreachable from any member (stale
+    -- lockfile residue) and is relabelled Production by 'nodeDepFor'.
+    propagated = go initialKinds
+      where
+        go acc
+          | acc == next acc = acc
+          | otherwise = go (next acc)
+        next acc =
+          Map.unionWith
+            Set.union
+            acc
+            ( Map.fromListWith
+                Set.union
+                [ (child, set)
+                | pid <- Map.keys acc
+                , set <- [Map.findWithDefault Set.empty pid acc]
+                , not (Set.null set)
+                , child <- Map.findWithDefault [] pid childMap
+                ]
+            )
+
     resolveNodes =
       [ ResolveNode pid (mapMaybe (nodeDepFor p) (packageDependencies p))
       | (p, (pid, _)) <- labeled
@@ -991,7 +1038,18 @@ lockfileToMetadata lock members analysis =
     -- 'Nothing' for a reference matching no [[package]] entry: it is omitted
     -- from the graph rather than rendered as a phantom vertex with an empty
     -- source; its name surfaces via 'unresolvableDeps'.
-    nodeDepFor p dep = fmap (\target -> NodeDependency target (nodeDepKinds p dep)) (resolveTarget dep)
+    --
+    -- Edge kinds: a member edge keeps its declared kinds; a non-member edge
+    -- inherits the child's propagated kind set (Production when the child is
+    -- unreachable from any member).
+    nodeDepFor p dep = fmap (\target -> NodeDependency target (kindsFor p target dep)) (resolveTarget dep)
+
+    kindsFor p target dep
+      | isMemberPath p = map depKindToNdk (Set.toList (nodeDepKindsSet p dep))
+      | otherwise =
+          case Map.lookup target propagated of
+            Just set | not (Set.null set) -> map depKindToNdk (Set.toList set)
+            _ -> [prodNdk]
 
     resolveTarget :: CargoDependency -> Maybe PackageId
     resolveTarget dep =
@@ -1002,7 +1060,11 @@ lockfileToMetadata lock members analysis =
             Just (pid : _) -> Just pid
             _ -> Nothing
 
-    nodeDepKinds p dep =
+    -- Declared dependency kinds for a member edge, as a set of 'DepKind's.
+    -- Empty for a non-member parent (its edges inherit the child's propagated
+    -- set instead). The member path is unchanged from the historical logic: a
+    -- per-version match with a union fallback.
+    nodeDepKindsSet p dep =
       let parentName = packageName p
           -- The version the lockfile entry was resolved to; "*" for entries
           -- without a version (path / git deps), which matches no requirement.
@@ -1013,16 +1075,16 @@ lockfileToMetadata lock members analysis =
           -- resolved version (e.g. the lockfile drifted ahead of the manifest).
           unionKinds =
             case Map.lookup (parentName, depName dep) (depKindMap analysis) of
-              Just kinds -> map depKindToNdk (Set.toList kinds)
-              Nothing -> [prodNdk]
-       in if not (isMemberPath p)
-            then [prodNdk]
-            else
+              Just kinds -> kinds
+              Nothing -> Set.singleton DepProd
+       in if isMemberPath p
+            then
               let perVersionKinds =
                     Set.fromList [knd | (req, knd) <- fromMaybe [] (Map.lookup (parentName, depName dep) (depKindReqs analysis)), reqSatisfies req resolvedVer]
                in if Set.null perVersionKinds
                     then unionKinds
-                    else map depKindToNdk (Set.toList perVersionKinds)
+                    else perVersionKinds
+            else Set.empty
 
     depKindToNdk DepProd = prodNdk
     depKindToNdk DepDev = NodeDepKind (Just "dev") Nothing

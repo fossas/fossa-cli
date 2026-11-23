@@ -12,7 +12,9 @@
 --   * golden lockfile -> CargoMetadata conversions (2-member workspace with a
 --     prod+build member path dep, a non-member build-dep subtree, git deps
 --     tagged/untagged, name-version disambiguation with per-version dep-kind
---     labeling, union fallback for drifted or versionless declarations).
+--     labeling, union fallback for drifted or versionless declarations);
+--   * propagation of dependency kinds through the lockfile graph (dev/build
+--     transitive chains, mixed prod+dev reachability, orphan packages).
 module Cargo.LockfileSpec (
   spec,
 ) where
@@ -58,6 +60,7 @@ spec = do
   unresolvableDepsSpecs
   sourceSuffixSpecs
   goldenConversionSpecs
+  propagationSpecs
 
 -- ===========================================================================
 -- Workspace member enumeration
@@ -671,6 +674,190 @@ goldenConversionSpecs =
                       [ ResolveNode vPid [NodeDependency sharedPathPid [nullKind, devKind "build"], NodeDependency sharedRegPid [devKind "build"]]
                       , ResolveNode sharedPathPid []
                       , ResolveNode sharedRegPid []
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+-- ===========================================================================
+-- Propagation of dependency kinds through the lockfile graph
+
+-- | A member's [dev-dependencies] edge reaches "a", which depends on "b".
+-- Both edges must carry the dev kind: "a" keeps its declared kind, and "b"
+-- inherits the kinds under which "a" was reached.
+devChainLock :: Text
+devChainLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"a\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aa\"\ndependencies = [\"b 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"a 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"b\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bb\"\n"
+
+-- | "b" is reachable from the member via a prod edge (through "a") and a dev
+-- edge (through "c"), so it must carry both kinds.
+mixedReachLock :: Text
+mixedReachLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"a\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aa\"\ndependencies = [\"b 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"a 1.0.0\", \"c 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"b\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bb\"\n"
+    <> "\n[[package]]\nname = \"c\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"cc\"\ndependencies = [\"b 1.0.0\"]\n"
+
+-- | A member's [build-dependencies] edge reaches "a", which depends on "b".
+-- Both edges must carry the build kind.
+buildChainLock :: Text
+buildChainLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"a\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aa\"\ndependencies = [\"b 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"a 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"b\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bb\"\n"
+
+-- | "orphan" is a [[package]] entry no member edge reaches (stale lockfile
+-- residue). Its outgoing edge must fall back to the default (Production).
+orphanLock :: Text
+orphanLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\n"
+    <> "\n[[package]]\nname = \"orphan\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"oo\"\ndependencies = [\"orphan_child 2.0.0\"]\n"
+    <> "\n[[package]]\nname = \"orphan_child\"\nversion = \"2.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"cc\"\n"
+
+propagationSpecs :: Spec
+propagationSpecs =
+  describe "lockfile dependency-kind propagation" $ do
+    it' "a dev-only transitive chain labels the whole subtree dev" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/dev_chain_ws")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock devChainLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          let appDir = root </> $(mkRelDir "crates/app")
+              appPid = PackageId "app" "0.1.0" ("path+file://" <> toText (toFilePath appDir))
+          members `shouldBe'` [WorkspaceMember "app" appDir]
+          let aPid = mkPkgId "a" "1.0.0"
+              bPid = mkPkgId "b" "1.0.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "a" "1.0.0" aPid Nothing Nothing [] (Just registrySource)
+                  , Package "app" "0.1.0" appPid Nothing Nothing [] Nothing
+                  , Package "b" "1.0.0" bPid Nothing Nothing [] (Just registrySource)
+                  ]
+                  [appPid]
+                  ( Resolve
+                      [ ResolveNode aPid [NodeDependency bPid [devKind "dev"]]
+                      , ResolveNode appPid [NodeDependency aPid [devKind "dev"]]
+                      , ResolveNode bPid []
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+          let graph = buildGraph False meta
+              aDep = mkDep "a" "1.0.0" CargoType [EnvDevelopment]
+              bDep = mkDep "b" "1.0.0" CargoType [EnvDevelopment]
+          expectDeps' [aDep, bDep] graph
+          expectDirect' [aDep] graph
+
+    it' "a package reachable via both prod and dev edges carries both kinds" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/mixed_reach_ws")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock mixedReachLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          let appDir = root </> $(mkRelDir "crates/app")
+              appPid = PackageId "app" "0.1.0" ("path+file://" <> toText (toFilePath appDir))
+          members `shouldBe'` [WorkspaceMember "app" appDir]
+          let aPid = mkPkgId "a" "1.0.0"
+              bPid = mkPkgId "b" "1.0.0"
+              cPid = mkPkgId "c" "1.0.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "a" "1.0.0" aPid Nothing Nothing [] (Just registrySource)
+                  , Package "app" "0.1.0" appPid Nothing Nothing [] Nothing
+                  , Package "b" "1.0.0" bPid Nothing Nothing [] (Just registrySource)
+                  , Package "c" "1.0.0" cPid Nothing Nothing [] (Just registrySource)
+                  ]
+                  [appPid]
+                  ( Resolve
+                      [ -- Both non-member edges into "b" inherit "b"'s full
+                        -- propagated set {prod, dev}: "b" is reachable under
+                        -- both kinds, whichever parent the edge comes from.
+                        ResolveNode aPid [NodeDependency bPid [nullKind, devKind "dev"]]
+                      , ResolveNode appPid [NodeDependency aPid [nullKind], NodeDependency cPid [devKind "dev"]]
+                      , ResolveNode bPid []
+                      , ResolveNode cPid [NodeDependency bPid [nullKind, devKind "dev"]]
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+          let graph = buildGraph False meta
+              aDep = mkDep "a" "1.0.0" CargoType [EnvProduction]
+              bDep = mkDep "b" "1.0.0" CargoType [EnvProduction, EnvDevelopment]
+              cDep = mkDep "c" "1.0.0" CargoType [EnvDevelopment]
+          expectDeps' [aDep, bDep, cDep] graph
+          expectDirect' [aDep, cDep] graph
+
+    it' "a build-only transitive chain labels the whole subtree build" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/build_chain_ws")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock buildChainLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          let appDir = root </> $(mkRelDir "crates/app")
+              appPid = PackageId "app" "0.1.0" ("path+file://" <> toText (toFilePath appDir))
+          members `shouldBe'` [WorkspaceMember "app" appDir]
+          let aPid = mkPkgId "a" "1.0.0"
+              bPid = mkPkgId "b" "1.0.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "a" "1.0.0" aPid Nothing Nothing [] (Just registrySource)
+                  , Package "app" "0.1.0" appPid Nothing Nothing [] Nothing
+                  , Package "b" "1.0.0" bPid Nothing Nothing [] (Just registrySource)
+                  ]
+                  [appPid]
+                  ( Resolve
+                      [ ResolveNode aPid [NodeDependency bPid [devKind "build"]]
+                      , ResolveNode appPid [NodeDependency aPid [devKind "build"]]
+                      , ResolveNode bPid []
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+          let graph = buildGraph False meta
+              aDep = mkDep "a" "1.0.0" CargoType [EnvDevelopment]
+              bDep = mkDep "b" "1.0.0" CargoType [EnvDevelopment]
+          expectDeps' [aDep, bDep] graph
+          expectDirect' [aDep] graph
+
+    it' "an orphan package unreachable from any member defaults to production" $ do
+      -- "orphan" is stale lockfile residue: no member edge reaches it. Its
+      -- outgoing edge must fall back to the default (Production) rather than
+      -- inheriting a propagated kind.
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/orphan_ws")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock orphanLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          let appDir = root </> $(mkRelDir "crates/app")
+              appPid = PackageId "app" "0.1.0" ("path+file://" <> toText (toFilePath appDir))
+          members `shouldBe'` [WorkspaceMember "app" appDir]
+          let orphanPid = mkPkgId "orphan" "1.0.0"
+              childPid = mkPkgId "orphan_child" "2.0.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "app" "0.1.0" appPid Nothing Nothing [] Nothing
+                  , Package "orphan" "1.0.0" orphanPid Nothing Nothing [] (Just registrySource)
+                  , Package "orphan_child" "2.0.0" childPid Nothing Nothing [] (Just registrySource)
+                  ]
+                  [appPid]
+                  ( Resolve
+                      [ ResolveNode appPid []
+                      , ResolveNode orphanPid [NodeDependency childPid [nullKind]]
+                      , ResolveNode childPid []
                       ]
                   )
           meta `shouldBe'` expected

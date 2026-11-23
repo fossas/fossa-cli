@@ -1,0 +1,10 @@
+[package]
+name = "app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+a = "1.0"
+
+[dev-dependencies]
+c = "1.0"
