@@ -8,7 +8,7 @@
 - Elixir: compiled git dependencies are now reported at the commit they are locked to instead of their package version. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
 - SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
-- Discovery: Performance optimizations
+- Discovery: Performance optimizations (PRs [#1819](https://github.com/fossas/fossa-cli/pull/1819), [#1821](https://github.com/fossas/fossa-cli/pull/1821), [#1852](https://github.com/fossas/fossa-cli/pull/1852))
 
 ## 3.20.13
 
