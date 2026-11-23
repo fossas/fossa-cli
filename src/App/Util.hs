@@ -7,6 +7,7 @@ module App.Util (
   validateFile,
   guardStrictMode,
   FileAncestry (..),
+  withPathPrefix,
 ) where
 
 import App.Types
@@ -53,6 +54,11 @@ ancestryDerived :: Has Diagnostics sig m => FileAncestry -> Path Abs Dir -> Path
 ancestryDerived parent dir file = do
   rel <- ancestryDirect dir file
   pure $ fileAncestryPath parent </> rel
+
+-- | Prepends the path of the archive a directory was unpacked from, if any, so
+-- the directory's path is relative to the scan rather than to the archive.
+withPathPrefix :: Maybe FileAncestry -> Path Rel Dir -> Path Rel Dir
+withPathPrefix pathPrefix rel = maybe rel ((</> rel) . fileAncestryPath) pathPrefix
 
 -- | Guards analysis strategies depending on the mode. On strict mode, emit an error to end the chain of diagnostics to prevent
 -- other strategies to be executed. On non-strict mode, allow fallback strategies to be executed.

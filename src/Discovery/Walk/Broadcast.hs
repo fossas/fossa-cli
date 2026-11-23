@@ -40,6 +40,7 @@ module Discovery.Walk.Broadcast (
   listingCapacity,
 ) where
 
+import App.Util (FileAncestry)
 import Control.Carrier.Threaded (Handle, fork, handleWait, kill)
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TBMQueue (TBMQueue, closeTBMQueue, newTBMQueueIO, readTBMQueue, writeTBMQueue)
@@ -275,14 +276,15 @@ broadcastStream capacity filters listings consumers =
     recordError errs = void . sendIO . atomically . tryPutTMVar errs
 
 -- | Walk @basedir@ once and fan the listings out to a set of concurrent
--- consumers, as in "broadcastStream".
+-- consumers, as in "broadcastStream".  @pathPrefix@ is as in 'walkStream'.
 withWalkBroadcast ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   , Has (Lift IO) sig m
   ) =>
   AllFilters ->
+  Maybe FileAncestry ->
   Path Abs Dir ->
   [WalkConsumer o m] ->
   m ()
-withWalkBroadcast filters basedir = broadcastStream listingCapacity filters (walkStream filters basedir)
+withWalkBroadcast filters pathPrefix basedir = broadcastStream listingCapacity filters (walkStream filters pathPrefix basedir)

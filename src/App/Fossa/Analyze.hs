@@ -93,7 +93,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
-import App.Util (FileAncestry (..), ancestryDirect)
+import App.Util (FileAncestry, ancestryDirect, withPathPrefix)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -136,7 +136,7 @@ import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (Result, resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, globMatchesDir, ignoredPaths, isDefaultNonProductionPath, properAncestors)
 import Discovery.Projects (withDiscoveredProjects)
 import Discovery.Walk (enumeratePrunedSubtrees)
 import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
@@ -152,8 +152,7 @@ import Effect.Logger (
 import Effect.ReadFS (ReadFS)
 import Errata (Errata (..))
 import Fossa.API.Types (Organization (Organization, orgSnippetScanSourceCodeRetentionDays, orgSupportsGitBackedCargoLocators, orgSupportsReachability))
-import Path (Abs, Dir, Path, Rel, toFilePath)
-import Path qualified as P
+import Path (Abs, Dir, Path, toFilePath)
 import Path.IO (makeRelative)
 import Prettyprinter (
   Pretty (pretty),
@@ -283,10 +282,14 @@ applyFiltersToProject basedir pathPrefix filters DiscoveredProject{..} =
     -- so keep the project rather than silently dropping it.
     Nothing -> Just projectBuildTargets
     Just rel -> do
-      applyFilters filters (toText projectType) (withPathPrefix rel) projectBuildTargets
+      let path = withPathPrefix pathPrefix rel
+      if isJust pathPrefix && excludedByGlobAbove path
+        then Nothing
+        else applyFilters filters (toText projectType) path projectBuildTargets
   where
-    withPathPrefix :: Path Rel Dir -> Path Rel Dir
-    withPathPrefix rel = maybe rel ((P.</> rel) . fileAncestryPath) pathPrefix
+    -- Nothing prunes by an archive's own path or the folders above it, and
+    -- 'applyFilters' only matches globs against the project's own path.
+    excludedByGlobAbove path = any (\g -> any (globMatchesDir g) (properAncestors path)) (combinedPathGlobs (excludeFilters filters))
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
@@ -342,7 +345,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       entriesResult <-
         runDiscovery $ do
           entries <- traverse prepare discoverFuncs
-          withWalkBroadcast filters basedir (concatMap entryConsumers entries)
+          withWalkBroadcast filters pathPrefix basedir (concatMap entryConsumers entries)
           pure entries
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where

@@ -3,28 +3,40 @@
 
 module App.Fossa.AnalyzeSpec (spec) where
 
-import App.Fossa.Analyze (applyFiltersToProject, sendToDestination)
+import App.Fossa.Analyze (applyFiltersToProject, runAnalyzers, sendToDestination)
 import App.Fossa.Analyze.Discover (DiscoverFunc, discoverFuncs)
-import App.Fossa.Config.Analyze (StrategyConfig)
+import App.Fossa.Analyze.Types (DiscoveredProjectIdentifier (dpiProjectPath), DiscoveredProjectScan (..))
+import App.Fossa.Config.Analyze (AnalysisTacticTypes (StaticOnly), StrategyConfig (..), UseGitBackedCargoLocators (UseGitBackedCargoLocators))
 import App.Fossa.Config.Common (DestinationMeta (DestinationMeta), ScanDestination (..))
-import App.Types (Mode, OverrideDynamicAnalysisBinary)
+import App.Types (Mode (NonStrict), OverrideDynamicAnalysisBinary (OverrideDynamicAnalysisBinary))
 import App.Util (FileAncestry (FileAncestry), ancestryDerived, ancestryDirect)
+import Control.Carrier.AtomicCounter (runAtomicCounter)
 import Control.Carrier.Debug (DebugC)
 import Control.Carrier.Diagnostics (DiagnosticsC)
-import Control.Carrier.Reader (ReaderC)
+import Control.Carrier.Output.IO (runOutput)
+import Control.Carrier.Reader (ReaderC, runReader)
 import Control.Carrier.Stack (StackC)
 import Control.Carrier.State.Strict (runState)
-import Control.Carrier.Telemetry (TelemetryC)
+import Control.Carrier.TaskPool (withTaskPool)
+import Control.Carrier.Telemetry (TelemetryC, withoutTelemetry)
 import Control.Effect.Diagnostics (Diagnostics, Has)
+import Control.Effect.Lift (sendIO)
 import Control.Effect.State (modify)
 import Data.Aeson qualified as Aeson
-import Discovery.Archive (convertArchiveToDir)
-import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters, comboExclude, comboInclude)
+import Data.Flag (toFlag')
+import Data.Foldable (for_)
+import Data.Glob qualified as Glob
+import Data.List (sort)
+import Data.Text (Text)
+import Discovery.Archive (convertArchiveToDir, mkZip)
+import Discovery.Archive qualified as Archive
+import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeExcludeFilters), comboExclude, comboExcludeWithGlobs, comboInclude)
 import Effect.Exec (ExecIOC)
 import Effect.Logger (LoggerC)
 import Effect.ReadFS (ReadFSIOC)
-import Path (Abs, Dir, File, Path, Rel, mkAbsDir, mkRelDir, mkRelFile, (</>))
-import Test.Effect (it', shouldBe')
+import Path (Abs, Dir, File, Path, Rel, dirname, mkAbsDir, mkRelDir, mkRelFile, toFilePath, (</>))
+import Path.IO (createDirIfMissing)
+import Test.Effect (EffectStack, it', shouldBe', withTempDir)
 import Test.Fixtures qualified as Fixtures
 import Test.Hspec (Spec, describe, it, shouldBe)
 import Type.Operator (type ($))
@@ -55,6 +67,12 @@ spec = do
       it "excludes a project not matching an inclusion filter" $
         applyFiltersToProject scanRoot Nothing (including $(mkRelDir "app")) (project . inScan $ $(mkRelDir "third-party/lib")) `shouldBe` Nothing
 
+      -- The walk prunes folders matching an exclusion glob before it reaches
+      -- the projects inside them.
+      it "matches exclusion globs against the project's own path only" $ do
+        applyFiltersToProject scanRoot Nothing (excludingGlob "bundles/*") (project . inScan $ $(mkRelDir "bundles/lib")) `shouldBe` Nothing
+        applyFiltersToProject scanRoot Nothing (excludingGlob "bundles/*") (project . inScan $ $(mkRelDir "bundles/lib/app")) `shouldBe` Just ProjectWithoutTargets
+
     -- Archives are unpacked to a temp directory, so filters have to be applied
     -- to the archive's path in the scan (carried by the 'FileAncestry' prefix)
     -- rather than to the temp path the contents actually live at.
@@ -77,6 +95,9 @@ spec = do
       it "excludes archive contents not matching an inclusion filter" $
         applyFiltersToProject unpackedRoot (ancestry $(mkRelDir "third-party/lib.zip")) (including $(mkRelDir "vendor")) (project unpackedProject) `shouldBe` Nothing
 
+      it "excludes archive contents when an exclusion glob matches the archive's path in the scan" $
+        applyFiltersToProject unpackedRoot (ancestry $(mkRelDir "bundles/lib.zip")) (excludingGlob "bundles/*.zip") (project unpackedProject) `shouldBe` Nothing
+
     -- Unpacking is recursive: an archive inside an archive gets an ancestry
     -- prefix accumulating every archive between it and the scan root.
     describe "projects inside a nested archive" $ do
@@ -88,6 +109,28 @@ spec = do
 
       it "keeps nested archive contents when no filter matches" $
         applyFiltersToProject nestedUnpackedRoot (ancestry $(mkRelDir "vendor/outer.zip/nested/inner.zip")) (excluding $(mkRelDir "third-party")) (project nestedUnpackedProject) `shouldBe` Just ProjectWithoutTargets
+
+      it "excludes nested archive contents when an exclusion glob matches the outer archive" $
+        applyFiltersToProject nestedUnpackedRoot (ancestry $(mkRelDir "bundles/outer.zip/nested/inner.zip")) (excludingGlob "bundles/*.zip") (project nestedUnpackedProject) `shouldBe` Nothing
+
+  -- Runs @--unpack-archives@ discovery end to end, so filters are checked both
+  -- while walking an archive's contents and on each project found in them.
+  describe "projects found by unpacking archives" $ do
+    it' "keeps the projects in an archive under an included folder" $ do
+      found <- scanArchive $(mkRelDir "vendor") (including $(mkRelDir "vendor"))
+      found `shouldBe'` [($(mkRelDir "app"), "scanned"), ($(mkRelDir "dep"), "scanned")]
+
+    it' "doesn't exclude a folder inside an archive by its path inside the archive" $ do
+      found <- scanArchive $(mkRelDir "vendor") (excluding $(mkRelDir "app"))
+      found `shouldBe'` [($(mkRelDir "app"), "scanned"), ($(mkRelDir "dep"), "scanned")]
+
+    it' "skips the projects in an archive matching an exclusion glob" $ do
+      found <- scanArchive $(mkRelDir "bundles") (excludingGlob "bundles/*.zip")
+      found `shouldBe'` [($(mkRelDir "app"), "skipped"), ($(mkRelDir "dep"), "skipped")]
+
+    it' "prunes a folder inside an archive matching an exclusion glob" $ do
+      found <- scanArchive $(mkRelDir "bundles") (excludingGlob "**/vendor")
+      found `shouldBe'` [($(mkRelDir "app"), "scanned")]
 
   -- The tests above hand 'applyFiltersToProject' an already-correct prefix.
   -- These pin down the code that derives it, so that a regression there is not
@@ -206,6 +249,49 @@ ancestry = Just . FileAncestry
 
 excluding :: Path Rel Dir -> AllFilters
 excluding path = AllFilters mempty (comboExclude mempty [path])
+
+excludingGlob :: String -> AllFilters
+excludingGlob glob = AllFilters mempty (comboExcludeWithGlobs mempty mempty [Glob.unsafeGlobRel glob])
+
+-- | Runs @--unpack-archives@ discovery the way 'App.Fossa.Analyze.analyze'
+-- does, over a scan holding @lib.zip@ in @folder@, with pip projects at @app/@
+-- and @vendor/dep/@ inside the archive. Returns each project found, by its
+-- folder name, and whether it was scanned. Default filters are off, so only
+-- @filters@ decide.
+scanArchive :: Path Rel Dir -> AllFilters -> EffectStack [(Path Rel Dir, Text)]
+scanArchive folder filters = withTempDir "test-App-Fossa-Analyze-archive" $ \tmp -> do
+  let contents = tmp </> $(mkRelDir "contents")
+      scan = tmp </> $(mkRelDir "scan")
+      archive = scan </> folder </> $(mkRelFile "lib.zip")
+  sendIO . for_ [$(mkRelDir "app"), $(mkRelDir "vendor/dep")] $ \dir -> do
+    createDirIfMissing True (contents </> dir)
+    writeFile (toFilePath (contents </> dir </> $(mkRelFile "requirements.txt"))) "six==1.16.0\n"
+  sendIO $ createDirIfMissing True (scan </> folder)
+  mkZip contents archive
+  (scans, ()) <-
+    runOutput @DiscoveredProjectScan
+      . withTaskPool 1 (const (pure ()))
+      . runAtomicCounter
+      . withoutTelemetry
+      . runReader strategyConfig
+      . runReader (MavenScopeExcludeFilters mempty)
+      . runReader filters
+      . runReader (OverrideDynamicAnalysisBinary mempty)
+      . runReader NonStrict
+      $ Archive.discover (runAnalyzers StaticOnly filters (toFlag' True)) scan ancestryDirect
+  pure . sort $ map outcome scans
+  where
+    strategyConfig =
+      StrategyConfig
+        { allowedGradleConfigs = Nothing
+        , resolvePathDependencies = False
+        , useGitBackedCargoLocators = UseGitBackedCargoLocators False
+        , enableGoBinaryAnalysis = False
+        }
+    outcome :: DiscoveredProjectScan -> (Path Rel Dir, Text)
+    outcome (Scanned dpi _) = (dirname (dpiProjectPath dpi), "scanned")
+    outcome (SkippedDueToProvidedFilter dpi) = (dirname (dpiProjectPath dpi), "skipped")
+    outcome (SkippedDueToDefaultFilter dpi) = (dirname (dpiProjectPath dpi), "skipped by default filters")
 
 including :: Path Rel Dir -> AllFilters
 including path = AllFilters (comboInclude mempty [path]) mempty
