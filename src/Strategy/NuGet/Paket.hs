@@ -1,6 +1,4 @@
 module Strategy.NuGet.Paket (
-  discover,
-  findProjects,
   getDeps,
   mkProject,
   findSections,
@@ -18,7 +16,6 @@ import Control.Effect.Diagnostics (
   context,
   run,
  )
-import Control.Effect.Reader (Reader)
 import Control.Monad (guard)
 import Data.Aeson (ToJSON)
 import Data.Char qualified as C
@@ -34,12 +31,9 @@ import DepTypes (
   Dependency (..),
   VerConstraint (CEq),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Grapher (
   LabeledGrapher,
@@ -72,12 +66,6 @@ import Types (
  )
 
 type Parser = Parsec Void Text
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PaketProject]
-discover = simpleDiscover findProjects mkProject PaketProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PaketProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PaketProject], WalkStep)
 discoverVisitor _ _ files = do

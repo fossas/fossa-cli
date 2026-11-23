@@ -310,10 +310,9 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
 
 -- | Walk the tree once at startup and surface every directory the path
 -- filters will prune. Each prune is logged once at info level here, instead
--- of emitting per-strategy duplicates from inside the walker (~28 strategies
--- would otherwise each report the same prune). Short-circuits when no path
--- filters are configured so the extra walk is only paid for when it can
--- produce output.
+-- of emitting per-strategy duplicates from inside the walker. Short-circuits
+-- when no path filters are configured so the extra walk is only paid for
+-- when it can produce output.
 logPrunedSubtrees ::
   ( Has Logger sig m
   , Has ReadFS sig m

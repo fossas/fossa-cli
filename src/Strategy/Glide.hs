@@ -1,19 +1,14 @@
 module Strategy.Glide (
-  discover,
   discoverVisitor,
   mkProject,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import Control.Effect.Diagnostics (Diagnostics, context)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
@@ -24,12 +19,6 @@ import Types (
   DiscoveredProject (..),
   DiscoveredProjectType (GlideProjectType),
  )
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject GlideProject]
-discover = simpleDiscover findProjects mkProject GlideProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [GlideProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([GlideProject], WalkStep)
 discoverVisitor dir _ files = do

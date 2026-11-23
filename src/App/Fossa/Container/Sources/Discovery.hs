@@ -191,20 +191,9 @@ managedDepsDiscoveryF =
       Uv.discoverVisitor
       (cachedDiscover UvProjectType Uv.mkProject)
       --
-      -- Following can be performed only with dynamic analysis.
-      -- So we don not do any discovery for them (to avoid error noise)
+      -- Some strategies can only be analyzed with dynamic analysis, so we don't
+      -- do any discovery for them (to avoid error noise).
       --
-      -- , DiscoverFunc Cabal.discover
-      -- , DiscoverFunc Cargo.discover
-      -- , DiscoverFunc Conda.discover
-      -- , DiscoverFunc Godep.discover
-      -- , DiscoverFunc Gomodules.discover
-      -- , DiscoverFunc Gradle.discover
-      -- , DiscoverFunc Leiningen.discover
-      -- , DiscoverFunc Mix.discover
-      -- , DiscoverFunc Rebar3.discover
-      -- , DiscoverFunc Scala.discover
-      -- , DiscoverFunc Stack.discover
   ]
 
 -- | Logs a discovered project, with it's project type, path, targets, and layer in info severity.

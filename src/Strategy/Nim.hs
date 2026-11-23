@@ -1,20 +1,14 @@
 module Strategy.Nim (
-  discover,
-  findProjects,
   mkProject,
   discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
 import Control.Effect.Diagnostics (Diagnostics)
-import Control.Effect.Reader (Reader)
 import Data.Aeson (ToJSON)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (Exec)
 import Effect.ReadFS (Has, ReadFS)
@@ -34,12 +28,6 @@ instance ToJSON NimbleProject
 instance AnalyzeProject NimbleProject where
   analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ = getDepsStatically
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject NimbleProject]
-discover = simpleDiscover findProjects mkProject NimbleProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [NimbleProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([NimbleProject], WalkStep)
 discoverVisitor dir _ files = do

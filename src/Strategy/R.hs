@@ -1,6 +1,4 @@
 module Strategy.R (
-  discover,
-  findProjects,
   mkProject,
   discoverVisitor,
 ) where
@@ -8,19 +6,15 @@ module Strategy.R (
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProject, analyzeProjectStaticOnly))
 import Control.Carrier.Diagnostics (errDoc, errHelp)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr)
-import Control.Effect.Reader (Reader)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipSome),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.ReadFS (Has, ReadFS)
 import GHC.Generics (Generic)
@@ -58,24 +52,6 @@ instance ToJSON RProject
 instance AnalyzeProject RProject where
   analyzeProject _ = getDeps
   analyzeProjectStaticOnly _ = getDeps
-
-discover ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [DiscoveredProject RProject]
-discover = simpleDiscover findProjects mkProject RProjectType
-
-findProjects ::
-  ( Has ReadFS sig m
-  , Has Diagnostics sig m
-  , Has (Reader AllFilters) sig m
-  ) =>
-  Path Abs Dir ->
-  m [RProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([RProject], WalkStep)
 discoverVisitor dir _ files = do

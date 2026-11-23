@@ -1,7 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Strategy.Conda (
-  discover,
   discoverVisitor,
   mkProject,
 ) where
@@ -16,15 +15,12 @@ import Control.Effect.Diagnostics (
   recover,
   warnOnErr,
  )
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Data.Aeson (ToJSON)
 import Data.String.Conversion (toText)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (Exec, GetDepsEffs)
 import Effect.Logger (Logger, logDebug, pretty)
@@ -46,12 +42,6 @@ data DynamicAnalysisFailed = DynamicAnalysisFailed
 instance ToDiagnostic DynamicAnalysisFailed where
   renderDiagnostic DynamicAnalysisFailed =
     Errata (Just "Dynamic analysis via 'conda env create' failed") [] Nothing
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject CondaProject]
-discover = simpleDiscover findProjects mkProject CondaProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [CondaProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([CondaProject], WalkStep)
 discoverVisitor dir _ files = do

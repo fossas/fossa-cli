@@ -1,8 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Strategy.Haskell.Stack (
-  discover,
-
   -- * Testing
   buildGraph,
   GitUrl (..),
@@ -22,7 +20,6 @@ import Control.Effect.Diagnostics (
   fatalText,
   fromEither,
  )
-import Control.Effect.Reader (Reader)
 import Control.Monad (when)
 import Data.Aeson.Types (
   FromJSON (parseJSON),
@@ -37,12 +34,9 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (mapMaybe)
 import Data.String.Conversion (toString)
 import Data.Text (Text)
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
   WalkStep (WalkContinue, WalkSkipAll),
   findFileNamed,
-  walkWithFilters',
  )
 import Effect.Exec (AllowErr (Never), Command (..), Exec, execJson)
 import Effect.Grapher (
@@ -113,12 +107,6 @@ instance FromJSON StackLocation where
         txt
           | txt `elem` ["project package", "archive"] -> pure Local
           | otherwise -> fail $ "Bad location type: " ++ toString txt
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject StackProject]
-discover = simpleDiscover findProjects mkProject StackProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [StackProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([StackProject], WalkStep)
 discoverVisitor dir _ files = do

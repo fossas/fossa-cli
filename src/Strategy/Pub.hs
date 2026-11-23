@@ -1,6 +1,5 @@
 -- | Pub, the Dart dependency manager.
 module Strategy.Pub (
-  discover,
   discoverVisitor,
   mkProject,
 ) where
@@ -9,16 +8,14 @@ import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analy
 import App.Util (guardStrictMode)
 import Control.Carrier.Diagnostics (errDoc, errHelp)
 import Control.Effect.Diagnostics (Diagnostics, errCtx, fatalText, recover, warnOnErr, (<||>))
-import Control.Effect.Reader (Reader, ask)
+import Control.Effect.Reader (ask)
 import Control.Monad (void)
 import Data.Aeson (ToJSON)
 import Diag.Common (
   MissingDeepDeps (MissingDeepDeps),
   MissingEdges (MissingEdges),
  )
-import Discovery.Filters (AllFilters)
-import Discovery.Simple (simpleDiscover)
-import Discovery.Walk (WalkStep (WalkContinue), findFileNamed, walkWithFilters')
+import Discovery.Walk (WalkStep (WalkContinue), findFileNamed)
 import Effect.Exec (GetDepsEffs, Has)
 import Effect.Logger (Logger)
 import Effect.ReadFS (ReadFS)
@@ -29,12 +26,6 @@ import Strategy.Dart.PubDeps (analyzeDepsCmd)
 import Strategy.Dart.PubSpec (analyzePubSpecFile)
 import Strategy.Dart.PubSpecLock (analyzePubLockFile)
 import Types (DependencyResults (..), DiscoveredProject (..), DiscoveredProjectType (PubProjectType))
-
-discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [DiscoveredProject PubProject]
-discover = simpleDiscover findProjects mkProject PubProjectType
-
-findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PubProject]
-findProjects = walkWithFilters' discoverVisitor
 
 discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PubProject], WalkStep)
 discoverVisitor dir _ files = do
