@@ -156,8 +156,8 @@ buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markD
     graphOf :: Set (UvLockPackage, Text) -> Set Text -> Graphing UvLockPackage
     graphOf requested excluded = run . evalGrapher $ traverse_ (mkEdges requested excluded) (virtualRoot : packages)
 
-    -- Each extra is reported under the package that defines it, the way `uv tree` shows it, but its
-    -- packages are labeled by what asks for the extra, using a graph where they hang off that instead.
+    -- Each extra is reported under the package that defines it, the way `uv tree` shows it, but a requested
+    -- extra's packages are labeled by what asks for it, using a graph where they hang off that instead.
     -- Packages that graph leaves out, like an extra only an excluded group asks for, are left out here too.
     withLabels :: Graphing UvLockPackage -> Graphing Dependency
     withLabels = gmap (\dep -> dep{dependencyEnvironments = Map.findWithDefault mempty dep labels}) . induce (`Map.member` labels) . gmap (`toDependency` mempty)
@@ -206,13 +206,13 @@ buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markD
     extrasOf :: UvLockPackageDependency -> [(UvLockPackage, Text)]
     extrasOf dep = (,) <$> resolveDependency dep <*> uvlockPackageDependencyExtras dep
 
-    -- Every extra a dependency or a dependency group asks for, and every extra those extras ask for.
-    -- Excluded groups count, so an extra only they ask for is left out with them. An extra only the
-    -- project's own extras ask for, like `requests[socks]` in a legacy `dev` extra, stays under its package.
+    -- Every extra a dependency group asks for, and every extra those extras ask for. Excluded groups
+    -- count, so an extra only they ask for is left out with them. Any other extra stays under its
+    -- package, like `requests[socks]` in `dependencies` or in a legacy `dev` extra.
     requestedExtras :: Set (UvLockPackage, Text)
     requestedExtras = Set.fromList $ foldMap (foldMap extrasOf . foldMap (withExtras everyExtra) . declared) (virtualRoot : packages)
       where
-        declared pkg = uvlockPackageDependencies pkg <> fold (uvlockPackageDevDependencies pkg)
+        declared pkg = fold (uvlockPackageDevDependencies pkg)
         everyExtra = foldMap (\pkg -> Set.map (pkg,) (Map.keysSet (uvlockPackageOptionalDependencies pkg))) packages
 
     -- A package's dependency groups hang off a root of their own, so they're labeled by group name

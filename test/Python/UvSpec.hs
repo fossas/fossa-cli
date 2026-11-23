@@ -468,9 +468,9 @@ spec = do
         result
 
   -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
-  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, uv-extras.lock, and
-  -- uv-dev-extra.lock from 0.13.9, without the sdist and wheel entries. uv-groups.lock also leaves out the
-  -- packages these tests don't look at.
+  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, uv-extras.lock,
+  -- uv-dev-extra.lock, and uv-transitive-extra.lock from 0.13.9, without the sdist and wheel entries.
+  -- uv-groups.lock also leaves out the packages these tests don't look at.
   describe "dependency groups" $ do
     let prod = Set.fromList [EnvProduction]
         dev = Set.fromList [EnvDevelopment]
@@ -566,12 +566,12 @@ spec = do
 
     -- The project needs requests[use-chardet-on-py3], and its dev group asks for requests[socks] and
     -- requests-oauthlib[rsa], whose rsa extra asks for oauthlib[signedtoken].
-    it' "labels an extra's packages by what asks for the extra" $ do
+    it' "labels an extra's packages by the group that asks for the extra" $ do
       parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-extras.lock|]
       let requests = ["requests", "certifi", "charset-normalizer", "idna", "urllib3"]
           devOnly = ["pysocks", "requests-oauthlib", "oauthlib", "cryptography", "pyjwt", "cffi", "pycparser"]
 
-      labels parsed mempty mempty `shouldBe'` Map.fromList (("chardet", prod) : map (,prodAndDev) requests <> map (,dev) devOnly)
+      labels parsed mempty mempty `shouldBe'` Map.fromList (map (,prodAndDev) ("chardet" : requests) <> map (,dev) devOnly)
       labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList (map (,prod) ("chardet" : requests))
 
     -- Same lockfile. `uv tree` shows each extra under the package that defines it.
@@ -604,3 +604,13 @@ spec = do
           oauthlib = ["oauthlib", "cryptography", "pyjwt", "cffi", "pycparser"]
 
       labels parsed mempty mempty `shouldBe'` Map.fromList (("requests-oauthlib", dev) : map (,prodAndDev) (requests <> oauthlib))
+
+    -- The project needs jsonschema, and its legacy dev extra asks for jupyter-events, which asks for
+    -- jsonschema[format-nongpl].
+    it' "labels an extra's packages by the package that defines it when another package asks for it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-transitive-extra.lock|]
+      let jsonschema = ["jsonschema", "attrs", "jsonschema-specifications", "referencing", "rpds-py"]
+          formatNongpl = ["fqdn", "idna", "isoduration", "arrow", "python-dateutil", "tzdata", "jsonpointer", "rfc3339-validator", "six", "rfc3986-validator", "rfc3987-syntax", "lark", "uri-template", "webcolors"]
+          jupyterEvents = ["jupyter-events", "packaging", "python-json-logger", "pyyaml", "traitlets"]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList (map (,prodAndDev) (jsonschema <> formatNongpl) <> map (,dev) jupyterEvents)
