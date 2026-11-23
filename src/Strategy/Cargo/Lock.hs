@@ -1018,23 +1018,25 @@ lockfileToMetadata lock members analysis =
       pure (child, nodeDepKindsSet p dep)
 
     -- Per-package propagation of dependency kinds over the lockfile graph:
-    -- a depth-first walk from the seeded roots. A package's set is the union
-    -- of every kind under which it is reachable from a member edge. The
-    -- subset guard prunes revisits, so the walk terminates even on the
-    -- cyclic lockfiles cargo permits (dev-dependency cycles) while still
-    -- unioning every reaching kind. A package left with no set is
-    -- unreachable from any member (stale lockfile residue) and is
-    -- relabelled Production by 'nodeDepFor'.
+    -- every package reachable from a member edge acquires that edge's kind
+    -- set, so a package's set is the union of the kind sets under which it
+    -- is reachable. Each seed edge runs one plain worklist reachability walk
+    -- (same idiom as "Strategy.Cargo.MetadataCmd"; the seen set guards
+    -- against the cyclic lockfiles cargo permits via dev-dependency
+    -- cycles). A package left with no set is unreachable from any member
+    -- (stale lockfile residue) and is relabelled Production by
+    -- 'nodeDepFor'.
     propagated =
-      foldl' (\acc (child, ks) -> propagateFrom acc child ks) Map.empty seedEdges
+      Map.unionsWith Set.union $
+        map (\(child, kinds) -> Map.fromSet (const kinds) (reachFrom child)) seedEdges
 
-    propagateFrom acc pid ks
-      | maybe False (Set.isSubsetOf ks) (Map.lookup pid acc) = acc
-      | otherwise =
-          foldl'
-            (\acc' child -> propagateFrom acc' child ks)
-            (Map.insertWith Set.union pid ks acc)
-            (Map.findWithDefault [] pid childMap)
+    reachFrom :: PackageId -> Set.Set PackageId
+    reachFrom root = go Set.empty [root]
+      where
+        go seen [] = seen
+        go seen (pid : todo)
+          | Set.member pid seen = go seen todo
+          | otherwise = go (Set.insert pid seen) (Map.findWithDefault [] pid childMap ++ todo)
 
     resolveNodes =
       map
