@@ -1,7 +1,9 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.21.1
 
+- Discovery: the shared discovery walk no longer traverses directories that the default filters skip (`node_modules/`, `vendor/`, `test/`, ...), fixing a large `fossa analyze` slowdown on repositories with large dependency trees when a target filter is set (e.g. 3.5 s -> 65 s on a yarn-only monorepo). ([#1861](https://github.com/fossas/fossa-cli/pull/1861))
+- Analysis: default-filter path matching is now per path component instead of substring, so directories whose names merely contain a filtered name (e.g. `.github/` vs `.git`) are no longer skipped. Also fixes the check never matching on Windows. ([#1861](https://github.com/fossas/fossa-cli/pull/1861))
 - Analysis: `--unpack-archives` now applies path filters to the archive's path in the scan ([#1745](https://github.com/fossas/fossa-cli/pull/1745))
 - Conda: `environment.yml` files with `-r requirements.txt` in their `pip:` section no longer fail analysis. ([#1860](https://github.com/fossas/fossa-cli/pull/1860))
 

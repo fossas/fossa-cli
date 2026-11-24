@@ -73,7 +73,7 @@ spec =
 
         let filters = excludePath $(mkRelDir "a/b")
 
-        emitted <- collect (walkStream filters Nothing tmpDir)
+        emitted <- collect (walkStream filters Nothing False tmpDir)
         reference <- collectWalkFiltered filters tmpDir
 
         normalizeSet emitted `shouldBe'` normalizeSet (map toListing reference)
@@ -84,11 +84,48 @@ spec =
         Set.member b visited `shouldBe'` True
         sendIO $ traverse_ (const (pure ())) [ab, abc]
 
+    it' "prunes default non-production paths when asked to" $
+      withTempDir "test-Discovery-WalkStream-nonproduction" $ \tmpDir -> do
+        -- 'contest' and '.github' merely CONTAIN default-skipped names as
+        -- substrings ('test', '.git'); 'testdata' contains 'test' too.  They
+        -- are matched per component, so they must be kept.
+        let dirs@[nm, nmPkg, keep, contest, github, testdata] =
+              map
+                (tmpDir </>)
+                [ $(mkRelDir "node_modules")
+                , $(mkRelDir "node_modules/dep")
+                , $(mkRelDir "keep")
+                , $(mkRelDir "contest")
+                , $(mkRelDir ".github")
+                , $(mkRelDir "testdata")
+                ]
+        sendIO $ do
+          traverse_ createDir dirs
+          for_ [tmpDir, nmPkg, keep, contest, github, testdata] $ \d ->
+            writeFile (toFilePath (d </> $(mkRelFile "Package.swift"))) "// swift-tools"
+
+        -- With the prune, nothing under node_modules/ is listed or descended;
+        -- directories whose names merely contain a skipped name are kept.
+        pruned <- collect (walkStream (mempty :: AllFilters) Nothing True tmpDir)
+        let prunedDirs = Set.map dlDir (Set.fromList pruned)
+        Set.member nm prunedDirs `shouldBe'` False
+        Set.member nmPkg prunedDirs `shouldBe'` False
+        Set.member keep prunedDirs `shouldBe'` True
+        Set.member contest prunedDirs `shouldBe'` True
+        Set.member github prunedDirs `shouldBe'` True
+        Set.member testdata prunedDirs `shouldBe'` True
+
+        -- Without it, the node_modules/ subtree is walked as before.
+        unpruned <- collect (walkStream (mempty :: AllFilters) Nothing False tmpDir)
+        let unprunedDirs = Set.map dlDir (Set.fromList unpruned)
+        Set.member nm unprunedDirs `shouldBe'` True
+        Set.member nmPkg unprunedDirs `shouldBe'` True
+
     it' "prunes an unpacked archive's directories by their path in the scan" $
       withTempDir "test-Discovery-WalkStream-archive" $ \tmpDir -> do
         let app = tmpDir </> $(mkRelDir "app")
             inArchive = Just (FileAncestry $(mkRelDir "vendor/lib.zip"))
-            visits filters pathPrefix = Set.fromList . map dlDir <$> collect (walkStream filters pathPrefix tmpDir)
+            visits filters pathPrefix = Set.fromList . map dlDir <$> collect (walkStream filters pathPrefix False tmpDir)
         sendIO $ createDir app
 
         includingVendor <- visits (AllFilters (comboInclude mempty [$(mkRelDir "vendor")]) mempty) inArchive
@@ -159,7 +196,7 @@ spec =
           composerSink <- sendIO $ newIORef ([] :: [Composer.ComposerProject])
           let visitC dir subdirs files = accumulate cargoSink (Cargo.discoverVisitor dir subdirs files)
               visitK dir subdirs files = accumulate composerSink (Composer.discoverVisitor dir subdirs files)
-          void . S.effects $ runVisitors [visitC, visitK] (walkStream filters Nothing tmpDir)
+          void . S.effects $ runVisitors [visitC, visitK] (walkStream filters Nothing False tmpDir)
           newResult <-
             runReader filters $
               do
