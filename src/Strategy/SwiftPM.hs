@@ -3,18 +3,25 @@
 module Strategy.SwiftPM (
   discover,
   mkProject,
-  SwiftProject,
+  discoverVisitor,
+  SwiftProject (..),
+
+  -- * for testing
+  SwiftPackageProject (..),
+  getDepsStatic,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (..))
+import App.Types (Mode)
 import App.Util (guardStrictMode)
 import Control.Carrier.Simple (Has)
-import Control.Effect.Diagnostics (Diagnostics, context, warnOnErr, (<||>))
+import Control.Effect.Diagnostics (Diagnostics, context, errCtx, errDoc, errHelp, fatalText, warnOnErr, (<||>))
 import Control.Effect.Reader (Reader, ask)
 import Data.Aeson (ToJSON)
 import Data.Functor (($>))
 import Data.Maybe (listToMaybe)
-import Diag.Common (MissingEdges (MissingEdges))
+import DepTypes (Dependency)
+import Diag.Common (AllDirectDeps (AllDirectDeps), MissingEdges (MissingEdges))
 import Discovery.Filters (AllFilters)
 import Discovery.Simple (simpleDiscover)
 import Discovery.Walk (
@@ -26,7 +33,16 @@ import Effect.Exec (GetDepsEffs)
 import Effect.Logger (Logger, Pretty (pretty), logDebug)
 import Effect.ReadFS (ReadFS)
 import GHC.Generics (Generic)
+import Graphing (Graphing)
 import Path (Abs, Dir, File, Path, dirname, reldir)
+import Strategy.Swift.Errors (
+  MissingPackageResolvedFile (MissingPackageResolvedFile),
+  MissingPackageResolvedFileHelp (MissingPackageResolvedFileHelp),
+  swiftFossaDocUrl,
+  swiftPackageResolvedRef,
+  xcodeCoordinatePkgVersion,
+ )
+import Strategy.Swift.PackageResolved (analyzePackageResolved)
 import Strategy.Swift.PackageSwift (analyzePackageSwift)
 import Strategy.Swift.ShowDependencies (analyzeShowDependencies)
 import Strategy.Swift.Xcode.Pbxproj (analyzeXcodeProjForSwiftPkg, hasSomeSwiftDeps)
@@ -70,6 +86,48 @@ findProjects dir = do
   swiftPackageProjects <- context "Finding swift package projects" $ findSwiftPackageProjects dir
   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
   pure (swiftPackageProjects <> xCodeProjects)
+
+-- | Combined per-directory collector for the shared discovery walk.  SwiftPM
+-- looks for both Swift package manifests and Xcode projects in the same
+-- directory, so this runs both checks once and merges their skip decisions.
+discoverVisitor ::
+  ( Has ReadFS sig m
+  , Has Diagnostics sig m
+  , Has Logger sig m
+  , Has (Reader AllFilters) sig m
+  ) =>
+  Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SwiftProject], WalkStep)
+discoverVisitor dir _ files = do
+  let packageManifestFile = findFileNamed "Package.swift" files
+  let packageResolvedFile = findFileNamed "Package.resolved" files
+  -- No diagnostics context on this half: the lookup is pure, so nothing inside
+  -- it can fail and a context would only churn the sticky log per directory.
+  let swiftProj =
+        case (packageManifestFile, packageResolvedFile) of
+          (Just manifestFile, resolvedFile) -> [PackageProject $ SwiftPackageProject manifestFile dir resolvedFile]
+          (Nothing, _) -> []
+  let xcodeProjectFile = findFileNamed "project.pbxproj" files
+  xcodeProj <-
+    case xcodeProjectFile of
+      Nothing ->
+        pure []
+      -- The context wraps only the work below, so it fires for directories that
+      -- actually hold an Xcode project rather than for every directory walked.
+      Just projFile ->
+        context "Finding xcode projects using swift package manager" $ do
+          resolvedFile <- findFirstResolvedFileRecursively dir
+          xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
+          if xCodeProjWithDependencies
+            then pure [XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile]
+            else debugXCodeWithoutSwiftDeps projFile $> []
+  pure
+    ( swiftProj <> xcodeProj
+    , -- Both halves skip the same directory set when they match anything, and
+      -- neither produces a step otherwise, so the union is just this condition.
+      if not (null swiftProj) || not (null xcodeProj)
+        then WalkSkipSome [".build"]
+        else WalkContinue
+    )
 
 findSwiftPackageProjects ::
   ( Has ReadFS sig m
@@ -156,7 +214,7 @@ instance AnalyzeProject SwiftProject where
   analyzeProjectStaticOnly _ = getDepsStatic
 
 -- | Swift packages are analyzed by letting SwiftPM resolve the package graph, falling back to
--- parsing Package.swift and Package.resolved when that fails (no toolchain, no network, ...).
+-- the static strategies when that fails (no toolchain, no network, ...).
 -- Xcode projects are only analyzed statically, because `swift package` cannot read them.
 getDeps :: GetDepsEffs sig m => SwiftProject -> m DependencyResults
 getDeps project@(XcodeProject _) = getDepsStatic project
@@ -174,19 +232,33 @@ getDeps project@(PackageProject prj) = do
           , dependencyManifestFiles = [swiftPkgManifest prj]
           }
 
-getDepsStatic :: (Has ReadFS sig m, Has Diagnostics sig m) => SwiftProject -> m DependencyResults
-getDepsStatic project = do
-  graph <- case project of
-    PackageProject prj -> analyzePackageSwift (swiftPkgManifest prj) (swiftPkgResolved prj)
-    XcodeProject prj -> analyzeXcodeProjForSwiftPkg (xCodeProjectFile prj) (xCodeResolvedFile prj)
-  pure $
-    DependencyResults
-      { dependencyGraph = graph
-      , dependencyGraphBreadth = Partial
-      , dependencyManifestFiles = manifestFiles
-      }
+-- | Swift packages are parsed from Package.swift and Package.resolved, falling back to
+-- Package.resolved alone when the manifest cannot be parsed. Xcode projects are parsed from
+-- project.pbxproj and Package.resolved.
+getDepsStatic :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader Mode) sig m) => SwiftProject -> m DependencyResults
+getDepsStatic (XcodeProject prj) =
+  staticResults (xCodeProjectFile prj) <$> analyzeXcodeProjForSwiftPkg (xCodeProjectFile prj) (xCodeResolvedFile prj)
+getDepsStatic (PackageProject prj) = do
+  mode <- ask
+  staticResults (swiftPkgManifest prj) <$> (warnOnErr AllDirectDeps manifestAnalysis <||> guardStrictMode mode lockfileAnalysis)
   where
-    manifestFiles :: [Path Abs File]
-    manifestFiles = case project of
-      PackageProject prj -> [swiftPkgManifest prj]
-      XcodeProject prj -> [xCodeProjectFile prj]
+    -- The warning surfaces why the manifest was skipped; the lockfile alone cannot tell direct
+    -- dependencies from deep ones.
+    manifestAnalysis = context "Static analysis using Package.swift" $ analyzePackageSwift (swiftPkgManifest prj) (swiftPkgResolved prj)
+    lockfileAnalysis = context "Static analysis using Package.resolved only" $ case swiftPkgResolved prj of
+      Just resolvedFile -> analyzePackageResolved resolvedFile
+      Nothing ->
+        errCtx (MissingPackageResolvedFile (swiftPkgManifest prj))
+          . errHelp MissingPackageResolvedFileHelp
+          . errDoc swiftFossaDocUrl
+          . errDoc swiftPackageResolvedRef
+          . errDoc xcodeCoordinatePkgVersion
+          $ fatalText "Package.resolved file was not discovered"
+
+staticResults :: Path Abs File -> Graphing Dependency -> DependencyResults
+staticResults manifestFile graph =
+  DependencyResults
+    { dependencyGraph = graph
+    , dependencyGraphBreadth = Partial
+    , dependencyManifestFiles = [manifestFile]
+    }

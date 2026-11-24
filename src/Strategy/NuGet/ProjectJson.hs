@@ -8,6 +8,7 @@ module Strategy.NuGet.ProjectJson (
   buildGraph,
   looksLikeNuGetManifest,
   ProjectJson (..),
+  discoverVisitor,
 ) where
 
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
@@ -42,7 +43,7 @@ import Discovery.Walk (
   findFileNamed,
   walkWithFilters',
  )
-import Effect.ReadFS (ReadFS, readContentsJson)
+import Effect.ReadFS (ReadFS, readContentsJsonc)
 import GHC.Generics (Generic)
 import Graphing (Graphing)
 import Graphing qualified
@@ -58,7 +59,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject ProjectJsonProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [ProjectJsonProject]
-findProjects = walkWithFilters' $ \_ _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([ProjectJsonProject], WalkStep)
+discoverVisitor _ _ files = do
   case findFileNamed "project.json" files of
     Nothing -> pure ([], WalkContinue)
     Just file -> do
@@ -73,7 +77,7 @@ findProjects = walkWithFilters' $ \_ _ files -> do
 -- surfaces an analysis error rather than silently disappearing.
 isNuGetManifest :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m Bool
 isNuGetManifest file = do
-  probe <- recover $ readContentsJson @(Map Text Value) file
+  probe <- recover $ readProjectJson @(Map Text Value) file
   pure $ maybe True looksLikeNuGetManifest probe
 
 -- | The legacy NuGet @project.json@ schema has no required key, but a manifest
@@ -107,13 +111,19 @@ getDeps = analyze' . projectJsonFile
 
 analyze' :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m DependencyResults
 analyze' file = do
-  graph <- buildGraph <$> readContentsJson @ProjectJson file
+  graph <- buildGraph <$> readProjectJson @ProjectJson file
   pure $
     DependencyResults
       { dependencyGraph = graph
       , dependencyGraphBreadth = Partial
       , dependencyManifestFiles = [file]
       }
+
+-- | Reads a @project.json@ as JSONC rather than strict JSON: NuGet reads it
+-- with Json.NET, and Nx reads its own @project.json@ with jsonc-parser, so
+-- comments and trailing commas are valid in both.
+readProjectJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
+readProjectJson = readContentsJsonc
 
 newtype ProjectJson = ProjectJson
   { dependencies :: [(Text, DependencyInfo)]
