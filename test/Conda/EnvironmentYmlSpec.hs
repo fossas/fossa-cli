@@ -82,6 +82,43 @@ dependencies:
 prefix: /path/to/env
 |]
 
+-- A pip section may hold entries that pip accepts but that name no package:
+-- options such as @-r requirements.txt@, local paths and URLs. They used to
+-- fail the whole environment.yml with @Could not parse "-r requirements.txt"@.
+condaEnvFileWithPipOptions :: BS.ByteString
+condaEnvFileWithPipOptions =
+  [r|name: testName
+dependencies:
+  - python=3.11
+  - pip:
+    - -r requirements.txt
+    - --extra-index-url https://pypi.example.com/simple
+    - ./vendored/localpkg
+    - git+https://github.com/blaze/dask.git#egg=dask[complete]
+    - pytest-httpserver==1.0.6
+|]
+
+expectedGraphWithPipOptions :: Graphing Dependency
+expectedGraphWithPipOptions = run . evalGrapher $ do
+  direct $
+    Dependency
+      { dependencyType = CondaType
+      , dependencyName = "python"
+      , dependencyVersion = Just (CEq "3.11")
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
+  direct $
+    Dependency
+      { dependencyType = PipType
+      , dependencyName = "pytest-httpserver"
+      , dependencyVersion = Just (CEq "1.0.6")
+      , dependencyLocations = []
+      , dependencyEnvironments = mempty
+      , dependencyTags = Map.empty
+      }
+
 spec :: T.Spec
 spec = do
   T.describe "buildGraph with real environment.yml" $
@@ -89,3 +126,9 @@ spec = do
       case decodeEither' condaEnvFile of
         Left err -> expectationFailure $ "Failed to parse: " ++ prettyPrintParseException err
         Right deps -> buildGraph deps `shouldBe` expectedGraph
+
+  T.describe "buildGraph with pip entries that name no package" $
+    T.it "skips -r files, pip options, paths and URLs instead of failing" $ do
+      case decodeEither' condaEnvFileWithPipOptions of
+        Left err -> expectationFailure $ "Failed to parse: " ++ prettyPrintParseException err
+        Right deps -> buildGraph deps `shouldBe` expectedGraphWithPipOptions

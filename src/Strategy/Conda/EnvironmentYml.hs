@@ -17,7 +17,6 @@ import Data.Aeson.Types (Parser)
 import Data.List.Extra ((!?))
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.String.Conversion (toString)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Vector qualified as Vector
@@ -116,7 +115,10 @@ data CondaPkg
 -- For to generate a Pip dep, it's not clear what name to give the Pip package.
 -- Supporting URLs like this is will require more research.
 --
--- The @-r requirements.txt@ is also not currently supported due to time constraints and because no customer has reported an issue with this.
+-- The @-r requirements.txt@ form is not followed either. Both it and URLs are
+-- skipped, the same way 'requirementsTxtParser' skips them in a
+-- requirements.txt; the referenced requirements.txt is discovered and analyzed
+-- as its own target.
 instance FromJSON CondaPkg where
   parseJSON cd = (Pkg <$> parseJSON cd) <|> withObject "CondaPipPkg" parseOtherPkgManager cd
     where
@@ -130,10 +132,12 @@ instance FromJSON CondaPkg where
           . traverse (withText "pip depstring parse" parseReq')
           . Vector.toList
 
+      -- An entry pip accepts but that names no package (an option such as
+      -- @-r requirements.txt@, a local path, a URL) parses to no 'Req'. It
+      -- used to fail the whole environment.yml with @Could not parse@.
       parseReq' :: Text -> Parser [Req]
       parseReq' s = case runParser requirementsTxtParser "" s of
         Left err -> fail . errorBundlePretty $ err
-        Right [] -> fail . toString $ "Could not parse \"" <> s <> "\""
         Right req -> pure req
 
 data EnvironmentYmlFile = EnvironmentYmlFile
