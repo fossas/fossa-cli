@@ -474,7 +474,8 @@ spec = do
 
   -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
   -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, uv-member-in-group.lock,
-  -- uv-extras.lock, uv-dev-extra.lock, and uv-transitive-extra.lock from 0.13.9, without the sdist and wheel entries.
+  -- uv-virtual-root-editable-path.lock, uv-extras.lock, uv-dev-extra.lock, and uv-transitive-extra.lock from 0.13.9,
+  -- without the sdist and wheel entries.
   -- uv-groups.lock also leaves out the packages these tests don't look at.
   describe "dependency groups" $ do
     let prod = Set.fromList [EnvProduction]
@@ -567,6 +568,14 @@ spec = do
 
       labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
       labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod)]
+
+    -- The same kind of root lists x, an editable path dependency outside the workspace, in its dev group.
+    -- x depends on idna, and the member pkg depends on iniconfig.
+    it' "labels an editable path dependency outside the workspace by the root's group that lists it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-virtual-root-editable-path.lock|]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", dev), ("iniconfig", prod)]
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("iniconfig", prod)]
 
     -- The dev group installs the project with its test extra, which needs iniconfig.
     it' "reports the project's own extra like its other extras when a group asks for it" $ do

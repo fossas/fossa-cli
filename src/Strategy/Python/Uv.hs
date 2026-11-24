@@ -184,9 +184,8 @@ buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markD
 
     -- All nodes are added as deep dependencies. We will figure out direct dependencies later by
     -- calling `markDirectDeps` and then `shrinkRoots`.
-    -- An edge from a package to itself is skipped, and so is one from a workspace root that isn't a
-    -- project to a member, since uv installs every member there whatever its groups say. Either would
-    -- leave the package with a predecessor and no longer a root.
+    -- An edge from a package to itself is skipped, since it would leave the package with a predecessor
+    -- and no longer a root.
     -- The packages of an extra in `requested` hang off whatever asks for the extra (see `withExtras`).
     -- Any other extra stays under its package, like one of a workspace member that nothing asks for,
     -- which uv lists since `uv sync --extra` can install it.
@@ -197,7 +196,7 @@ buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markD
       where
         unrequested extra _ = (fromPkg, extra) `Set.notMember` requested
         edgesFrom from = traverse_ (traverse_ (edge from) . filter keep . resolveDependency) . foldMap (withExtras requested)
-        keep to = to /= fromPkg && not (fromPkg == virtualRoot && isWorkspacePackage (uvlockPackageSource to))
+        keep to = to /= fromPkg
 
     -- A dependency on `pkg[extra]` installs pkg and what pkg lists for that extra, which can ask for
     -- another extra, e.g. fastapi[standard] asks for uvicorn[standard]. For the extras in `requested`,
