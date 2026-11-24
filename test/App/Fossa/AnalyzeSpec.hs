@@ -120,6 +120,10 @@ spec = do
       found <- scanArchive $(mkRelDir "vendor") (including $(mkRelDir "vendor"))
       found `shouldBe'` [($(mkRelDir "app"), "scanned"), ($(mkRelDir "dep"), "scanned")]
 
+    it' "keeps the Pixi projects in an archive under an included folder" $ do
+      found <- scanArchiveWith $(mkRelFile "pixi.lock") "version: 6\nenvironments: {}\npackages: []\n" $(mkRelDir "vendor") (including $(mkRelDir "vendor"))
+      found `shouldBe'` [($(mkRelDir "app"), "scanned"), ($(mkRelDir "dep"), "scanned")]
+
     it' "doesn't exclude a folder inside an archive by its path inside the archive" $ do
       found <- scanArchive $(mkRelDir "vendor") (excluding $(mkRelDir "app"))
       found `shouldBe'` [($(mkRelDir "app"), "scanned"), ($(mkRelDir "dep"), "scanned")]
@@ -261,13 +265,18 @@ excludingGlob glob = AllFilters mempty (comboExcludeWithGlobs mempty mempty [Glo
 -- folder name, and whether it was scanned. Default filters are off, so only
 -- @filters@ decide.
 scanArchive :: Path Rel Dir -> AllFilters -> EffectStack [(Path Rel Dir, Text)]
-scanArchive folder filters = withTempDir "test-App-Fossa-Analyze-archive" $ \tmp -> do
+scanArchive = scanArchiveWith $(mkRelFile "requirements.txt") "six==1.16.0\n"
+
+-- | Like 'scanArchive', with @manifest@ holding @manifestContents@ in each
+-- project folder instead of a pip @requirements.txt@.
+scanArchiveWith :: Path Rel File -> String -> Path Rel Dir -> AllFilters -> EffectStack [(Path Rel Dir, Text)]
+scanArchiveWith manifest manifestContents folder filters = withTempDir "test-App-Fossa-Analyze-archive" $ \tmp -> do
   let contents = tmp </> $(mkRelDir "contents")
       scan = tmp </> $(mkRelDir "scan")
       archive = scan </> folder </> $(mkRelFile "lib.zip")
   sendIO . for_ [$(mkRelDir "app"), $(mkRelDir "vendor/dep")] $ \dir -> do
     createDirIfMissing True (contents </> dir)
-    writeFile (toFilePath (contents </> dir </> $(mkRelFile "requirements.txt"))) "six==1.16.0\n"
+    writeFile (toFilePath (contents </> dir </> manifest)) manifestContents
   sendIO $ createDirIfMissing True (scan </> folder)
   mkZip contents archive
   (scans, ()) <-
