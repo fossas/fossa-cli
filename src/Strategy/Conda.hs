@@ -112,10 +112,10 @@ analyzeCondaEnvCreate CondaProject{..} = do
 
 analyzeEnvironmentYml :: (Has Exec sig m, Has ReadFS sig m, Has Diagnostics sig m) => CondaProject -> m DependencyResults
 analyzeEnvironmentYml project = do
-  graph <- EnvironmentYml.analyze . condaEnvironmentYml $ project
+  (graph, breadth) <- EnvironmentYml.analyze . condaEnvironmentYml $ project
   pure $
     DependencyResults
       { dependencyGraph = graph
-      , dependencyGraphBreadth = Complete
+      , dependencyGraphBreadth = breadth
       , dependencyManifestFiles = [condaEnvironmentYml project]
       }

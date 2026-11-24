@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- Conda: `environment.yml` files with `-r requirements.txt` in their `pip:` section no longer fail analysis. ([#1860](https://github.com/fossas/fossa-cli/pull/1860))
+
 ## 3.21.0
 
 - Yarn: dependencies installed under an npm alias in a Yarn 1 `yarn.lock` are now reported as the package they install instead of the alias name. ([#1849](https://github.com/fossas/fossa-cli/pull/1849))
