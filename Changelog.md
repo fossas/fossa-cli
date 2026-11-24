@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Analysis: `--unpack-archives` now applies path filters to the archive's path in the scan ([#1745](https://github.com/fossas/fossa-cli/pull/1745))
+- Conda: `environment.yml` files with `-r requirements.txt` in their `pip:` section no longer fail analysis. ([#1860](https://github.com/fossas/fossa-cli/pull/1860))
 
 ## 3.21.0
 
