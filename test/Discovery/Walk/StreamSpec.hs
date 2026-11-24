@@ -5,6 +5,7 @@ module Discovery.Walk.StreamSpec (
   spec,
 ) where
 
+import App.Util (FileAncestry (FileAncestry))
 import Control.Carrier.Reader (runReader)
 import Control.Effect.Diagnostics (Diagnostics, warnThenRecover)
 import Control.Effect.Lift (Has, Lift, sendIO)
@@ -15,7 +16,7 @@ import Data.List (sort)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Text (Text)
-import Discovery.Filters (AllFilters)
+import Discovery.Filters (AllFilters (AllFilters), comboInclude)
 import Discovery.Simple (cachedDiscover)
 import Discovery.Walk
 import Discovery.Walk.Stream
@@ -72,7 +73,7 @@ spec =
 
         let filters = excludePath $(mkRelDir "a/b")
 
-        emitted <- collect (walkStream filters tmpDir)
+        emitted <- collect (walkStream filters Nothing tmpDir)
         reference <- collectWalkFiltered filters tmpDir
 
         normalizeSet emitted `shouldBe'` normalizeSet (map toListing reference)
@@ -82,6 +83,22 @@ spec =
         Set.member a visited `shouldBe'` True
         Set.member b visited `shouldBe'` True
         sendIO $ traverse_ (const (pure ())) [ab, abc]
+
+    it' "prunes an unpacked archive's directories by their path in the scan" $
+      withTempDir "test-Discovery-WalkStream-archive" $ \tmpDir -> do
+        let app = tmpDir </> $(mkRelDir "app")
+            inArchive = Just (FileAncestry $(mkRelDir "vendor/lib.zip"))
+            visits filters pathPrefix = Set.fromList . map dlDir <$> collect (walkStream filters pathPrefix tmpDir)
+        sendIO $ createDir app
+
+        includingVendor <- visits (AllFilters (comboInclude mempty [$(mkRelDir "vendor")]) mempty) inArchive
+        Set.member app includingVendor `shouldBe'` True
+        excludingApp <- visits (excludePath $(mkRelDir "app")) inArchive
+        Set.member app excludingApp `shouldBe'` True
+        excludingAppAtRoot <- visits (excludePath $(mkRelDir "app")) Nothing
+        Set.member app excludingAppAtRoot `shouldBe'` False
+        excludingArchiveApp <- visits (excludePath $(mkRelDir "vendor/lib.zip/app")) inArchive
+        Set.member app excludingArchiveApp `shouldBe'` False
 
     it' "terminates and matches the walk under symlink loops" $
       withTempDir "test-Discovery-WalkStream-loops" $ \tmpDir -> do
@@ -142,7 +159,7 @@ spec =
           composerSink <- sendIO $ newIORef ([] :: [Composer.ComposerProject])
           let visitC dir subdirs files = accumulate cargoSink (Cargo.discoverVisitor dir subdirs files)
               visitK dir subdirs files = accumulate composerSink (Composer.discoverVisitor dir subdirs files)
-          void . S.effects $ runVisitors [visitC, visitK] (walkStream filters tmpDir)
+          void . S.effects $ runVisitors [visitC, visitK] (walkStream filters Nothing tmpDir)
           newResult <-
             runReader filters $
               do

@@ -1,5 +1,6 @@
 module Strategy.Pixi (
   discover,
+  discoverVisitor,
   findProjects,
   mkProject,
   getDeps,
@@ -37,7 +38,10 @@ discover :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) si
 discover = simpleDiscover findProjects mkProject PixiProjectType
 
 findProjects :: (Has ReadFS sig m, Has Diagnostics sig m, Has (Reader AllFilters) sig m) => Path Abs Dir -> m [PixiProject]
-findProjects = walkWithFilters' $ \dir _ files -> do
+findProjects = walkWithFilters' discoverVisitor
+
+discoverVisitor :: (Has ReadFS sig m) => Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([PixiProject], WalkStep)
+discoverVisitor dir _ files = do
   case findFileNamed "pixi.lock" files of
     Nothing -> pure ([], WalkContinue)
     Just lockFile -> do

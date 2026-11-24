@@ -20,6 +20,8 @@ module Discovery.Filters (
   Include,
   Exclude,
   pathAllowed,
+  globMatchesDir,
+  properAncestors,
   toolAllowed,
   nodeToolFamily,
   consumerAllowed,

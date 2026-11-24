@@ -1,5 +1,6 @@
 module Discovery.Archive (
   discover,
+  convertArchiveToDir,
   withArchive,
   withArchive',
   extractRpm,

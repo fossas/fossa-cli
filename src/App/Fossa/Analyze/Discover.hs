@@ -157,7 +157,10 @@ discoverFuncs =
       PipenvProjectType
       Pipenv.discoverVisitor
       (cachedDiscover PipenvProjectType Pipenv.mkProject)
-  , DiscoverFunc Pixi.discover
+  , WalkedFunc
+      PixiProjectType
+      Pixi.discoverVisitor
+      (cachedDiscover PixiProjectType Pixi.mkProject)
   , WalkedFunc
       PoetryProjectType
       Poetry.discoverVisitor

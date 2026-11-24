@@ -109,6 +109,8 @@ With the `--unpack-archives` flag present, we unpack discovered archives to a te
 fossa analyze --unpack-archives
 ```
 
+Path exclusions also apply to projects inside archives. For example, excluding `third-party` also excludes projects inside `third-party/lib.zip`.
+
 We support the following archive formats:
 
 - `.zip`

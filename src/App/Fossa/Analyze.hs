@@ -93,7 +93,7 @@ import App.Types (
   OverrideDynamicAnalysisBinary,
   ProjectRevision (..),
  )
-import App.Util (FileAncestry, ancestryDirect)
+import App.Util (FileAncestry, ancestryDirect, withPathPrefix)
 import Control.Carrier.AtomicCounter (AtomicCounter, runAtomicCounter)
 import Control.Carrier.Debug (Debug, debugMetadata, ignoreDebug)
 import Control.Carrier.Diagnostics qualified as Diag
@@ -136,7 +136,7 @@ import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (Result, resultToMaybe)
 import Discovery.Archive qualified as Archive
-import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, ignoredPaths, isDefaultNonProductionPath)
+import Discovery.Filters (AllFilters (..), MavenScopeFilters, applyFilters, combinedPathGlobs, combinedPaths, filterIsVSIOnly, globMatchesDir, ignoredPaths, isDefaultNonProductionPath, properAncestors)
 import Discovery.Projects (withDiscoveredProjects)
 import Discovery.Walk (enumeratePrunedSubtrees)
 import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer, withWalkBroadcast)
@@ -252,7 +252,7 @@ runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTa
         not (fromFlag Config.WithoutDefaultFilters withoutDefaultFilters)
           && isDefaultNonProductionPath basedir projectPath
 
-  case (applyFiltersToProject basedir filters project, hasNonProductionPath) of
+  case (applyFiltersToProject basedir pathPrefix filters project, hasNonProductionPath) of
     (Nothing, _) -> do
       logInfo $ "Skipping " <> pretty projectType <> " project at " <> viaShow projectPath <> ": no filters matched"
       output $ SkippedDueToProvidedFilter dpi
@@ -272,15 +272,24 @@ runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTa
       trackResult graphResult
       output $ Scanned dpi (mkResult basedir project pathPrefix <$> graphResult)
 
-applyFiltersToProject :: Path Abs Dir -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
-applyFiltersToProject basedir filters DiscoveredProject{..} =
+-- | Apply the user's path filters to a project's build targets.
+-- @pathPrefix@ is the path of the archive the project was unpacked from, if any.
+applyFiltersToProject :: Path Abs Dir -> Maybe FileAncestry -> AllFilters -> DiscoveredProject n -> Maybe FoundTargets
+applyFiltersToProject basedir pathPrefix filters DiscoveredProject{..} =
   case makeRelative basedir projectPath of
-    -- FIXME: this is required for --unpack-archives to continue to work.
-    -- archives are not unpacked relative to the scan basedir, so "makeRelative"
-    -- will always fail
+    -- Projects are always discovered by walking @basedir@, so this should not
+    -- happen. If that invariant is ever broken we have no path to filter on,
+    -- so keep the project rather than silently dropping it.
     Nothing -> Just projectBuildTargets
     Just rel -> do
-      applyFilters filters (toText projectType) rel projectBuildTargets
+      let path = withPathPrefix pathPrefix rel
+      if isJust pathPrefix && excludedByGlobAbove path
+        then Nothing
+        else applyFilters filters (toText projectType) path projectBuildTargets
+  where
+    -- Nothing prunes by an archive's own path or the folders above it, and
+    -- 'applyFilters' only matches globs against the project's own path.
+    excludedByGlobAbove path = any (\g -> any (globMatchesDir g) (properAncestors path)) (combinedPathGlobs (excludeFilters filters))
 
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
@@ -336,7 +345,7 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       entriesResult <-
         runDiscovery $ do
           entries <- traverse prepare discoverFuncs
-          withWalkBroadcast filters basedir (concatMap entryConsumers entries)
+          withWalkBroadcast filters pathPrefix basedir (concatMap entryConsumers entries)
           pure entries
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where

@@ -146,7 +146,7 @@ runAll outputFmt basedir = do
   filters <- ask @AllFilters
   entriesResult <- runDiscovery $ do
     entries <- traverse prepare discoverFuncs
-    withWalkBroadcast filters basedir (concatMap entryConsumers entries)
+    withWalkBroadcast filters Nothing basedir (concatMap entryConsumers entries)
     pure entries
   Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
