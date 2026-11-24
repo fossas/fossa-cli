@@ -1,6 +1,7 @@
 module Strategy.Python.ReqTxt (
   analyze',
   requirementsTxtParser,
+  isNonRequirementLine,
 ) where
 
 import Control.Effect.Diagnostics
@@ -8,6 +9,7 @@ import Control.Monad (void)
 import Data.Foldable (asum)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Effect.ReadFS
 import Errata (Errata (..))
@@ -41,12 +43,21 @@ type Parser = Parsec Void Text
 requirementsTxtParser :: Parser [Req]
 requirementsTxtParser = concat <$> manyTill reqParser eof
 
+-- | Whether a requirements.txt line names no requirement: a pip option such
+-- as @-r other.txt@, a local path, a bare URL or a comment.
+-- 'requirementsTxtParser' yields no 'Req' for these lines.
+isNonRequirementLine :: Text -> Bool
+isNonRequirementLine line = any (`Text.isPrefixOf` line) (["-", ".", "/", "#"] <> urlPrefixes)
+
+urlPrefixes :: [Text]
+urlPrefixes = ["http:", "https:", "git+", "hg+", "svn+", "bzr+"]
+
 reqParser :: Parser [Req]
 reqParser =
   [] <$ char '-' <* ignored -- pip options
     <|> [] <$ char '.' <* ignored -- relative path
     <|> [] <$ char '/' <* ignored -- absolute path
-    <|> [] <$ oneOfS ["http:", "https:", "git+", "hg+", "svn+", "bzr+"] <* ignored -- URLs
+    <|> [] <$ oneOfS urlPrefixes <* ignored -- URLs
     <|> [] <$ comment
     <|> (pure <$> try requirementParser <* ignored)
     <|> [] <$ ignored -- something else we're not able to parse

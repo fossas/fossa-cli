@@ -6,7 +6,10 @@
 module Strategy.Conda.EnvironmentYml (
   analyze,
   buildGraph,
+  graphBreadth,
   EnvironmentYmlFile (..),
+  CondaPkg (..),
+  PipEntry (..),
 ) where
 
 import Control.Applicative ((<|>))
@@ -14,18 +17,21 @@ import Control.Carrier.Diagnostics hiding (fromMaybe)
 import Data.Aeson
 import Data.Aeson.KeyMap qualified as KeyMap
 import Data.Aeson.Types (Parser)
+import Data.Foldable (traverse_)
 import Data.List.Extra ((!?))
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
+import Data.String.Conversion (toText)
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Vector qualified as Vector
 import Effect.ReadFS
+import Errata (Errata (..))
 import Graphing (Graphing, fromList)
 import Path
-import Strategy.Python.ReqTxt (requirementsTxtParser)
-import Strategy.Python.Util (Req, reqToDependency)
-import Text.Megaparsec (errorBundlePretty, runParser)
+import Strategy.Python.ReqTxt (isNonRequirementLine)
+import Strategy.Python.Util (Req, reqToDependency, requirementParser)
+import Text.Megaparsec (runParser)
 import Types
 
 buildGraph :: EnvironmentYmlFile -> Graphing Dependency
@@ -33,7 +39,12 @@ buildGraph envYmlFile = Graphing.fromList (condaPkgToDependency =<< dependencies
   where
     condaPkgToDependency :: CondaPkg -> [Dependency]
     condaPkgToDependency (Pkg text) = [toDependency . getCondaDepFromText $ text]
-    condaPkgToDependency (PipPkg req) = reqToDependency <$> req
+    condaPkgToDependency (PipPkg entries) = reqToDependency <$> mapMaybe pipEntryReq entries
+
+    pipEntryReq :: PipEntry -> Maybe Req
+    pipEntryReq (PipReq req) = Just req
+    pipEntryReq (PipSkipped _) = Nothing
+    pipEntryReq (PipUnreadable _) = Nothing
 
     toDependency :: CondaDep -> Dependency
     toDependency CondaDep{..} =
@@ -46,13 +57,50 @@ buildGraph envYmlFile = Graphing.fromList (condaPkgToDependency =<< dependencies
         , dependencyTags = Map.empty
         }
 
+-- | Static analysis cannot follow a skipped @pip:@ entry (an @-r@ file, a
+-- local path, a bare URL) or read an unreadable one, so a graph that dropped
+-- any of them is 'Partial'.
+graphBreadth :: EnvironmentYmlFile -> GraphBreadth
+graphBreadth envYmlFile =
+  if any isDropped (pipEntries envYmlFile) then Partial else Complete
+  where
+    isDropped :: PipEntry -> Bool
+    isDropped (PipReq _) = False
+    isDropped (PipSkipped _) = True
+    isDropped (PipUnreadable _) = True
+
+pipEntries :: EnvironmentYmlFile -> [PipEntry]
+pipEntries = concatMap entriesOf . dependencies
+  where
+    entriesOf :: CondaPkg -> [PipEntry]
+    entriesOf (Pkg _) = []
+    entriesOf (PipPkg entries) = entries
+
 analyze ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   ) =>
   Path Abs File ->
-  m (Graphing Dependency)
-analyze envYml = buildGraph <$> readContentsYaml @EnvironmentYmlFile envYml
+  m (Graphing Dependency, GraphBreadth)
+analyze envYml = do
+  envYmlFile <- readContentsYaml @EnvironmentYmlFile envYml
+  traverse_ (warn . UnreadablePipRequirement envYml) (mapMaybe unreadable (pipEntries envYmlFile))
+  pure (buildGraph envYmlFile, graphBreadth envYmlFile)
+  where
+    unreadable :: PipEntry -> Maybe Text
+    unreadable (PipUnreadable entry) = Just entry
+    unreadable _ = Nothing
+
+-- | A named requirement under @pip:@ that the requirement parser could not
+-- read. It is left out of the graph, which is reported as 'Partial'.
+data UnreadablePipRequirement = UnreadablePipRequirement (Path Abs File) Text
+
+instance ToDiagnostic UnreadablePipRequirement where
+  renderDiagnostic (UnreadablePipRequirement file entry) =
+    Errata (Just header) [] (Just body)
+    where
+      header = "Could not read the pip requirement '" <> entry <> "' in " <> toText (show file)
+      body = "It is left out of the dependency graph of this environment.yml."
 
 -- | an example Text: "biopython=1.78=py38haf1e3a3_0"
 --   '=' is a delimeter for <name>=<version>=<build>
@@ -88,9 +136,20 @@ getCondaDepFromText rcd =
 newtype PackageManager = PackageManager Text
   deriving newtype (Eq, Ord, Show, FromJSON)
 
+-- | One entry of a @pip:@ list.
+data PipEntry
+  = -- | A requirement the parser reads.
+    PipReq Req
+  | -- | An entry pip accepts that names no package here: a pip option such as
+    -- @-r requirements.txt@, a local path, a bare URL or a comment.
+    PipSkipped Text
+  | -- | A named requirement the parser cannot read.
+    PipUnreadable Text
+  deriving (Eq, Ord, Show)
+
 data CondaPkg
   = Pkg Text
-  | PipPkg [Req]
+  | PipPkg [PipEntry]
   deriving (Eq, Ord, Show)
 
 -- | A valid package for the purpose of conda can be:
@@ -103,7 +162,7 @@ data CondaPkg
 --    - pytest-httpserver==1.0.6
 -- @
 --
--- Conda also allows forms like:
+-- Conda hands the @pip:@ list to pip as a requirements file, so it may also hold:
 --
 -- @
 -- pip:
@@ -111,34 +170,35 @@ data CondaPkg
 --   - -r requirements.txt
 -- @
 --
--- Urls are not currently supported because Pip normally requires a format like @<pkg name> \@ <url>@.
--- For to generate a Pip dep, it's not clear what name to give the Pip package.
--- Supporting URLs like this is will require more research.
---
--- The @-r requirements.txt@ form is not followed either. Both it and URLs are
--- skipped, the same way 'requirementsTxtParser' skips them in a
--- requirements.txt; the referenced requirements.txt is discovered and analyzed
--- as its own target.
+-- A bare URL (one without a @<pkg name> \@@ prefix) names no package, so it is
+-- skipped. @-r requirements.txt@ is not followed either: the referenced file is
+-- analyzed only when discovery finds it on its own, which it does for a file
+-- named @requirements.txt@ but not for, say, @requirements/prod.txt@. Both used
+-- to fail the whole environment.yml. See 'pipEntry'.
 instance FromJSON CondaPkg where
   parseJSON cd = (Pkg <$> parseJSON cd) <|> withObject "CondaPipPkg" parseOtherPkgManager cd
     where
       parseOtherPkgManager :: Object -> Parser CondaPkg
-      parseOtherPkgManager (KeyMap.toList -> [("pip", deps)]) = withArray "Pip Packages" parseReqs deps
+      parseOtherPkgManager (KeyMap.toList -> [("pip", deps)]) = withArray "Pip Packages" parseEntries deps
       parseOtherPkgManager obj = fail ("Expected object with a single key (\"pip\") and list of deps. Got: " <> show obj)
 
-      parseReqs :: Array -> Parser CondaPkg
-      parseReqs =
-        fmap (PipPkg . mconcat)
-          . traverse (withText "pip depstring parse" parseReq')
-          . Vector.toList
+      parseEntries :: Array -> Parser CondaPkg
+      parseEntries = fmap PipPkg . traverse (withText "pip depstring parse" (pure . pipEntry)) . Vector.toList
 
-      -- An entry pip accepts but that names no package (an option such as
-      -- @-r requirements.txt@, a local path, a URL) parses to no 'Req'. It
-      -- used to fail the whole environment.yml with @Could not parse@.
-      parseReq' :: Text -> Parser [Req]
-      parseReq' s = case runParser requirementsTxtParser "" s of
-        Left err -> fail . errorBundlePretty $ err
-        Right req -> pure req
+-- | Classify one @pip:@ entry the way pip reads a requirements.txt line.
+-- Lines that name no requirement (pip options such as @-r requirements.txt@,
+-- local paths, bare URLs, comments) are skipped, exactly as
+-- 'Strategy.Python.ReqTxt.requirementsTxtParser' skips them. Anything else is
+-- a named requirement, which either parses or is reported as unreadable.
+pipEntry :: Text -> PipEntry
+pipEntry raw =
+  if Text.null entry || isNonRequirementLine entry
+    then PipSkipped raw
+    else case runParser requirementParser "" entry of
+      Right req -> PipReq req
+      Left _ -> PipUnreadable raw
+  where
+    entry = Text.strip raw
 
 data EnvironmentYmlFile = EnvironmentYmlFile
   { name :: Text

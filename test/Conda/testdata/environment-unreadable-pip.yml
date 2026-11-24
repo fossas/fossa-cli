@@ -1,0 +1,6 @@
+name: testName
+dependencies:
+  - python=3.11
+  - pip:
+    - requests; python_version in '3.12'
+    - pytest-httpserver==1.0.6

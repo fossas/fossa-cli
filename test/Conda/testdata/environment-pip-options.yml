@@ -1,0 +1,9 @@
+name: testName
+dependencies:
+  - python=3.11
+  - pip:
+    - -r requirements.txt
+    - --extra-index-url https://pypi.example.com/simple
+    - ./vendored/localpkg
+    - git+https://github.com/blaze/dask.git#egg=dask[complete]
+    - pytest-httpserver==1.0.6
