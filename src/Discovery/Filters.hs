@@ -58,6 +58,7 @@ import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
 import Path (Abs, Dir, Path, Rel, dirname, isProperPrefixOf, mkRelDir, parent, parseRelDir, stripProperPrefix, toFilePath)
+import System.FilePath qualified as FilePath
 import System.FilePattern qualified as FilePattern
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
@@ -308,53 +309,68 @@ pathAllowed AllFilters{..} path = isIncluded && not isExcluded
 
 -- | Whether @projPath@ sits under one of the 'defaultNonProductionDirs'
 -- relative to @baseDir@.  Matched per path component, not as a substring, so
--- @contest/@ is not @test/@ and @.github/@ is not @.git/@.  Callers normally
--- pass a @projPath@ under @baseDir@; if it is not (the container layers use a
--- synthetic root), every component of @projPath@ is checked instead.
+-- @contest/@ is not @test/@ and @.github/@ is not @.git/@.  Components are
+-- compared via their separator-normalized 'toFilePath' forms — @Path@ equality
+-- is separator-style-sensitive on Windows (@mkRelDir@ compiles to @\\@ while
+-- paths parsed from forward-slashed sources keep @/@), and would silently
+-- never match there.  Callers normally pass a @projPath@ under @baseDir@; if
+-- it is not (the container layers use a synthetic root), every component of
+-- @projPath@ is checked instead.
 isDefaultNonProductionPath :: Path Abs Dir -> Path Abs Dir -> Bool
 isDefaultNonProductionPath baseDir projPath =
   maybe (check projPath) check (stripProperPrefix baseDir projPath)
   where
     check :: Path b Dir -> Bool
     check d =
-      dirname d `Set.member` defaultNonProductionDirs
+      Set.member (dirKey (dirname d)) defaultNonProductionDirs
         || (isProperPrefixOf (parent d) d && check (parent d))
+
+-- | The separator-normalized 'toFilePath' form of a directory's own name —
+-- the key 'isDefaultNonProductionPath' matches on.
+dirKey :: Path b Dir -> FilePath
+dirKey = map sep . toFilePath
+  where
+    sep c
+      | FilePath.isPathSeparator c = '/'
+      | otherwise = c
 
 -- | Directories whose contents are never analyzed unless
 -- @--without-default-filters@ is passed.  Matched per path component, not as
 -- a substring, so @contest/@ is not @test/@ and @.github/@ is not @.git/@.
-defaultNonProductionDirs :: Set (Path Rel Dir)
+-- Entries are TH-validated and stored in their separator-normalized
+-- 'toFilePath' form — see 'dirKey'.
+defaultNonProductionDirs :: Set FilePath
 defaultNonProductionDirs =
   Set.fromList
-    [ $(mkRelDir "dist-newstyle/")
-    , $(mkRelDir "doc/")
-    , $(mkRelDir "docs/")
-    , $(mkRelDir "Documentation/")
-    , $(mkRelDir "documentation/")
-    , $(mkRelDir "test/")
-    , $(mkRelDir "tests/")
-    , $(mkRelDir "example/")
-    , $(mkRelDir "examples/")
-    , $(mkRelDir "vendor/")
-    , $(mkRelDir "node_modules/")
-    , $(mkRelDir ".venv/") -- python pdm package manager's pkgyard (similar to node_modules/)
-    , $(mkRelDir ".pixi/") -- pixi's installed environments (similar to .venv/)
-    , $(mkRelDir ".srclib-cache/")
-    , $(mkRelDir "spec/")
-    , $(mkRelDir "Godeps/")
-    , $(mkRelDir ".git/")
-    , $(mkRelDir "bower_components/")
-    , $(mkRelDir "third_party/")
-    , $(mkRelDir "third-party/")
-    , $(mkRelDir "Carthage/")
-    , $(mkRelDir "Checkouts/")
-    , $(mkRelDir ".build/") -- SwiftPM build directory; dependency clones under checkouts/ carry their own manifests
+    [ dirKey $(mkRelDir "dist-newstyle/")
+    , dirKey $(mkRelDir "doc/")
+    , dirKey $(mkRelDir "docs/")
+    , dirKey $(mkRelDir "Documentation/")
+    , dirKey $(mkRelDir "documentation/")
+    , dirKey $(mkRelDir "test/")
+    , dirKey $(mkRelDir "tests/")
+    , dirKey $(mkRelDir "example/")
+    , dirKey $(mkRelDir "examples/")
+    , dirKey $(mkRelDir "vendor/")
+    , dirKey $(mkRelDir "node_modules/")
+    , dirKey $(mkRelDir ".venv/") -- python pdm package manager's pkgyard (similar to node_modules/)
+    , dirKey $(mkRelDir ".pixi/") -- pixi's installed environments (similar to .venv/)
+    , dirKey $(mkRelDir ".srclib-cache/")
+    , dirKey $(mkRelDir "spec/")
+    , dirKey $(mkRelDir "Godeps/")
+    , dirKey $(mkRelDir ".git/")
+    , dirKey $(mkRelDir "bower_components/")
+    , dirKey $(mkRelDir "third_party/")
+    , dirKey $(mkRelDir "third-party/")
+    , dirKey $(mkRelDir "Carthage/")
+    , dirKey $(mkRelDir "Checkouts/")
+    , dirKey $(mkRelDir ".build/") -- SwiftPM build directory; dependency clones under checkouts/ carry their own manifests
     ]
 
 -- | The default non-production directories, for rendering in the help text.
 -- Entries carry a trailing path separator.
 ignoredPaths :: [FilePath]
-ignoredPaths = map toFilePath (Set.toAscList defaultNonProductionDirs)
+ignoredPaths = Set.toAscList defaultNonProductionDirs
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude ts ps = FilterCombination ts ps []

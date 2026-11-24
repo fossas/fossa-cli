@@ -291,6 +291,7 @@ runDependencyAnalysis basedir filters withoutDefaultFilters project@DiscoveredPr
   let dpi = DiscoveredProjectIdentifier projectPath projectType
   let hasNonProductionPath =
         not (fromFlag WithoutDefaultFilters withoutDefaultFilters) && isDefaultNonProductionPath basedir projectPath
+  sendIO $ putStrLn $ "DIAG " <> show (projectType, toFilePath basedir, toFilePath projectPath, hasNonProductionPath)
 
   case (applyFiltersToProject basedir Nothing filters project, hasNonProductionPath) of
     (Nothing, _) -> do
