@@ -267,12 +267,15 @@ buildGraph cfg lock = removeWorkspacePackages . withLabels . shrinkRoots . markD
     -- call `shrinkRoots` to remove this package and promote its dependencies to direct dependencies
     -- Roots are found with every group's edges drawn, since an excluded group's packages lose their edge
     -- from the project but aren't roots. Packages that only an excluded group reaches are dropped.
-    -- Both graphs in `withLabels` get their roots from the same graph, so they agree on them.
+    -- A workspace member that only dependency groups ask for is still a root, since uv also installs each
+    -- member on its own.
+    -- Both graphs in `withLabels` get their roots from the same graphs, so they agree on them.
     markDirectDeps :: Graphing UvLockPackage -> Graphing UvLockPackage
     markDirectDeps gr = induce (`Set.notMember` excludedOnly) (promoteToDirect isRoot gr)
       where
         withEveryGroup = graphOf requestedExtras mempty
-        isRoot = not . hasPredecessors withEveryGroup
+        withoutGroups = graphOf requestedExtras (foldMap (Map.keysSet . uvlockPackageDevDependencies) (virtualRoot : packages))
+        isRoot pkg = not $ hasPredecessors (if uvlockPackageName pkg `Set.member` uvlockManifestMembers lock then withoutGroups else withEveryGroup) pkg
         reachable = Set.fromList . vertexList . pruneUnreachable . promoteToDirect isRoot
         excludedOnly = reachable withEveryGroup `Set.difference` reachable gr
 
@@ -366,15 +369,17 @@ data UvLock = UvLock
   { uvlockPackages :: [UvLockPackage]
   , uvlockManifestDependencyGroups :: Map Text [UvLockPackageDependency]
   -- ^ The dependency groups of a workspace root that isn't a project, from `[manifest.dependency-groups]`
+  , uvlockManifestMembers :: Set Text
+  -- ^ The names of the workspace members, from `[manifest]`, e.g. `members = ["lib", "tools"]`
   }
   deriving (Eq, Show)
 
 instance Toml.Schema.FromValue UvLock where
   fromValue =
-    Toml.Schema.parseTableFromValue $
-      UvLock
-        <$> Toml.Schema.reqKey "package"
-        <*> (foldMap fold <$> Toml.Schema.optKeyOf "manifest" (Toml.Schema.parseTableFromValue (Toml.Schema.optKey "dependency-groups")))
+    Toml.Schema.parseTableFromValue $ do
+      packages <- Toml.Schema.reqKey "package"
+      (groups, members) <- fold <$> Toml.Schema.optKeyOf "manifest" (Toml.Schema.parseTableFromValue ((,) <$> Toml.Schema.optKey "dependency-groups" <*> Toml.Schema.optKey "members"))
+      pure UvLock{uvlockPackages = packages, uvlockManifestDependencyGroups = fold groups, uvlockManifestMembers = foldMap Set.fromList members}
 
 data UvLockPackage = UvLockPackage
   { uvlockPackageName :: Text

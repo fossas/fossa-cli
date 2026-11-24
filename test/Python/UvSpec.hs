@@ -89,6 +89,7 @@ lock =
             }
         ]
     , uvlockManifestDependencyGroups = mempty
+    , uvlockManifestMembers = mempty
     }
 
 --     my-project
@@ -134,6 +135,7 @@ lockNewStyleDevDeps =
             }
         ]
     , uvlockManifestDependencyGroups = mempty
+    , uvlockManifestMembers = mempty
     }
 
 --     my-project (editable, no version -- dynamic version project)
@@ -179,6 +181,7 @@ lockEditableNoVersion =
             }
         ]
     , uvlockManifestDependencyGroups = mempty
+    , uvlockManifestMembers = mempty
     }
 
 --     my-project
@@ -214,6 +217,7 @@ lockWithDirectory =
             }
         ]
     , uvlockManifestDependencyGroups = mempty
+    , uvlockManifestMembers = mempty
     }
 
 --       my-project
@@ -259,6 +263,7 @@ lockSplitVersions =
             }
         ]
     , uvlockManifestDependencyGroups = mempty
+    , uvlockManifestMembers = mempty
     }
 
 mkPackageDep :: Text -> UvLockPackageDependency
@@ -468,8 +473,8 @@ spec = do
         result
 
   -- uv-groups.lock and uv-self-reference.lock come from `uv lock` 0.13.7, and
-  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, uv-extras.lock,
-  -- uv-dev-extra.lock, and uv-transitive-extra.lock from 0.13.9, without the sdist and wheel entries.
+  -- uv-workspace-member-groups.lock, uv-virtual-root.lock, uv-virtual-root-member.lock, uv-member-in-group.lock,
+  -- uv-extras.lock, uv-dev-extra.lock, and uv-transitive-extra.lock from 0.13.9, without the sdist and wheel entries.
   -- uv-groups.lock also leaves out the packages these tests don't look at.
   describe "dependency groups" $ do
     let prod = Set.fromList [EnvProduction]
@@ -552,6 +557,13 @@ spec = do
     -- such a root anyway.
     it' "keeps a member production when a workspace root that isn't a project lists it in a group" $ do
       parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-virtual-root-member.lock|]
+
+      labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
+      labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod)]
+
+    -- The same kind of root has members tools and lib. The dev group of tools lists lib, which depends on idna.
+    it' "keeps a member production when another member's group lists it" $ do
+      parsed <- readContentsToml =<< makeAbsolute [relfile|test/Python/testdata/uv-member-in-group.lock|]
 
       labels parsed mempty mempty `shouldBe'` Map.fromList [("idna", prod), ("iniconfig", dev)]
       labels parsed mempty (Set.singleton "dev") `shouldBe'` Map.fromList [("idna", prod)]
