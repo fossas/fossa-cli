@@ -34,6 +34,8 @@ module Diag.Result (
   renderFailure,
   renderSuccess,
   renderFailureWithoutWarnings,
+  renderEmittedWarn,
+  TracebackStyle (..),
 ) where
 
 import Data.Error (DiagnosticStyle (..), applyDiagnosticStyle, combineErrataHeaders, renderErrataStack)

@@ -25,7 +25,7 @@ module Analysis.SharedWalkDiscoverySpec (
 import Analysis.FixtureUtils (FixtureEnvironment (LocalEnvironment), testRunner, withResult)
 import Analysis.Fixtures.MultiProjectTree (multiProjectTree)
 import Control.Algebra (Has)
-import Control.Effect.Diagnostics (Diagnostics, fatalText)
+import Control.Effect.Diagnostics (Diagnostics, fatalText, warn)
 import Control.Effect.Lift (Lift, sendIO)
 import Control.Effect.Reader (Reader, ask)
 import Control.Exception (bracket)
@@ -73,12 +73,14 @@ msgFor t = "Error discovering projects for " <> projectTypeToText t
 -- | Finalize one accumulateConsumer sink like runAnalyzers: a recorded error
 -- ('Left') fails the whole strategy via 'fatalText'; a healthy collection
 -- ('Right') is handed to the strategy's finalizer.
-finalizeSink :: (Has Diagnostics sig m, Has (Lift IO) sig m) => IORef (Either Text [a]) -> m [a]
+finalizeSink :: (Has Diagnostics sig m, Has (Lift IO) sig m) => IORef (Either Text ([[a]], [Text])) -> m [a]
 finalizeSink sink = do
   state <- sendIO (readIORef sink)
   case state of
     Left e -> fatalText e
-    Right projects -> pure projects
+    Right (projectLists, warns) -> do
+      traverse_ warn warns
+      pure (concat (reverse projectLists))
 
 -- | Drive every drivable strategy's visitor over the production broadcast path
 -- rooted at @tmpDir@, then finalize each sink with the strategy's own
@@ -92,15 +94,15 @@ collectWalk tmpDir = do
   -- 'newIORef (Right ([] :: [raw]))' that 'App.Fossa.Analyze.prepare' builds
   -- per strategy.  The element type is left for inference: the wrapped visitor
   -- fixes it (most raw project types are not exported from their Strategy).
-  mixSink <- sendIO (newIORef (Right ([])))
-  fpmSink <- sendIO (newIORef (Right ([])))
-  leinSink <- sendIO (newIORef (Right ([])))
-  goSink <- sendIO (newIORef (Right ([])))
-  composerSink <- sendIO (newIORef (Right ([])))
-  cocoapodsSink <- sendIO (newIORef (Right ([])))
-  condaSink <- sendIO (newIORef (Right ([])))
-  cabalSink <- sendIO (newIORef (Right ([])))
-  npmSink <- sendIO (newIORef (Right ([])))
+  mixSink <- sendIO (newIORef (Right ([], [])))
+  fpmSink <- sendIO (newIORef (Right ([], [])))
+  leinSink <- sendIO (newIORef (Right ([], [])))
+  goSink <- sendIO (newIORef (Right ([], [])))
+  composerSink <- sendIO (newIORef (Right ([], [])))
+  cocoapodsSink <- sendIO (newIORef (Right ([], [])))
+  condaSink <- sendIO (newIORef (Right ([], [])))
+  cabalSink <- sendIO (newIORef (Right ([], [])))
+  npmSink <- sendIO (newIORef (Right ([], [])))
 
   let -- One broadcast consumer per strategy, built exactly like production.
       consumers =
@@ -257,8 +259,8 @@ spec =
         -- mix.exs) is found by mix but swallowed by fpm's own skip decision.
         -- Only these two consumers run, isolating the pin to the skipping vs
         -- non-skipping strategies.
-        fpmSink <- newIORef (Right ([]))
-        mixSink <- newIORef (Right ([]))
+        fpmSink <- newIORef (Right ([], []))
+        mixSink <- newIORef (Right ([], []))
         res <-
           testRunner
             ( do

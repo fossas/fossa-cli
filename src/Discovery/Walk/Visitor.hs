@@ -23,13 +23,14 @@ module Discovery.Walk.Visitor (
   driveVisitor,
 ) where
 
+import Data.List (isPrefixOf)
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as Set
 import Data.String.Conversion (toString)
 import Data.Traversable qualified as Trav
 import Discovery.Walk (WalkStep (..))
 import Discovery.Walk.Stream (DirListing (dlDir, dlFiles, dlSubdirs))
-import Path (Abs, Dir, File, Path, isProperPrefixOf, parseRelDir, (</>))
-import Path.Internal (Path (..))
+import Path (Abs, Dir, File, Path, dirname, parseRelDir, toFilePath)
 import Streaming (Of (..), Stream, lift)
 import Streaming.Prelude qualified as S
 import System.FilePath qualified as FilePath
@@ -58,59 +59,87 @@ import System.FilePath qualified as FilePath
 data VisitorState = VisitorState
   { vsDone :: Bool
   , vsPruned :: [(Path Abs Dir, [Path Abs Dir])]
+  , vsRoot :: Maybe (Path Abs Dir)
   }
   deriving (Eq, Show)
 
 -- | State of a fresh visitor.
 initialVisitorState :: VisitorState
-initialVisitorState = VisitorState{vsDone = False, vsPruned = []}
+initialVisitorState = VisitorState{vsDone = False, vsPruned = [], vsRoot = Nothing}
 
 -- | Whether @dir@ is at or below a subtree root of a live skip decision.
 -- Stale decisions (whose scope the DFS has backtracked above) are ignored;
 -- 'applyVisitorStep' additionally drops them from the state.
+--
+-- All comparisons go through 'dirKey': the roots and the listed directories
+-- mix construction routes ('parseRelDir' normalizes to native separators on
+-- Windows, the container tar tree keeps the archive's forward slashes), and
+-- 'Path' equality compares internal strings, so the raw values would not
+-- match across routes — the same mismatch #1861 fixed for the default-filter
+-- predicate.
 isSwallowed :: VisitorState -> Path Abs Dir -> Bool
 isSwallowed state dir =
-  any
-    (\root -> root == dir || isProperPrefixOf root dir)
-    [root | (scope, roots) <- vsPruned state, atOrAboveScope dir scope, root <- roots]
+  any (\root -> key root == key dir || (key root `isPrefixOf` key dir)) liveRoots
   where
-    atOrAboveScope candidate scope = scope == candidate || isProperPrefixOf scope candidate
+    liveRoots = concatMap snd (vsPruned state)
+    key = dirKey
+
+-- | The separator-normalized 'toFilePath' form of a directory, the key the
+-- visitor's skip decisions compare on.  Roots always carry a trailing
+-- separator ('ensureTrailingSeparator', 'parseRelDir'), so key-prefix
+-- comparison is component-exact: @a/vendor/@ cannot prefix @a/vendorx/@.
+dirKey :: Path b Dir -> FilePath
+dirKey = map sep . toFilePath
+  where
+    sep c
+      | FilePath.isPathSeparator c = '/'
+      | otherwise = c
 
 -- | Fold a visitor's 'WalkStep' into its own state, mirroring the
 -- per-strategy walk in "Discovery.Walk": the step was produced at @dir@ (so
 -- the visit still counts), and only that visitor is affected.
-applyVisitorStep :: WalkStep -> Path Abs Dir -> VisitorState -> VisitorState
-applyVisitorStep step dir0 state0 =
-  let state = state0{vsPruned = pruneDead (vsPruned state0)}
+applyVisitorStep :: WalkStep -> Path Abs Dir -> [Path Abs Dir] -> VisitorState -> VisitorState
+applyVisitorStep step dir subdirs state0 =
+  let state =
+        state0
+          { vsRoot = case vsRoot state0 of Just root -> Just root; Nothing -> Just dir
+          , vsPruned = pruneDead (vsPruned state0)
+          }
    in case step of
         WalkContinue -> state
         -- The visitor stopped: keep the live decisions for determinism, but
         -- they no longer matter because the visitor is never invoked again.
         WalkStop -> state{vsDone = True}
-        WalkSkipAll -> state{vsPruned = (dir, [dir]) : vsPruned state}
+        WalkSkipAll -> state{vsPruned = (dir, subdirs) : vsPruned state}
         WalkSkipSome names -> state{vsPruned = (dir, roots) : vsPruned state}
           where
-            roots = mapMaybe (fmap (dir </>) . parse) names
+            -- The roots are this listing's own subdirs whose directory name
+            -- matches a skip name -- the same filter the per-strategy walk in
+            -- "Discovery.Walk" applies, in the same path form later listings
+            -- present.  Joining the names onto @dir@ instead breaks in the
+            -- container walk: its root is the raw sentinel @Path "vfs-root"@
+            -- ('IndexFileTree.fixedVfsRoot'), while 'IndexFileTree.lookupDir'
+            -- strips that prefix from its listings, so a joined root like
+            -- @vfs-root/node_modules/@ matches nothing and root-level skips
+            -- (Node's node_modules/, Maven's target/) silently die.
+            roots = filter (\sub -> Set.member (dirKey (dirname sub)) nameKeys) subdirs
             -- Unparseable names are dropped silently, exactly like
             -- 'Discovery.Walk.walk'.
-            parse name = parseRelDir (toString name)
+            nameKeys =
+              Set.fromList $
+                mapMaybe
+                  (fmap dirKey . parseRelDir . toString)
+                  names
   where
-    dir = ensureTrailingSeparator dir0
-    -- Decisions whose scope the DFS has backtracked above are dead forever.
-    pruneDead = filter (\(scope, _) -> scope == dir || isProperPrefixOf scope dir)
-
--- | '</>' joins by raw concatenation, so the scope directory must end with a
--- separator for the join to produce a comparable path.  Host walks root at
--- 'Path.parseRelDir' results, which always carry one; the container walk
--- roots at the raw @Path "vfs-root"@ ('IndexFileTree.fixedVfsRoot' has no
--- trailing separator), and its listed children keep the tree's forward
--- slashes — so the missing separator must be appended without path
--- normalization, or root-level 'WalkSkipSome' roots glue into paths like
--- @vfs-rootnode_modules/@ that never match a listed child.
-ensureTrailingSeparator :: Path b Dir -> Path b Dir
-ensureTrailingSeparator p@(Path fp) = case reverse fp of
-  (c : _) | FilePath.isPathSeparator c -> p
-  _ -> Path (fp ++ "/")
+    -- Decisions whose scope the DFS has backtracked above are dead forever --
+    -- except the walk root's: its scope's form need not relate to the listings'
+    -- (see the roots note above), and its subtree is the whole walk.
+    pruneDead =
+      filter
+        (\(scope, _) -> matchesBelow scope dir || isRootScope scope)
+    matchesBelow scope child = key scope == key child || (key scope `isPrefixOf` key child)
+    isRootScope scope = maybe False (\root -> key scope == key root) (vsRoot state0)
+    key = dirKey
 
 -- | A strategy's per-directory collector, mirroring the old per-strategy walk
 -- callback: it returns its output for the listing plus its next 'WalkStep'.
@@ -140,7 +169,7 @@ runVisitor visit = loop initialVisitorState
             then loop state rest
             else do
               (o, step) <- lift $ visit (dlDir dl) (dlSubdirs dl) (dlFiles dl)
-              let state' = applyVisitorStep step (dlDir dl) state
+              let state' = applyVisitorStep step (dlDir dl) (dlSubdirs dl) state
               S.yield (dlDir dl, o) <> loop state' rest
 
 -- | Drive a visitor from an effectful next-listing source (e.g. a channel
@@ -159,7 +188,7 @@ driveVisitor visit next = loop initialVisitorState
           | vsDone state || isSwallowed state (dlDir dl) -> loop state
           | otherwise -> do
               (_, step) <- visit (dlDir dl) (dlSubdirs dl) (dlFiles dl)
-              loop (applyVisitorStep step (dlDir dl) state)
+              loop (applyVisitorStep step (dlDir dl) (dlSubdirs dl) state)
 
 -- | Run several visitors over one shared walk stream.  Each visitor keeps
 -- its own 'VisitorState', so one visitor's 'WalkStep' decisions can only
@@ -182,7 +211,7 @@ runVisitors visitors = loop states0
         then pure (Nothing, state)
         else do
           (o, step) <- v dir subdirs files
-          pure (Just o, applyVisitorStep step dir state)
+          pure (Just o, applyVisitorStep step dir subdirs state)
 
     loop states input = do
       mnext <- lift (S.uncons input)

@@ -14,12 +14,14 @@ import Control.Carrier.Debug (Debug)
 import Control.Carrier.Diagnostics qualified as Diag
 import Control.Carrier.Finally (Has)
 import Control.Carrier.Stack.StickyLog (StickyLogStackC, stickyLogStack)
-import Control.Effect.Diagnostics (fatalText)
+import Control.Effect.Diagnostics (fatalText, warn)
 import Control.Effect.Exception (Lift)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
 import Data.Aeson qualified as Aeson
+import Data.Foldable (traverse_)
 import Data.IORef (newIORef, readIORef)
+import Data.Text (Text)
 import Diag.Result (Result)
 import Discovery.Walk.Broadcast (WalkConsumer (..), accumulateConsumer)
 import Effect.Logger (Logger)
@@ -76,7 +78,7 @@ prepare ::
 prepare dscover = case dscover of
   DiscoverFunc f -> pure (PreparedEntry [] f)
   WalkedFunc projectType visitor finalize -> do
-    sink <- sendIO (newIORef (Right ([] :: [raw])))
+    sink <- sendIO (newIORef (Right ([] :: [[raw]], [] :: [Text])))
     let msg = "Error discovering projects for " <> projectTypeToText projectType
         -- Read the sink in the strategy finalizer: a failure recorded during
         -- the walk makes this throw (see 'accumulateConsumer'), so
@@ -86,7 +88,13 @@ prepare dscover = case dscover of
           state <- sendIO (readIORef sink)
           case state of
             Left e -> fatalText e
-            Right projects -> pure projects
+            Right (projects, warns) -> do
+              -- The consumer threads' own diagnostics die with their results;
+              -- the rendered per-directory warnings rode the sink instead.
+              -- Re-emitting them here surfaces them through this strategy's
+              -- Result, exactly where the per-strategy walk's warnings rendered.
+              traverse_ warn warns
+              pure (concat (reverse projects))
     pure
       (PreparedEntry [accumulateConsumer projectType msg sink visitor] $ \dir -> finalize dir collect)
 

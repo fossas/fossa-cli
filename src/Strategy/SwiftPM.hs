@@ -3,7 +3,8 @@
 module Strategy.SwiftPM (
   discover,
   mkProject,
-  discoverVisitor,
+  swiftPackageVisitor,
+  xcodeProjectVisitor,
   SwiftProject (..),
 
   -- * for testing
@@ -87,47 +88,55 @@ findProjects dir = do
   xCodeProjects <- context "Finding xcode projects using swift package manager" $ findXcodeProjects dir
   pure (swiftPackageProjects <> xCodeProjects)
 
--- | Combined per-directory collector for the shared discovery walk.  SwiftPM
--- looks for both Swift package manifests and Xcode projects in the same
--- directory, so this runs both checks once and merges their skip decisions.
-discoverVisitor ::
+-- | Per-directory collector for the shared discovery walk: the Swift package
+-- half of 'findProjects', with 'findSwiftPackageProjects'' skip semantics.
+-- Its @.build@ skip is this visitor's alone; the Xcode half decides
+-- independently ('xcodeProjectVisitor'), matching the legacy two-walk flow
+-- where the package walk's prune could not hide Xcode projects from the
+-- Xcode walk.
+-- Pure: both lookups are file-name checks on the listing, so no effects.
+swiftPackageVisitor ::
+  Applicative m =>
+  Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SwiftProject], WalkStep)
+swiftPackageVisitor dir _ files =
+  let packageManifestFile = findFileNamed "Package.swift" files
+      packageResolvedFile = findFileNamed "Package.resolved" files
+   in -- No diagnostics context on this half: the lookup is pure, so nothing inside
+      -- it can fail and a context would only churn the sticky log per directory.
+      pure
+        ( case (packageManifestFile, packageResolvedFile) of
+            (Just manifestFile, resolvedFile) -> [PackageProject $ SwiftPackageProject manifestFile dir resolvedFile]
+            (Nothing, _) -> []
+        , case packageManifestFile of
+            Just _ -> WalkSkipSome [".build"]
+            Nothing -> WalkContinue
+        )
+
+-- | Per-directory collector for the shared discovery walk: the Xcode half of
+-- 'findProjects', with 'findXcodeProjects'' skip semantics -- no @.build@ skip
+-- unless this directory actually yielded a project with SwiftPM dependencies,
+-- so Xcode projects checked out under another package's @.build/@ stay
+-- discoverable.
+xcodeProjectVisitor ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
   , Has Logger sig m
   , Has (Reader AllFilters) sig m
   ) =>
   Path Abs Dir -> [Path Abs Dir] -> [Path Abs File] -> m ([SwiftProject], WalkStep)
-discoverVisitor dir _ files = do
-  let packageManifestFile = findFileNamed "Package.swift" files
-  let packageResolvedFile = findFileNamed "Package.resolved" files
-  -- No diagnostics context on this half: the lookup is pure, so nothing inside
-  -- it can fail and a context would only churn the sticky log per directory.
-  let swiftProj =
-        case (packageManifestFile, packageResolvedFile) of
-          (Just manifestFile, resolvedFile) -> [PackageProject $ SwiftPackageProject manifestFile dir resolvedFile]
-          (Nothing, _) -> []
+xcodeProjectVisitor dir _ files =
   let xcodeProjectFile = findFileNamed "project.pbxproj" files
-  xcodeProj <-
-    case xcodeProjectFile of
-      Nothing ->
-        pure []
-      -- The context wraps only the work below, so it fires for directories that
-      -- actually hold an Xcode project rather than for every directory walked.
-      Just projFile ->
-        context "Finding xcode projects using swift package manager" $ do
-          resolvedFile <- findFirstResolvedFileRecursively dir
-          xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
-          if xCodeProjWithDependencies
-            then pure [XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile]
-            else debugXCodeWithoutSwiftDeps projFile $> []
-  pure
-    ( swiftProj <> xcodeProj
-    , -- Both halves skip the same directory set when they match anything, and
-      -- neither produces a step otherwise, so the union is just this condition.
-      if not (null swiftProj) || not (null xcodeProj)
-        then WalkSkipSome [".build"]
-        else WalkContinue
-    )
+   in case xcodeProjectFile of
+        Nothing -> pure ([], WalkContinue)
+        -- The context wraps only the work below, so it fires for directories that
+        -- actually hold an Xcode project rather than for every directory walked.
+        Just projFile ->
+          context "Finding xcode projects using swift package manager" $ do
+            resolvedFile <- findFirstResolvedFileRecursively dir
+            xCodeProjWithDependencies <- hasSomeSwiftDeps projFile
+            if xCodeProjWithDependencies
+              then pure ([XcodeProject $ XcodeProjectUsingSwiftPm projFile dir resolvedFile], WalkSkipSome [".build"])
+              else debugXCodeWithoutSwiftDeps projFile $> ([], WalkContinue)
 
 findSwiftPackageProjects ::
   ( Has ReadFS sig m

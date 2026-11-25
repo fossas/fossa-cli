@@ -184,7 +184,11 @@ managedDepsDiscoveryF =
       (cachedDiscover SetuptoolsProjectType Setuptools.mkProject)
   , WalkedFunc
       SwiftProjectType
-      SwiftPM.discoverVisitor
+      SwiftPM.swiftPackageVisitor
+      (cachedDiscover SwiftProjectType SwiftPM.mkProject)
+  , WalkedFunc
+      SwiftProjectType
+      SwiftPM.xcodeProjectVisitor
       (cachedDiscover SwiftProjectType SwiftPM.mkProject)
   , WalkedFunc
       UvProjectType

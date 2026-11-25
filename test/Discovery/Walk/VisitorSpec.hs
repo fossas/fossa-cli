@@ -199,16 +199,19 @@ spec =
           aDeeper = aSub </> $(mkRelDir "deeper")
           b = root </> $(mkRelDir "b")
           c = root </> $(mkRelDir "c")
+          -- Every walk's first listing is the root: it is what tells the
+          -- state machine the walk root's path form (see 'vsRoot').
+          rootListed = applyVisitorStep WalkContinue root [a, b, c]
 
       it' "stops swallowing once the DFS escapes the skipped scope" $
-        let st = applyVisitorStep WalkSkipAll a initialVisitorState
+        let st = applyVisitorStep WalkSkipAll a [aSub] (rootListed initialVisitorState)
          in do
               isSwallowed st aSub `shouldBe'` True
               isSwallowed st aDeeper `shouldBe'` True
               isSwallowed st b `shouldBe'` False
               -- At the sibling, a's decision is dead forever: dropped from
               -- the state, so the live frontier shrinks instead of growing.
-              let st' = applyVisitorStep WalkContinue b st
+              let st' = applyVisitorStep WalkContinue b [] st
               vsPruned st' `shouldBe'` []
               isSwallowed st' aSub `shouldBe'` False
 
@@ -216,31 +219,36 @@ spec =
         -- The visitor names ["b", "a"] at root, but the walk descends into
         -- "a" first: both subtrees must be swallowed, siblings outside both
         -- must not be.  This rules out any single-root design.
-        let st = applyVisitorStep (WalkSkipSome ["b", "a"]) root initialVisitorState
+        let st = applyVisitorStep (WalkSkipSome ["b", "a"]) root [a, b, c] initialVisitorState
          in do
               isSwallowed st a `shouldBe'` True
               isSwallowed st aDeeper `shouldBe'` True
               isSwallowed st b `shouldBe'` True
               isSwallowed st c `shouldBe'` False
 
-      it' "matches root-level skips in container walks, where the root lacks a trailing separator" $
-        -- Container walks root at the raw Path "vfs-root": unlike
-        -- parseRelDir results it has no trailing separator, and the
-        -- tar-backed listDir returns children as "vfs-root/<name>/".  '</>'
-        -- joins by raw concatenation, so the skip root built from the raw
-        -- root must still come out as "vfs-root/node_modules/" — not the
-        -- glued "vfs-rootnode_modules/", which matches no listed child and
-        -- silently disables root-level skips (Node's node_modules/, Maven's
-        -- target/) for container layers.
-        let vfsRoot = Path ("vfs-root" :: FilePath)
-            nodeModules = Path ("vfs-root/node_modules/" :: FilePath)
-            st = applyVisitorStep (WalkSkipSome ["node_modules/"]) vfsRoot initialVisitorState
+      it' "matches root-level skips in container walks, whose listings are root-relative" $
+        -- The container walk roots at the raw sentinel Path "vfs-root", but
+        -- IndexFileTree.lookupDir strips that prefix from its listings: the
+        -- root's children arrive as "node_modules/", not
+        -- "vfs-root/node_modules/".  Skip roots must therefore come from the
+        -- listing itself, not from joining the names onto the scope — the
+        -- joined form matches no listed child and silently disables
+        -- root-level skips (Node's node_modules/, Maven's target/) for
+        -- container layers.
+        let st =
+              applyVisitorStep
+                (WalkSkipSome ["node_modules/"])
+                (Path ("vfs-root" :: FilePath))
+                [Path ("node_modules/" :: FilePath), Path ("app/" :: FilePath)]
+                initialVisitorState
          in do
-              isSwallowed st nodeModules `shouldBe'` True
-              isSwallowed st (Path ("vfs-root/app/services/a/" :: FilePath)) `shouldBe'` False
-              -- A decision made at the un-slashified root stays live below it.
-              let st' = applyVisitorStep WalkContinue (Path ("vfs-root/app/" :: FilePath)) st
-              isSwallowed st' nodeModules `shouldBe'` True
+              isSwallowed st (Path ("node_modules/" :: FilePath)) `shouldBe'` True
+              isSwallowed st (Path ("node_modules/checkouts/" :: FilePath)) `shouldBe'` True
+              isSwallowed st (Path ("app/" :: FilePath)) `shouldBe'` False
+              -- The decision stays live below the root: its scope's form need
+              -- not relate to the listings'.
+              let st' = applyVisitorStep WalkContinue (Path ("node_modules/checkouts/" :: FilePath)) [] st
+              isSwallowed st' (Path ("node_modules/checkouts/pkg/" :: FilePath)) `shouldBe'` True
 
       it' "cannot act inside a swallowed subtree" $
         -- A visitor is never invoked inside a swallowed subtree (pinned by
@@ -248,11 +256,11 @@ spec =
         -- every depth below the skipped root stays swallowed.  Applying a
         -- step deeper in the scope keeps the outer scope alive (no nesting
         -- can occur, but the state must still compare sensibly).
-        let st = applyVisitorStep WalkSkipAll a initialVisitorState
+        let st = applyVisitorStep WalkSkipAll a [aSub] (rootListed initialVisitorState)
          in do
               isSwallowed st aDeeper `shouldBe'` True
-              let st' = applyVisitorStep WalkSkipAll aSub st
-              vsPruned st' `shouldBe'` [(aSub, [aSub]), (a, [a])]
+              let st' = applyVisitorStep WalkSkipAll aSub [aDeeper] st
+              vsPruned st' `shouldBe'` [(aSub, [aDeeper]), (a, [aSub])]
               isSwallowed st' (aDeeper </> $(mkRelDir "x")) `shouldBe'` True
 
       it' "a skip inside an unskipped child coexists with the ancestor's skip and dies at its sibling" $
@@ -269,13 +277,13 @@ spec =
             nodeModules = root </> $(mkRelDir "node_modules")
             nodeModulesDeep = nodeModules </> $(mkRelDir "pkg")
          in do
-              let st0 = applyVisitorStep (WalkSkipSome ["node_modules"]) root initialVisitorState
-                  st1 = applyVisitorStep (WalkSkipSome ["cache"]) vendor st0
+              let st0 = applyVisitorStep (WalkSkipSome ["node_modules"]) root [nodeModules, vendor] initialVisitorState
+                  st1 = applyVisitorStep (WalkSkipSome ["cache"]) vendor [vCache, vOther] st0
               vsPruned st1 `shouldBe'` [(vendor, [vCache]), (root, [nodeModules])]
               isSwallowed st1 vCacheInner `shouldBe'` True
               isSwallowed st1 nodeModulesDeep `shouldBe'` True
               isSwallowed st1 vOther `shouldBe'` False
-              let st2 = applyVisitorStep WalkContinue vOther st1
+              let st2 = applyVisitorStep WalkContinue vOther [] st1
               -- Still inside vendor's scope: the cache decision stays live
               -- (DFS may still descend into cache after other), so it is
               -- neither dropped nor forgettable.
@@ -284,20 +292,20 @@ spec =
               isSwallowed st2 nodeModulesDeep `shouldBe'` True
               -- Once the DFS backtracks above vendor entirely, the cache
               -- decision is dead (dropped), but the ancestor's is not.
-              let st3 = applyVisitorStep WalkContinue (root </> $(mkRelDir "src")) st2
+              let st3 = applyVisitorStep WalkContinue (root </> $(mkRelDir "src")) [] st2
               vsPruned st3 `shouldBe'` [(root, [nodeModules])]
               isSwallowed st3 vCacheInner `shouldBe'` False
               isSwallowed st3 nodeModulesDeep `shouldBe'` True
 
       it' "drops unparseable skip names silently" $
-        let st = applyVisitorStep (WalkSkipSome ["", "sub"]) a initialVisitorState
+        let st = applyVisitorStep (WalkSkipSome ["", "sub"]) a [aSub] (rootListed initialVisitorState)
          in vsPruned st `shouldBe'` [(a, [aSub])]
 
-      it' "WalkStop marks the visitor done and stays comparable" $
-        let st = applyVisitorStep WalkStop a initialVisitorState
+      it' "WalkStop marks the visitor done" $
+        let st = applyVisitorStep WalkStop a [] (rootListed initialVisitorState)
          in do
-              st `shouldBe'` initialVisitorState{vsDone = True}
-              (st == initialVisitorState) `shouldBe'` False
+              vsDone st `shouldBe'` True
+              vsPruned st `shouldBe'` []
 
 -- | A visitor that records every invocation and skips the whole subtree of
 -- any directory holding @marker.txt@.

@@ -327,7 +327,7 @@ failureContractSpec =
           writeFile (toFilePath (sub </> $(mkRelFile "fail-marker.txt"))) "boom"
 
         -- The root is collected successfully; the subdir's visitor throws.
-        sink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        sink <- sendIO (IOR.newIORef (Right ([] :: [[Path Abs Dir]], [] :: [Text])))
         let consumer = accumulateConsumer NpmProjectType msg sink collectingFailingVisitor
         withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [consumer]
 
@@ -345,8 +345,8 @@ failureContractSpec =
           writeFile (toFilePath (tmpDir </> $(mkRelFile "top.txt"))) "top"
           writeFile (toFilePath (sub </> $(mkRelFile "fail-marker.txt"))) "boom"
 
-        aSink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
-        bSink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        aSink <- sendIO (IOR.newIORef (Right ([] :: [[Path Abs Dir]], [] :: [Text])))
+        bSink <- sendIO (IOR.newIORef (Right ([] :: [[Path Abs Dir]], [] :: [Text])))
         let consumerA = accumulateConsumer CargoProjectType msg aSink collectingFailingVisitor
             consumerB = accumulateConsumer ComposerProjectType msg bSink collectingSucceedingVisitor
         -- A fails at the subdir; B never fails.  The broadcast keeps going so B
@@ -357,7 +357,7 @@ failureContractSpec =
         bState <- sendIO (IOR.readIORef bSink)
         aState `shouldSatisfy'` isLeft
         bState `shouldSatisfy'` \case
-          Right projects -> Set.fromList projects == Set.fromList [tmpDir, sub]
+          Right (projectLists, _) -> Set.fromList (concat projectLists) == Set.fromList [tmpDir, sub]
           Left _ -> False
 
 -- ---------------------------------------------------------------------------
@@ -435,7 +435,7 @@ waitSpec =
       withTempDir "test-Discovery-WalkBroadcast-wait" $ \tmpDir -> do
         let sub = tmpDir </> $(mkRelDir "sub")
         sendIO $ traverse_ createDir [sub]
-        sink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
+        sink <- sendIO (IOR.newIORef (Right ([] :: [[Path Abs Dir]], [] :: [Text])))
         -- Slow enough that it cannot possibly finish while the walker runs: the
         -- master channel is unbounded, so a slow consumer never blocks it.
         let slow dir _ _ = do
@@ -445,7 +445,7 @@ waitSpec =
         withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [consumer]
         st <- sendIO (IOR.readIORef sink)
         st `shouldSatisfy'` \case
-          Right ds -> Set.fromList ds == Set.fromList [tmpDir, sub]
+          Right (dss, _) -> Set.fromList (concat dss) == Set.fromList [tmpDir, sub]
           Left _ -> False
 
 -- ---------------------------------------------------------------------------

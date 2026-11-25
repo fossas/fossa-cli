@@ -55,7 +55,7 @@ import Data.IORef (IORef, atomicModifyIORef')
 import Data.Kind (Type)
 import Data.String.Conversion (toText)
 import Data.Text (Text)
-import Diag.Result (Result (Failure, Success), renderFailureWithoutWarnings)
+import Diag.Result (Result (Failure, Success), TracebackStyle (Default), renderEmittedWarn, renderFailureWithoutWarnings)
 import Discovery.Filters (AllFilters, consumerAllowed)
 import Discovery.Walk (WalkStep (WalkContinue))
 import Discovery.Walk.Stream (DirListing, walkStream)
@@ -111,19 +111,26 @@ data WalkConsumer o m = WalkConsumer
 -- diagnostic, because this sink is the /only/ channel back to the finalizer:
 -- warnings emitted in a forked consumer thread are discarded along with that
 -- thread's result, so anything not carried out in the text is lost.
+--
+-- Recovered /warnings/ from successful directories ride the same channel: the
+-- visitor's per-directory warnings are rendered here and sunk alongside the
+-- projects, and the finalizer re-emits them in its own diagnostics scope, where
+-- they render like the pre-broadcast per-strategy walk's warnings did.  A
+-- recovered warning never fails the strategy; only a recorded failure does.
 accumulateConsumer ::
-  (Monoid o, Has (Lift IO) sig m, Has Diagnostics sig m) =>
+  (Has (Lift IO) sig m, Has Diagnostics sig m) =>
   DiscoveredProjectType ->
   -- | tool-attributed failure-message prefix; the failing directory and its
   -- diagnostic are appended to it
   Text ->
-  -- | Accumulates the raw projects via '<>' while healthy; 'Left' once any
-  -- directory fails.  Read by the strategy finalizer.
-  IORef (Either Text o) ->
-  Visitor o m ->
+  -- | Accumulates the raw projects by cons (a reversed list of per-directory
+  -- lists; the finalizer @concat . reverse@s it, for linear total cost) and
+  -- the rendered per-directory warnings in walk order while healthy; 'Left'
+  -- once any directory fails.  Read by the strategy finalizer.
+  IORef (Either Text ([[raw]], [Text])) ->
+  Visitor [raw] m ->
   WalkConsumer () m
-accumulateConsumer projectType msg sink rawVisitor =
-  WalkConsumer projectType go
+accumulateConsumer projectType msg sink rawVisitor = WalkConsumer projectType go
   where
     go dir subdirs files = do
       -- 'errorBoundary' rather than 'warnThenRecover': the latter turns the
@@ -141,12 +148,25 @@ accumulateConsumer projectType msg sink rawVisitor =
               recorded = renderIt (renderFailureWithoutWarnings errGroup headerDoc)
           sendIO (atomicModifyIORef' sink (const (Left recorded, ())))
           pure ((), WalkContinue)
-        Success _ (project, step) ->
-          -- Append unless this strategy already failed (all-or-nothing), preserving
+        Success warns (projects, step) ->
+          -- Cons unless this strategy already failed (all-or-nothing), preserving
           -- the recorded failure message so it is surfaced verbatim by the finalizer.
-          sendIO
-            (atomicModifyIORef' sink (\s -> ((case s of Left e -> Left e; Right acc -> Right (acc <> project)), ())) :: IO ())
-            $> ((), step)
+          -- The per-directory warnings are rendered here — this thread's diagnostics
+          -- die with it — and sunk for the finalizer to re-emit.
+          let rendered = map (renderIt . renderEmittedWarn Default) warns
+           in sendIO
+                ( atomicModifyIORef'
+                    sink
+                    ( \s ->
+                        ( case s of
+                            Left e -> Left e
+                            Right (acc, ws) -> Right (projects : acc, ws <> rendered)
+                        , ()
+                        )
+                    ) ::
+                    IO ()
+                )
+                $> ((), step)
 
 -- | Fan out one listing stream to a set of concurrent consumers.
 --
