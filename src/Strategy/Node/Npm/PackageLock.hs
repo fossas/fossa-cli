@@ -28,6 +28,7 @@ import Data.Foldable (asum, traverse_)
 import Data.Functor (void)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
+import Data.Maybe (fromMaybe)
 import Data.Set (Set)
 import Data.Set qualified as Set
 import Data.Tagged (unTag)
@@ -148,6 +149,21 @@ data NpmDepVertexLabel = NpmDepVertexEnv DepEnvironment | NpmDepVertexLocation T
 packagePathsToNames :: Map Text a -> Map Text a
 packagePathsToNames = Map.mapKeys (TE.dropPrefix "node_modules/")
 
+-- | The package a lockfile entry installs. npm records a dependency installed under an
+--  alias (@"string-width-cjs": "npm:string-width@^4.2.0"@ in @package.json@) under the
+--  alias as its key, with @version@ set to @npm:<name>@<version>@: the installed package
+--  is @<name>@ at @<version>@, as the Yarn and pnpm builders already report it. Every
+--  other entry installs the package its key names, at its @version@.
+installedVertex :: Text -> Text -> NpmDepVertex
+installedVertex key version = fromMaybe (NpmDepVertex key version) $ do
+  spec <- Text.stripPrefix "npm:" version
+  -- A scoped package starts with its own @, which is not the version separator.
+  let (scope, rest) = case Text.stripPrefix "@" spec of
+        Just unscoped -> ("@", unscoped)
+        Nothing -> ("", spec)
+      (name, installed) = Text.breakOnEnd "@" rest
+  if Text.null name then Nothing else Just $ NpmDepVertex (scope <> Text.dropEnd 1 name) installed
+
 buildGraph :: PkgLockJson -> Set Text -> WorkspacePackageNames -> Graphing Dependency
 buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
   run . withLabeling toDependency $
@@ -170,9 +186,9 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
     -- be added as deep dependencies. If there are direct peer dependencies
     -- those are discovered when reading @package.json@ and added like a regular
     -- direct dependency in 'maybeAddDep'.
-    addPeerDeps :: Has NpmGrapher sig m => NpmDepVertex -> m ()
-    addPeerDeps currentPkg =
-      traverse_ graphPeerDeps (Map.lookup (lockName currentPkg) pkgJsonPackages)
+    addPeerDeps :: Has NpmGrapher sig m => Text -> NpmDepVertex -> m ()
+    addPeerDeps key currentPkg =
+      traverse_ graphPeerDeps (Map.lookup key pkgJsonPackages)
       where
         graphPeerDeps :: Has NpmGrapher sig m => PkgLockPackage -> m ()
         graphPeerDeps =
@@ -192,13 +208,13 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
               -- npmDep may never have been seen yet at this point. Because
               -- it's in packageDeps it will be processed eventually.
               -- It will be set as direct/deep and labeled then.
-              edge currentPkg $ NpmDepVertex peerDepName (depVersion npmDep)
+              edge currentPkg $ installedVertex peerDepName (depVersion npmDep)
             Nothing -> pure ()
 
     -- isRecursive lets us know if we are parsing a top-level or nested dep.
     addDep :: Has NpmGrapher sig m => Bool -> Text -> PkgLockDependency -> Map Text PkgLockDependency -> m ()
     addDep isRecursive name PkgLockDependency{..} parentDepRequires = do
-      let pkg = NpmDepVertex name depVersion
+      let pkg = installedVertex name depVersion
 
       -- DEEP/DIRECT
       -- Allow entry of orphan deps.  We may prune these later.
@@ -208,7 +224,7 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
         direct pkg
 
       -- If there are peerDeps, add them and process their dependencies as well
-      addPeerDeps pkg
+      addPeerDeps name pkg
 
       -- LOCATION/ENVIRONMENT
       -- Mark prod/dev
@@ -222,7 +238,7 @@ buildGraph packageJson directSet (WorkspacePackageNames workspacePackages) =
         Map.traverseWithKey
           ( \reqName reqVer -> do
               let requiredPkg =
-                    NpmDepVertex reqName $
+                    installedVertex reqName $
                       getResolvedVersion
                         [ depDependencies
                         , -- some times, when lockfile has dependency with multiple versions,

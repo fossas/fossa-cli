@@ -1,5 +1,9 @@
 # FOSSA CLI Changelog
 
+## Unreleased
+
+- npm: dependencies installed under an npm alias in a version 1 or 2 `package-lock.json` are now reported as the package they install instead of the alias name.
+
 ## 3.21.1
 
 - Discovery: the shared discovery walk no longer traverses directories that the default filters skip (`node_modules/`, `vendor/`, `test/`, ...), fixing a large `fossa analyze` slowdown on repositories with large dependency trees when a target filter is set (e.g. 3.5 s -> 65 s on a yarn-only monorepo). ([#1861](https://github.com/fossas/fossa-cli/pull/1861))
