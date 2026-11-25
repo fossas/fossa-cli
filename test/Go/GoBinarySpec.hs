@@ -171,7 +171,7 @@ spec = do
   -- The shared broadcast walk's collector: the visitor must keep the same
   -- candidate set the private walk collected (contentIsBinary pre-filter).
   describe "discoverVisitor" $ do
-    let enabledConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) True
+    let enabledConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) True Nothing
     itWithTempDir' "collects binary files and skips text files" $ \dir -> do
       let binFile = dir </> [relfile|libgo.so|]
           textFile = dir </> [relfile|README.txt|]
@@ -183,7 +183,7 @@ spec = do
 
     itWithTempDir' "reads nothing when go-binary analysis is disabled" $ \dir -> do
       let binFile = dir </> [relfile|libgo.so|]
-          disabledConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) False
+          disabledConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) False Nothing
       sendIO $ BS.writeFile (toFilePath binFile) "\NULgo buildinfo..."
       -- If the flag check were removed, contentIsBinary would read and collect
       -- the binary file, failing this pin.
@@ -196,7 +196,7 @@ spec = do
   -- matching the old private walk, which short-circuited before walking.
   describe "finalizeProjects gate" $
     itWithTempDir' "short-circuits without reading candidates when disabled" $ \dir -> do
-      let offConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) False
+      let offConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) False Nothing
           collectMustNotRun = sendIO (throwIO (userError "collect must not run when go-binary analysis is disabled"))
       projects <- runReader offConfig (finalizeProjects dir collectMustNotRun)
       projects `shouldBe'` []
@@ -206,7 +206,7 @@ spec = do
   -- that use it, but this finalizer is hand-written, so nothing else does.
   describe "finalizeProjects diagnostics contexts" $
     itWithTempDir' "reports a collection failure under the tool and phase contexts" $ \dir -> do
-      let onConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) True
+      let onConfig = StrategyConfig Nothing False (UseGitBackedCargoLocators False) True Nothing
           failingCollect = fatalText "collect failed"
       res <- runReader onConfig $ runDiagnostics $ finalizeProjects dir failingCollect
       case res of

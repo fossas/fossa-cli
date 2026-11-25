@@ -298,6 +298,7 @@ scanArchiveWith manifest manifestContents folder filters = withTempDir "test-App
         , resolvePathDependencies = False
         , useGitBackedCargoLocators = UseGitBackedCargoLocators False
         , enableGoBinaryAnalysis = False
+        , uvConfig = Nothing
         }
     outcome :: DiscoveredProjectScan -> (Path Rel Dir, Text)
     outcome (Scanned dpi _) = (dirname (dpiProjectPath dpi), "scanned")

@@ -60,6 +60,12 @@ maven:
     - compile
     - runtime
 
+uv:
+  production-groups:
+    - server
+  exclude-groups:
+    - lint
+
 vendoredDependencies:
   forceRescans: true
   scanMethod: ArchiveUpload

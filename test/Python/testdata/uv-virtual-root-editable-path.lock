@@ -1,0 +1,43 @@
+version = 1
+revision = 5
+requires-python = ">=3.13"
+
+[manifest]
+members = [
+    "pkg",
+]
+
+[manifest.dependency-groups]
+dev = [{ name = "x", editable = "../x" }]
+
+[[package]]
+name = "idna"
+version = "3.20"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "iniconfig"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+
+[[package]]
+name = "pkg"
+version = "0.1.0"
+source = { editable = "pkg" }
+dependencies = [
+    { name = "iniconfig" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "iniconfig" }]
+
+[[package]]
+name = "x"
+version = "0.1.0"
+source = { editable = "../x" }
+dependencies = [
+    { name = "idna" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "idna" }]
