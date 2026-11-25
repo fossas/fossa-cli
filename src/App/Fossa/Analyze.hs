@@ -116,7 +116,7 @@ import Control.Effect.FossaApiClient (FossaApiClient, getEndpointVersion)
 import Control.Effect.Git (Git)
 import Control.Effect.Lift (sendIO)
 import Control.Effect.Stack (Stack, withEmptyStack)
-import Control.Effect.Telemetry (Telemetry, trackResult, trackTimeSpent)
+import Control.Effect.Telemetry (Telemetry, trackDuration, trackResult, trackTimeSpent)
 import Control.Monad (guard, join, unless, void, when)
 import Data.Aeson ((.=))
 import Data.Aeson qualified as Aeson
@@ -125,13 +125,14 @@ import Data.Error (createBody)
 import Data.Flag (Flag, fromFlag)
 import Data.Foldable (for_, traverse_)
 import Data.Functor (($>))
-import Data.IORef (newIORef, readIORef)
+import Data.IORef (atomicModifyIORef', newIORef, readIORef, type IORef)
 import Data.List.NonEmpty qualified as NE
 import Data.Map qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, mapMaybe, maybeToList)
 import Data.String.Conversion (decodeUtf8, toText)
 import Data.Text (Text)
 import Data.Text.Extra (showT)
+import Data.Time.Clock (UTCTime, diffUTCTime, getCurrentTime)
 import Data.Traversable (for)
 import Diag.Diagnostic as DI
 import Diag.Result (Result, resultToMaybe)
@@ -291,6 +292,12 @@ applyFiltersToProject basedir pathPrefix filters DiscoveredProject{..} =
     -- 'applyFilters' only matches globs against the project's own path.
     excludedByGlobAbove path = any (\g -> any (globMatchesDir g) (properAncestors path)) (combinedPathGlobs (excludeFilters filters))
 
+-- | Accumulates a discovery-only wall-clock span: (earliest start, latest end)
+-- across every strategy's discovery finalization. 'Nothing' until discovery
+-- begins. Written by 'runAnalyzers', drained by 'analyze' after the task pool
+-- has drained.
+type DiscoverySpanRef = IORef (Maybe (UTCTime, UTCTime))
+
 runAnalyzers ::
   ( AnalyzeTaskEffs sig m
   , Has (Output DiscoveredProjectScan) sig m
@@ -302,6 +309,7 @@ runAnalyzers ::
   Flag WithoutDefaultFilters ->
   Path Abs Dir ->
   Maybe FileAncestry ->
+  DiscoverySpanRef ->
   m ()
 
 -- | The monad strategy discovery runs in: the base effects wrapped in the
@@ -336,12 +344,20 @@ data PreparedEntry d where
     (Path Abs Dir -> d [DiscoveredProject p]) ->
     PreparedEntry d
 
-runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = do
+runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix spanRef = do
   if filterIsVSIOnly filters
     then do
       logInfo "Running in VSI only mode, skipping other analyzers"
       pure ()
     else do
+      -- Discovery starts here; analysis forks happen later, inside
+      -- 'withDiscoveredProjects'. Multiple invocations (one per unpacked archive)
+      -- fold into the same ref: keep the earliest start.
+      sendIO $ do
+        now <- getCurrentTime
+        atomicModifyIORef' spanRef $ \case
+          Nothing -> (Just (now, now), ())
+          Just (start, end) -> (Just (min start now, end), ())
       entriesResult <-
         runDiscovery $ do
           entries <- traverse prepare discoverFuncs
@@ -377,7 +393,26 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
 
     entryConsumers (PreparedEntry cs _) = cs
 
-    single (PreparedEntry _ discover) = withDiscoveredProjects discover basedir (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
+    single (PreparedEntry _ discover) =
+      withDiscoveredProjects
+        ( \dir -> do
+            projects <- discover dir
+            recordDiscoveryEnd spanRef
+            pure projects
+        )
+        basedir
+        (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
+
+-- | Record a discovery completion time, keeping the latest. If a strategy's
+-- discovery dies with a hard exception the record is skipped for that
+-- strategy; 'Diag.runDiagnosticsIO' catches ordinary failures upstream of the
+-- caller so they still record.
+recordDiscoveryEnd :: (Has (Lift IO) sig m) => DiscoverySpanRef -> m ()
+recordDiscoveryEnd spanRef = sendIO $ do
+  now <- getCurrentTime
+  atomicModifyIORef' spanRef $ \case
+    Nothing -> (Just (now, now), ())
+    Just (start, end) -> (Just (start, max end now), ())
 
 -- | Walk the tree once at startup and surface every directory the path
 -- filters will prune. Each prune is logged once at info level here, instead
@@ -564,6 +599,8 @@ analyze cfg = Diag.context "fossa-analyze" $ do
         (Config.strategyConfig cfg)
           { Config.useGitBackedCargoLocators = Config.UseGitBackedCargoLocators $ maybe True orgSupportsGitBackedCargoLocators orgInfo
           }
+  topLevelDiscoverySpan <- sendIO (newIORef (Nothing :: Maybe (UTCTime, UTCTime)))
+  archiveDiscoverySpan <- sendIO (newIORef (Nothing :: Maybe (UTCTime, UTCTime)))
   (projectScans, ()) <-
     timedPhase "discovery/analysis tasks"
       . runOutput @DiscoveredProjectScan
@@ -577,11 +614,27 @@ analyze cfg = Diag.context "fossa-analyze" $ do
       . runReader (Config.overrideDynamicAnalysis cfg)
       . runReader (Config.mode cfg)
       $ do
-        runAnalyzers allowedTactics filters withoutDefaultFilters basedir Nothing
+        runAnalyzers allowedTactics filters withoutDefaultFilters basedir Nothing topLevelDiscoverySpan
         when (fromFlag UnpackArchives $ Config.unpackArchives cfg) $
           forkTask $ do
-            res <- Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $ Archive.discover (runAnalyzers allowedTactics filters withoutDefaultFilters) basedir ancestryDirect
+            res <-
+              Diag.runDiagnosticsIO . diagToDebug . stickyLogStack . withEmptyStack $
+                Archive.discover
+                  ( \dir pathPrefix ->
+                      runAnalyzers
+                        allowedTactics
+                        filters
+                        withoutDefaultFilters
+                        dir
+                        pathPrefix
+                        archiveDiscoverySpan
+                  )
+                  basedir
+                  ancestryDirect
             Diag.withResult SevError SevWarn res (const (pure ()))
+
+  emitDiscoverySpan "phase/discovery" topLevelDiscoverySpan
+  emitDiscoverySpan "phase/discovery-unpacked-archives" archiveDiscoverySpan
   logDebug $ "Unfiltered project scans: " <> pretty (show projectScans)
 
   let filteredProjects = mapMaybe toProjectResult projectScans
@@ -668,6 +721,15 @@ analyze cfg = Diag.context "fossa-analyze" $ do
 -- the phases run one after another, so their timings break down the command's duration.
 timedPhase :: (Has Diag.Diagnostics sig m, Has Telemetry sig m) => Text -> m a -> m a
 timedPhase name = trackTimeSpent ("phase/" <> name) . Diag.context name
+
+-- | Emit the accumulated discovery-only span as a telemetry duration. Skips
+-- the emit when discovery never ran (e.g. VSI-only mode, or no archives were
+-- unpacked).
+emitDiscoverySpan :: (Has (Lift IO) sig m, Has Telemetry sig m) => Text -> DiscoverySpanRef -> m ()
+emitDiscoverySpan name spanRef =
+  sendIO (readIORef spanRef) >>= \case
+    Nothing -> pure ()
+    Just (start, end) -> trackDuration name (realToFrac (diffUTCTime end start))
 
 -- | 'OutputStdout' has no API session and no server-issued locator, so nothing
 -- reaches the server from that branch, the workflow result included.

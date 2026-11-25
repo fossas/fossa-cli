@@ -26,8 +26,10 @@ import Data.Aeson qualified as Aeson
 import Data.Flag (toFlag')
 import Data.Foldable (for_)
 import Data.Glob qualified as Glob
+import Data.IORef (newIORef)
 import Data.List (sort)
 import Data.Text (Text)
+import Data.Time.Clock (UTCTime)
 import Discovery.Archive (convertArchiveToDir, mkZip)
 import Discovery.Archive qualified as Archive
 import Discovery.Filters (AllFilters (AllFilters), MavenScopeFilters (MavenScopeExcludeFilters), comboExclude, comboExcludeWithGlobs, comboInclude)
@@ -279,6 +281,9 @@ scanArchiveWith manifest manifestContents folder filters = withTempDir "test-App
     writeFile (toFilePath (contents </> dir </> manifest)) manifestContents
   sendIO $ createDirIfMissing True (scan </> folder)
   mkZip contents archive
+  -- The discovery span ref is unused by this test; it only exists so 'runAnalyzers'
+  -- can fold discovery-only wall-clock time into telemetry.
+  spanRef <- sendIO (newIORef (Nothing :: Maybe (UTCTime, UTCTime)))
   (scans, ()) <-
     runOutput @DiscoveredProjectScan
       . withTaskPool 1 (const (pure ()))
@@ -289,7 +294,12 @@ scanArchiveWith manifest manifestContents folder filters = withTempDir "test-App
       . runReader filters
       . runReader (OverrideDynamicAnalysisBinary mempty)
       . runReader NonStrict
-      $ Archive.discover (runAnalyzers StaticOnly filters (toFlag' True)) scan ancestryDirect
+      $ Archive.discover
+        ( \dir pathPrefix ->
+            runAnalyzers StaticOnly filters (toFlag' True) dir pathPrefix spanRef
+        )
+        scan
+        ancestryDirect
   pure . sort $ map outcome scans
   where
     strategyConfig =
