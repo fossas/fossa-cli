@@ -109,7 +109,8 @@ jobs:
       env:
         RUN_CMD: cabal build --project-file=cabal.project.ci.linux all
       run: |
-        cabal update
+        # Retried for the mirror failure described in .github/workflows/scripts/build.sh.
+        cabal update || { sleep 15; cabal update; } || { sleep 45; cabal update; }
         $RUN_CMD || $RUN_CMD
 
     # This is set up to run integration tests in parallel.

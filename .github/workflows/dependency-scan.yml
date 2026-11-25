@@ -29,7 +29,8 @@ jobs:
           ghcup set ghc 9.8.4
           ghcup install cabal 3.12.1.0
           ghcup set cabal 3.12.1.0
-          cabal update
+          # Retried for the mirror failure described in .github/workflows/scripts/build.sh.
+          cabal update || { sleep 15; cabal update; } || { sleep 45; cabal update; }
 
       - name: Log debug information
         run: |
