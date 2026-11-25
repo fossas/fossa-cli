@@ -24,6 +24,7 @@ import Discovery.Walk.Visitor (
  )
 import Path
 import Path.IO (createDir)
+import Path.Internal (Path (..))
 import Streaming (Of, Stream)
 import Streaming.Prelude qualified as S
 import Test.Effect
@@ -221,6 +222,25 @@ spec =
               isSwallowed st aDeeper `shouldBe'` True
               isSwallowed st b `shouldBe'` True
               isSwallowed st c `shouldBe'` False
+
+      it' "matches root-level skips in container walks, where the root lacks a trailing separator" $
+        -- Container walks root at the raw Path "vfs-root": unlike
+        -- parseRelDir results it has no trailing separator, and the
+        -- tar-backed listDir returns children as "vfs-root/<name>/".  '</>'
+        -- joins by raw concatenation, so the skip root built from the raw
+        -- root must still come out as "vfs-root/node_modules/" — not the
+        -- glued "vfs-rootnode_modules/", which matches no listed child and
+        -- silently disables root-level skips (Node's node_modules/, Maven's
+        -- target/) for container layers.
+        let vfsRoot = Path ("vfs-root" :: FilePath)
+            nodeModules = Path ("vfs-root/node_modules/" :: FilePath)
+            st = applyVisitorStep (WalkSkipSome ["node_modules/"]) vfsRoot initialVisitorState
+         in do
+              isSwallowed st nodeModules `shouldBe'` True
+              isSwallowed st (Path ("vfs-root/app/services/a/" :: FilePath)) `shouldBe'` False
+              -- A decision made at the un-slashified root stays live below it.
+              let st' = applyVisitorStep WalkContinue (Path ("vfs-root/app/" :: FilePath)) st
+              isSwallowed st' nodeModules `shouldBe'` True
 
       it' "cannot act inside a swallowed subtree" $
         -- A visitor is never invoked inside a swallowed subtree (pinned by

@@ -29,8 +29,10 @@ import Data.Traversable qualified as Trav
 import Discovery.Walk (WalkStep (..))
 import Discovery.Walk.Stream (DirListing (dlDir, dlFiles, dlSubdirs))
 import Path (Abs, Dir, File, Path, isProperPrefixOf, parseRelDir, (</>))
+import Path.Internal (Path (..))
 import Streaming (Of (..), Stream, lift)
 import Streaming.Prelude qualified as S
+import System.FilePath qualified as FilePath
 
 -- | Participation state of one visitor over the shared walk: whether the
 -- visitor has stopped ('vsDone') and its live skip decisions ('vsPruned'),
@@ -78,7 +80,7 @@ isSwallowed state dir =
 -- per-strategy walk in "Discovery.Walk": the step was produced at @dir@ (so
 -- the visit still counts), and only that visitor is affected.
 applyVisitorStep :: WalkStep -> Path Abs Dir -> VisitorState -> VisitorState
-applyVisitorStep step dir state0 =
+applyVisitorStep step dir0 state0 =
   let state = state0{vsPruned = pruneDead (vsPruned state0)}
    in case step of
         WalkContinue -> state
@@ -93,8 +95,22 @@ applyVisitorStep step dir state0 =
             -- 'Discovery.Walk.walk'.
             parse name = parseRelDir (toString name)
   where
+    dir = ensureTrailingSeparator dir0
     -- Decisions whose scope the DFS has backtracked above are dead forever.
     pruneDead = filter (\(scope, _) -> scope == dir || isProperPrefixOf scope dir)
+
+-- | '</>' joins by raw concatenation, so the scope directory must end with a
+-- separator for the join to produce a comparable path.  Host walks root at
+-- 'Path.parseRelDir' results, which always carry one; the container walk
+-- roots at the raw @Path "vfs-root"@ ('IndexFileTree.fixedVfsRoot' has no
+-- trailing separator), and its listed children keep the tree's forward
+-- slashes — so the missing separator must be appended without path
+-- normalization, or root-level 'WalkSkipSome' roots glue into paths like
+-- @vfs-rootnode_modules/@ that never match a listed child.
+ensureTrailingSeparator :: Path b Dir -> Path b Dir
+ensureTrailingSeparator p@(Path fp) = case reverse fp of
+  (c : _) | FilePath.isPathSeparator c -> p
+  _ -> Path (fp ++ "/")
 
 -- | A strategy's per-directory collector, mirroring the old per-strategy walk
 -- callback: it returns its output for the listing plus its next 'WalkStep'.
