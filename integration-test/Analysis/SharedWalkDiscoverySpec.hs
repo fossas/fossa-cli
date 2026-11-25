@@ -117,7 +117,7 @@ collectWalk tmpDir = do
 
   -- filters is mempty (supplied by testRunner); its gating/interplay is
   -- covered by WalkBroadcastSpec and WalkStreamSpec, so we do not re-pin it.
-  withWalkBroadcast filters Nothing tmpDir consumers
+  withWalkBroadcast filters Nothing False tmpDir consumers
 
   do
     mixP <- cachedDiscover MixProjectType Mix.mkProject tmpDir (finalizeSink mixSink)
@@ -265,7 +265,7 @@ spec =
                 let fpmConsumer = accumulateConsumer FpmProjectType (msgFor FpmProjectType) fpmSink Fpm.discoverVisitor
                     mixConsumer = accumulateConsumer MixProjectType (msgFor MixProjectType) mixSink Mix.discoverVisitor
                 -- filters mempty: gating is covered elsewhere (WalkBroadcastSpec).
-                withWalkBroadcast (mempty :: AllFilters) Nothing tmp [fpmConsumer, mixConsumer]
+                withWalkBroadcast (mempty :: AllFilters) Nothing False tmp [fpmConsumer, mixConsumer]
                 fpmFinal <- cachedDiscover FpmProjectType Fpm.mkProject tmp (finalizeSink fpmSink)
                 mixFinal <- cachedDiscover MixProjectType Mix.mkProject tmp (finalizeSink mixSink)
                 pure (fpmFinal, mixFinal)
