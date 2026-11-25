@@ -3,6 +3,7 @@
 ## Unreleased
 
 - uv: Every dependency group is reported as development unless `.fossa.yml` makes it production or excludes it. ([#1830](https://github.com/fossas/fossa-cli/pull/1830))
+- npm: dependencies installed under an npm alias in a version 1 or 2 `package-lock.json` are now reported as the package they install instead of the alias name. ([#1863](https://github.com/fossas/fossa-cli/pull/1863))
 
 ## 3.21.1
 
