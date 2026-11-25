@@ -57,7 +57,7 @@ module Strategy.Cargo (
 import App.Fossa.Analyze.LicenseAnalyze (LicenseAnalyzeProject (licenseAnalyzeProject))
 import App.Fossa.Analyze.Types (AnalyzeProject (analyzeProjectStaticOnly), analyzeProject)
 import App.Fossa.Config.Analyze (StrategyConfig (useGitBackedCargoLocators), UseGitBackedCargoLocators (..))
-import Control.Effect.Diagnostics (Diagnostics, Has, context, errCtx, fatal, warn)
+import Control.Effect.Diagnostics (Diagnostics, Has, context, errCtx, fatal, recover, warn)
 import Control.Effect.Reader (Reader, ask)
 import Control.Monad (unless)
 import Data.Aeson.Types (ToJSON)
@@ -102,6 +102,7 @@ import Strategy.Cargo.Lock (
 import Strategy.Cargo.MetadataCmd (
   FailedToGenLockFile (..),
   FailedToRetrieveCargoMetadata (..),
+  RegeneratedUnparseableLockFile (..),
   buildGraph,
   cargoGenLockfileCmd,
   cargoMetadataCmd,
@@ -264,15 +265,22 @@ analyze emitGitBackedLocators project = do
   case lockParsed of
     Left readErr ->
       warn (FailedToReadCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderDiagnostic readErr))
-        >> analyzeViaMetadata emitGitBackedLocators project
-    Right Nothing -> analyzeViaMetadata emitGitBackedLocators project
+        >> analyzeViaMetadata emitGitBackedLocators project False
+    Right Nothing -> analyzeViaMetadata emitGitBackedLocators project False
     Right (Just (Right lock)) -> lockfileToDeps emitGitBackedLocators (cargoDir project) lock
     Right (Just (Left err)) ->
       warn (FailedToParseCargoLockFile (cargoDir project </> $(mkRelFile "Cargo.lock"), renderDiagnostic err))
-        >> analyzeViaMetadata emitGitBackedLocators project
+        >> analyzeViaMetadata emitGitBackedLocators project True
 
 -- | The pre-existing @cargo metadata@-based analysis path: generate a
 -- lockfile if one is missing, then run @cargo metadata@.
+--
+-- When @corruptLock@ is set (the local Cargo.lock exists but our parser
+-- rejected it), a @cargo metadata@ failure is treated as cargo rejecting the
+-- same unparseable lockfile: the lock is regenerated from the manifest and
+-- metadata is retried once. Regeneration is deliberately gated on cargo
+-- failing too -- a lockfile our parser alone rejects may still be valid for
+-- cargo, and must not be rewritten.
 analyzeViaMetadata ::
   ( Has Exec sig m
   , Has Diagnostics sig m
@@ -280,14 +288,29 @@ analyzeViaMetadata ::
   ) =>
   Bool ->
   CargoProject ->
+  Bool ->
   m (Graphing Dependency, GraphBreadth)
-analyzeViaMetadata emitGitBackedLocators (CargoProject manifestDir manifestFile) = do
+analyzeViaMetadata emitGitBackedLocators (CargoProject manifestDir manifestFile) corruptLock = do
   exists <- doesFileExist $ manifestDir </> $(mkRelFile "Cargo.lock")
   unless exists $
     void $
       context "Generating lockfile" $
         errCtx (FailedToGenLockFile manifestFile) $
           execThrow manifestDir cargoGenLockfileCmd
-  meta <- errCtx (FailedToRetrieveCargoMetadata manifestFile) $ execJson @CargoMetadata manifestDir cargoMetadataCmd
+  meta <- case corruptLock of
+    False -> fetchMetadata
+    True -> do
+      attempted <- recover fetchMetadata
+      case attempted of
+        Just m -> pure m
+        Nothing ->
+          context "Regenerating unparseable lockfile" $ do
+            warn (RegeneratedUnparseableLockFile (manifestDir </> $(mkRelFile "Cargo.lock")))
+            void $ errCtx (FailedToGenLockFile manifestFile) $ execThrow manifestDir cargoGenLockfileCmd
+            fetchMetadata
   graph <- context "Building dependency graph" $ pure (buildGraph emitGitBackedLocators meta)
   pure (graph, Complete)
+  where
+    fetchMetadata =
+      errCtx (FailedToRetrieveCargoMetadata manifestFile) $
+        execJson @CargoMetadata manifestDir cargoMetadataCmd

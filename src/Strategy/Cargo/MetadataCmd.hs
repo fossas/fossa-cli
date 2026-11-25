@@ -6,6 +6,7 @@ module Strategy.Cargo.MetadataCmd (
   parseGitRepoUrl,
   FailedToGenLockFile (..),
   FailedToRetrieveCargoMetadata (..),
+  RegeneratedUnparseableLockFile (..),
 ) where
 
 import Control.Effect.Diagnostics (run)
@@ -56,6 +57,16 @@ newtype FailedToRetrieveCargoMetadata = FailedToRetrieveCargoMetadata (Path Abs 
 instance ToDiagnostic FailedToRetrieveCargoMetadata where
   renderDiagnostic (FailedToRetrieveCargoMetadata path) = do
     let header = "Could not retrieve machine readable cargo metadata for: " <> toText path
+    Errata (Just header) [] Nothing
+
+-- | Warning emitted when @cargo generate-lockfile@ was run to replace a
+-- Cargo.lock that cargo itself could not parse, so the metadata-based path
+-- could proceed.
+newtype RegeneratedUnparseableLockFile = RegeneratedUnparseableLockFile (Path Abs File)
+
+instance ToDiagnostic RegeneratedUnparseableLockFile where
+  renderDiagnostic (RegeneratedUnparseableLockFile path) = do
+    let header = "Cargo.lock at " <> toText path <> " could not be parsed by cargo; it was regenerated from the manifest before analysis"
     Errata (Just header) [] Nothing
 
 -- | Extract the git repository host+path from a cargo source URL.
