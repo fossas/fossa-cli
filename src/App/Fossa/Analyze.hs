@@ -403,10 +403,11 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix spa
         basedir
         (runDependencyAnalysis basedir filters withoutDefaultFilters pathPrefix allowedTactics)
 
--- | Record a discovery completion time, keeping the latest. If a strategy's
--- discovery dies with a hard exception the record is skipped for that
--- strategy; 'Diag.runDiagnosticsIO' catches ordinary failures upstream of the
--- caller so they still record.
+-- | Record a discovery completion time, keeping the latest. Only successful
+-- discovery finalizations record an end: a strategy whose discovery fails (a
+-- Diag failure or an exception, either caught by 'Diag.runDiagnosticsIO' in
+-- "Discovery.Projects.withDiscoveredProjects") skips the record, so the span
+-- ends at the last successful finalization.
 recordDiscoveryEnd :: (Has (Lift IO) sig m) => DiscoverySpanRef -> m ()
 recordDiscoveryEnd spanRef = sendIO $ do
   now <- getCurrentTime
