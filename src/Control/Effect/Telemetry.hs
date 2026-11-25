@@ -2,6 +2,7 @@ module Control.Effect.Telemetry (
   Telemetry (..),
   trackUsage,
   trackTimeSpent,
+  trackDuration,
   trackConfig,
   trackRawLogMessage,
   setSink,
@@ -20,6 +21,7 @@ import Prettyprinter.Render.Terminal (AnsiStyle)
 data Telemetry m a where
   TrackUsage :: CountableCliFeature -> Telemetry m ()
   TrackTimeSpent :: Text -> m a -> Telemetry m a
+  TrackDuration :: Text -> Double -> Telemetry m ()
   TrackConfig :: Text -> Value -> Telemetry m ()
   TrackRawLogMessage :: Severity -> Text -> Telemetry m ()
   SetTelemetrySink :: TelemetrySink -> Telemetry m ()
@@ -29,6 +31,12 @@ trackUsage = send . TrackUsage
 
 trackTimeSpent :: Has Telemetry sig m => Text -> m a -> m a
 trackTimeSpent header = send . TrackTimeSpent header
+
+-- | Records an already-measured duration (in seconds) under the given
+-- computation name. Unlike 'trackTimeSpent', the duration is supplied by the
+-- caller, for spans whose end is only known later than the measured work.
+trackDuration :: Has Telemetry sig m => Text -> Double -> m ()
+trackDuration name secs = send (TrackDuration name secs)
 
 trackConfig :: (ToJSON cfg, Has Telemetry sig m) => Text -> cfg -> m ()
 trackConfig cmd = send . TrackConfig cmd . toJSON

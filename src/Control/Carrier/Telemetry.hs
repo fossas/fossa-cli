@@ -49,6 +49,7 @@ instance (Algebra sig m, MonadIO m, Has (Lift IO) sig m) => Algebra (Telemetry :
           (timeTook, res) <- timeItRealT (hdl (act <$ ctx))
           void $ sendSTM $ tryWriteTBMQueue telTimeSpentQ $ TelemetryTimeSpent computeName timeTook
           pure res
+        TrackDuration name secs -> ctx <$ sendSTM (tryWriteTBMQueue telTimeSpentQ $ TelemetryTimeSpent name secs)
         TrackRawLogMessage sev msg -> do
           currentTime <- sendIO getCurrentTime
           ctx <$ sendSTM (tryWriteTBMQueue telLogsQ $ TimedLogRecord currentTime sev msg)
@@ -127,6 +128,7 @@ instance Algebra sig m => Algebra (Telemetry :+: sig) (IgnoreTelemetryC m) where
         SetTelemetrySink{} -> pure ctx
         TrackRawLogMessage{} -> pure ctx
         (TrackTimeSpent _ act) -> hdl (act <$ ctx)
+        TrackDuration{} -> pure ctx
     R other -> IgnoreTelemetryC (alg (runIgnoreTelemetryC . hdl) (R other) ctx)
 
 -- | Ignores all telemetry effects.
