@@ -146,7 +146,10 @@ runAll outputFmt basedir = do
   filters <- ask @AllFilters
   entriesResult <- runDiscovery $ do
     entries <- traverse prepare discoverFuncs
-    withWalkBroadcast filters Nothing basedir (concatMap entryConsumers entries)
+    -- 'False': list-targets runs without the default filters, and projects
+    -- under non-production paths (node_modules, vendor, ...) are part of its
+    -- output.
+    withWalkBroadcast filters Nothing False basedir (concatMap entryConsumers entries)
     pure entries
   Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where

@@ -345,7 +345,12 @@ runAnalyzers allowedTactics filters withoutDefaultFilters basedir pathPrefix = d
       entriesResult <-
         runDiscovery $ do
           entries <- traverse prepare discoverFuncs
-          withWalkBroadcast filters pathPrefix basedir (concatMap entryConsumers entries)
+          -- Prune the default non-production paths during the walk exactly when
+          -- the project filter would discard them: 'withoutDefaultFilters' gates
+          -- both, so the two cannot disagree.  (--debug-no-discovery-exclusion
+          -- does not disable this -- the project filter ignores it too -- so
+          -- results stay in parity.)
+          withWalkBroadcast filters pathPrefix (not (fromFlag Config.WithoutDefaultFilters withoutDefaultFilters)) basedir (concatMap entryConsumers entries)
           pure entries
       Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where

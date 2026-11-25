@@ -276,7 +276,7 @@ broadcastStream capacity filters listings consumers =
     recordError errs = void . sendIO . atomically . tryPutTMVar errs
 
 -- | Walk @basedir@ once and fan the listings out to a set of concurrent
--- consumers, as in "broadcastStream".  @pathPrefix@ is as in 'walkStream'.
+-- consumers, as in 'broadcastStream'.  @pathPrefix@ is as in 'walkStream'.
 withWalkBroadcast ::
   ( Has ReadFS sig m
   , Has Diagnostics sig m
@@ -284,7 +284,10 @@ withWalkBroadcast ::
   ) =>
   AllFilters ->
   Maybe FileAncestry ->
+  -- | prune the default non-production paths during the walk
+  Bool ->
   Path Abs Dir ->
   [WalkConsumer o m] ->
   m ()
-withWalkBroadcast filters pathPrefix basedir = broadcastStream listingCapacity filters (walkStream filters pathPrefix basedir)
+withWalkBroadcast filters pathPrefix pruneNonProduction basedir =
+  broadcastStream listingCapacity filters (walkStream filters pathPrefix pruneNonProduction basedir)

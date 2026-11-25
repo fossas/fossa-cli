@@ -30,7 +30,7 @@ import App.Util (FileAncestry, withPathPrefix)
 import Control.Effect.Diagnostics (Diagnostics, recover, warn)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
-import Discovery.Filters (AllFilters, pathAllowed)
+import Discovery.Filters (AllFilters, isDefaultNonProductionPath, pathAllowed)
 import Effect.ReadFS
 import Path
 import Streaming (Of (..), Stream, lift)
@@ -53,9 +53,14 @@ walkStream ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
   AllFilters ->
   Maybe FileAncestry ->
+  -- | prune the default non-production paths ('Discovery.Filters.isDefaultNonProductionPath'):
+  -- sound for @fossa analyze@ because every project under such a path is
+  -- discarded by the same predicate after discovery; commands that list without
+  -- the default filters (e.g. @fossa list-targets@) must pass False.
+  Bool ->
   Path Abs Dir ->
   Stream (Of DirListing) m ()
-walkStream filters pathPrefix root = go Set.empty root
+walkStream filters pathPrefix pruneNonProduction root = go Set.empty root
   where
     go traversed curdir = do
       mId <- lift (recover (getIdentifier curdir))
@@ -81,7 +86,9 @@ walkStream filters pathPrefix root = go Set.empty root
               allowedSubdirs =
                 filter
                   ( \sub -> case stripProperPrefix root sub of
-                      Just rel -> pathAllowed filters (withPathPrefix pathPrefix rel)
+                      Just rel ->
+                        pathAllowed filters (withPathPrefix pathPrefix rel)
+                          && not (pruneNonProduction && isDefaultNonProductionPath root sub)
                       Nothing -> True
                   )
                   subdirs
@@ -94,4 +101,4 @@ walkStream filters pathPrefix root = go Set.empty root
 -- | Like 'walkStream', but without applying any path filters.  Equivalent to
 -- 'walkStream' with 'mempty' filters, which allows every directory.
 walkStreamUnfiltered :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Stream (Of DirListing) m ()
-walkStreamUnfiltered = walkStream mempty Nothing
+walkStreamUnfiltered = walkStream mempty Nothing False
