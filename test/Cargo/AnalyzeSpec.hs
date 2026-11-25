@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -47,11 +48,14 @@ import Strategy.Cargo (
  )
 import Strategy.Cargo.Lock qualified as Lock
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
+#ifndef mingw32_HOST_OS
 import System.Posix.Files (setFileMode)
-import System.Posix.Types (FileMode)
+import System.Posix.User (getEffectiveUserID)
+#endif
+import System.Posix.Types (FileMode, UserID)
 import System.Random (randomIO)
 import Test.Effect (expectationFailure', itWithTempDir', shouldBe', shouldSatisfy')
-import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldContain)
+import Test.Hspec (Spec, describe, expectationFailure, it, pendingWith, shouldBe, shouldContain, shouldSatisfy)
 import Type.Operator (type ($))
 import Types (
   DependencyResults (dependencyGraph, dependencyManifestFiles),
@@ -181,18 +185,31 @@ lockfileReadSpecs =
           map Lock.packageName (Lock.lockPackages lock) `shouldBe'` ["demo", "serde"]
         other -> expectationFailure' ("expected a parsed lockfile, got: " ++ show other)
     itWithTempDir' "surfaces Left with the read error when Cargo.lock cannot be read" $ \dir -> do
-      -- The warn + cargo-metadata fallback in 'analyze' itself is not unit
-      -- tested: taking it would run cargo. This pins the Left branch that
-      -- feeds it, using a file that exists but is unreadable.
-      let lockFile = dir </> $(mkRelFile "Cargo.lock")
-      sendIO $ writeFile (toFilePath lockFile) demoLock
-      sendIO $ setFileMode (toFilePath lockFile) (0 :: FileMode)
-      res <- readLockfile dir
-      case res of
-        Left (FileReadError path reason) -> do
-          path `shouldBe'` toFilePath lockFile
-          reason `shouldSatisfy'` (/= "")
-        other -> expectationFailure' ("expected a read error, got: " ++ show other)
+
+-- The warn + cargo-metadata fallback in 'analyze' itself is not unit
+-- tested: taking it would run cargo. This pins the Left branch that
+-- feeds it, using a file that exists but is unreadable.
+--
+-- Unreadability can only be simulated on POSIX as a non-root user:
+-- chmod 0 does not block reads for root (CI containers), and the POSIX
+-- modules are unavailable on Windows.
+#ifndef mingw32_HOST_OS
+      euid <- sendIO getEffectiveUserID
+      if euid == (0 :: UserID)
+        then sendIO $ pendingWith "cannot make a file unreadable when running as root"
+        else do
+          let lockFile = dir </> $(mkRelFile "Cargo.lock")
+          sendIO $ writeFile (toFilePath lockFile) demoLock
+          sendIO $ setFileMode (toFilePath lockFile) (0 :: FileMode)
+          res <- readLockfile dir
+          case res of
+            Left (FileReadError path reason) -> do
+              path `shouldBe'` toFilePath lockFile
+              reason `shouldSatisfy'` (/= "")
+            other -> expectationFailure' ("expected a read error, got: " ++ show other)
+#else
+      sendIO $ pendingWith "POSIX file modes are unavailable on Windows"
+#endif
 
 -- ===========================================================================
 -- Static analysis wiring
