@@ -191,11 +191,13 @@ stripSourceSuffix s =
 --
 -- # Accepted gap
 --
--- Dependency kinds are derived only from member manifests. Edges whose parent
--- is *not* a workspace member (e.g. a non-member path dependency or a git
--- package) therefore cannot be classified and default to a single Production
--- ('NodeDepKind' with a null kind) in
--- "Strategy.Cargo".lockfileToMetadata. This is pinned by a golden test.
+-- Dependency kinds are derived only from member manifests. A member-declared
+-- edge carries the kind(s) its member declares; a non-member edge (a
+-- non-member path dependency or a git package) inherits the child's
+-- propagated kind set -- the union of the kind sets of every member edge that
+-- reaches that child -- in
+-- "Strategy.Cargo".lockfileToMetadata. A package that no member edge reaches
+-- (stale lockfile residue) therefore defaults to Production.
 --
 -- Nested non-member path dependencies (a path dependency of a path
 -- dependency) get a @file://<crate-name>@ source rather than an absolute
@@ -986,7 +988,8 @@ unresolvableDeps lock =
 -- them). When no requirement matches -- an undeclared or versionless
 -- declaration, or a lockfile that drifted ahead of the manifest -- the union
 -- of all declared kinds is used instead. Edges whose parent is not a member
--- default to a single null kind -- the documented, accepted gap (see the
+-- inherit the child's propagated kind set (Production when the child is
+-- unreachable from any member) -- the documented, accepted gap (see the
 -- module header of "Strategy.Cargo.Lock"). Edges whose dependency reference
 -- matches no [[package]] entry in the lockfile are omitted entirely rather
 -- than pointing at a phantom vertex; their names surface via 'unresolvableDeps'.

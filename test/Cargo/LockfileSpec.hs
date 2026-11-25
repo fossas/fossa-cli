@@ -561,10 +561,11 @@ goldenConversionSpecs =
 
     it' "non-member package build-dep subtree is labeled Production (accepted gap)" $ do
       -- "ext" is a git package, NOT a workspace member. Its edge to
-      -- "ext_build" cannot be classified, because dependency kinds are only
-      -- known for member manifests. "ext_build" is therefore treated as
-      -- Production even though, semantically, it is a build-dep of "ext". This
-      -- pins the documented, accepted gap (see the Strategy.Cargo.Lock header).
+      -- "ext_build" inherits the child's propagated kind set rather than a
+      -- kind of its own. "ext_build" is Production here because it is
+      -- reachable from the member "app" under a prod dependency, so its
+      -- propagated set is {prod}; this pins the accepted gap (see the
+      -- Strategy.Cargo.Lock header).
       root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/nonmember_ws")
       members <- enumerateWorkspaceMembers root
       analysis <- analyzeManifests root members
@@ -744,6 +745,17 @@ devChainLock =
     <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"a 1.0.0\"]\n"
     <> "\n[[package]]\nname = \"b\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bb\"\n"
 
+-- | Two registry packages in a dev-dependency cycle (legal in a Cargo.lock:
+-- "a" depends on "b" and "b" depends on "a"), reached from the member
+-- "app" via a [dev-dependencies] edge. The propagation walk must terminate,
+-- and both packages inherit the dev kind.
+cyclicLock :: Text
+cyclicLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"a\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"aa\"\ndependencies = [\"b 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"a 1.0.0\"]\n"
+    <> "\n[[package]]\nname = \"b\"\nversion = \"1.0.0\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"bb\"\ndependencies = [\"a 1.0.0\"]\n"
+
 -- | "b" is reachable from the member via a prod edge (through "a") and a dev
 -- edge (through "c"), so it must carry both kinds.
 mixedReachLock :: Text
@@ -849,6 +861,44 @@ propagationSpecs =
               cDep = mkDep "c" "1.0.0" CargoType [EnvDevelopment]
           expectDeps' [aDep, bDep, cDep] graph
           expectDirect' [aDep, cDep] graph
+
+    it' "a dev-dependency cycle between non-member packages terminates and labels both dev" $ do
+      -- "a" and "b" reference each other in the lockfile (cargo permits this
+      -- via dev-dependency cycles). The reachability walk's seen set must
+      -- terminate, and both packages inherit the dev kind under which the
+      -- member "app" reaches them.
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/cyclic_ws")
+      members <- enumerateWorkspaceMembers root
+      analysis <- analyzeManifests root members
+      case parseCargoLock cyclicLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          let appDir = root </> $(mkRelDir "crates/app")
+              appPid = PackageId "app" "0.1.0" ("path+file://" <> toText (toFilePath appDir))
+          members `shouldBe'` [WorkspaceMember "app" appDir]
+          let aPid = mkPkgId "a" "1.0.0"
+              bPid = mkPkgId "b" "1.0.0"
+              meta = lockfileToMetadata lock members analysis
+              expected =
+                CargoMetadata
+                  [ Package "a" "1.0.0" aPid Nothing Nothing [] (Just registrySource)
+                  , Package "app" "0.1.0" appPid Nothing Nothing [] Nothing
+                  , Package "b" "1.0.0" bPid Nothing Nothing [] (Just registrySource)
+                  ]
+                  [appPid]
+                  ( Resolve
+                      [ ResolveNode aPid [NodeDependency bPid [devKind "dev"]]
+                      , ResolveNode appPid [NodeDependency aPid [devKind "dev"]]
+                      , ResolveNode bPid [NodeDependency aPid [devKind "dev"]]
+                      ]
+                  )
+          meta `shouldBe'` expected
+
+          let graph = buildGraph False meta
+              aDep = mkDep "a" "1.0.0" CargoType [EnvDevelopment]
+              bDep = mkDep "b" "1.0.0" CargoType [EnvDevelopment]
+          expectDeps' [aDep, bDep] graph
+          expectDirect' [aDep] graph
 
     it' "a build-only transitive chain labels the whole subtree build" $ do
       root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/build_chain_ws")
