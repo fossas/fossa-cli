@@ -4,8 +4,10 @@ module Node.PackageLockSpec (
   spec,
 ) where
 
+import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
+import Data.Text (Text)
 import DepTypes (
   DepEnvironment (EnvDevelopment, EnvProduction),
   DepType (NodeJSType),
@@ -562,6 +564,61 @@ packageLockParseSpec testDir =
       PkgLockJson{lockDependencies = packageDependencies} <- readContentsJson packageLock
       packageDependencies `shouldBe'` Map.empty
 
+-- A lockfile entry with no nested `dependencies`.
+lockEntry :: Text -> Bool -> Maybe Text -> Map Text Text -> PkgLockDependency
+lockEntry version dev resolved requires = PkgLockDependency version dev (NpmResolved resolved) requires Map.empty
+
+-- A registry dependency pinned to one version, located at its tarball.
+registryDep :: Text -> Text -> Text -> DepEnvironment -> Dependency
+registryDep name version tarball env = Dependency NodeJSType name (Just $ CEq version) [tarball] (Set.singleton env) Map.empty
+
+-- npm records a dependency installed under an alias (`"string-width-cjs": "npm:string-width@^4.2.0"`
+-- in package.json) under the alias as its key, with the installed package in `version`. `cliui`
+-- requires the alias and `wrap-ansi` the package itself, which npm installs once. Peer
+-- dependencies are recorded in `packages` under the alias key.
+mockAliasLock :: PkgLockJson
+mockAliasLock =
+  PkgLockJson
+    { lockPackages = Map.singleton "node_modules/react-dom-18" (PkgLockPackage (Map.singleton "react" "^18.2.0") Nothing)
+    , lockDependencies =
+        Map.fromList
+          [ ("cliui", lockEntry "8.0.1" False (Just "https://registry.npmjs.org/cliui/-/cliui-8.0.1.tgz") (Map.singleton "string-width-cjs" "npm:string-width@^4.2.0"))
+          , ("wrap-ansi", lockEntry "7.0.0" False (Just "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz") (Map.singleton "string-width" "^4.1.0"))
+          , ("string-width-cjs", lockEntry "npm:string-width@4.2.3" False (Just "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz") Map.empty)
+          , ("string-width", lockEntry "4.2.3" False (Just "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz") Map.empty)
+          , ("react-types", lockEntry "npm:@types/react@16.14.0" True (Just "https://registry.npmjs.org/@types/react/-/react-16.14.0.tgz") Map.empty)
+          , ("react-dom-18", lockEntry "npm:react-dom@18.2.0" False (Just "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz") Map.empty)
+          , ("react", lockEntry "18.2.0" False (Just "https://registry.npmjs.org/react/-/react-18.2.0.tgz") Map.empty)
+          ]
+    }
+
+cliui :: Dependency
+cliui = registryDep "cliui" "8.0.1" "https://registry.npmjs.org/cliui/-/cliui-8.0.1.tgz" EnvProduction
+
+wrapAnsi :: Dependency
+wrapAnsi = registryDep "wrap-ansi" "7.0.0" "https://registry.npmjs.org/wrap-ansi/-/wrap-ansi-7.0.0.tgz" EnvProduction
+
+stringWidth :: Dependency
+stringWidth = registryDep "string-width" "4.2.3" "https://registry.npmjs.org/string-width/-/string-width-4.2.3.tgz" EnvProduction
+
+typesReact :: Dependency
+typesReact = registryDep "@types/react" "16.14.0" "https://registry.npmjs.org/@types/react/-/react-16.14.0.tgz" EnvDevelopment
+
+reactDom :: Dependency
+reactDom = registryDep "react-dom" "18.2.0" "https://registry.npmjs.org/react-dom/-/react-dom-18.2.0.tgz" EnvProduction
+
+react :: Dependency
+react = registryDep "react" "18.2.0" "https://registry.npmjs.org/react/-/react-18.2.0.tgz" EnvProduction
+
+packageLockAliasSpec :: Spec
+packageLockAliasSpec =
+  describe "package-lock.json npm aliases" $ do
+    it "reports an alias under the aliased package's name and version" $ do
+      let graph = buildGraph mockAliasLock (Set.fromList ["cliui", "wrap-ansi", "string-width-cjs", "react-types", "react-dom-18"]) (WorkspacePackageNames Set.empty)
+      expectDeps [cliui, wrapAnsi, stringWidth, typesReact, reactDom, react] graph
+      expectDirect [cliui, wrapAnsi, stringWidth, typesReact, reactDom] graph
+      expectEdges [(cliui, stringWidth), (wrapAnsi, stringWidth), (reactDom, react)] graph
+
 spec :: Spec
 spec = do
   curdir <- runIO getCurrentDir
@@ -570,3 +627,4 @@ spec = do
   buildGraphSpec testDir
   packageLockParseSpec testDir
   packageLockWorkspaceSpec
+  packageLockAliasSpec
