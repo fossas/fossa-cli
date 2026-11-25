@@ -263,7 +263,7 @@ runAnalyzers systemDepsOnly osInfo filters withoutDefaultFilters = do
     runDiscovery $ do
       entries <-
         traverse prepare (layerAnalyzers osInfo systemDepsOnly)
-      withWalkBroadcast filters basedir (concatMap entryConsumers entries)
+      withWalkBroadcast filters Nothing (not (fromFlag WithoutDefaultFilters withoutDefaultFilters)) basedir (concatMap entryConsumers entries)
       pure entries
   Diag.withResult SevError SevWarn entriesResult (traverse_ single)
   where
@@ -427,7 +427,7 @@ listTargetLayer capabilities osInfo layerFs tarball layerType = do
         runDiscovery $ do
           entries <-
             traverse prepare (layerAnalyzers osInfo False)
-          withWalkBroadcast (mempty :: AllFilters) basedir (concatMap entryConsumers entries)
+          withWalkBroadcast (mempty :: AllFilters) Nothing False basedir (concatMap entryConsumers entries)
           pure entries
       Diag.withResult SevError SevWarn entriesResult (traverse_ findTargets)
     findTargets (PreparedEntry _ discover) =
