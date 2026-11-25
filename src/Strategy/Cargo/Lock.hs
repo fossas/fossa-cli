@@ -676,10 +676,15 @@ resolvePathDep base raw =
 resolveMemberEntry :: Path Abs Dir -> Text -> Maybe (Path Abs Dir)
 resolveMemberEntry root raw = parseAbsDir (normalizePathStr (toFilePath root <> "/" <> toString raw))
 
--- | Resolve "." and ".." segments in a slash-separated path string.
+-- | Resolve "." and ".." segments in a path string. Backslashes (from
+-- 'toFilePath' on Windows) are folded onto forward slashes first, since Cargo
+-- member/exclude and path entries use forward slashes and POSIX never emits
+-- them (so this folding is a no-op there); the "."/".." resolution then
+-- operates on a single, slash-separated form.
 normalizePathStr :: String -> String
 normalizePathStr s =
-  let isAbs = case s of
+  let fs = map (\c -> if c == '\\' then '/' else c) s
+      isAbs = case fs of
         ('/' : _) -> True
         _ -> False
       acc =
@@ -694,10 +699,11 @@ normalizePathStr s =
                 _ -> a ++ [seg]
           )
           []
-          (splitSlash s)
+          (splitSlash fs)
    in (if isAbs then "/" else "") ++ intercalate "/" acc
 
--- | Split a string on a character (the path separator here is always '/').
+-- | Split a string on '/' (the separator after backslashes have been folded
+-- onto '/' by 'normalizePathStr').
 splitSlash :: String -> [String]
 splitSlash xs
   | '/' `notElem` xs = [xs]
@@ -741,16 +747,21 @@ expandBraces e =
                 then [e]
                 else map (\alt -> pre <> alt <> Text.drop 1 suf) (Text.splitOn "," content)
 
--- | The relative path of 'dir' below 'root', as a string without the trailing
--- slash a Dir carries (a FilePattern '*' would not match it; stripping it
--- lets "crates/*" match "crates/alpha" exactly as Cargo does), or Nothing if
--- 'dir' is not properly contained in 'root' -- in particular, for 'root'
--- itself.
+-- | The relative path of 'dir' below 'root', as a slash-separated string
+-- without the trailing slash a Dir carries (a FilePattern '*' would not match
+-- it; stripping it lets "crates/*" match "crates/alpha" exactly as Cargo
+-- does), or Nothing if 'dir' is not properly contained in 'root' -- in
+-- particular, for 'root' itself. The result always uses forward slashes: a
+-- Dir's 'toFilePath' carries OS-native separators (backslashes on Windows),
+-- but Cargo member/exclude entries use forward slashes and 'globMatches'
+-- matches forward-slash paths only, so backslashes are normalised away.
 relPathStr :: Path Abs Dir -> Path Abs Dir -> Maybe Text
 relPathStr root dir =
   case stripProperPrefix root dir of
     Nothing -> Nothing
-    Just d -> Just (fromMaybe (toText d) (Text.stripSuffix "/" (toText d)))
+    Just d ->
+      let rel = fromMaybe (toText d) (Text.stripSuffix "/" (toText d))
+       in Just (Text.replace "\\" "/" rel)
 
 -- | Recursively collect every directory under @root@ that contains a
 -- @Cargo.toml@, skipping @target/@, hidden directories, and @node_modules/@,
