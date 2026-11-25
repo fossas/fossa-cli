@@ -760,8 +760,13 @@ relPathStr root dir =
   case stripProperPrefix root dir of
     Nothing -> Nothing
     Just d ->
-      let rel = fromMaybe (toText d) (Text.stripSuffix "/" (toText d))
-       in Just (Text.replace "\\" "/" rel)
+      -- Fold backslashes to forward slashes FIRST, then strip the trailing
+      -- separator of either kind: on Windows 'toFilePath' ends with '\\', so a
+      -- trailing-slash strip must run after folding, else "crates/alpha/" would
+      -- survive and fail to match "crates/*".
+      let rel = Text.replace "\\" "/" (toText d)
+          rel' = fromMaybe rel (Text.stripSuffix "/" rel)
+       in Just rel'
 
 -- | Recursively collect every directory under @root@ that contains a
 -- @Cargo.toml@, skipping @target/@, hidden directories, and @node_modules/@,
@@ -800,9 +805,10 @@ findManifestDirs rootDir excludes = walk' visit rootDir
     shouldDescendDir :: Path Abs Dir -> Bool
     shouldDescendDir d =
       -- 'dirname' yields a Dir whose string form carries the trailing
-      -- separator (e.g. "target/"); drop it so the literal comparisons below
-      -- match "target" and "node_modules" as the haddock above promises.
-      let name = dropWhileEnd (== '/') (toString (dirname d))
+      -- separator of either kind (e.g. "target/" on POSIX or "target\\" on
+      -- Windows); drop it so the literal comparisons below match "target" and
+      -- "node_modules" as the haddock above promises.
+      let name = dropWhileEnd (\c -> c == '/' || c == '\\') (toString (dirname d))
        in not ("." `isPrefixOf` name)
             && name /= "target"
             && name /= "node_modules"
