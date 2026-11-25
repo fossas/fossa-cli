@@ -11,7 +11,8 @@
 --   * a directory whose identifier cannot be obtained is skipped with a warning,
 --   * a directory that cannot be listed is skipped with a warning,
 --   * directories that fail 'Discovery.Filters.pathAllowed' (relative to the
---     root) are never descended into, and the root itself is always visited.
+--     root, or to the scan for an unpacked archive) are never descended into,
+--     and the root itself is always visited.
 --
 -- The producer has no per-consumer control: 'Discovery.Walk.WalkStop' never
 -- occurs and pruning is purely filter-based, applied once at the root.  A
@@ -25,10 +26,11 @@ module Discovery.Walk.Stream (
   walkStreamUnfiltered,
 ) where
 
+import App.Util (FileAncestry, withPathPrefix)
 import Control.Effect.Diagnostics (Diagnostics, recover, warn)
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
-import Discovery.Filters (AllFilters, pathAllowed)
+import Discovery.Filters (AllFilters, isDefaultNonProductionPath, pathAllowed)
 import Effect.ReadFS
 import Path
 import Streaming (Of (..), Stream, lift)
@@ -45,12 +47,20 @@ data DirListing = DirListing
 
 -- | Walk the filetree rooted at @root@, emitting a 'DirListing' for every
 -- directory the traversal visits, subject to the global 'AllFilters' prune.
+-- When @root@ is an unpacked archive, @pathPrefix@ is the archive's path in the
+-- scan, so filters match its directories by their path in the scan.
 walkStream ::
   (Has ReadFS sig m, Has Diagnostics sig m) =>
   AllFilters ->
+  Maybe FileAncestry ->
+  -- | prune the default non-production paths ('Discovery.Filters.isDefaultNonProductionPath'):
+  -- sound for @fossa analyze@ because every project under such a path is
+  -- discarded by the same predicate after discovery; commands that list without
+  -- the default filters (e.g. @fossa list-targets@) must pass False.
+  Bool ->
   Path Abs Dir ->
   Stream (Of DirListing) m ()
-walkStream filters root = go Set.empty root
+walkStream filters pathPrefix pruneNonProduction root = go Set.empty root
   where
     go traversed curdir = do
       mId <- lift (recover (getIdentifier curdir))
@@ -76,7 +86,9 @@ walkStream filters root = go Set.empty root
               allowedSubdirs =
                 filter
                   ( \sub -> case stripProperPrefix root sub of
-                      Just rel -> pathAllowed filters rel
+                      Just rel ->
+                        pathAllowed filters (withPathPrefix pathPrefix rel)
+                          && not (pruneNonProduction && isDefaultNonProductionPath root sub)
                       Nothing -> True
                   )
                   subdirs
@@ -89,4 +101,4 @@ walkStream filters root = go Set.empty root
 -- | Like 'walkStream', but without applying any path filters.  Equivalent to
 -- 'walkStream' with 'mempty' filters, which allows every directory.
 walkStreamUnfiltered :: (Has ReadFS sig m, Has Diagnostics sig m) => Path Abs Dir -> Stream (Of DirListing) m ()
-walkStreamUnfiltered = walkStream mempty
+walkStreamUnfiltered = walkStream mempty Nothing False

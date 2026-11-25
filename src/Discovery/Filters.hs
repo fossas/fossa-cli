@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE RoleAnnotations #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Discovery.Filters (
   AllFilters (..),
@@ -20,6 +21,8 @@ module Discovery.Filters (
   Include,
   Exclude,
   pathAllowed,
+  globMatchesDir,
+  properAncestors,
   toolAllowed,
   nodeToolFamily,
   consumerAllowed,
@@ -41,7 +44,7 @@ import Control.Monad ((<=<))
 import Data.Aeson (FromJSON, ToJSON (toEncoding), defaultOptions, genericToEncoding, pairs, parseJSON, withText, (.=))
 import Data.Glob (Glob, unGlob)
 import Data.Glob qualified as Glob
-import Data.List (find, isInfixOf, isPrefixOf, stripPrefix, (\\))
+import Data.List (find, isPrefixOf, (\\))
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as Map
@@ -54,7 +57,8 @@ import Data.String.Conversion (toString, toText)
 import Data.Text (Text)
 import Data.Void (Void)
 import GHC.Generics (Generic)
-import Path (Abs, Dir, Path, Rel, fromAbsDir, isProperPrefixOf, parseRelDir, toFilePath)
+import Path (Abs, Dir, Path, Rel, dirname, isProperPrefixOf, mkRelDir, parent, parseRelDir, stripProperPrefix, toFilePath)
+import System.FilePath qualified as FilePath
 import System.FilePattern qualified as FilePattern
 import Text.Megaparsec (
   MonadParsec (eof, takeWhile1P, try),
@@ -303,43 +307,70 @@ pathAllowed AllFilters{..} path = isIncluded && not isExcluded
     includedGlobs = combinedPathGlobs includeFilters
     excludedGlobs = combinedPathGlobs excludeFilters
 
+-- | Whether @projPath@ sits under one of the 'defaultNonProductionDirs'
+-- relative to @baseDir@.  Matched per path component, not as a substring, so
+-- @contest/@ is not @test/@ and @.github/@ is not @.git/@.  Components are
+-- compared via their separator-normalized 'toFilePath' forms — @Path@ equality
+-- is separator-style-sensitive on Windows (@mkRelDir@ compiles to @\\@ while
+-- paths parsed from forward-slashed sources keep @/@), and would silently
+-- never match there.  Callers normally pass a @projPath@ under @baseDir@; if
+-- it is not (the container layers use a synthetic root), every component of
+-- @projPath@ is checked instead.
 isDefaultNonProductionPath :: Path Abs Dir -> Path Abs Dir -> Bool
 isDefaultNonProductionPath baseDir projPath =
-  isNonProductionPath $
-    dropPrefix (fromAbsDir baseDir) (fromAbsDir projPath)
+  maybe (check projPath) check (stripProperPrefix baseDir projPath)
   where
-    isNonProductionPath :: FilePath -> Bool
-    isNonProductionPath path = any (`isInfixOf` path) ignoredPaths
+    check :: Path b Dir -> Bool
+    check d =
+      Set.member (dirKey (dirname d)) defaultNonProductionDirs
+        || (isProperPrefixOf (parent d) d && check (parent d))
 
-    dropPrefix :: String -> String -> String
-    dropPrefix prefix str = fromMaybe str (stripPrefix prefix str)
+-- | The separator-normalized 'toFilePath' form of a directory's own name —
+-- the key 'isDefaultNonProductionPath' matches on.
+dirKey :: Path b Dir -> FilePath
+dirKey = map sep . toFilePath
+  where
+    sep c
+      | FilePath.isPathSeparator c = '/'
+      | otherwise = c
 
-ignoredPaths :: [[Char]]
-ignoredPaths =
-  [ "dist-newstyle"
-  , "doc/"
-  , "docs/"
-  , "Documentation/"
-  , "documentation/"
-  , "test/"
-  , "tests/"
-  , "example/"
-  , "examples/"
-  , "vendor/"
-  , "node_modules/"
-  , ".venv/" -- python pdm package manager's pkgyard (similar to node_modules/)
-  , ".pixi/" -- pixi's installed environments (similar to .venv/)
-  , ".srclib-cache/"
-  , "spec/"
-  , "Godeps/"
-  , ".git/"
-  , "bower_components/"
-  , "third_party/"
-  , "third-party/"
-  , "Carthage/"
-  , "Checkouts/"
-  , ".build/" -- SwiftPM build directory; dependency clones under checkouts/ carry their own manifests
-  ]
+-- | Directories whose contents are never analyzed unless
+-- @--without-default-filters@ is passed.  Matched per path component, not as
+-- a substring, so @contest/@ is not @test/@ and @.github/@ is not @.git/@.
+-- Entries are TH-validated and stored in their separator-normalized
+-- 'toFilePath' form — see 'dirKey'.
+defaultNonProductionDirs :: Set FilePath
+defaultNonProductionDirs =
+  Set.fromList
+    [ dirKey $(mkRelDir "dist-newstyle/")
+    , dirKey $(mkRelDir "doc/")
+    , dirKey $(mkRelDir "docs/")
+    , dirKey $(mkRelDir "Documentation/")
+    , dirKey $(mkRelDir "documentation/")
+    , dirKey $(mkRelDir "test/")
+    , dirKey $(mkRelDir "tests/")
+    , dirKey $(mkRelDir "example/")
+    , dirKey $(mkRelDir "examples/")
+    , dirKey $(mkRelDir "vendor/")
+    , dirKey $(mkRelDir "node_modules/")
+    , dirKey $(mkRelDir ".venv/") -- python pdm package manager's pkgyard (similar to node_modules/)
+    , dirKey $(mkRelDir ".pixi/") -- pixi's installed environments (similar to .venv/)
+    , dirKey $(mkRelDir ".srclib-cache/")
+    , dirKey $(mkRelDir "spec/")
+    , dirKey $(mkRelDir "Godeps/")
+    , dirKey $(mkRelDir ".git/")
+    , dirKey $(mkRelDir "bower_components/")
+    , dirKey $(mkRelDir "third_party/")
+    , dirKey $(mkRelDir "third-party/")
+    , dirKey $(mkRelDir "Carthage/")
+    , dirKey $(mkRelDir "Checkouts/")
+    , dirKey $(mkRelDir ".build/") -- SwiftPM build directory; dependency clones under checkouts/ carry their own manifests
+    ]
+
+-- | The default non-production directories, for rendering in the help text.
+-- Entries carry a trailing path separator.
+ignoredPaths :: [FilePath]
+ignoredPaths = Set.toAscList defaultNonProductionDirs
 
 comboInclude :: [TargetFilter] -> [Path Rel Dir] -> FilterCombination Include
 comboInclude ts ps = FilterCombination ts ps []

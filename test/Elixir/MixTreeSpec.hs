@@ -2,6 +2,7 @@ module Elixir.MixTreeSpec (
   spec,
 ) where
 
+import Data.Foldable (for_)
 import Data.Map.Strict qualified as Map
 import Data.Text.IO qualified as TIO
 import DepTypes (
@@ -33,6 +34,7 @@ import Strategy.Elixir.MixTree (
 import Text.Megaparsec
 
 import Data.Text (Text)
+import Data.Text qualified as Text
 import Data.Void (Void)
 import Test.Hspec
 import Test.Hspec.Megaparsec hiding (err)
@@ -154,6 +156,27 @@ spec = do
         Left failCode -> expectationFailure $ show failCode
         Right result -> result `shouldMatchList` [depZero, depOne, depTwo, depThree]
 
+    -- A git dependency pinned to a reference with characters other than alphanumerics and dots
+    -- stays in the tree together with everything under it. The source parser is shared with
+    -- `mix deps`, and a line it cannot read is dropped from the tree instead of failing the command.
+    it "should keep git dependencies whose reference has characters other than alphanumerics and dots" $
+      for_ ["v1.4.5-rc.1", "release/2.0", "feature_branch"] $ \ref ->
+        parseMatch
+          mixTreeCmdOutputParser
+          ( Text.unlines
+              [ "example"
+              , "`-- one (https://github.com/dep/one.git - " <> ref <> ")"
+              , "    `-- two ~> 2.0 (Hex package)"
+              ]
+          )
+          [ MixDep
+              { depName = PackageName "one"
+              , depVersion = Nothing
+              , depSCM = Git "https://github.com/dep/one.git" (Just ref)
+              , subDeps = [MixDep (PackageName "two") (Just $ CCompatible "2.0") Hex []]
+              }
+          ]
+
   describe "mix deps parser" $ do
     it "should parse mix deps output" $ do
       case runParser mixDepsCmdOutputParser "" mixDepsContent of
@@ -216,6 +239,43 @@ spec = do
                     }
                 )
               ]
+
+    -- `mix deps` output for git dependencies pinned to a reference with characters other than
+    -- alphanumerics and dots parses in full: the reference is kept verbatim, and the package
+    -- version and locked commit around it are read as usual.
+    it "should parse git dependencies whose reference has characters other than alphanumerics and dots" $
+      for_ ["v1.4.5-rc.1", "release/2.0", "feature_branch"] $ \ref ->
+        parseMatch
+          mixDepsCmdOutputParser
+          ( Text.unlines
+              [ "* pkgG (https://github.com/some-org/pkg_g.git - " <> ref <> ")"
+              , "  the dependency is not available, run \"mix deps.get\""
+              , "* pkgH 2.0.0 (https://github.com/some-org/pkg_h.git - " <> ref <> ") (mix)"
+              , "  locked at 2a08250"
+              , "  ok"
+              ]
+          )
+          ( Map.fromList
+              [
+                ( PackageName "pkgG"
+                , MixDepResolved
+                    { depResolvedName = PackageName "pkgG"
+                    , depResolvedVersion = Nothing
+                    , depResolvedSCM = Git "https://github.com/some-org/pkg_g.git" (Just ref)
+                    , depResolvedRef = Nothing
+                    }
+                )
+              ,
+                ( PackageName "pkgH"
+                , MixDepResolved
+                    { depResolvedName = PackageName "pkgH"
+                    , depResolvedVersion = Just $ CEq "2.0.0"
+                    , depResolvedSCM = Git "https://github.com/some-org/pkg_h.git" (Just ref)
+                    , depResolvedRef = Just $ CEq "2a08250"
+                    }
+                )
+              ]
+          )
 
   describe "buildGraph" $ do
     it "should identify dependency type correctly" $ do
@@ -291,6 +351,33 @@ spec = do
                       , depResolvedVersion = Nothing
                       , depResolvedSCM = Hex
                       , depResolvedRef = Just $ CEq "2.0.1"
+                      }
+                  )
+                ]
+            )
+        )
+
+    -- A compiled git dependency has both a package version and a locked commit. Its locator
+    -- names a revision of the repository, so the commit is the one reported.
+    it "should use locked commit over package version, when dependency is GitType" $ do
+      expectDep
+        (Dependency GitType "https://github.com/some-org/pkg_h.git" (Just $ CEq "2a08250") [] mempty Map.empty)
+        ( buildGraph
+            [ MixDep
+                { depName = PackageName "pkgH"
+                , depVersion = Nothing
+                , depSCM = Git "https://github.com/some-org/pkg_h.git" (Just "v1.4.5-rc.1")
+                , subDeps = []
+                }
+            ]
+            ( Map.fromList
+                [
+                  ( PackageName "pkgH"
+                  , MixDepResolved
+                      { depResolvedName = PackageName "pkgH"
+                      , depResolvedVersion = Just $ CEq "2.0.0"
+                      , depResolvedSCM = Git "https://github.com/some-org/pkg_h.git" (Just "v1.4.5-rc.1")
+                      , depResolvedRef = Just $ CEq "2a08250"
                       }
                   )
                 ]

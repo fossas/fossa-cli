@@ -1,10 +1,22 @@
 # FOSSA CLI Changelog
 
-## Unreleased
+## 3.21.1
 
+- Discovery: the shared discovery walk no longer traverses directories that the default filters skip (`node_modules/`, `vendor/`, `test/`, ...), fixing a large `fossa analyze` slowdown on repositories with large dependency trees when a target filter is set (e.g. 3.5 s -> 65 s on a yarn-only monorepo). ([#1861](https://github.com/fossas/fossa-cli/pull/1861))
+- Analysis: default-filter path matching is now per path component instead of substring, so directories whose names merely contain a filtered name (e.g. `.github/` vs `.git`) are no longer skipped. Also fixes the check never matching on Windows. ([#1861](https://github.com/fossas/fossa-cli/pull/1861))
+- Analysis: `--unpack-archives` now applies path filters to the archive's path in the scan ([#1745](https://github.com/fossas/fossa-cli/pull/1745))
+- Conda: `environment.yml` files with `-r requirements.txt` in their `pip:` section no longer fail analysis. ([#1860](https://github.com/fossas/fossa-cli/pull/1860))
+
+## 3.21.0
+
+- Yarn: dependencies installed under an npm alias in a Yarn 1 `yarn.lock` are now reported as the package they install instead of the alias name. ([#1849](https://github.com/fossas/fossa-cli/pull/1849))
 - Container scanning: `fossa container analyze` no longer fails on images that list the same layer more than once. ([#1846](https://github.com/fossas/fossa-cli/pull/1846))
+- Elixir: git dependencies pinned to a tag or branch containing a hyphen, slash or underscore no longer fail analysis. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
+- Elixir: compiled git dependencies are now reported at the commit they are locked to instead of their package version. ([#1853](https://github.com/fossas/fossa-cli/pull/1853))
 - Swift: Fall back to `Package.resolved` alone when `Package.swift` cannot be parsed. [#1833](https://github.com/fossas/fossa-cli/pull/1833)
 - SBOM: `fossa sbom analyze --json` prints project metadata as JSON, matching `fossa analyze --json`. ([#1736](https://github.com/fossas/fossa-cli/pull/1736))
+- Discovery: Performance optimizations (PRs [#1819](https://github.com/fossas/fossa-cli/pull/1819), [#1821](https://github.com/fossas/fossa-cli/pull/1821), [#1852](https://github.com/fossas/fossa-cli/pull/1852))
+- NuGet: `project.json` files that contain comments or trailing commas no longer fail analysis. ([#1835](https://github.com/fossas/fossa-cli/pull/1835))
 
 ## 3.20.13
 

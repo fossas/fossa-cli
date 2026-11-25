@@ -77,7 +77,7 @@ gatingSpec =
                 { wcProjectType = CargoProjectType
                 , wcVisitor = countingConsumer counterRef outRef
                 }
-        withWalkBroadcast excludedFilters tmpDir [consumer]
+        withWalkBroadcast excludedFilters Nothing False tmpDir [consumer]
 
         -- No invocation, no collected output: the disabled tool did no work.
         count <- sendIO $ IOR.readIORef counterRef
@@ -106,7 +106,7 @@ gatingSpec =
                 { wcProjectType = CargoProjectType
                 , wcVisitor = countingConsumer counterRef outRef
                 }
-        withWalkBroadcast includeFilters tmpDir [consumer]
+        withWalkBroadcast includeFilters Nothing False tmpDir [consumer]
 
         -- No invocation, no collected output: the unlisted tool did no work.
         -- (The internal pins — no channel dup'd, no thread forked — are not
@@ -140,7 +140,7 @@ gatingSpec =
                 { wcProjectType = NpmProjectType
                 , wcVisitor = countingConsumer counterRef outRef
                 }
-        withWalkBroadcast yarnOnlyFilters tmpDir [consumer]
+        withWalkBroadcast yarnOnlyFilters Nothing False tmpDir [consumer]
 
         -- The consumer ran despite npm itself being unlisted.
         count <- sendIO $ IOR.readIORef counterRef
@@ -168,7 +168,7 @@ gatingSpec =
         -- Positive control: the same consumer type, allowed, is invoked twice
         -- (root + web), proving the zero count above is gating and not a
         -- no-op run.
-        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumer]
+        withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [consumer]
 
         count <- sendIO $ IOR.readIORef counterRef
         count `shouldSatisfy'` (> 0)
@@ -209,7 +209,7 @@ isolationSpec =
                 { wcProjectType = CargoProjectType
                 , wcVisitor = stampedVisitor bLast bCollected
                 }
-        withWalkBroadcast (mempty :: AllFilters) tmpDir [aConsumer, bConsumer]
+        withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [aConsumer, bConsumer]
 
         aBegan <- sendIO $ IOR.readIORef aStart
         bDone <- sendIO $ IOR.readIORef bLast
@@ -245,7 +245,7 @@ broadcastSpec =
               , WalkConsumer{wcProjectType = ComposerProjectType, wcVisitor = nodeLikeVisitor nodeRef}
               , WalkConsumer{wcProjectType = NpmProjectType, wcVisitor = recordingVisitor allRef}
               ]
-        withWalkBroadcast (mempty :: AllFilters) tmpDir consumers
+        withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir consumers
 
         -- The unconstrained consumer saw the full listing set.
         allDirs <- sendIO $ IOR.readIORef allRef
@@ -285,7 +285,7 @@ abortSpec =
         -- returns with the exception rather than hanging.
         res <-
           sendIO $
-            try @SomeException (runTestEffects $ withWalkBroadcast (mempty :: AllFilters) tmpDir consumers)
+            try @SomeException (runTestEffects $ withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir consumers)
         -- The consumer's user error propagates out of the run (and the run
         -- returns, so every thread terminated).
         res `shouldSatisfy'` (\case Left e -> maybe False isUserError (fromException e); Right () -> False)
@@ -329,7 +329,7 @@ failureContractSpec =
         -- The root is collected successfully; the subdir's visitor throws.
         sink <- sendIO (IOR.newIORef (Right ([] :: [Path Abs Dir])))
         let consumer = accumulateConsumer NpmProjectType msg sink collectingFailingVisitor
-        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumer]
+        withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [consumer]
 
         -- The root was collected before the failure, but a failing directory
         -- fails the whole strategy: the sink holds the error, not the earlier
@@ -351,7 +351,7 @@ failureContractSpec =
             consumerB = accumulateConsumer ComposerProjectType msg bSink collectingSucceedingVisitor
         -- A fails at the subdir; B never fails.  The broadcast keeps going so B
         -- collects the whole tree while A's sink records the failure.
-        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumerA, consumerB]
+        withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [consumerA, consumerB]
 
         aState <- sendIO (IOR.readIORef aSink)
         bState <- sendIO (IOR.readIORef bSink)
@@ -401,7 +401,7 @@ backpressureSpec =
           res <-
             try @SomeException
               ( runTestEffects
-                  (broadcastStream capacity (mempty :: AllFilters) (walkStream (mempty :: AllFilters) tmpDir) consumers)
+                  (broadcastStream capacity (mempty :: AllFilters) (walkStream (mempty :: AllFilters) Nothing False tmpDir) consumers)
               )
           putMVar done (either (const False) (const True) res)
 
@@ -442,7 +442,7 @@ waitSpec =
               sendIO (threadDelay 200000)
               pure ([dir], WalkContinue)
             consumer = accumulateConsumer NpmProjectType msg sink slow
-        withWalkBroadcast (mempty :: AllFilters) tmpDir [consumer]
+        withWalkBroadcast (mempty :: AllFilters) Nothing False tmpDir [consumer]
         st <- sendIO (IOR.readIORef sink)
         st `shouldSatisfy'` \case
           Right ds -> Set.fromList ds == Set.fromList [tmpDir, sub]
