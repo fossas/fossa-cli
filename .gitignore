@@ -46,3 +46,4 @@ node_modules/
 # Include targets in test
 !test/reachability/testdata/maven-default/target
 !test/reachability/testdata/maven-build-config/dist
+!test/Cargo/testdata/target_skip_ws/target

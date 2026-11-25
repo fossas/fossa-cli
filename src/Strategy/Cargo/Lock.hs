@@ -40,7 +40,7 @@ import Control.Monad (guard, unless)
 import Data.Char qualified as Char
 import Data.Foldable (for_)
 import Data.Function (on)
-import Data.List (foldl', intercalate, isPrefixOf, nub, nubBy, sortBy, unsnoc)
+import Data.List (dropWhileEnd, foldl', intercalate, isPrefixOf, nub, nubBy, sortBy, unsnoc)
 import Data.Map.Strict qualified as Map
 import Data.Maybe (catMaybes, fromMaybe, isJust, isNothing, mapMaybe, maybeToList)
 import Data.SemVer (fromText)
@@ -268,8 +268,12 @@ enumerateWorkspaceMembers rootDir = do
         Just name -> pure [WorkspaceMember name rootDir]
         Nothing -> pure []
     Just ws -> do
-      let globs = wsGlobs ws
-          excludes = wsExcludes ws
+      -- Cargo member/exclude entries may use brace alternation
+      -- (@crates/{a,b}@); expand each entry lexically before matching so the
+      -- resulting paths are treated the same way Cargo would (@crates/a@ and
+      -- @crates/b@). Entries without braces pass through unchanged.
+      let globs = concatMap expandBraces (wsGlobs ws)
+          excludes = concatMap expandBraces (wsExcludes ws)
       allDirs <- findManifestDirs rootDir excludes
       walkedMembers <- concat <$> traverse (memberFor globs) allDirs
       explicitMembers <- concat <$> traverse (explicitMember rootDir) (filter (not . hasGlobChars) globs)
@@ -308,11 +312,15 @@ enumerateWorkspaceMembers rootDir = do
     -- An explicit (non-glob) entry names one specific directory; it is
     -- resolved from the workspace root directly rather than relying on the
     -- manifest walk to reach it, so out-of-tree entries ("../sibling") work
-    -- even though the walk never leaves 'rootDir'. A missing directory or a
-    -- manifest without a [package] table is skipped silently.
+    -- even though the walk never leaves 'rootDir'. A missing directory, an
+    -- unparseable entry, or a manifest without a [package] table is reported
+    -- as a warning (rather than skipped silently) so a drifted members list
+    -- stays visible.
     explicitMember dir entry =
       case resolveMemberEntry dir entry of
-        Nothing -> pure []
+        Nothing -> do
+          warn (unresolvableMemberMsg entry)
+          pure []
         Just d -> do
           let manifest = d </> $(mkRelFile "Cargo.toml")
           exists <- doesFileExist manifest
@@ -321,8 +329,20 @@ enumerateWorkspaceMembers rootDir = do
               m <- readContentsToml @(Map.Map Text Value) manifest
               case rootPackage m of
                 Just name -> pure [WorkspaceMember name d]
-                Nothing -> pure []
-            else pure []
+                Nothing -> do
+                  warn (unresolvableMemberMsg entry)
+                  pure []
+            else do
+              warn (unresolvableMemberMsg entry)
+              pure []
+
+-- | Warning text for a workspace member entry that failed to resolve to a
+-- manifest carrying a @\[package\]@ table (a missing/unparseable directory, or
+-- a manifest without a package name). Surfaced via 'warn' so a drifted
+-- @members@ list stays visible instead of dropping the member silently.
+unresolvableMemberMsg :: Text -> Text
+unresolvableMemberMsg entry =
+  "Cargo workspace member entry '" <> entry <> "' did not resolve to a manifest with a [package] table; omitted from the dependency graph."
 
 -- | Analyze every member manifest (plus the root's @\[workspace.dependencies\]@)
 -- to derive the dependency-kind map and the non-member path-dependency map.
@@ -694,9 +714,30 @@ globMatches :: Text -> Text -> Bool
 globMatches relStr glob = toString glob FilePattern.?== toString relStr
 
 -- | Whether a workspace entry is a glob (contains a wildcard character)
--- rather than a plain path.
+-- rather than a plain path. Brace alternation (@{a,b}@) is not a wildcard
+-- here: it is expanded by 'expandBraces' before this predicate is consulted,
+-- so a brace entry resolves to explicit paths rather than being matched as a
+-- single literal pattern.
 hasGlobChars :: Text -> Bool
 hasGlobChars e = any (`elem` toString e) ['*', '?', '[']
+
+-- | Lexically expand one level of brace alternation in a workspace
+-- member/exclude entry: @"crates/{a,b}"@ -> @["crates/a", "crates/b"]@.
+-- Entries without braces are returned unchanged, and an entry whose braces are
+-- unbalanced or nested (so it cannot be expanded) is returned as the single
+-- original string, where it is then treated as an explicit path -- which lets
+-- its resolution failure surface as a warning rather than being dropped
+-- silently.
+expandBraces :: Text -> [Text]
+expandBraces e =
+  let (pre, rest) = Text.span (/= '{') e
+   in if Text.null rest
+        then [e]
+        else
+          let (content, suf) = Text.span (/= '}') (Text.drop 1 rest)
+           in if Text.null suf || Text.elem '{' content
+                then [e]
+                else map (\alt -> pre <> alt <> Text.drop 1 suf) (Text.splitOn "," content)
 
 -- | The relative path of 'dir' below 'root', as a string without the trailing
 -- slash a Dir carries (a FilePattern '*' would not match it; stripping it
@@ -745,7 +786,10 @@ findManifestDirs rootDir excludes = walk' visit rootDir
 
     shouldDescendDir :: Path Abs Dir -> Bool
     shouldDescendDir d =
-      let name = toString (dirname d)
+      -- 'dirname' yields a Dir whose string form carries the trailing
+      -- separator (e.g. "target/"); drop it so the literal comparisons below
+      -- match "target" and "node_modules" as the haddock above promises.
+      let name = dropWhileEnd (== '/') (toString (dirname d))
        in not ("." `isPrefixOf` name)
             && name /= "target"
             && name /= "node_modules"

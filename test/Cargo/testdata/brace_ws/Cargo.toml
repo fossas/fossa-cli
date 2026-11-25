@@ -1,0 +1,2 @@
+[workspace]
+members = ["crates/{a,b}", "ghost_dir"]

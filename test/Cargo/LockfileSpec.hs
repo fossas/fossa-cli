@@ -19,19 +19,23 @@ module Cargo.LockfileSpec (
   spec,
 ) where
 
+import Control.Effect.Diagnostics (errorBoundary)
 import Control.Effect.Lift (sendIO)
 import Data.Map.Strict qualified as Map
 import Data.Set qualified as Set
 import Data.String.Conversion (toText)
 import Data.Text (Text)
+import Data.Text qualified as Text
 import DepTypes
+import Diag.Result (Result (..), renderSuccess)
+import Effect.Logger (renderIt)
 import GraphUtil
 import Graphing qualified
 import Path (mkRelDir, toFilePath, (</>))
 import Path.IO (makeAbsolute)
 import Strategy.Cargo
 import Strategy.Cargo.Lock (reqSatisfies)
-import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldNotContain')
+import Test.Effect (expectationFailure', it', shouldBe', shouldContain', shouldNotContain', shouldSatisfy')
 import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe)
 import Test.Hspec qualified as Test
 
@@ -136,6 +140,47 @@ memberEnumerationSpecs =
           betaDir = root </> $(mkRelDir "crates/nested/beta")
       ms `shouldBe'` [WorkspaceMember "alpha" alphaDir, WorkspaceMember "beta" betaDir]
 
+    -- 'shouldDescendDir' must prune "target" (after dropping the trailing
+    -- separator 'dirname' carries), so a stray vendored crate with a
+    -- [package] table under target/ is never discovered -- even though the
+    -- '**' member glob would otherwise match it.
+    it' "the manifest walk does not descend into a target/ directory" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/target_skip_ws")
+      ms <- enumerateWorkspaceMembers root
+      let appDir = root </> $(mkRelDir "crates/app")
+      -- "target/Cargo.toml" names "vendored_stray"; pruning keeps it out.
+      ms `shouldBe'` [WorkspaceMember "app" appDir]
+      -- The stray crate is also absent from the graph built from a lockfile:
+      -- the only dependency is the registry crate the member declares.
+      analysis <- analyzeManifests root ms
+      case parseCargoLock targetSkipLock of
+        Left err -> expectationFailure' ("parseCargoLock failed: " ++ show err)
+        Right lock -> do
+          let meta = lockfileToMetadata lock ms analysis
+              graph = buildGraph False meta
+              serdeDep = mkDep "serde" "1.0.100" CargoType [EnvProduction]
+          expectDeps' [serdeDep] graph
+          map dependencyName (Graphing.directList graph) `shouldNotContain'` ["vendored_stray"]
+
+    -- 'expandBraces' expands "crates/{a,b}" one level, so both crates are
+    -- members; the explicit entry naming a nonexistent directory ("ghost_dir")
+    -- resolves to nothing and must surface as a 'warn' rather than being
+    -- dropped silently.
+    it' "a brace member entry expands, and an unresolvable entry warns" $ do
+      root <- sendIO $ makeAbsolute $(mkRelDir "test/Cargo/testdata/brace_ws")
+      result <- errorBoundary $ enumerateWorkspaceMembers root
+      case result of
+        Failure _ _ -> expectationFailure' "expected member enumeration to succeed with a warning"
+        Success ws ms -> do
+          let aDir = root </> $(mkRelDir "crates/a")
+              bDir = root </> $(mkRelDir "crates/b")
+          ms `shouldBe'` [WorkspaceMember "a" aDir, WorkspaceMember "b" bDir]
+          case renderSuccess ws mempty of
+            Nothing -> expectationFailure' "expected an unresolvable-member warning"
+            Just rendered ->
+              renderIt rendered
+                `shouldSatisfy'` Text.isInfixOf "member entry 'ghost_dir' did not resolve to a manifest with a [package] table"
+
 -- ===========================================================================
 -- Per-member dependency-kind derivation
 
@@ -177,6 +222,14 @@ sourceDecisionSpecs =
       decideLockfileSource (Left (TomlParseError "boom")) `Test.shouldBe` UseMetadata
     it "falls back to metadata on an unsupported version" $
       decideLockfileSource (Left (UnsupportedVersion 1)) `Test.shouldBe` UseMetadata
+
+-- | A lockfile for the 'target_skip_ws' workspace: the member's only
+-- dependency is a registry crate; nothing in "target/" appears.
+targetSkipLock :: Text
+targetSkipLock =
+  "version = 3\n"
+    <> "\n[[package]]\nname = \"app\"\nversion = \"0.1.0\"\ndependencies = [\"serde 1.0.100\"]\n"
+    <> "\n[[package]]\nname = \"serde\"\nversion = \"1.0.100\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"abcd\"\n"
 
 -- | A lockfile whose member references "ghost", a crate with no [[package]]
 -- entry in the lockfile.
