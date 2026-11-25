@@ -641,9 +641,9 @@ test-suite unit-tests
     BerkeleyDB.BerkeleyDBSpec
     Bun.BunLockSpec
     BundlerSpec
+    Cargo.AnalyzeSpec
     Cargo.CargoLockSpec
     Cargo.CargoTomlSpec
-    Cargo.AnalyzeSpec
     Cargo.LockfileSpec
     Cargo.MetadataSpec
     Carthage.CarthageSpec
