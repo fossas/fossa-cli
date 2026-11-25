@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -24,6 +24,7 @@ import App.Types (Mode (..))
 import Control.Carrier.Debug (IgnoreDebugC, ignoreDebug)
 import Control.Carrier.Diagnostics (DiagnosticsC, runDiagnostics)
 import Control.Carrier.Reader (ReaderC, runReader)
+import Control.Carrier.Simple (SimpleC, interpret, sendSimple)
 import Control.Carrier.Stack (StackC, runStack)
 import Control.Carrier.Telemetry (IgnoreTelemetryC, withoutTelemetry)
 import Control.Effect.Lift (sendIO)
@@ -37,7 +38,7 @@ import Diag.Result (EmittedWarn, ErrGroup, Result (Failure, Success), renderFail
 import Discovery.Filters (AllFilters, MavenScopeFilters (MavenScopeIncludeFilters))
 import Effect.Exec (ExecIOC, runExecIO)
 import Effect.Logger (LoggerC, Severity (SevWarn), renderIt, withDefaultLogger)
-import Effect.ReadFS (ReadFSErr (FileReadError), ReadFSIOC, runReadFSIO)
+import Effect.ReadFS (ReadFSErr (FileReadError), ReadFSF (..), ReadFSIOC, runReadFSIO)
 import GraphUtil (expectDeps', expectDirect')
 import Graphing qualified
 import Path (Abs, Dir, Path, mkRelFile, parseAbsDir, toFilePath, (</>))
@@ -48,14 +49,9 @@ import Strategy.Cargo (
  )
 import Strategy.Cargo.Lock qualified as Lock
 import System.Directory (createDirectoryIfMissing, getTemporaryDirectory, removeDirectoryRecursive)
-#ifndef mingw32_HOST_OS
-import System.Posix.Files (setFileMode)
-import System.Posix.User (getEffectiveUserID)
-#endif
-import System.Posix.Types (FileMode, UserID)
 import System.Random (randomIO)
-import Test.Effect (expectationFailure', itWithTempDir', shouldBe', shouldSatisfy')
-import Test.Hspec (Spec, describe, expectationFailure, it, pendingWith, shouldBe, shouldContain, shouldSatisfy)
+import Test.Effect (EffectStack, expectationFailure', itWithTempDir', shouldBe', shouldSatisfy')
+import Test.Hspec (Spec, describe, expectationFailure, it, shouldBe, shouldContain)
 import Type.Operator (type ($))
 import Types (
   DependencyResults (dependencyGraph, dependencyManifestFiles),
@@ -79,6 +75,23 @@ type StaticTestC m =
     $ StackC
     $ IgnoreTelemetryC
         m
+
+-- | Interpret the 'Effect.ReadFS' 'Simple' effect for tests. 'readLockfile'
+-- only performs two operations from it: the existence check and the contents
+-- read. This reports the lockfile as present but unreadable (pinning the
+-- 'Left (FileReadError ...)' branch), and delegates every other operation to
+-- the real IO carrier. Because it needs no real filesystem, no chmod, and no
+-- platform guards, the spec is portable (Windows) and root-independent.
+mockReadFS :: forall x. ReadFSF x -> EffectStack x
+mockReadFS = \case
+  DoesFileExist _ -> pure True
+  ReadContentsText' file -> pure (Left (FileReadError (toString file) "mocked unreadable Cargo.lock"))
+  other -> sendSimple other
+
+-- | Wrap an action with 'mockReadFS', intercepting the 'ReadFS' 'Simple' effect
+-- on top of the test stack before 'runReadFSIO' would interpret it.
+withMockReadFS :: SimpleC ReadFSF EffectStack a -> EffectStack a
+withMockReadFS = interpret mockReadFS
 
 -- | A single-crate manifest with one registry dependency.
 demoManifest :: String
@@ -185,31 +198,21 @@ lockfileReadSpecs =
           map Lock.packageName (Lock.lockPackages lock) `shouldBe'` ["demo", "serde"]
         other -> expectationFailure' ("expected a parsed lockfile, got: " ++ show other)
     itWithTempDir' "surfaces Left with the read error when Cargo.lock cannot be read" $ \dir -> do
+      let lockFile = dir </> $(mkRelFile "Cargo.lock")
 
--- The warn + cargo-metadata fallback in 'analyze' itself is not unit
--- tested: taking it would run cargo. This pins the Left branch that
--- feeds it, using a file that exists but is unreadable.
---
--- Unreadability can only be simulated on POSIX as a non-root user:
--- chmod 0 does not block reads for root (CI containers), and the POSIX
--- modules are unavailable on Windows.
-#ifndef mingw32_HOST_OS
-      euid <- sendIO getEffectiveUserID
-      if euid == (0 :: UserID)
-        then sendIO $ pendingWith "cannot make a file unreadable when running as root"
-        else do
-          let lockFile = dir </> $(mkRelFile "Cargo.lock")
-          sendIO $ writeFile (toFilePath lockFile) demoLock
-          sendIO $ setFileMode (toFilePath lockFile) (0 :: FileMode)
-          res <- readLockfile dir
-          case res of
-            Left (FileReadError path reason) -> do
-              path `shouldBe'` toFilePath lockFile
-              reason `shouldSatisfy'` (/= "")
-            other -> expectationFailure' ("expected a read error, got: " ++ show other)
-#else
-      sendIO $ pendingWith "POSIX file modes are unavailable on Windows"
-#endif
+      -- The warn + cargo-metadata fallback in 'analyze' itself is not unit
+      -- tested: taking it would run cargo. This pins the Left branch that
+      -- feeds it. 'readLockfile' only uses doesFileExist + readContentsText' from
+      -- ReadFS, so we intercept ReadFS with a carrier (see 'mockReadFS') that
+      -- reports the lockfile present but unreadable -- no real filesystem, no
+      -- chmod, no root check, no CPP. It therefore runs on Windows and under root
+      -- too.
+      res <- withMockReadFS (readLockfile dir)
+      case res of
+        Left (FileReadError path reason) -> do
+          path `shouldBe'` toFilePath lockFile
+          reason `shouldSatisfy'` (/= "")
+        other -> expectationFailure' ("expected a read error, got: " ++ show other)
 
 -- ===========================================================================
 -- Static analysis wiring
