@@ -48,8 +48,10 @@ spec :: Spec
 spec = do
   -- this test only exists to prevent merging the commented out analyzers
   describe "Discovery function list" $
-    it "should be length 39" $
-      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 39
+    -- SwiftPM contributes two shared-walk visitors (package + Xcode halves),
+    -- each with its own .build skip decision.
+    it "should be length 40" $
+      length (discoverFuncs :: [DiscoverFunc SomeMonad]) `shouldBe` 40
 
   sendToDestinationSpec
 

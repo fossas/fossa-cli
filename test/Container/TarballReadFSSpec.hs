@@ -12,13 +12,19 @@ import Container.Tarball (TarEntries (..), mkEntries)
 import Container.TarballReadFs (runTarballReadFSIO)
 import Control.Carrier.Diagnostics (DiagnosticsC)
 import Control.Carrier.Stack (StackC, runStack)
+import Control.Effect.Lift (sendIO)
 import Data.ByteString qualified as ByteString
 import Data.ByteString.Lazy qualified as ByteStringLazy
 import Data.FileTree.IndexFileTree (SomeFileTree, empty, insert, toSomePath)
+import Data.Functor (($>))
+import Data.IORef (modifyIORef', newIORef, readIORef)
 import Data.Sequence (ViewL (..))
 import Data.Sequence qualified as Seq
 import Data.String.Conversion (ToString (toString), toText)
 import Data.Text (Text)
+import Discovery.Filters (AllFilters (..))
+import Discovery.Walk (WalkStep (..))
+import Discovery.Walk.Broadcast (WalkConsumer (..), withWalkBroadcast)
 import Effect.Logger (IgnoreLoggerC, ignoreLogger)
 import Effect.ReadFS (ReadFSIOC, listDir, readContentsBS, readContentsText, resolveDir, resolveFile)
 import GHC.Exception (throw)
@@ -34,6 +40,7 @@ import Test.Hspec (
   runIO,
  )
 import Type.Operator (type ($))
+import Types (DiscoveredProjectType (..))
 
 spec :: Spec
 spec = do
@@ -113,6 +120,46 @@ spec = do
       let parent :: Path Abs Dir = Path "usr/local/"
       resolvedDir <- resolveDir parent "bin"
       resolvedDir `shouldBe'` Path "usr/local/bin/"
+
+  describe "shared walk over the tar filesystem" $ do
+    -- IndexFileTree.lookupDir strips the vfs-root prefix from its listings:
+    -- the walk root's children arrive as "node_modules/", not
+    -- "vfs-root/node_modules/".  A strategy's root-level skip (Maven skips
+    -- target/ and node_modules/ at every listing) must still match those
+    -- root-relative children, and per-visitor pruning must leave a sibling
+    -- visitor seeing the skipped subtree — in one broadcast.
+    let tree =
+          insert (toSomePath "Cargo.toml") (Just 0)
+            . insert (toSomePath "node_modules/m1/package.json") (Just 1)
+            . insert (toSomePath "target/tgt/placeholder.txt") (Just 2)
+            $ empty
+        root = Path "vfs-root"
+
+    itEff tarFile tree "a root-level skip matches root-relative children for its own visitor only, in one broadcast" $ do
+      mavenRef <- sendIO (newIORef ([] :: [Path Abs Dir]))
+      cargoRef <- sendIO (newIORef ([] :: [Path Abs Dir]))
+      -- Maven-like: at every listing it skips its target/ and node_modules/
+      -- subtrees.  Cargo-like: descends everywhere.
+      let mavenLike dir _ _ = sendIO (modifyIORef' mavenRef (dir :)) $> ((), WalkSkipSome ["node_modules/", "target/"])
+          cargoLike dir _ _ = sendIO (modifyIORef' cargoRef (dir :)) $> ((), WalkContinue)
+          mavenConsumer = WalkConsumer MavenProjectType mavenLike
+          cargoConsumer = WalkConsumer CargoProjectType cargoLike
+      withWalkBroadcast (mempty :: AllFilters) Nothing False root [mavenConsumer, cargoConsumer]
+
+      -- Maven's root-level skip matched the root-relative children: it saw
+      -- only the root.
+      mavenVisited <- sendIO (readIORef mavenRef)
+      mavenVisited `shouldMatchList'` [Path "vfs-root"]
+
+      -- Cargo still sees the whole tree, including both skipped subtrees.
+      cargoVisited <- sendIO (readIORef cargoRef)
+      cargoVisited
+        `shouldMatchList'` [ Path "vfs-root"
+                           , Path "node_modules/"
+                           , Path "node_modules/m1/"
+                           , Path "target/"
+                           , Path "target/tgt/"
+                           ]
   where
     itEff :: Path Abs File -> SomeFileTree TarEntryOffset -> String -> EffStack () -> SpecWith ()
     itEff tarFile tree msg = it msg . (runWithTarFsEff tarFile tree)

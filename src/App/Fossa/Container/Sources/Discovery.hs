@@ -3,7 +3,7 @@ module App.Fossa.Container.Sources.Discovery (
   renderLayerTarget,
 ) where
 
-import App.Fossa.Analyze.Discover (DiscoverFunc (DiscoverFunc))
+import App.Fossa.Analyze.Discover (DiscoverFunc (..))
 import App.Fossa.Analyze.Types (
   AnalyzeStaticTaskEffs,
  )
@@ -13,6 +13,7 @@ import Data.Foldable (for_)
 import Data.Set qualified as Set
 import Data.Set.NonEmpty (toSet)
 import Data.Text (Text)
+import Discovery.Simple (cachedDiscover, cachedDiscoverWith)
 import Effect.Logger (
   AnsiStyle,
   Doc,
@@ -56,7 +57,7 @@ import Strategy.SwiftPM qualified as SwiftPM
 import Types (
   BuildTarget (unBuildTarget),
   DiscoveredProject (projectBuildTargets, projectPath, projectType),
-  DiscoveredProjectType,
+  DiscoveredProjectType (..),
   FoundTargets (FoundTargets, ProjectWithoutTargets),
  )
 
@@ -81,47 +82,133 @@ osDepsAnalyzers osInfo =
 
 managedDepsDiscoveryF :: AnalyzeStaticTaskEffs sig m => [DiscoverFunc m]
 managedDepsDiscoveryF =
-  [ DiscoverFunc Bundler.discover
-  , DiscoverFunc Carthage.discover
-  , DiscoverFunc Cocoapods.discover
-  , DiscoverFunc Composer.discover
-  , DiscoverFunc Conan.discover
-  , DiscoverFunc Fpm.discover
-  , DiscoverFunc Glide.discover
-  , DiscoverFunc Maven.discover
-  , DiscoverFunc Nim.discover
-  , DiscoverFunc Node.discover
-  , DiscoverFunc NuGet.discover
-  , DiscoverFunc Nuspec.discover
-  , DiscoverFunc PackagesConfig.discover
-  , DiscoverFunc Paket.discover
-  , DiscoverFunc Pdm.discover
-  , DiscoverFunc Perl.discover
-  , DiscoverFunc Pipenv.discover
-  , DiscoverFunc Poetry.discover
-  , DiscoverFunc ProjectJson.discover
-  , DiscoverFunc Pub.discover
-  , DiscoverFunc R.discover
-  , DiscoverFunc RPM.discover
-  , DiscoverFunc RepoManifest.discover
-  , DiscoverFunc Setuptools.discover
-  , DiscoverFunc SwiftPM.discover
-  , DiscoverFunc Uv.discover
-  --
-  -- Following can be performed only with dynamic analysis.
-  -- So we don not do any discovery for them (to avoid error noise)
-  --
-  -- , DiscoverFunc Cabal.discover
-  -- , DiscoverFunc Cargo.discover
-  -- , DiscoverFunc Conda.discover
-  -- , DiscoverFunc Godep.discover
-  -- , DiscoverFunc Gomodules.discover
-  -- , DiscoverFunc Gradle.discover
-  -- , DiscoverFunc Leiningen.discover
-  -- , DiscoverFunc Mix.discover
-  -- , DiscoverFunc Rebar3.discover
-  -- , DiscoverFunc Scala.discover
-  -- , DiscoverFunc Stack.discover
+  -- Each entry mirrors the corresponding post-#1821 entry in
+  -- 'App.Fossa.Analyze.Discover.discoverFuncs': the per-directory visitor is
+  -- driven over the shared walk by 'Discovery.Walk.Broadcast', and the
+  -- finalizer turns the collected raw projects into discovered projects.
+  [ WalkedFunc
+      BundlerProjectType
+      Bundler.discoverVisitor
+      (cachedDiscover BundlerProjectType Bundler.mkProject)
+  , WalkedFunc
+      CarthageProjectType
+      Carthage.discoverVisitor
+      (cachedDiscover CarthageProjectType Carthage.mkProject)
+  , WalkedFunc
+      CocoapodsProjectType
+      Cocoapods.discoverVisitor
+      (cachedDiscover CocoapodsProjectType Cocoapods.mkProject)
+  , WalkedFunc
+      ComposerProjectType
+      Composer.discoverVisitor
+      (cachedDiscover ComposerProjectType Composer.mkProject)
+  , WalkedFunc
+      ConanProjectType
+      Conan.discoverVisitor
+      (cachedDiscover ConanProjectType Conan.mkProject)
+  , WalkedFunc
+      FpmProjectType
+      Fpm.discoverVisitor
+      (cachedDiscover FpmProjectType Fpm.mkProject)
+  , WalkedFunc
+      GlideProjectType
+      Glide.discoverVisitor
+      (cachedDiscover GlideProjectType Glide.mkProject)
+  , WalkedFunc
+      MavenProjectType
+      Maven.discoverVisitor
+      (cachedDiscoverWith MavenProjectType Maven.postDiscover)
+  , WalkedFunc
+      NimbleProjectType
+      Nim.discoverVisitor
+      (cachedDiscover NimbleProjectType Nim.mkProject)
+  , WalkedFunc
+      NpmProjectType
+      Node.discoverVisitor
+      Node.finalizeProjects
+  , WalkedFunc
+      NuGetProjectType
+      NuGet.discoverVisitor
+      (cachedDiscoverWith NuGetProjectType NuGet.postDiscover)
+  , WalkedFunc
+      NuspecProjectType
+      Nuspec.discoverVisitor
+      (cachedDiscover NuspecProjectType Nuspec.mkProject)
+  , WalkedFunc
+      PackagesConfigProjectType
+      PackagesConfig.discoverVisitor
+      (cachedDiscover PackagesConfigProjectType PackagesConfig.mkProject)
+  , WalkedFunc
+      PaketProjectType
+      Paket.discoverVisitor
+      (cachedDiscover PaketProjectType Paket.mkProject)
+  , WalkedFunc
+      PdmProjectType
+      Pdm.discoverVisitor
+      (cachedDiscover PdmProjectType Pdm.mkProject)
+  , WalkedFunc
+      PerlProjectType
+      Perl.discoverVisitor
+      (cachedDiscover PerlProjectType Perl.mkProject)
+  , WalkedFunc
+      PipenvProjectType
+      Pipenv.discoverVisitor
+      (cachedDiscover PipenvProjectType Pipenv.mkProject)
+  , WalkedFunc
+      PoetryProjectType
+      Poetry.discoverVisitor
+      (cachedDiscover PoetryProjectType Poetry.mkProject)
+  , WalkedFunc
+      ProjectJsonProjectType
+      ProjectJson.discoverVisitor
+      (cachedDiscover ProjectJsonProjectType ProjectJson.mkProject)
+  , WalkedFunc
+      PubProjectType
+      Pub.discoverVisitor
+      (cachedDiscover PubProjectType Pub.mkProject)
+  , WalkedFunc
+      RProjectType
+      R.discoverVisitor
+      (cachedDiscover RProjectType R.mkProject)
+  , WalkedFunc
+      RpmProjectType
+      RPM.discoverVisitor
+      (cachedDiscover RpmProjectType RPM.mkProject)
+  , WalkedFunc
+      RepoManifestProjectType
+      RepoManifest.discoverVisitor
+      (cachedDiscover RepoManifestProjectType RepoManifest.mkProject)
+  , WalkedFunc
+      SetuptoolsProjectType
+      Setuptools.discoverVisitor
+      (cachedDiscover SetuptoolsProjectType Setuptools.mkProject)
+  , WalkedFunc
+      SwiftProjectType
+      SwiftPM.swiftPackageVisitor
+      (cachedDiscover SwiftProjectType SwiftPM.mkProject)
+  , WalkedFunc
+      SwiftProjectType
+      SwiftPM.xcodeProjectVisitor
+      (cachedDiscover SwiftProjectType SwiftPM.mkProject)
+  , WalkedFunc
+      UvProjectType
+      Uv.discoverVisitor
+      (cachedDiscover UvProjectType Uv.mkProject)
+      --
+      -- Following can be performed only with dynamic analysis.
+      -- So we don not do any discovery for them (to avoid error noise)
+      --
+      -- , DiscoverFunc Cabal.discover
+      -- , DiscoverFunc Cargo.discover
+      -- , DiscoverFunc Conda.discover
+      -- , DiscoverFunc Godep.discover
+      -- , DiscoverFunc Gomodules.discover
+      -- , DiscoverFunc Gradle.discover
+      -- , DiscoverFunc Leiningen.discover
+      -- , DiscoverFunc Mix.discover
+      -- , DiscoverFunc Rebar3.discover
+      -- , DiscoverFunc Scala.discover
+      -- , DiscoverFunc Stack.discover
   ]
 
 -- | Logs a discovered project, with it's project type, path, targets, and layer in info severity.
