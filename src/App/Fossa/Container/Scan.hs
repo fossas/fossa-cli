@@ -76,6 +76,7 @@ extractRevision OverrideProject{..} ContainerScan{..} =
     (fromMaybe imageTag overrideName)
     (fromMaybe imageDigest overrideRevision)
     overrideBranch
+    Nothing
 
 scanImage ::
   ( Has Diagnostics sig m

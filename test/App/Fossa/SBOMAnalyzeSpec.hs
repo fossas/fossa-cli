@@ -29,7 +29,7 @@ spec = do
     currDir <- runIO getCurrentDir
     it' "should upload a file" $ do
       let archive = Archive "somesbom" "1.2.3" Nothing Nothing
-      let revision = ProjectRevision "somesbom" "1.2.3" Nothing
+      let revision = ProjectRevision "somesbom" "1.2.3" Nothing Nothing
       let config = SBOMAnalyzeConfig (BaseDir currDir) Fixtures.apiOpts (SBOMFile "test/App/Fossa/SBOM/testdata/sampleCycloneDX.json") DependencyRebuildReuseCache Nothing (toFlag' False) revision Nothing SevInfo
 
       GetApiOpts `alwaysReturns` Fixtures.apiOpts
@@ -43,7 +43,7 @@ spec = do
     -- logStdout writes straight to stdout, so this checks the summary --json prints for
     -- the locator analyzeInternal builds in org 42.
     it' "should build the --json summary from the sbom locator" $ do
-      let revision = ProjectRevision{projectName = "somesbom", projectRevision = "1.2.3", projectBranch = Nothing}
+      let revision = ProjectRevision{projectName = "somesbom", projectRevision = "1.2.3", projectBranch = Nothing, projectGitRemote = Nothing}
           locator = Locator{locatorFetcher = "sbom", locatorProject = "42/somesbom", locatorRevision = Just "1.2.3"}
           url = "https://app.fossa.com/projects/sbom%2b42%2fsomesbom/refs/branch/master/1.2.3"
       summary <- buildProjectSummary revision locator url

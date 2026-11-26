@@ -5,7 +5,7 @@ By default, the analyze command:
 - looks for projects in the current directory (and recursively in subdirectories)
 - extracts dependency graphs from those projects
 - infers a project name, branch, and revision for the project (from git or svn)
-- uploads the dependency graphs to FOSSA
+- uploads the dependency graphs to FOSSA, with the git `origin` remote if there is one, so FOSSA can record the project's repository
 
 For supported command-line flags, use `fossa analyze --help`
 

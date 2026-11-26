@@ -24,6 +24,8 @@ fossa analyze --output
 
 The output is a bit large to include in this document. You can [view the results here](../assets/fossa-analyze-output.json).
 
+The upload also carries the project's name, revision and branch. When the analyzed directory is in a git checkout with an `origin` remote, it carries that remote's URL too, so FOSSA can record which repository the project comes from. It does this even when `--project` names the project.
+
 ## Vendored Dependencies
 
 If you have a `fossa-deps.yml` file that contains a `vendored-dependencies` section ([vendored dependencies documentation](../features/vendored-dependencies.md)), then the CLI will scan and upload data for the vendored dependencies listed.

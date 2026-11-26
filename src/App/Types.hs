@@ -88,6 +88,8 @@ data ProjectRevision = ProjectRevision
   { projectName :: Text
   , projectRevision :: Text
   , projectBranch :: Maybe Text
+  , projectGitRemote :: Maybe Text
+  -- ^ The git remote of the checkout being analyzed, if any.
   }
   deriving (Eq, Ord, Show, Generic)
 
