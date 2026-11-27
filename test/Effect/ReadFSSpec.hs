@@ -17,6 +17,10 @@ import Test.Hspec (Spec, describe, runIO)
 expectedContents :: Map Text Text
 expectedContents = Map.fromList [("name", "example"), ("version", "1.0.0")]
 
+-- | The text of every fixture in test/Effect/testdata, before any encoding.
+expectedText :: Text
+expectedText = "{\n  \"name\": \"example\",\n  \"version\": \"1.0.0\"\n}\n"
+
 spec :: Spec
 spec = do
   currentDir <- runIO getCurrentDir
@@ -28,12 +32,14 @@ spec = do
   describe "readContentsText" $ do
     -- Windows tooling sometimes saves manifests as UTF-16 with a byte order
     -- mark; read as UTF-8 they decode to NUL-riddled text no parser accepts.
+    -- The expectation is a literal rather than the decoded UTF-8 fixture: a
+    -- Windows checkout converts that text file to CRLF, while git leaves the
+    -- UTF-16 fixtures (binary to it, because of their NUL bytes) untouched.
     it' "decodes UTF-16 files by their byte order mark" $ do
-      expected <- readContentsText testdata
       littleEndian <- readContentsText testdataUtf16LE
       bigEndian <- readContentsText testdataUtf16BE
-      littleEndian `shouldBe'` expected
-      bigEndian `shouldBe'` expected
+      littleEndian `shouldBe'` expectedText
+      bigEndian `shouldBe'` expectedText
 
     it' "fixtures actually begin with UTF-16 byte order marks" $ do
       littleEndian <- readContentsBS testdataUtf16LE
