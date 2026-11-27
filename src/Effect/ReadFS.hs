@@ -65,6 +65,7 @@ module Effect.ReadFS (
 
 import App.Support (supportUrl)
 import Control.Algebra as X
+import Control.Applicative ((<|>))
 import Control.Carrier.Simple (
   Simple,
   SimpleC,
@@ -94,6 +95,8 @@ import Data.Either.Combinators (mapRight)
 import Data.Maybe (fromMaybe)
 import Data.String.Conversion (decodeUtf8, encodeUtf8, toString, toText)
 import Data.Text (Text)
+import Data.Text.Encoding (decodeUtf16BEWith, decodeUtf16LEWith)
+import Data.Text.Encoding.Error (lenientDecode)
 import Data.Text.Extra (showT)
 import Data.Text.Jsonc (stripJsonc)
 import Data.Void (Void)
@@ -365,22 +368,43 @@ readContentsParserBS parser file = context ("Parsing file '" <> toText (toString
 -- | Read JSON from a file
 readContentsJson :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsJson file = context ("Parsing JSON file '" <> toText (toString file) <> "'") $ do
-  contents <- stripUtf8Bom <$> readContentsBS file
+  contents <- utf8NoBom <$> readContentsBS file
   case eitherDecodeStrict contents of
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
 
 -- | Windows tooling (e.g. Visual Studio) often writes JSON files with a leading
 -- UTF-8 byte order mark, which Aeson rejects; RFC 8259 permits ignoring it.
-stripUtf8Bom :: ByteString -> ByteString
-stripUtf8Bom bs = fromMaybe bs (BS.stripPrefix "\xEF\xBB\xBF" bs)
+-- It also sometimes saves them as UTF-16, which is transcoded to UTF-8 here
+-- (see 'decodeTextWithBom').
+utf8NoBom :: ByteString -> ByteString
+utf8NoBom bs = case utf16Text bs of
+  Just text -> encodeUtf8 text
+  Nothing -> fromMaybe bs (BS.stripPrefix "\xEF\xBB\xBF" bs)
+
+-- | Decode a file's bytes as text, honouring a UTF-16 byte order mark.
+--
+-- Windows tooling (e.g. Visual Studio) sometimes saves manifests such as
+-- @.csproj@, @.nuspec@ or @project.json@ as UTF-16 with a byte order mark.
+-- .NET's own readers honour the mark, so those files work for their ecosystem,
+-- but decoded as UTF-8 they turn into NUL-riddled text that no parser accepts.
+-- Everything else is decoded as UTF-8, as before: no UTF-8 text starts with
+-- the bytes FF FE or FE FF.
+decodeTextWithBom :: ByteString -> Text
+decodeTextWithBom bs = fromMaybe (decodeUtf8 bs) (utf16Text bs)
+
+-- | The text of UTF-16 content that starts with a byte order mark, mark removed.
+utf16Text :: ByteString -> Maybe Text
+utf16Text bs =
+  (decodeUtf16LEWith lenientDecode <$> BS.stripPrefix "\xFF\xFE" bs)
+    <|> (decodeUtf16BEWith lenientDecode <$> BS.stripPrefix "\xFE\xFF" bs)
 
 -- | Read JSONC (JSON with Comments) from a file.
 -- Strips a leading UTF-8 byte order mark, single-line comments, block comments,
 -- and trailing commas before parsing as JSON.
 readContentsJsonc :: (FromJSON a, Has ReadFS sig m, Has Diagnostics sig m) => Path Abs File -> m a
 readContentsJsonc file = context ("Parsing JSONC file '" <> toText (toString file) <> "'") $ do
-  contents <- decodeUtf8 . stripUtf8Bom <$> readContentsBS file
+  contents <- decodeUtf8 . utf8NoBom <$> readContentsBS file
   case eitherDecodeStrict . encodeUtf8 =<< stripJsonc contents of
     Left err -> errSupport (fileParseErrorSupportMsg file) $ fatal $ FileParseError (toString file) (toText err)
     Right a -> pure a
@@ -419,7 +443,7 @@ runReadFSIO = interpret $ \case
     readContentsBSLimitIO file limit
       `catchingIO` FileReadError (toString file)
   ReadContentsText' file -> do
-    (decodeUtf8 <$> BS.readFile (toString file))
+    (decodeTextWithBom <$> BS.readFile (toString file))
       `catchingIO` FileReadError (toString file)
   ReadRedactedContentsBS' file -> do
     mapRight Redacted
@@ -431,7 +455,7 @@ runReadFSIO = interpret $ \case
         `catchingIO` FileReadError (toString file)
   ReadRedactedContentsText' file -> do
     mapRight Redacted
-      <$> (decodeUtf8 <$> BS.readFile (toString file))
+      <$> (decodeTextWithBom <$> BS.readFile (toString file))
         `catchingIO` FileReadError (toString file)
   ResolveFile' dir path -> do
     PIO.resolveFile dir (toString path)
