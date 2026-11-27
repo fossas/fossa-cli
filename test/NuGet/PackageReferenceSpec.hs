@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module NuGet.PackageReferenceSpec (
   spec,
 ) where
@@ -8,10 +10,14 @@ import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.IO qualified as TIO
 import DepTypes
+import Effect.ReadFS (readContentsXML)
 import GraphUtil
 import Parse.XML
+import Path (mkRelFile, (</>))
+import Path.IO (getCurrentDir)
 import Strategy.NuGet.DirectoryPackagesProps (buildVersionMap)
 import Strategy.NuGet.PackageReference
+import Test.Effect (it', shouldContain')
 import Test.Hspec
 
 dependencyOne :: Dependency
@@ -95,6 +101,8 @@ projectWithRemoveItems =
 
 spec :: Spec
 spec = do
+  currentDir <- runIO getCurrentDir
+  let utf16RefFile = currentDir </> $(mkRelFile "test/NuGet/testdata/utf16le-bom.csproj")
   refFile <- runIO (TIO.readFile "test/NuGet/testdata/test.csproj")
   cpmProjectFile <- runIO (TIO.readFile "test/NuGet/testdata/cpm-test.csproj")
   cpmPropsFile <- runIO (TIO.readFile "test/NuGet/testdata/Directory.Packages.props")
@@ -104,6 +112,12 @@ spec = do
       case parseXML refFile of
         Right project -> (groups project) `shouldContain` itemGroupList
         Left err -> expectationFailure (toString ("could not parse package reference file" <> xmlErrorPretty err))
+
+    -- Visual Studio can save project files as UTF-16 with a byte order mark;
+    -- read as UTF-8, the whole file used to fail with `parseXMLDoc failed`.
+    it' "reads a UTF-16 encoded project file" $ do
+      project <- readContentsXML @PackageReference utf16RefFile
+      groups project `shouldContain'` itemGroupList
 
     -- Items without an Include or Update attribute used to fail the whole file with
     -- `Missing attribute at [Project.ItemGroup.PackageReference]; attrName: Update`.
