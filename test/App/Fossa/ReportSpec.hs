@@ -3,7 +3,7 @@ module App.Fossa.ReportSpec (spec) where
 import App.Fossa.Config.Report (
   ReportBase (..),
   ReportConfig (..),
-  ReportOutputFormat (ReportJson),
+  ReportOutputFormat (ReportJson, ReportSpdx3JSON),
   ReportType (..),
   parseReportOutputFormat,
  )
@@ -38,6 +38,8 @@ spec =
     baseConfig <- runIO reportConfig
     customBuildSpec baseConfig
     sbomBuildSpec baseConfig
+    it "Parses \"spdx3-json\" as the SPDX 3.0 JSON format" $
+      parseReportOutputFormat "spdx3-json" `shouldBe` Just ReportSpdx3JSON
 
 customBuildSpec :: ReportConfig -> Spec
 customBuildSpec config = describe "Custom build" $ do
@@ -59,6 +61,13 @@ customBuildSpec config = describe "Custom build" $ do
     expectFetchRevisionDependencyCacheSuccess buildType
     expectFetchReportSuccess buildType
     fetchReport config
+  it' "should request the report in the configured format" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesSuccess buildType
+    expectFetchRevisionDependencyCacheSuccess buildType
+    GetAttribution Fixtures.projectRevision ReportSpdx3JSON buildType `returnsOnce` Fixtures.attributionReportAsSerializedJson
+    fetchReport config{outputFormat = ReportSpdx3JSON}
   it' "should die if fetching the build fails" $ do
     expectGetOrganization
     expectBuildError buildType
