@@ -3,7 +3,7 @@ module App.Fossa.ReportSpec (spec) where
 import App.Fossa.Config.Report (
   ReportBase (..),
   ReportConfig (..),
-  ReportOutputFormat (ReportJson),
+  ReportOutputFormat (ReportJson, ReportSpdx3JSON),
   ReportType (..),
   parseReportOutputFormat,
  )
@@ -38,6 +38,8 @@ spec =
     baseConfig <- runIO reportConfig
     customBuildSpec baseConfig
     sbomBuildSpec baseConfig
+    it "Parses \"spdx3-json\" as the SPDX 3.0 JSON format" $
+      parseReportOutputFormat "spdx3-json" `shouldBe` Just ReportSpdx3JSON
 
 customBuildSpec :: ReportConfig -> Spec
 customBuildSpec config = describe "Custom build" $ do

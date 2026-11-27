@@ -84,6 +84,7 @@ data ReportOutputFormat
   | ReportPlainText
   | ReportSpdx
   | ReportSpdxJSON
+  | ReportSpdx3JSON
   deriving (Eq, Ord, Enum, Bounded, Generic)
 
 parseReportOutputFormat :: String -> Maybe ReportOutputFormat
@@ -96,6 +97,7 @@ parseReportOutputFormat s | s == show ReportCycloneDXJSON = Just ReportCycloneDX
 parseReportOutputFormat s | s == show ReportCycloneDXXML = Just ReportCycloneDXXML
 parseReportOutputFormat s | s == show ReportHTML = Just ReportHTML
 parseReportOutputFormat s | s == show ReportCSV = Just ReportCSV
+parseReportOutputFormat s | s == show ReportSpdx3JSON = Just ReportSpdx3JSON
 parseReportOutputFormat _ = Nothing
 
 instance ToText ReportOutputFormat where
@@ -111,6 +113,7 @@ instance Show ReportOutputFormat where
   show ReportCycloneDXXML = "cyclonedx-xml"
   show ReportHTML = "html"
   show ReportCSV = "csv"
+  show ReportSpdx3JSON = "spdx3-json"
 
 allFormats :: [ReportOutputFormat]
 allFormats = enumFromTo minBound maxBound

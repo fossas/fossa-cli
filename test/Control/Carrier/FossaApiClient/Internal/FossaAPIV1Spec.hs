@@ -2,22 +2,27 @@
 
 module Control.Carrier.FossaApiClient.Internal.FossaAPIV1Spec (spec) where
 
+import App.Fossa.Config.Report (ReportOutputFormat (ReportSpdx3JSON))
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   FossaError (..),
   FossaPublicFacingError (..),
   SignInPageResponse (..),
+  attributionEndpoint,
   checkForSignInPage,
  )
 import Data.Maybe (isJust, isNothing)
 import Data.String.Conversion (toText)
-import Data.Text (Text, isInfixOf)
+import Data.Text (Text, isInfixOf, isSuffixOf)
 import Data.Text qualified as Text
 import Diag.Diagnostic (ToDiagnostic (renderDiagnostic))
 import Errata (Errata (..))
 import Errata.Types (Body)
+import Fossa.API.Types (OrgId (OrgId))
 import Network.HTTP.Client qualified as HTTP
 import Network.HTTP.Client.Internal qualified as HTTP
+import Network.HTTP.Req (https, renderUrl)
 import Network.HTTP.Types qualified as HTTP
+import Srclib.Types (Locator (Locator))
 import Test.Hspec (Spec, describe, it, shouldSatisfy)
 
 -- | A 200 response whose redirect chain ended at the given URL.
@@ -82,3 +87,8 @@ spec = do
       renderedText (backendError 500) `shouldSatisfy` isInfixOf "API token is invalid"
       renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "FOSSA_API_KEY")
       renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "generating-an-api-key")
+
+  describe "attributionEndpoint" $
+    it "requests the server's SPDX3_JSON format for spdx3-json" $ do
+      let url = attributionEndpoint (https "example.com") (OrgId 1) (Locator "custom" "project" (Just "rev")) ReportSpdx3JSON
+      renderUrl url `shouldSatisfy` isSuffixOf "/attribution/full/SPDX3_JSON"

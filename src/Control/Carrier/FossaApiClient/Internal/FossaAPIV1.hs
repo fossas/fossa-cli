@@ -15,6 +15,7 @@ module Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   getIssues,
   getOrganization,
   getAttribution,
+  attributionEndpoint,
   getAnalyzedRevisions,
   getRevisionDependencyCacheStatus,
   getSignedFirstPartyScanURL,
@@ -1311,6 +1312,7 @@ attributionEndpoint baseurl orgId locator format = appendSegment format $ baseur
         ReportMarkdown -> input /: "full" /: "MD"
         ReportSpdx -> input /: "full" /: "spdx"
         ReportSpdxJSON -> input /: "full" /: "SPDX_JSON"
+        ReportSpdx3JSON -> input /: "full" /: "SPDX3_JSON"
         ReportCycloneDXJSON -> input /: "full" /: "CYCLONEDX_JSON"
         ReportCycloneDXXML -> input /: "full" /: "CYCLONEDX_XML"
         ReportPlainText -> input /: "full" /: "TXT"
