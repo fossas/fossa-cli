@@ -2,7 +2,7 @@
 
 module Control.Carrier.FossaApiClient.Internal.FossaAPIV1Spec (spec) where
 
-import App.Fossa.Config.Report (ReportOutputFormat (ReportSpdx3JSON))
+import App.Fossa.Config.Report (ReportOutputFormat (..))
 import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   FossaError (..),
   FossaPublicFacingError (..),
@@ -10,6 +10,7 @@ import Control.Carrier.FossaApiClient.Internal.FossaAPIV1 (
   attributionEndpoint,
   checkForSignInPage,
  )
+import Data.Foldable (for_)
 import Data.Maybe (isJust, isNothing)
 import Data.String.Conversion (toText)
 import Data.Text (Text, isInfixOf, isSuffixOf)
@@ -23,7 +24,7 @@ import Network.HTTP.Client.Internal qualified as HTTP
 import Network.HTTP.Req (https, renderUrl)
 import Network.HTTP.Types qualified as HTTP
 import Srclib.Types (Locator (Locator))
-import Test.Hspec (Spec, describe, it, shouldSatisfy)
+import Test.Hspec (Spec, describe, it, shouldBe, shouldSatisfy)
 
 -- | A 200 response whose redirect chain ended at the given URL.
 responseLandingOn :: HTTP.Request -> HTTP.Response ()
@@ -88,7 +89,28 @@ spec = do
       renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "FOSSA_API_KEY")
       renderedText (backendError 500) `shouldSatisfy` (not . isInfixOf "generating-an-api-key")
 
-  describe "attributionEndpoint" $
-    it "requests the server's SPDX3_JSON format for spdx3-json" $ do
-      let url = attributionEndpoint (https "example.com") (OrgId 1) (Locator "custom" "project" (Just "rev")) ReportSpdx3JSON
-      renderUrl url `shouldSatisfy` isSuffixOf "/attribution/full/SPDX3_JSON"
+  describe "attributionEndpoint" $ do
+    it "has an expected path for every report format" $
+      map fst expectedAttributionPaths `shouldBe` [minBound .. maxBound]
+
+    for_ expectedAttributionPaths $ \(fmt, path) ->
+      it ("requests " <> show path <> " for " <> show fmt) $
+        renderUrl (attributionEndpoint (https "example.com") (OrgId 1) (Locator "custom" "project" (Just "rev")) fmt)
+          `shouldSatisfy` isSuffixOf path
+
+-- | The path each format's report is fetched from, in declaration order. A
+-- wrong path can make the server return a different format without an error,
+-- such as SPDX 2.3 when the user asked for SPDX 3.0.
+expectedAttributionPaths :: [(ReportOutputFormat, Text)]
+expectedAttributionPaths =
+  [ (ReportCSV, "/attribution/full/CSV")
+  , (ReportCycloneDXJSON, "/attribution/full/CYCLONEDX_JSON")
+  , (ReportCycloneDXXML, "/attribution/full/CYCLONEDX_XML")
+  , (ReportHTML, "/attribution/full/HTML")
+  , (ReportJson, "/attribution/json")
+  , (ReportMarkdown, "/attribution/full/MD")
+  , (ReportPlainText, "/attribution/full/TXT")
+  , (ReportSpdx, "/attribution/full/spdx")
+  , (ReportSpdxJSON, "/attribution/full/SPDX_JSON")
+  , (ReportSpdx3JSON, "/attribution/full/SPDX3_JSON")
+  ]

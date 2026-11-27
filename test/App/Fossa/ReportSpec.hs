@@ -61,6 +61,13 @@ customBuildSpec config = describe "Custom build" $ do
     expectFetchRevisionDependencyCacheSuccess buildType
     expectFetchReportSuccess buildType
     fetchReport config
+  it' "should request the report in the configured format" $ do
+    expectGetOrganization
+    expectBuildSuccess buildType
+    expectFetchIssuesSuccess buildType
+    expectFetchRevisionDependencyCacheSuccess buildType
+    GetAttribution Fixtures.projectRevision ReportSpdx3JSON buildType `returnsOnce` Fixtures.attributionReportAsSerializedJson
+    fetchReport config{outputFormat = ReportSpdx3JSON}
   it' "should die if fetching the build fails" $ do
     expectGetOrganization
     expectBuildError buildType
