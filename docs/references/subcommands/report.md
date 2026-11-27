@@ -75,7 +75,7 @@ Available options are:
 - `text`
 
 For example, to render the report in JSON format, use `fossa report attribution --format json`.
-`spdx` and `spdx-json` produce SPDX 2.3. `spdx3-json` produces SPDX 3.0. On-premise FOSSA servers support `spdx3-json` from version 4.35.30. Versions 4.35.15 to 4.35.29 support it only when SPDX 3.0 export is turned on for the organization. Older versions return an error.
+`spdx` and `spdx-json` produce SPDX 2.3. `spdx3-json` produces SPDX 3.0.
 
 In earlier versions of the FOSSA CLI, the `--json` flag was used to denote rendering the report in JSON format.
 For backwards compatibility, this flag is still supported and takes precedence over the `--format` flag if present.
